@@ -1,0 +1,14 @@
+{
+  "name": "node-red",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node-red"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "node-red": "^0.16.1"
+  }
+}

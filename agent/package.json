@@ -1,0 +1,23 @@
+{
+  "name": "modeinc-agent",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "babel-node index.js",
+    "lint": "eslint *.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "babel-cli": "^6.18.0",
+    "babel-eslint": "^7.1.1",
+    "babel-preset-es2015": "^6.18.0",
+    "babel-preset-es2017": "^6.16.0",
+    "eslint": "^3.12.2"
+  },
+  "dependencies": {
+    "mode-device": "^1.1.5",
+    "unzip2": "^0.2.5"
+  }
+}
