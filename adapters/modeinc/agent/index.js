@@ -1,6 +1,6 @@
 import ModeDevice from 'mode-device';
 import fetch from 'isomorphic-fetch';
-import EnebularAgent from './enebular-agent';
+import EnebularAgent from 'enebular-runtime-agent';
 
 const { DEVICE_ID, DEVICE_API_KEY } = process.env;
 
@@ -8,7 +8,7 @@ const device = new ModeDevice(DEVICE_ID, DEVICE_API_KEY);
 const agent = new EnebularAgent({
   command: 'npm',
   args: ['run', 'start' ],
-  pkgDir: '../node-red',
+  pkgDir: '../../../node-red',
 });
 
 async function downloadPackage(params) {

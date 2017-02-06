@@ -1,6 +1,6 @@
 ## MODEinc enebular agent demo
 
-1. Setup agent env vars
+1. Setup env vars for agent of MODEinc
 ```
 cd agent
 vi .env
@@ -15,10 +15,10 @@ DEVICE_API_KEY=v1.XXXXXX.....
 nf run npm start
 ```
 
-3. Setup server env vars
+3. Setup env vars for commander of MODEinc
 
 ```
-cd server
+cd command
 vi .env
 
 PROJECT_ID=YYY
@@ -27,7 +27,7 @@ HOME_ID=ZZZ
 FLOW_PACKAGE_URL=https://xxxx/yy/zz.zip
 ````
 
-4. Send message from server
+4. Send message from commander
 
 ```
 nf run npm start notify {DEVICE_ID} update-flow

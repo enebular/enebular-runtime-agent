@@ -1,14 +1,12 @@
 {
-  "name": "modeinc-agent",
+  "name": "enebular-runtime-agent",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "lib/index.js",
   "scripts": {
-    "start": "babel-node index.js",
-    "lint": "eslint *.js"
+    "build": "babel src -d lib",
+    "lint": "eslint src"
   },
-  "author": "",
-  "license": "MIT",
   "devDependencies": {
     "babel-cli": "^6.18.0",
     "babel-eslint": "^7.1.1",
@@ -17,7 +15,6 @@
     "eslint": "^3.12.2"
   },
   "dependencies": {
-    "mode-device": "^1.1.5",
     "unzip2": "^0.2.5"
   }
 }
