@@ -5,8 +5,8 @@
 cd agent
 vi .env
 
-DEVICE_ID=XXXX
-DEVICE_API_KEY=v1.XXXXXX.....
+DEVICE_ID=<device id in modeinc>
+DEVICE_API_KEY=<device api key in modeinc>
 ```
 
 2. Start agent
@@ -21,14 +21,17 @@ nf run npm start
 cd command
 vi .env
 
-PROJECT_ID=YYY
-PROJECT_API_KEY=v1.YYYYYYY.....
-HOME_ID=ZZZ
-FLOW_PACKAGE_URL=https://xxxx/yy/zz.zip
+PROJECT_ID=<your modeinc project id>
+PROJECT_API_KEY=<your modeinc project api key>
+HOME_ID=<your modeinc home id>
+AWS_ACCESS_KEY_ID=<your aws access key id>
+AWS_SECRET_ACCESS_KEY=<your aws secret access key id>
+S3_BUCKET_NAME=<s3 bucket name to upload flow package>
+S3_BASE_KEY=<s3 prefix key (=folder path) of flow package file object>
 ````
 
 4. Send message from commander
 
 ```
-nf run npm start notify {DEVICE_ID} update-flow
+nf run npm start notify {DEVICE_ID} update-flow {path-to-flow-file} {path-to-cred-file}
 ```

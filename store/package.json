@@ -1,5 +1,5 @@
 {
-  "name": "enebular-runtime-agent",
+  "name": "enebular-package-store",
   "version": "1.0.0",
   "description": "",
   "main": "lib/index.js",

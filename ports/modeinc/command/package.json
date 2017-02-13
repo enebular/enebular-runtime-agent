@@ -1,5 +1,5 @@
 {
-  "name": "modeinc-server",
+  "name": "modeinc-command",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -17,6 +17,7 @@
     "eslint": "^3.12.2"
   },
   "dependencies": {
+    "enebluar-package-store": "file:../../../store",
     "isomorphic-fetch": "^2.2.1"
   }
 }

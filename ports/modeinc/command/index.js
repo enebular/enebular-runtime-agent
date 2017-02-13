@@ -1,8 +1,9 @@
 import fs from 'fs';
 import fetch from 'isomorphic-fetch';
+import S3Store from 'enebular-package-store/s3';
 
 const MODEINC_API_URL = 'https://api.tinkermode.com';
-const { PROJECT_ID, PROJECT_API_KEY, FLOW_PACKAGE_URL, HOME_ID } = process.env;
+const { PROJECT_ID, PROJECT_API_KEY, HOME_ID } = process.env;
 
 function createFetchOptions(method = 'GET', body = null, headers = {}) {
   const contentType = body && (typeof body !== 'string' ? 'application/json' : 'text/plain');
@@ -36,6 +37,25 @@ async function notify(deviceId, msg) {
   };
 }
 
+async function createUpdateFlowMessageParameters(flowFile, credFile) {
+  const params = {};
+  if (flowFile) {
+    params.flows = JSON.parse(fs.readFileSync(flowFile));
+  }
+  if (credFile) {
+    params.creds = JSON.parse(fs.readFileSync(credFile));
+  }
+  console.log('updloading flow package', params);
+  const store = new S3Store({
+    awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    s3BucketName: process.env.S3_BUCKET_NAME,
+    s3BaseKey: process.env.S3_BASE_KEY,
+  });
+  const downloadUrl = await store.createPackage(params);
+  return { downloadUrl };
+}
+
 async function main() {
   const command = process.argv[2] || 'list';
   switch(command) {
@@ -45,10 +65,17 @@ async function main() {
     case 'notify':
       const deviceId = process.argv[3];
       const action = process.argv[4];
-      const parameters =
-        action === 'update-flow' ?
-        { downloadUrl: FLOW_PACKAGE_URL } :
-        {};
+      let parameters;
+      switch (action) {
+        case 'update-flow':
+          const flowFile = process.argv[5];
+          const credFile = process.argv[6];
+          parameters = await createUpdateFlowMessageParameters(flowFile, credFile);
+          break;
+        default:
+          parameters = {};
+          break;
+      }
       const msg = { action, parameters };
       console.log(await notify(deviceId, msg));
       break;
