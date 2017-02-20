@@ -13,11 +13,20 @@ export default class EnebularAgent {
   }
 
   async updatePackage(pkgStream) {
-    return new Promise((resolve, reject) => {
+    await new Promise((resolve, reject) => {
       pkgStream
         .pipe(unzip.Extract({ path: this._pkgDir }))
         .on('finish', resolve)
         .on('error', reject);
+    });
+    await this.resolveDependency();
+  }
+
+  async resolveDependency() {
+    return new Promise((resolve, reject) => {
+      const cproc = spawn('npm', [ 'install', 'enebular-agent-dynamic-deps' ], { stdio: 'inherit', cwd: this._pkgDir });
+      cproc.on('error', reject);
+      cproc.once('exit', resolve);
     });
   }
 

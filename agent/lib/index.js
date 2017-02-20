@@ -61,11 +61,16 @@ var EnebularAgent = function () {
           while (1) {
             switch (_context.prev = _context.next) {
               case 0:
-                return _context.abrupt('return', new _promise2.default(function (resolve, reject) {
+                _context.next = 2;
+                return new _promise2.default(function (resolve, reject) {
                   pkgStream.pipe(_unzip2.default.Extract({ path: _this._pkgDir })).on('finish', resolve).on('error', reject);
-                }));
+                });
 
-              case 1:
+              case 2:
+                _context.next = 4;
+                return this.resolveDependency();
+
+              case 4:
               case 'end':
                 return _context.stop();
             }
@@ -80,7 +85,7 @@ var EnebularAgent = function () {
       return updatePackage;
     }()
   }, {
-    key: 'startService',
+    key: 'resolveDependency',
     value: function () {
       var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2() {
         var _this2 = this;
@@ -90,9 +95,9 @@ var EnebularAgent = function () {
             switch (_context2.prev = _context2.next) {
               case 0:
                 return _context2.abrupt('return', new _promise2.default(function (resolve, reject) {
-                  _this2._cproc = (0, _child_process.spawn)(_this2._command, _this2._args, { stdio: 'inherit', cwd: _this2._pkgDir });
-                  _this2._cproc.on('error', reject);
-                  _this2._cproc.once('exit', resolve);
+                  var cproc = (0, _child_process.spawn)('npm', ['install', 'enebular-agent-dynamic-deps'], { stdio: 'inherit', cwd: _this2._pkgDir });
+                  cproc.on('error', reject);
+                  cproc.once('exit', resolve);
                 }));
 
               case 1:
@@ -103,14 +108,14 @@ var EnebularAgent = function () {
         }, _callee2, this);
       }));
 
-      function startService() {
+      function resolveDependency() {
         return _ref3.apply(this, arguments);
       }
 
-      return startService;
+      return resolveDependency;
     }()
   }, {
-    key: 'shutdownService',
+    key: 'startService',
     value: function () {
       var _ref4 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3() {
         var _this3 = this;
@@ -120,15 +125,9 @@ var EnebularAgent = function () {
             switch (_context3.prev = _context3.next) {
               case 0:
                 return _context3.abrupt('return', new _promise2.default(function (resolve, reject) {
-                  if (_this3._cproc) {
-                    _this3._cproc.kill();
-                    _this3._cproc.once('exit', function () {
-                      _this3._cproc = null;
-                      resolve();
-                    });
-                  } else {
-                    resolve();
-                  }
+                  _this3._cproc = (0, _child_process.spawn)(_this3._command, _this3._args, { stdio: 'inherit', cwd: _this3._pkgDir });
+                  _this3._cproc.on('error', reject);
+                  _this3._cproc.once('exit', resolve);
                 }));
 
               case 1:
@@ -139,28 +138,35 @@ var EnebularAgent = function () {
         }, _callee3, this);
       }));
 
-      function shutdownService() {
+      function startService() {
         return _ref4.apply(this, arguments);
       }
 
-      return shutdownService;
+      return startService;
     }()
   }, {
-    key: 'restartService',
+    key: 'shutdownService',
     value: function () {
       var _ref5 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4() {
+        var _this4 = this;
+
         return _regenerator2.default.wrap(function _callee4$(_context4) {
           while (1) {
             switch (_context4.prev = _context4.next) {
               case 0:
-                _context4.next = 2;
-                return this.shutdownService();
+                return _context4.abrupt('return', new _promise2.default(function (resolve, reject) {
+                  if (_this4._cproc) {
+                    _this4._cproc.kill();
+                    _this4._cproc.once('exit', function () {
+                      _this4._cproc = null;
+                      resolve();
+                    });
+                  } else {
+                    resolve();
+                  }
+                }));
 
-              case 2:
-                _context4.next = 4;
-                return this.startService();
-
-              case 4:
+              case 1:
               case 'end':
                 return _context4.stop();
             }
@@ -168,8 +174,37 @@ var EnebularAgent = function () {
         }, _callee4, this);
       }));
 
-      function restartService() {
+      function shutdownService() {
         return _ref5.apply(this, arguments);
+      }
+
+      return shutdownService;
+    }()
+  }, {
+    key: 'restartService',
+    value: function () {
+      var _ref6 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5() {
+        return _regenerator2.default.wrap(function _callee5$(_context5) {
+          while (1) {
+            switch (_context5.prev = _context5.next) {
+              case 0:
+                _context5.next = 2;
+                return this.shutdownService();
+
+              case 2:
+                _context5.next = 4;
+                return this.startService();
+
+              case 4:
+              case 'end':
+                return _context5.stop();
+            }
+          }
+        }, _callee5, this);
+      }));
+
+      function restartService() {
+        return _ref6.apply(this, arguments);
       }
 
       return restartService;

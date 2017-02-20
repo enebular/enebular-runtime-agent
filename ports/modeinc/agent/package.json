@@ -18,6 +18,6 @@
   },
   "dependencies": {
     "mode-device": "^1.1.5",
-    "enebular-runtime-agent": "file:../../.."
+    "enebular-runtime-agent": "file:../../../agent"
   }
 }
