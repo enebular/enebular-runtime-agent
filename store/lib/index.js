@@ -52,10 +52,15 @@ var PackageStore = function () {
                 if (params.creds) {
                   archive.append((0, _stringify2.default)(params.creds), { name: '.node-red-config/flows_cred.json' });
                 }
+                if (params.packages) {
+                  archive.append((0, _stringify2.default)({
+                    dependencies: params.packages
+                  }), { name: '.node-red-config/dynamic-deps/package.json' });
+                }
                 archive.finalize();
                 return _context.abrupt('return', this.savePackage(archive));
 
-              case 5:
+              case 6:
               case 'end':
                 return _context.stop();
             }
