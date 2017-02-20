@@ -15,7 +15,7 @@ export default class PackageStore {
         name: "enebular-agent-dynamic-deps",
         version: "0.0.1",
         dependencies: params.packages
-      }), { name: '.node-red-config/dynamic-deps/package.json' });
+      }, null, 2), { name: '.node-red-config/enebular-agent-dynamic-deps/package.json' });
     }
     archive.finalize();
     return this.savePackage(archive);

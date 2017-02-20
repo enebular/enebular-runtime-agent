@@ -37,13 +37,16 @@ async function notify(deviceId, msg) {
   };
 }
 
-async function createUpdateFlowMessageParameters(flowFile, credFile) {
+async function createUpdateFlowMessageParameters(flowFile, credFile, packagesFile) {
   const params = {};
   if (flowFile) {
     params.flows = JSON.parse(fs.readFileSync(flowFile));
   }
   if (credFile) {
     params.creds = JSON.parse(fs.readFileSync(credFile));
+  }
+  if (packagesFile) {
+    params.packages = JSON.parse(fs.readFileSync(packagesFile));
   }
   console.log('updloading flow package', params);
   const store = new S3Store({
@@ -70,7 +73,8 @@ async function main() {
         case 'update-flow':
           const flowFile = process.argv[5];
           const credFile = process.argv[6];
-          parameters = await createUpdateFlowMessageParameters(flowFile, credFile);
+          const packagesFile = process.argv[7];
+          parameters = await createUpdateFlowMessageParameters(flowFile, credFile, packagesFile);
           break;
         default:
           parameters = {};

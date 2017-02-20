@@ -54,8 +54,10 @@ var PackageStore = function () {
                 }
                 if (params.packages) {
                   archive.append((0, _stringify2.default)({
+                    name: "enebular-agent-dynamic-deps",
+                    version: "0.0.1",
                     dependencies: params.packages
-                  }), { name: '.node-red-config/dynamic-deps/package.json' });
+                  }, null, 2), { name: '.node-red-config/enebular-agent-dynamic-deps/package.json' });
                 }
                 archive.finalize();
                 return _context.abrupt('return', this.savePackage(archive));
