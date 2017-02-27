@@ -1,7 +1,9 @@
 # Enebular Agent (for device and more) #
 
 Enebular Agent プログラム （Modeincデモ含む）
+
 エージェントプログラムを挟んでNode-REDインスタンスのフロー定義を更新したりする
+
 AWS-IoTデプロイの後継として活用を想定
 
 ### 構成
