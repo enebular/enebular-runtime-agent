@@ -1,6 +1,6 @@
-# Enebular Agent (for device and more) #
+# Enebular Runtime Agent (for device and more) #
 
-Enebular Agent プログラム （Modeincデモ含む）
+Enebular Agent プログラム （MODEデモ含む）
 
 エージェントプログラムを挟んでNode-REDインスタンスのフロー定義を更新したりする
 
@@ -19,7 +19,7 @@ AWS-IoTデプロイの後継として活用を想定
 ├── ports       # 各プラットフォームごとのエージェント／コマンド実装
 │   └── modeinc    # MODEサービスへの接続
 │       ├── README.md
-│       ├── agent # MODEサービスに接続するデバイスエージェントプログラム
-│       └── command # MODEサービスに接続するコマンドクライアントプログラム
+│       ├── agent # MODEサービスに接続するデバイスエージェントプログラム。MODEにデバイスとして接続し通知を監視する。
+│       └── command # MODEサービスに接続するコマンドクライアントプログラム。MODE REST APIでデバイスにフロー更新等の通知を行う
 └── store # フロー情報etcをパッケージしてS3に格納して署名URLを発行するライブラリ
 ```
