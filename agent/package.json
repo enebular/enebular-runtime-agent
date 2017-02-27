@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "babel-runtime": "^6.23.0",
+    "isomorphic-fetch": "^2.2.1",
     "unzip2": "^0.2.5"
   }
 }

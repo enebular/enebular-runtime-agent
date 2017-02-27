@@ -1,5 +1,6 @@
 import fs from 'fs';
 import { spawn, exec } from 'child_process';
+import fetch from 'isomorphic-fetch';
 import unzip from 'unzip2';
 
 /**
@@ -10,6 +11,14 @@ export default class EnebularAgent {
     this._command = command;
     this._args = args;
     this._pkgDir = pkgDir
+  }
+
+  async downloadAndUpdatePackage(downloadUrl) {
+    const res = await fetch(downloadUrl);
+    if (res.status >= 400) {
+      throw new Error('invalid url');
+    }
+    return this.updatePackage(res.body);
   }
 
   async updatePackage(pkgStream) {

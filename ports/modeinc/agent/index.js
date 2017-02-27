@@ -1,5 +1,4 @@
 import ModeDevice from 'mode-device';
-import fetch from 'isomorphic-fetch';
 import EnebularAgent from 'enebular-runtime-agent';
 
 const { DEVICE_ID, DEVICE_API_KEY } = process.env;
@@ -11,18 +10,8 @@ const agent = new EnebularAgent({
   pkgDir: '../../../node-red',
 });
 
-async function downloadPackage(params) {
-  const { downloadUrl } = params;
-  const res = await fetch(downloadUrl);
-  if (res.status >= 400) {
-    throw new Error('invalid url');
-  }
-  return res.body;
-}
-
 async function fetchAndUpdateFlow(params) {
-  const pkg = await downloadPackage(params);
-  await agent.updatePackage(pkg);
+  await agent.downloadAndUpdatePackage(params.downloadUrl);
   await agent.restartService();
 }
 
