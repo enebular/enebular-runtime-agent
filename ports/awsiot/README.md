@@ -26,7 +26,7 @@ AWS_IOT_REGION=<AWS Region (e.g. us-east-1)>
 AWS_IOT_ENDPOINT=<AWS IoT Endpoint (e.g. A3G80UFBM2R6AS.iot.us-east-1.amazonaws.com)>
 ````
 
-4. Send update-flow message from commander
+5. Send update-flow message from commander
 
 ```
 nf run npm start notify {thing-name} update-flow {path-to-flow-file} {path-to-cred-file} {path-to-deps-file}
