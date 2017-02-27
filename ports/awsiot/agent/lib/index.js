@@ -3,7 +3,6 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.startup = undefined;
 
 var _regenerator = require('babel-runtime/regenerator');
 
@@ -13,31 +12,20 @@ var _asyncToGenerator2 = require('babel-runtime/helpers/asyncToGenerator');
 
 var _asyncToGenerator3 = _interopRequireDefault(_asyncToGenerator2);
 
-var downloadPackage = function () {
+var fetchAndUpdateFlow = function () {
   var _ref = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee(params) {
-    var downloadUrl, res;
     return _regenerator2.default.wrap(function _callee$(_context) {
       while (1) {
         switch (_context.prev = _context.next) {
           case 0:
-            downloadUrl = params.downloadUrl;
-            _context.next = 3;
-            return (0, _isomorphicFetch2.default)(downloadUrl);
+            _context.next = 2;
+            return agent.donwloadAndUpdatePackage(params.downloadUrl);
 
-          case 3:
-            res = _context.sent;
+          case 2:
+            _context.next = 4;
+            return agent.restartService();
 
-            if (!(res.status >= 400)) {
-              _context.next = 6;
-              break;
-            }
-
-            throw new Error('invalid url');
-
-          case 6:
-            return _context.abrupt('return', res.body);
-
-          case 7:
+          case 4:
           case 'end':
             return _context.stop();
         }
@@ -45,72 +33,12 @@ var downloadPackage = function () {
     }, _callee, this);
   }));
 
-  return function downloadPackage(_x) {
+  return function fetchAndUpdateFlow(_x) {
     return _ref.apply(this, arguments);
   };
 }();
 
-var fetchAndUpdateFlow = function () {
-  var _ref4 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4(params) {
-    var pkg;
-    return _regenerator2.default.wrap(function _callee4$(_context4) {
-      while (1) {
-        switch (_context4.prev = _context4.next) {
-          case 0:
-            _context4.next = 2;
-            return downloadPackage(params);
-
-          case 2:
-            pkg = _context4.sent;
-            _context4.next = 5;
-            return agent.updatePackage(pkg);
-
-          case 5:
-            _context4.next = 7;
-            return agent.restartService();
-
-          case 7:
-          case 'end':
-            return _context4.stop();
-        }
-      }
-    }, _callee4, this);
-  }));
-
-  return function fetchAndUpdateFlow(_x8) {
-    return _ref4.apply(this, arguments);
-  };
-}();
-
-var startup = exports.startup = function () {
-  var _ref5 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5() {
-    var configFile, config;
-    return _regenerator2.default.wrap(function _callee5$(_context5) {
-      while (1) {
-        switch (_context5.prev = _context5.next) {
-          case 0:
-            console.log(process.argv);
-            configFile = process.env.AWSIOT_CONFIG_FILE || process.argv[2] || './config.json';
-
-            console.log('configFile=', configFile);
-            config = JSON.parse(_fs2.default.readFileSync(configFile));
-
-            console.log('awsiot config=>', config);
-            device = setupDevice(config);
-            console.log('agent started up');
-
-          case 7:
-          case 'end':
-            return _context5.stop();
-        }
-      }
-    }, _callee5, this);
-  }));
-
-  return function startup() {
-    return _ref5.apply(this, arguments);
-  };
-}();
+exports.startup = startup;
 
 var _fs = require('fs');
 
@@ -242,6 +170,16 @@ function setupDevice(config) {
   }());
 
   return device;
+}
+
+function startup() {
+  console.log(process.argv);
+  var configFile = process.env.AWSIOT_CONFIG_FILE || process.argv[2] || './config.json';
+  console.log('configFile=', configFile);
+  var config = JSON.parse(_fs2.default.readFileSync(configFile));
+  console.log('awsiot config=>', config);
+  device = setupDevice(config);
+  console.log('agent started up');
 }
 
 if (require.main === module) {

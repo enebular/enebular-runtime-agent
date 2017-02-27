@@ -11,13 +11,9 @@ const agent = new EnebularAgent({
 
 let device;
 
-async function downloadPackage(params) {
-  const { downloadUrl } = params;
-  const res = await fetch(downloadUrl);
-  if (res.status >= 400) {
-    throw new Error('invalid url');
-  }
-  return res.body;
+async function fetchAndUpdateFlow(params) {
+  await agent.donwloadAndUpdatePackage(params.downloadUrl);
+  await agent.restartService();
 }
 
 function updateThingState(thingName, state) {
@@ -72,13 +68,7 @@ function setupDevice(config) {
   return device;
 }
 
-async function fetchAndUpdateFlow(params) {
-  const pkg = await downloadPackage(params);
-  await agent.updatePackage(pkg);
-  await agent.restartService();
-}
-
-export async function startup() {
+export function startup() {
   console.log(process.argv);
   const configFile = process.env.AWSIOT_CONFIG_FILE || process.argv[2] || './config.json';
   console.log('configFile=', configFile);

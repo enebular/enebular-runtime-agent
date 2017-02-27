@@ -9,5 +9,5 @@
 ```
 cd example
 npm install
-AWSIOT_CONFIG_FILE=./example/config.json npm start
+npm start
 ```
