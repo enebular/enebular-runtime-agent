@@ -30,8 +30,13 @@ S3_BUCKET_NAME=<s3 bucket name to upload flow package>
 S3_BASE_KEY=<s3 prefix key (=folder path) of flow package file object>
 ````
 
-4. Send message from commander
+4. Send update-flow message from commander
 
 ```
-nf run npm start notify {DEVICE_ID} update-flow {path-to-flow-file} {path-to-cred-file}
+nf run npm start notify {DEVICE_ID} update-flow {path-to-flow-file} {path-to-cred-file} {path-to-deps-file}
+```
+
+e.g.
+```
+nf run npm start notify 1316 update-flow ./data/01/flows.json ./data/01/flows_cred.json ./data/01/packages.json
 ```
