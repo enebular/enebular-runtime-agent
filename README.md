@@ -17,6 +17,10 @@ AWS-IoTデプロイの後継として活用を想定
 │   　　   ├── flows.json      # フローの定義ファイル(エージェントの書き換え対象)
 │       └── flows_cred.json # フローのクレデンシャルファイル(エージェントの書き換え対象)
 ├── ports       # 各プラットフォームごとのエージェント／コマンド実装
+│   ├── awsiot    # AWSIoTを利用したデバイスの接続
+│   │   ├── README.md
+│   │   ├── agent # AWSIoTに接続するデバイスエージェントプログラム。AWSIoTにThingとして接続しShadowの更新通知を受ける。
+│   │   └── command # AWSIoTに接続するコマンドクライアントプログラム。AWS SDKでThingにフロー情報の更新などを行う
 │   └── modeinc    # MODEサービスへの接続
 │       ├── README.md
 │       ├── agent # MODEサービスに接続するデバイスエージェントプログラム。MODEにデバイスとして接続し通知を監視する。
