@@ -24,7 +24,7 @@ S3_BUCKET_NAME=<s3 bucket name to upload flow package>
 S3_BASE_KEY=<s3 prefix key (=folder path) of flow package file object>
 AWS_IOT_REGION=<AWS Region (e.g. us-east-1)>
 AWS_IOT_ENDPOINT=<AWS IoT Endpoint (e.g. A3G80UFBM2R6AS.iot.us-east-1.amazonaws.com)>
-````
+```
 
 5. Send update-flow message from commander
 
