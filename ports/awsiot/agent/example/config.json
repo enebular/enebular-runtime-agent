@@ -1,0 +1,10 @@
+{
+	"host": "A3G80UFBM2R6AS.iot.us-east-1.amazonaws.com",
+	"port": 8883,
+	"clientId": "MyEnebularAgent01",
+  "thingName": "MyEnebularAgent01",
+	"caCert": "./certs/root-CA.crt",
+	"clientCert": "./certs/certificate.pem.crt",
+	"privateKey": "./certs/private.pem.key",
+	"topic": "process"
+}
