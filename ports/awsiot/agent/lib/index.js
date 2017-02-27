@@ -18,14 +18,15 @@ var fetchAndUpdateFlow = function () {
       while (1) {
         switch (_context.prev = _context.next) {
           case 0:
-            _context.next = 2;
-            return agent.donwloadAndUpdatePackage(params.downloadUrl);
+            console.log('fetchAndUpdateFlow', params);
+            _context.next = 3;
+            return agent.downloadAndUpdatePackage(params.downloadUrl);
 
-          case 2:
-            _context.next = 4;
+          case 3:
+            _context.next = 5;
             return agent.restartService();
 
-          case 4:
+          case 5:
           case 'end':
             return _context.stop();
         }
@@ -61,7 +62,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var agent = new _enebularRuntimeAgent2.default({
   command: 'npm',
   args: ['run', 'start'],
-  pkgDir: '../../../node-red'
+  pkgDir: process.env.NODE_RED_DIR
 });
 
 var device = void 0;

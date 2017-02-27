@@ -6,13 +6,14 @@ import EnebularAgent from 'enebular-runtime-agent';
 const agent = new EnebularAgent({
   command: 'npm',
   args: ['run', 'start' ],
-  pkgDir: '../../../node-red',
+  pkgDir: process.env.NODE_RED_DIR,
 });
 
 let device;
 
 async function fetchAndUpdateFlow(params) {
-  await agent.donwloadAndUpdatePackage(params.downloadUrl);
+  console.log('fetchAndUpdateFlow', params);
+  await agent.downloadAndUpdatePackage(params.downloadUrl);
   await agent.restartService();
 }
 

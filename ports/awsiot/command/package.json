@@ -1,0 +1,23 @@
+{
+  "name": "enebular-awsiot-command",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "start": "babel-node index.js",
+    "lint": "eslint src"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "babel-cli": "^6.18.0",
+    "babel-eslint": "^7.1.1",
+    "babel-plugin-transform-runtime": "^6.23.0",
+    "babel-preset-es2015": "^6.18.0",
+    "babel-preset-es2017": "^6.16.0",
+    "eslint": "^3.12.2"
+  },
+  "dependencies": {
+    "enebular-package-store": "file:../../../store",
+    "es6-promisify": "^5.0.0"
+  }
+}
