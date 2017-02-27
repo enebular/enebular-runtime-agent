@@ -76,13 +76,26 @@ function setupDevice(config) {
 
   var device = _awsIotDeviceSdk2.default.thingShadow(config);
 
-  device.on('connect', function () {
-    console.log('>> connected to AWS IoT');
-    device.register(config.thingName, { ignoreDeltas: false, persistentSubscribe: true });
-    setTimeout(function () {
-      return device.get(config.thingName);
-    }, 2000);
-  });
+  device.on('connect', (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2() {
+    return _regenerator2.default.wrap(function _callee2$(_context2) {
+      while (1) {
+        switch (_context2.prev = _context2.next) {
+          case 0:
+            console.log('>> connected to AWS IoT');
+            device.register(config.thingName, { ignoreDeltas: false, persistentSubscribe: true });
+            setTimeout(function () {
+              return device.get(config.thingName);
+            }, 2000);
+            _context2.next = 5;
+            return agent.restartService();
+
+          case 5:
+          case 'end':
+            return _context2.stop();
+        }
+      }
+    }, _callee2, _this);
+  })));
 
   device.on('close', function () {
     console.log('>> AWS IoT connection closed');
@@ -103,41 +116,7 @@ function setupDevice(config) {
   });
 
   device.once('status', function () {
-    var _ref2 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2(thingName, stat, clientToken, stateObject) {
-      var state, metadata;
-      return _regenerator2.default.wrap(function _callee2$(_context2) {
-        while (1) {
-          switch (_context2.prev = _context2.next) {
-            case 0:
-              state = stateObject.state;
-              metadata = stateObject.metadata;
-
-              if (!state.desired.package) {
-                _context2.next = 6;
-                break;
-              }
-
-              _context2.next = 5;
-              return fetchAndUpdateFlow(state.desired.package);
-
-            case 5:
-              updateThingState(config.thingName, { package: state.desired.package });
-
-            case 6:
-            case 'end':
-              return _context2.stop();
-          }
-        }
-      }, _callee2, _this);
-    }));
-
-    return function (_x2, _x3, _x4, _x5) {
-      return _ref2.apply(this, arguments);
-    };
-  }());
-
-  device.on('delta', function () {
-    var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(thingName, stateObject) {
+    var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(thingName, stat, clientToken, stateObject) {
       var state, metadata;
       return _regenerator2.default.wrap(function _callee3$(_context3) {
         while (1) {
@@ -146,16 +125,16 @@ function setupDevice(config) {
               state = stateObject.state;
               metadata = stateObject.metadata;
 
-              if (!state.package) {
+              if (!state.desired.package) {
                 _context3.next = 6;
                 break;
               }
 
               _context3.next = 5;
-              return fetchAndUpdateFlow(state.package);
+              return fetchAndUpdateFlow(state.desired.package);
 
             case 5:
-              updateThingState(config.thingName, { package: state.package });
+              updateThingState(config.thingName, { package: state.desired.package });
 
             case 6:
             case 'end':
@@ -165,8 +144,42 @@ function setupDevice(config) {
       }, _callee3, _this);
     }));
 
-    return function (_x6, _x7) {
+    return function (_x2, _x3, _x4, _x5) {
       return _ref3.apply(this, arguments);
+    };
+  }());
+
+  device.on('delta', function () {
+    var _ref4 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4(thingName, stateObject) {
+      var state, metadata;
+      return _regenerator2.default.wrap(function _callee4$(_context4) {
+        while (1) {
+          switch (_context4.prev = _context4.next) {
+            case 0:
+              state = stateObject.state;
+              metadata = stateObject.metadata;
+
+              if (!state.package) {
+                _context4.next = 6;
+                break;
+              }
+
+              _context4.next = 5;
+              return fetchAndUpdateFlow(state.package);
+
+            case 5:
+              updateThingState(config.thingName, { package: state.package });
+
+            case 6:
+            case 'end':
+              return _context4.stop();
+          }
+        }
+      }, _callee4, _this);
+    }));
+
+    return function (_x6, _x7) {
+      return _ref4.apply(this, arguments);
     };
   }());
 

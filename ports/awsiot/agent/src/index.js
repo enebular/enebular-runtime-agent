@@ -24,10 +24,11 @@ function updateThingState(thingName, state) {
 function setupDevice(config) {
   const device = awsIot.thingShadow(config);
 
-  device.on('connect', () => {
+  device.on('connect', async () => {
     console.log('>> connected to AWS IoT');
     device.register(config.thingName, { ignoreDeltas: false, persistentSubscribe: true });
     setTimeout(() => device.get(config.thingName), 2000);
+    await agent.restartService();
   });
 
   device.on('close', () => {
