@@ -1,7 +1,7 @@
 import fs from 'fs';
+import path from 'path';
 import { spawn, exec } from 'child_process';
 import fetch from 'isomorphic-fetch';
-import unzip from 'unzip2';
 
 /**
  *
@@ -18,16 +18,42 @@ export default class EnebularAgent {
     if (res.status >= 400) {
       throw new Error('invalid url');
     }
-    return this.updatePackage(res.body);
+    const body = await res.json();
+    return this.updatePackage(body);
   }
 
-  async updatePackage(pkgStream) {
-    await new Promise((resolve, reject) => {
-      pkgStream
-        .pipe(unzip.Extract({ path: this._pkgDir }))
-        .on('finish', resolve)
-        .on('error', reject);
-    });
+  async updatePackage(flowPackage) {
+    const updates = [];
+    if (flowPackage.flow) {
+      updates.push(
+        new Promise((resolve, reject) => {
+          const flowFilePath = path.join(this._pkgDir, '.node-red-config', 'flows.json');
+          fs.writeFile(flowFilePath, JSON.stringify(flowPackage.flow), (err) => err ? reject(err) : resolve());
+        })
+      );
+    }
+    if (flowPackage.cred) {
+      updates.push(
+        new Promise((resolve, reject) => {
+          const credFilePath = path.join(this._pkgDir, '.node-red-config', 'flows_cred.json');
+          fs.writeFile(credFilePath, JSON.stringify(flowPackage.cred), (err) => err ? reject(err) : resolve());
+        })
+      );
+    }
+    if (flowPackage.packages) {
+      updates.push(
+        new Promise((resolve, reject) => {
+          const packageJSONFilePath = path.join(this._pkgDir, '.node-red-config', 'enebular-agent-dynamic-deps', 'package.json');
+          const packageJSON = JSON.stringify({
+            name: 'enebular-agent-dynamic-deps',
+            version: '0.0.1',
+            dependencies: flowPackage.packages,
+          }, null, 2);
+          fs.writeFile(packageJSONFilePath, packageJSON, (err) => err ? reject(err) : resolve());
+        })
+      );
+    }
+    await Promise.all(updates);
     await this.resolveDependency();
   }
 

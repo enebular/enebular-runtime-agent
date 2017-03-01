@@ -1,32 +1,28 @@
-'use strict';
+"use strict";
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _regenerator = require('babel-runtime/regenerator');
+var _regenerator = require("babel-runtime/regenerator");
 
 var _regenerator2 = _interopRequireDefault(_regenerator);
 
-var _stringify = require('babel-runtime/core-js/json/stringify');
+var _stringify = require("babel-runtime/core-js/json/stringify");
 
 var _stringify2 = _interopRequireDefault(_stringify);
 
-var _asyncToGenerator2 = require('babel-runtime/helpers/asyncToGenerator');
+var _asyncToGenerator2 = require("babel-runtime/helpers/asyncToGenerator");
 
 var _asyncToGenerator3 = _interopRequireDefault(_asyncToGenerator2);
 
-var _classCallCheck2 = require('babel-runtime/helpers/classCallCheck');
+var _classCallCheck2 = require("babel-runtime/helpers/classCallCheck");
 
 var _classCallCheck3 = _interopRequireDefault(_classCallCheck2);
 
-var _createClass2 = require('babel-runtime/helpers/createClass');
+var _createClass2 = require("babel-runtime/helpers/createClass");
 
 var _createClass3 = _interopRequireDefault(_createClass2);
-
-var _archiver = require('archiver');
-
-var _archiver2 = _interopRequireDefault(_archiver);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -36,34 +32,30 @@ var PackageStore = function () {
   }
 
   (0, _createClass3.default)(PackageStore, [{
-    key: 'createPackage',
+    key: "createPackage",
     value: function () {
       var _ref = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee(params) {
-        var archive;
+        var flowPackage, flowPackageJSON;
         return _regenerator2.default.wrap(function _callee$(_context) {
           while (1) {
             switch (_context.prev = _context.next) {
               case 0:
-                archive = (0, _archiver2.default)('zip');
+                flowPackage = {};
 
                 if (params.flows) {
-                  archive.append((0, _stringify2.default)(params.flows), { name: '.node-red-config/flows.json' });
+                  flowPackage.flow = params.flows;
                 }
                 if (params.creds) {
-                  archive.append((0, _stringify2.default)(params.creds), { name: '.node-red-config/flows_cred.json' });
+                  flowPackage.cred = params.creds;
                 }
                 if (params.packages) {
-                  archive.append((0, _stringify2.default)({
-                    name: "enebular-agent-dynamic-deps",
-                    version: "0.0.1",
-                    dependencies: params.packages
-                  }, null, 2), { name: '.node-red-config/enebular-agent-dynamic-deps/package.json' });
+                  flowPackage.packages = params.packages;
                 }
-                archive.finalize();
-                return _context.abrupt('return', this.savePackage(archive));
+                flowPackageJSON = (0, _stringify2.default)(flowPackage);
+                return _context.abrupt("return", this.savePackage(flowPackageJSON));
 
               case 6:
-              case 'end':
+              case "end":
                 return _context.stop();
             }
           }
@@ -77,17 +69,17 @@ var PackageStore = function () {
       return createPackage;
     }()
   }, {
-    key: 'savePackage',
+    key: "savePackage",
     value: function () {
-      var _ref2 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2(pkgStream) {
+      var _ref2 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2(data) {
         return _regenerator2.default.wrap(function _callee2$(_context2) {
           while (1) {
             switch (_context2.prev = _context2.next) {
               case 0:
-                return _context2.abrupt('return', pkgStream);
+                return _context2.abrupt("return", data);
 
               case 1:
-              case 'end':
+              case "end":
                 return _context2.stop();
             }
           }

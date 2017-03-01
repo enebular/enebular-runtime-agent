@@ -1,28 +1,22 @@
-import archiver from 'archiver';
-
 export default class PackageStore {
 
   async createPackage(params) {
-    const archive = archiver('zip');
+    const flowPackage = {};
     if (params.flows) {
-      archive.append(JSON.stringify(params.flows), { name: '.node-red-config/flows.json' });
+      flowPackage.flow = params.flows;
     }
     if (params.creds) {
-      archive.append(JSON.stringify(params.creds), { name: '.node-red-config/flows_cred.json' });
+      flowPackage.cred = params.creds;
     }
     if (params.packages) {
-      archive.append(JSON.stringify({
-        name: "enebular-agent-dynamic-deps",
-        version: "0.0.1",
-        dependencies: params.packages
-      }, null, 2), { name: '.node-red-config/enebular-agent-dynamic-deps/package.json' });
+      flowPackage.packages = params.packages;
     }
-    archive.finalize();
-    return this.savePackage(archive);
+    const flowPackageJSON = JSON.stringify(flowPackage);
+    return this.savePackage(flowPackageJSON);
   }
 
-  async savePackage(pkgStream) {
-    return pkgStream;
+  async savePackage(data) {
+    return data;
   }
 
 }

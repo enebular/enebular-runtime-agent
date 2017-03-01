@@ -1,6 +1,5 @@
 import AWS from 'aws-sdk';
 import uuid from 'uuid';
-import s3UploadStream from 's3-upload-stream';
 import PackageStore from '.';
 
 /**
@@ -16,24 +15,27 @@ export default class S3Store extends PackageStore {
     this._s3ExpirySec = s3ExpirySec || 60;
   }
 
-  async savePackage(pkgStream) {
+  async savePackage(data) {
     const s3 = new AWS.S3({
       accessKeyId: this._awsAccessKeyId,
       secretAccessKey: this._awsSecretAccessKey,
     });
-    const ret = await this.uploadToS3(s3, pkgStream);
+    const ret = await this.uploadToS3(s3, data);
     return this.getSignedDownloadUrl(s3, ret.Key, { Expires: this._s3ExpirySec });
   }
 
-  async uploadToS3(s3, pkgStream) {
+  async uploadToS3(s3, data) {
     return new Promise((resolve, reject) => {
-      pkgStream.pipe(s3UploadStream(s3).upload({
+      const Key = `${this._s3BaseKey}/${uuid()}.json`;
+      s3.putObject({
         Bucket: this._s3BucketName,
         ACL: 'private',
-        Key: `${this._s3BaseKey}/${uuid()}.zip`,
-      }))
-      .on('uploaded', resolve)
-      .on('error', reject);
+        Key,
+        Body: data,
+      }, (err, ret) => {
+        if (err) { return reject(err); }
+        return resolve({ Key });
+      });
     });
   }
 

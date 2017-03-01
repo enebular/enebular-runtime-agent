@@ -4,6 +4,10 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
+var _stringify = require('babel-runtime/core-js/json/stringify');
+
+var _stringify2 = _interopRequireDefault(_stringify);
+
 var _promise = require('babel-runtime/core-js/promise');
 
 var _promise2 = _interopRequireDefault(_promise);
@@ -28,15 +32,15 @@ var _fs = require('fs');
 
 var _fs2 = _interopRequireDefault(_fs);
 
+var _path = require('path');
+
+var _path2 = _interopRequireDefault(_path);
+
 var _child_process = require('child_process');
 
 var _isomorphicFetch = require('isomorphic-fetch');
 
 var _isomorphicFetch2 = _interopRequireDefault(_isomorphicFetch);
-
-var _unzip = require('unzip2');
-
-var _unzip2 = _interopRequireDefault(_unzip);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -59,7 +63,7 @@ var EnebularAgent = function () {
     key: 'downloadAndUpdatePackage',
     value: function () {
       var _ref2 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee(downloadUrl) {
-        var res;
+        var res, body;
         return _regenerator2.default.wrap(function _callee$(_context) {
           while (1) {
             switch (_context.prev = _context.next) {
@@ -78,9 +82,14 @@ var EnebularAgent = function () {
                 throw new Error('invalid url');
 
               case 5:
-                return _context.abrupt('return', this.updatePackage(res.body));
+                _context.next = 7;
+                return res.json();
 
-              case 6:
+              case 7:
+                body = _context.sent;
+                return _context.abrupt('return', this.updatePackage(body));
+
+              case 9:
               case 'end':
                 return _context.stop();
             }
@@ -97,23 +106,53 @@ var EnebularAgent = function () {
   }, {
     key: 'updatePackage',
     value: function () {
-      var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2(pkgStream) {
+      var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2(flowPackage) {
         var _this = this;
 
+        var updates;
         return _regenerator2.default.wrap(function _callee2$(_context2) {
           while (1) {
             switch (_context2.prev = _context2.next) {
               case 0:
-                _context2.next = 2;
-                return new _promise2.default(function (resolve, reject) {
-                  pkgStream.pipe(_unzip2.default.Extract({ path: _this._pkgDir })).on('finish', resolve).on('error', reject);
-                });
+                updates = [];
 
-              case 2:
-                _context2.next = 4;
+                if (flowPackage.flow) {
+                  updates.push(new _promise2.default(function (resolve, reject) {
+                    var flowFilePath = _path2.default.join(_this._pkgDir, '.node-red-config', 'flows.json');
+                    _fs2.default.writeFile(flowFilePath, (0, _stringify2.default)(flowPackage.flow), function (err) {
+                      return err ? reject(err) : resolve();
+                    });
+                  }));
+                }
+                if (flowPackage.cred) {
+                  updates.push(new _promise2.default(function (resolve, reject) {
+                    var credFilePath = _path2.default.join(_this._pkgDir, '.node-red-config', 'flows_cred.json');
+                    _fs2.default.writeFile(credFilePath, (0, _stringify2.default)(flowPackage.cred), function (err) {
+                      return err ? reject(err) : resolve();
+                    });
+                  }));
+                }
+                if (flowPackage.packages) {
+                  updates.push(new _promise2.default(function (resolve, reject) {
+                    var packageJSONFilePath = _path2.default.join(_this._pkgDir, '.node-red-config', 'enebular-agent-dynamic-deps', 'package.json');
+                    var packageJSON = (0, _stringify2.default)({
+                      name: 'enebular-agent-dynamic-deps',
+                      version: '0.0.1',
+                      dependencies: flowPackage.packages
+                    }, null, 2);
+                    _fs2.default.writeFile(packageJSONFilePath, packageJSON, function (err) {
+                      return err ? reject(err) : resolve();
+                    });
+                  }));
+                }
+                _context2.next = 6;
+                return _promise2.default.all(updates);
+
+              case 6:
+                _context2.next = 8;
                 return this.resolveDependency();
 
-              case 4:
+              case 8:
               case 'end':
                 return _context2.stop();
             }

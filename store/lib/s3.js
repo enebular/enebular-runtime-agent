@@ -48,10 +48,6 @@ var _uuid = require('uuid');
 
 var _uuid2 = _interopRequireDefault(_uuid);
 
-var _s3UploadStream = require('s3-upload-stream');
-
-var _s3UploadStream2 = _interopRequireDefault(_s3UploadStream);
-
 var _ = require('.');
 
 var _2 = _interopRequireDefault(_);
@@ -85,7 +81,7 @@ var S3Store = function (_PackageStore) {
   (0, _createClass3.default)(S3Store, [{
     key: 'savePackage',
     value: function () {
-      var _ref2 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee(pkgStream) {
+      var _ref2 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee(data) {
         var s3, ret;
         return _regenerator2.default.wrap(function _callee$(_context) {
           while (1) {
@@ -96,7 +92,7 @@ var S3Store = function (_PackageStore) {
                   secretAccessKey: this._awsSecretAccessKey
                 });
                 _context.next = 3;
-                return this.uploadToS3(s3, pkgStream);
+                return this.uploadToS3(s3, data);
 
               case 3:
                 ret = _context.sent;
@@ -119,7 +115,7 @@ var S3Store = function (_PackageStore) {
   }, {
     key: 'uploadToS3',
     value: function () {
-      var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2(s3, pkgStream) {
+      var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2(s3, data) {
         var _this2 = this;
 
         return _regenerator2.default.wrap(function _callee2$(_context2) {
@@ -127,11 +123,18 @@ var S3Store = function (_PackageStore) {
             switch (_context2.prev = _context2.next) {
               case 0:
                 return _context2.abrupt('return', new _promise2.default(function (resolve, reject) {
-                  pkgStream.pipe((0, _s3UploadStream2.default)(s3).upload({
+                  var Key = _this2._s3BaseKey + '/' + (0, _uuid2.default)() + '.json';
+                  s3.putObject({
                     Bucket: _this2._s3BucketName,
                     ACL: 'private',
-                    Key: _this2._s3BaseKey + '/' + (0, _uuid2.default)() + '.zip'
-                  })).on('uploaded', resolve).on('error', reject);
+                    Key: Key,
+                    Body: data
+                  }, function (err, ret) {
+                    if (err) {
+                      return reject(err);
+                    }
+                    return resolve({ Key: Key });
+                  });
                 }));
 
               case 1:
