@@ -1,0 +1,1 @@
+set (PAL_TARGET_DEVICE "x86_x64")

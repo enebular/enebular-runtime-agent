@@ -1,0 +1,13 @@
+diff --git a/targets/TARGET_Freescale/TARGET_MCUXpresso_MCUS/TARGET_MCU_K64F/device/TOOLCHAIN_IAR/MK64FN1M0xxx12.icf b/targets/TARGET_Freescale/TARGET_MCUXpresso_MCUS/TARGET_MCU_K64F/device/TOOLCHAIN_IAR/MK64FN1M0xxx12.icf
+index 3f32a84..0851ba3 100644
+--- a/targets/TARGET_Freescale/TARGET_MCUXpresso_MCUS/TARGET_MCU_K64F/device/TOOLCHAIN_IAR/MK64FN1M0xxx12.icf
++++ b/targets/TARGET_Freescale/TARGET_MCUXpresso_MCUS/TARGET_MCU_K64F/device/TOOLCHAIN_IAR/MK64FN1M0xxx12.icf
+@@ -54,7 +54,7 @@ define symbol __stack_size__=0x8000;
+ define symbol __heap_size__=0x10000;
+ 
+ if (!isdefinedsymbol(MBED_APP_START)) {
+-    define symbol MBED_APP_START = 0;
++    define symbol MBED_APP_START = 0x20400;
+ }
+ 
+ if (!isdefinedsymbol(MBED_APP_SIZE)) {
