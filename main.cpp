@@ -48,19 +48,13 @@ int main() {
     clear_screen();
     print_to_screen(0, 3, "Cloud Client: Initializing");
 
-#if defined (MESH) || (MBED_CONF_LWIP_IPV6_ENABLED==true)
-    printf("IPv6 mode\n");
-#else
-    printf("IPv4 mode\n");
-#endif
-
     // Print some statistics of the object sizes and heap memory consumption
     // if the MBED_HEAP_STATS_ENABLED is defined.
     print_m2mobject_stats();
     print_heap_stats();
     printf("Start simple mbed Cloud Client\n");
 
-    fcc_status_e status =fcc_init();
+    fcc_status_e status = fcc_init();
     if(status != FCC_STATUS_SUCCESS) {
         printf("fcc_init failed with status %d! - exit\n", status);
         return 1;
@@ -93,12 +87,14 @@ int main() {
         return 1;
     }
     
-    SimpleM2MClient mbedClient;;
+    SimpleM2MClient mbedClient;
     mbedClient.create_resources();
     clear_screen();
     print_to_screen(0, 3, "Cloud Client: Connecting");
     increment_resource_thread(&mbedClient);
     mbedClient.call_register();
     print_heap_stats();
-    while (mbedClient.is_register_called()) {do_wait(0);}
+    while (mbedClient.is_register_called()) {
+        do_wait(1);
+    }
 }

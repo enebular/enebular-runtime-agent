@@ -50,8 +50,8 @@ SET(CMAKE_OBJDUMP ${TOOLCHAIN_BIN_DIR}/objdump CACHE INTERNAL "objdump tool")
 
 
 macro(SET_COMPILER_DBG_RLZ_FLAG flag value)
-	SET(${flag}_DEBUG "${${flag}_DEBUG} ${value}")
-	SET(${flag}_RELEASE "${${flag}_RELEASE} ${value}")
+    SET(${flag}_DEBUG "${${flag}_DEBUG} ${value}")
+    SET(${flag}_RELEASE "${${flag}_RELEASE} ${value}")
 #enable this if for debugging
 if (0)
  message("flag = ${flag}")

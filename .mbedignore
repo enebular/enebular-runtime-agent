@@ -3,3 +3,4 @@ easy-connect/mcr20a-rf-driver/*
 easy-connect/stm-spirit1-rf-driver/*
 platform/linux/setup.cpp
 __x86_x64_Linux_Native/*
+pal-platform/*

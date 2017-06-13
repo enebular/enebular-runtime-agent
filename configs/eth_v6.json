@@ -6,7 +6,7 @@
                "SA_PV_OS_MBEDOS"],
     "target_overrides": {
         "*": {
-            "target.features_add": ["LWIP", "COMMON_PAL"],
+            "target.features_add": ["COMMON_PAL"],
             "platform.stdio-baud-rate": 115200,
             "platform.stdio-convert-newlines": true,
             "lwip.ipv4-enabled": false,
@@ -15,10 +15,14 @@
             "mbed-trace.enable": null
         },
         "K64F": {
-            "mbed-client-pal.update-active-metadata-header-offset": 131072
+            "mbed-client-pal.update-active-metadata-header-offset": "0x00020000"
         },
-            "UBLOX_EVK_ODIN_W2": {
-            "target.device_has_remove": ["EMAC"]
+        "NUCLEO_F429ZI": {
+            "mbed-client-pal.update-active-metadata-header-offset": "0x08020000"
+        },
+        "UBLOX_EVK_ODIN_W2": {
+            "target.device_has_remove": ["EMAC"],
+            "mbed-client-pal.update-active-metadata-header-offset": "0x08020000"
         }
     },
     "config": {
