@@ -98,12 +98,13 @@ public:
             if (endpoint) {
                 clear_screen();
                 print_to_screen(0, 3, "Cloud Client: Ready");
-                print_to_screen(0, 15, endpoint->endpoint_name.c_str());
 #ifdef MBED_CONF_APP_DEVELOPER_MODE
+                print_to_screen(0, 15, endpoint->internal_endpoint_name.c_str());
                 printf("Endpoint Name: %s\r\n", endpoint->internal_endpoint_name.c_str());
 #else
-                printf("Endpoint Name: %s\r\n", endpoint->endpoint_name.c_str());                
-#endif                
+                print_to_screen(0, 15, endpoint->endpoint_name.c_str());
+                printf("Endpoint Name: %s\r\n", endpoint->endpoint_name.c_str());
+#endif
                 printf("Device Id: %s\r\n", endpoint->internal_endpoint_name.c_str());
             }
         }
@@ -112,12 +113,8 @@ public:
     void client_unregistered() {
         _registered = false;
         _register_called = false;
-        printf("\nClient unregistered\n\n");
-    }
+        printf("\nClient unregistered - Exiting application\n\n");
 
-    void stop_client() {
-        _registered = false;
-        _register_called = false;
     }
 
     void error(int error_code) {
@@ -128,51 +125,39 @@ public:
                 break;
             case MbedCloudClient::ConnectAlreadyExists:
                 error = "MbedCloudClient::ConnectAlreadyExists";
-                stop_client();
                 break;
             case MbedCloudClient::ConnectBootstrapFailed:
                 error = "MbedCloudClient::ConnectBootstrapFailed";
-                stop_client();
                 break;
             case MbedCloudClient::ConnectInvalidParameters:
                 error = "MbedCloudClient::ConnectInvalidParameters";
-                stop_client();
                 break;
             case MbedCloudClient::ConnectNotRegistered:
                 error = "MbedCloudClient::ConnectNotRegistered";
-                stop_client();
                 break;
             case MbedCloudClient::ConnectTimeout:
                 error = "MbedCloudClient::ConnectTimeout";
-                stop_client();
                 break;
             case MbedCloudClient::ConnectNetworkError:
                 error = "MbedCloudClient::ConnectNetworkError";
-                stop_client();
                 break;
             case MbedCloudClient::ConnectResponseParseFailed:
                 error = "MbedCloudClient::ConnectResponseParseFailed";
-                stop_client();
                 break;
             case MbedCloudClient::ConnectUnknownError:
                 error = "MbedCloudClient::ConnectUnknownError";
-                stop_client();
                 break;
             case MbedCloudClient::ConnectMemoryConnectFail:
                 error = "MbedCloudClient::ConnectMemoryConnectFail";
-                stop_client();
                 break;
             case MbedCloudClient::ConnectNotAllowed:
                 error = "MbedCloudClient::ConnectNotAllowed";
-                stop_client();
                 break;
             case MbedCloudClient::ConnectSecureConnectionFailed:
                 error = "MbedCloudClient::ConnectSecureConnectionFailed";
-                stop_client();
                 break;
             case MbedCloudClient::ConnectDnsResolvingFailed:
                 error = "MbedCloudClient::ConnectDnsResolvingFailed";
-                stop_client();
                 break;
 #ifdef MBED_CLOUD_CLIENT_SUPPORT_UPDATE
             case MbedCloudClient::UpdateWarningCertificateNotFound:
@@ -199,20 +184,22 @@ public:
             case MbedCloudClient::UpdateWarningURINotFound:
                 error = "MbedCloudClient::UpdateWarningURINotFound";
                 break;
+            case MbedCloudClient::UpdateWarningRollbackProtection:
+                error = "MbedCloudClient::UpdateWarningRollbackProtection";
+                break;
             case MbedCloudClient::UpdateWarningUnknown:
                 error = "MbedCloudClient::UpdateWarningUnknown";
                 break;
             case MbedCloudClient::UpdateErrorWriteToStorage:
                 error = "MbedCloudClient::UpdateErrorWriteToStorage";
-                stop_client();
                 break;
 #endif
             default:
-                stop_client();
                 error = "UNKNOWN";
         }
         printf("\nError occured : %s\r\n", error);
         printf("Error code : %d\r\n\n", error_code);
+        printf("Error details : %s\r\n\n",_cloud_client.error_description());
     }
 
     bool is_client_registered() {
@@ -223,7 +210,9 @@ public:
         return _register_called;
     }
     void increment_resource_value() {
-        _observable_resource.increment_resource();
+        if(_registered) {
+            _observable_resource.increment_resource();
+        }
     }
 
     MbedCloudClient& get_cloud_client() {

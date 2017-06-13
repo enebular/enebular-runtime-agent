@@ -93,7 +93,7 @@
 #define MBEDTLS_CTR_DRBG_MAX_REQUEST 2048
 
 // Reduce IO buffer to save RAM, default is 16KB
-#define MBEDTLS_SSL_MAX_CONTENT_LEN 8096
+#define MBEDTLS_SSL_MAX_CONTENT_LEN 2048
 
 // define to save 8KB RAM at the expense of ROM
 #define MBEDTLS_AES_ROM_TABLES

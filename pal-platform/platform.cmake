@@ -1,15 +1,15 @@
 include(autogen.cmake)
 
 if ("${CMAKE_TOOLCHAIN_FILE}" STREQUAL "")
-	set(MBED_CLOUD_CLIENT_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/pal-platform/Toolchain/${MBED_CLOUD_CLIENT_TOOLCHAIN}/${MBED_CLOUD_CLIENT_TOOLCHAIN}.cmake)
-	if(EXISTS ${MBED_CLOUD_CLIENT_TOOLCHAIN_FILE})		
-		set(CMAKE_TOOLCHAIN_FILE ${MBED_CLOUD_CLIENT_TOOLCHAIN_FILE})	        
+    set(MBED_CLOUD_CLIENT_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/pal-platform/Toolchain/${MBED_CLOUD_CLIENT_TOOLCHAIN}/${MBED_CLOUD_CLIENT_TOOLCHAIN}.cmake)
+    if(EXISTS ${MBED_CLOUD_CLIENT_TOOLCHAIN_FILE})
+        set(CMAKE_TOOLCHAIN_FILE ${MBED_CLOUD_CLIENT_TOOLCHAIN_FILE})
         message(STATUS "cmake file found for Toolchain in ${MBED_CLOUD_CLIENT_TOOLCHAIN_FILE}")
-	else()
-	        message(STATUS "No cmake file found for Toolchain in ${MBED_CLOUD_CLIENT_TOOLCHAIN_FILE}")
-	endif()  
+    else()
+            message(STATUS "No cmake file found for Toolchain in ${MBED_CLOUD_CLIENT_TOOLCHAIN_FILE}")
+    endif()
 else()
-		message(STATUS "Toolchain file was set manualy!")
+        message(STATUS "Toolchain file was set manualy!")
 endif()
 include(${CMAKE_TOOLCHAIN_FILE})
 
@@ -19,7 +19,7 @@ if(EXISTS ${CMAKE_DEVICE_PATH})
         message(STATUS "cmake file found for Device in ${CMAKE_DEVICE_PATH}")
 else()
         message(STATUS "No cmake file found for Device in ${CMAKE_DEVICE_PATH}")
-endif()       
+endif()
 
 
 set(CMAKE_OS_PATH ${CMAKE_SOURCE_DIR}/pal-platform/OS/${MBED_CLOUD_CLIENT_OS}/${MBED_CLOUD_CLIENT_OS}.cmake)
@@ -28,18 +28,16 @@ if(EXISTS ${CMAKE_OS_PATH})
         message(STATUS "cmake file found for os in  ${CMAKE_OS_PATH}")
 else()
         message(STATUS "No cmake file found for os in  ${CMAKE_OS_PATH}")
-endif()           
+endif()
 
-           
 set(CMAKE_SDK_PATH ${CMAKE_SOURCE_DIR}/pal-platform/SDK/${MBED_CLOUD_CLIENT_SDK}/${MBED_CLOUD_CLIENT_SDK}.cmake)
 if(EXISTS ${CMAKE_SDK_PATH})
         include(${CMAKE_SDK_PATH})
         message(STATUS "cmake file found for sdk in  ${CMAKE_SDK_PATH}")
 else()
         message(STATUS "No cmake file found for sdk in  ${CMAKE_SDK_PATH}")
-endif()           
-       
-           
+endif()
+
 foreach(MW ${MBED_CLOUD_CLIENT_MIDDLEWARE})
 set(CMAKE_MW_PATH ${CMAKE_SOURCE_DIR}/pal-platform/Middleware/${MW}/${MW}.cmake)
 if(EXISTS ${CMAKE_MW_PATH})

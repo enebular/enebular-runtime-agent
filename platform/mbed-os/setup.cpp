@@ -105,7 +105,24 @@ void print_to_screen(int x, int y, const char* buffer)
 
     /* limit size to 25 characters */
     char output_buffer[26] = { 0 };
-    strncpy(output_buffer, buffer, 25);
+
+    size_t name_length = strnlen(buffer, 32);
+
+    /* if buffer is 32 characters, assume FlakeID */
+    if (name_length == 32)
+    {
+        /* < 64 bit timestamp >< 48 bit worker id>< 16 bit sequence number >
+           Discard 7 characters form worker ID but keep the timestamp and
+           sequence number
+        */
+        memcpy(&output_buffer[0], &buffer[0], 16);
+        memcpy(&output_buffer[16], &buffer[23], 9);
+    }
+    else
+    {
+        /* fill output buffer with buffer */
+        strncpy(output_buffer, buffer, 25);
+    }
 
     lcd->printf("%s", output_buffer);
 #endif
@@ -130,7 +147,8 @@ void create_m2mobject_test_set(M2MObjectList* object_list) {
     m2mobject_test_set(*object_list);
 }
 
-void do_wait(int /*timeout_in_sec*/) {
+void do_wait(int timeout_in_sec) {
+    wait_ms(timeout_in_sec * 1000);
 }
 
 void increment_resource_thread(void* client) {

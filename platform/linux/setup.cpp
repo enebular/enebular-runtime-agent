@@ -15,17 +15,25 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <signal.h>
 #include "setup.h"
 #include "simplem2mclient.h"
 
 // Internal function prototypes
 void init_screen();
-
+typedef void (*signalhandler_t)(int);
+static void handle_signal(void);
 void *network_interface = 0;
 pthread_t resource_thread;
 
+static void handle_signal(void)
+{
+    pthread_detach(resource_thread);
+    exit(0);
+}
 int initPlatform() {
     init_screen();
+    signal(SIGTERM, (signalhandler_t)handle_signal);
     return 0;
 }
 

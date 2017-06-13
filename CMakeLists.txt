@@ -94,6 +94,7 @@ include_directories(${FACTORY_CLIENT_SOURCE_DIR}/crypto_service/source/include)
 include_directories(${FACTORY_CLIENT_SOURCE_DIR}/secsrv-cbor/secsrv-cbor)
 include_directories(${FACTORY_CLIENT_SOURCE_DIR}/fcc_bundle_handler/fcc_bundle_handler)
 include_directories(${FACTORY_CLIENT_SOURCE_DIR}/fcc_bundle_handler/source/include)
+include_directories(${FACTORY_CLIENT_SOURCE_DIR}/fcc_output_info_handler/fcc_output_info_handler)
 
 # update-client
 
