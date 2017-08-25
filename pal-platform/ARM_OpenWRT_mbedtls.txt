@@ -1,0 +1,6 @@
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ARM_OpenWRT_mbedtls ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#################
+# mbedtls 2.4.2
+#################
+- Clone https://github.com/ARMmbed/mbedtls.git at mbedtls-2.4.2 to /media/mohammad/254b133d-dcd6-443a-9b75-a828367e0584/openWRT/pal-example-master2/pal-platform/Middleware/mbedtls/mbedtls

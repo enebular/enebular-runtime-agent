@@ -8,12 +8,13 @@
     ],
     "target_overrides": {
         "*": {
-            "target.features_add": ["COMMON_PAL"],
+            "target.features_add": ["NANOSTACK", "THREAD_ROUTER", "COMMON_PAL"],
+            "mbed-mesh-api.thread-config-channel": 22,
+            "mbed-mesh-api.thread-config-panid": "0x0700",
+            "mbed-client.sn-coap-max-blockwise-payload-size": 512,
+            "mbed-client.event-loop-size": 40000,
             "platform.stdio-baud-rate": 115200,
             "platform.stdio-convert-newlines": true,
-            "lwip.ipv4-enabled": true,
-            "lwip.ipv6-enabled": false,
-            "mbed-client.sn-coap-max-blockwise-payload-size": 512,
             "mbed-trace.enable": null
         },
         "K64F": {
@@ -22,18 +23,21 @@
         },
         "NUCLEO_F429ZI": {
             "update-client.application-details": "0x08020000",
-            "update-client.bootloader-details": "0x0801AA98"
+            "update-client.bootloader-details": "0x0801AA98",
+            "target.macros_add": ["ATMEL_SPI_MOSI=PB_5"]
         },
         "UBLOX_EVK_ODIN_W2": {
-            "target.device_has_remove": ["EMAC"],
             "update-client.application-details": "0x08020000",
             "update-client.bootloader-details": "0x0801D204"
         }
     },
     "config": {
         "network-interface":{
-            "help": "Options are ETHERNET, WIFI_ESP8266, WIFI_ODIN",
-            "value": "ETHERNET"
+            "value": "MESH_THREAD"
+        },
+        "mesh_radio_type": {
+            "help": "options are ATMEL, MCR20, SPIRIT1",
+            "value": "ATMEL"
         },
         "developer-mode": {
             "help": "Enable Developer mode to skip Factory enrollment",
@@ -41,3 +45,4 @@
         }
     }
 }
+

@@ -1,9 +1,11 @@
 {
-    "macros": ["MBEDTLS_USER_CONFIG_FILE=\"mbedtls_mbed_client_config.h\"",
-               "MBED_CLIENT_USER_CONFIG_FILE=\"mbed_cloud_client_user_config.h\"",
-               "MBED_CLOUD_CLIENT_USER_CONFIG_FILE=\"mbed_cloud_client_user_config.h\"",
-               "PAL_USE_FATFS_SD=1",
-               "SA_PV_OS_MBEDOS"],
+    "macros": [
+        "MBEDTLS_USER_CONFIG_FILE=\"mbedtls_mbed_client_config.h\"",
+        "MBED_CLIENT_USER_CONFIG_FILE=\"mbed_cloud_client_user_config.h\"",
+        "MBED_CLOUD_CLIENT_USER_CONFIG_FILE=\"mbed_cloud_client_user_config.h\"",
+        "PAL_USE_FATFS_SD=1",
+        "SA_PV_OS_MBEDOS"
+    ],
     "target_overrides": {
         "*": {
             "target.features_add": ["COMMON_PAL"],
@@ -11,14 +13,16 @@
             "platform.stdio-convert-newlines": true,
             "lwip.ipv4-enabled": true,
             "lwip.ipv6-enabled": false,
-            "mbed-client.sn-coap-max-blockwise-payload-size": 1024,
+            "mbed-client.sn-coap-max-blockwise-payload-size": 512,
             "mbed-trace.enable": null
         },
         "K64F": {
-            "mbed-client-pal.update-active-metadata-header-offset": "0x00020000"
+            "update-client.application-details": "0x00020000",
+            "update-client.bootloader-details": "0x00019CA0"
         },
         "NUCLEO_F429ZI": {
-            "mbed-client-pal.update-active-metadata-header-offset": "0x08020000"
+            "update-client.application-details": "0x08020000",
+            "update-client.bootloader-details": "0x0801AA98"
         },
         "NUCLEO_F401RE": {
             "wifi-tx": "PA_11",

@@ -11,12 +11,7 @@ set (PAL_BOARD_LD_SCRIPT MK64FN1M0xxx12-mbedOS.ld)
 set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -T./pal-platform/Device/K64F/MK64F/${PAL_BOARD_LD_SCRIPT} -static")
 set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -T./pal-platform/Device/K64F/MK64F/${PAL_BOARD_LD_SCRIPT} -static")
 
-# .h files to look for
-#  additional directories to look for CMakeLists.txt
-#if (PAL_USE_CMSIS)
- #       include_directories ("${PROJECT_SOURCE_DIR}/Non-Dist/OS/freeRTOS/CMSIS/Include")
-#endif()
- 
+
 include_directories(./pal-platform/Device/K64F/MK64F)
 include_directories(./pal-platform/Device/K64F/MK64F/utilities)
 include_directories(./pal-platform/Device/K64F/MK64F/drivers)

@@ -1,0 +1,3 @@
+platform/linux/*
+__x86_x64_NativeLinux_mbedtls/*
+pal-platform/*

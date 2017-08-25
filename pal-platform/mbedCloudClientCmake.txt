@@ -95,10 +95,6 @@ foreach(TEST_LIB ${TEST_LIBS})
         target_link_libraries(${TEST_LIB}.elf optimized c)
         #target_link_libraries(${PROJECT_NAME} optimized gcc)
 
-        if (${OS_BRAND} MATCHES FreeRTOS)
-            target_link_libraries(${TEST_LIB}.elf optimized nosys)
-            target_link_libraries(${TEST_LIB}.elf debug nosys)
-        endif ()
     endif()
 
     if (NOT (${OS_BRAND} MATCHES "Linux"))

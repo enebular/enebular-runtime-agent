@@ -28,8 +28,6 @@
 #include "update_ui_example.h"
 #endif
 
-#include <stdio.h>
-
 class SimpleM2MClient {
 
 public:
@@ -197,7 +195,7 @@ public:
             default:
                 error = "UNKNOWN";
         }
-        printf("\nError occured : %s\r\n", error);
+        printf("\nError occurred : %s\r\n", error);
         printf("Error code : %d\r\n\n", error_code);
         printf("Error details : %s\r\n\n",_cloud_client.error_description());
     }

@@ -8,31 +8,23 @@
     ],
     "target_overrides": {
         "*": {
-            "target.features_add": ["COMMON_PAL"],
+            "target.features_add": ["NANOSTACK", "COMMON_PAL"],
             "platform.stdio-baud-rate": 115200,
             "platform.stdio-convert-newlines":true,
             "lwip.ipv4-enabled": true,
             "lwip.ipv6-enabled": false,
-            "mbed-client.sn-coap-max-blockwise-payload-size": 512,
+            "mbed-client.sn-coap-max-blockwise-payload-size": 1024,
             "mbed-trace.enable": null
         },
-        "UBLOX_EVK_ODIN_W2": {
-            "update-client.application-details": "0x08020000",
-            "update-client.bootloader-details": "0x0801D204"
-        },
-        "NUCLEO_F401RE": {
-            "wifi-tx": "PA_11",
-            "wifi-rx": "PA_12"
-        },
-        "NUCLEO_F411RE": {
-            "wifi-tx": "PA_11",
-            "wifi-rx": "PA_12"
+        "REALTEK_RTL8195AM": {
+            "update-client.application-details": "0xDEADBEEF",
+            "update-client.bootloader-details": "0xBEEFDEAD"
         }
     },
     "config": {
         "network-interface":{
-            "help": "Options are ETHERNET, WIFI_ESP8266, WIFI_ODIN",
-            "value": "WIFI_ODIN"
+            "help": "Options are ETHERNET, WIFI_ESP8266, WIFI_ODIN, WIFI_RTW",
+            "value": "WIFI_RTW"
         },
         "wifi-ssid": {
             "help": "WiFi SSID",
@@ -41,14 +33,6 @@
         "wifi-password": {
             "help": "WiFi Password",
             "value": "\"Password\""
-        },
-        "wifi-tx": {
-            "help": "TX pin for serial connection to external device",
-            "value": "D1"
-        },
-        "wifi-rx": {
-            "help": "RX pin for serial connection to external device",
-            "value": "D0"
         },
         "developer-mode": {
             "help": "Enable Developer mode to skip Factory enrollment",
