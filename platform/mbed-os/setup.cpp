@@ -17,6 +17,7 @@
 #include "memory_tests.h"
 #include "simplem2mclient.h"
 #include "SDBlockDevice.h"
+#include "FATFileSystem.h"
 
 #define MBED_CONF_APP_ESP8266_TX MBED_CONF_APP_WIFI_TX
 #define MBED_CONF_APP_ESP8266_RX MBED_CONF_APP_WIFI_RX
@@ -41,7 +42,10 @@ C12832* lcd;
 
 void init_screen();
 
-extern SDBlockDevice sd;     // in pal_plat_fileSystem.cpp
+extern SDBlockDevice sd(MBED_CONF_SD_SPI_MOSI, MBED_CONF_SD_SPI_MISO, MBED_CONF_SD_SPI_CLK, MBED_CONF_SD_SPI_CS);
+
+FATFileSystem fs("sd", &sd);
+
 Thread resource_thread;
 void *network_interface(NULL);
 
@@ -55,6 +59,7 @@ int initPlatform() {
         return -1;
     }
     tr_debug("initPlatform() - SD card init OK.\n");
+
     return 0;
 }
 

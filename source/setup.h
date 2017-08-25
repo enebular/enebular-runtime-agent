@@ -25,6 +25,8 @@ extern "C" {
 // Interval to update resource value in ms
 #define INCREMENT_INTERVAL 25000
 
+typedef void (*main_t)(void);
+
 // Initialize platform
 // This function initializes screen and any other non-network
 // related platform specific initializations required.
@@ -59,6 +61,8 @@ extern void create_m2mobject_test_set(M2MObjectList *object_list);
 
 // Wait
 extern void do_wait(int timeout_in_sec);
+
+extern bool runProgram(main_t mainFunc);
 
 #ifdef __cplusplus
 }

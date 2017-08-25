@@ -18,7 +18,7 @@
 #define MBED_CLOUD_CLIENT_ENDPOINT_TYPE         "default"
 #define MBED_CLOUD_CLIENT_TRANSPORT_MODE_TCP
 #define MBED_CLOUD_CLIENT_LIFETIME              600
-#define SN_COAP_MAX_BLOCKWISE_PAYLOAD_SIZE      1024
+#define SN_COAP_MAX_BLOCKWISE_PAYLOAD_SIZE      512
 
 /* set flag to enable update support in mbed Cloud client */
 #define MBED_CLOUD_CLIENT_SUPPORT_UPDATE

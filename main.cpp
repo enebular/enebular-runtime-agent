@@ -12,89 +12,51 @@
 // from ARM Limited or its affiliates.
 //----------------------------------------------------------------------------
 
-#include "mbed-trace/mbed_trace.h"
-#include "mbed-trace-helper.h"
 #include "simplem2mclient.h"
-#include "factory_configurator_client.h"
+#include "application_init.h"
 
-static bool init_mbed_trace()
-{
-    // Create mutex for tracing to avoid broken lines in logs
-    if(!mbed_trace_helper_create_mutex()) {
-        printf("ERROR -Mutex creation for mbed_trace failed!\n");
-        return false;
-    }
-
-    // Initialize mbed trace
-    mbed_trace_init();
-    mbed_trace_mutex_wait_function_set(mbed_trace_helper_mutex_wait);
-    mbed_trace_mutex_release_function_set(mbed_trace_helper_mutex_release);
-
-    return true;
-}
+int app_start();
 
 int main() {
-    if (!init_mbed_trace()) {
-        printf("Failed initializing mbed trace\n - exit" );
-        mbed_trace_free();
-        mbed_trace_helper_delete_mutex();
+
+    // application_init() runs the following initializations:
+    //  1. trace initialization
+    //  2. platform initialization
+    //  3. print memory statistics if MBED_HEAP_STATS_ENABLED is defined
+    //  4. FCC initialization.
+    if (!application_init()) {
+        printf("Initialization failed, exiting application!\n");
         return 1;
     }
-    printf("Starting example client\n");
-    if(initPlatform()!=0) {
-       printf("ERROR - initPlatform() failed!\n");
-       return -1;
-    }
-    clear_screen();
-    print_to_screen(0, 3, "Cloud Client: Initializing");
+    return app_start();
 
-    // Print some statistics of the object sizes and heap memory consumption
-    // if the MBED_HEAP_STATS_ENABLED is defined.
-    print_m2mobject_stats();
-    print_heap_stats();
-    printf("Start simple mbed Cloud Client\n");
-
-    fcc_status_e status = fcc_init();
-    if(status != FCC_STATUS_SUCCESS) {
-        printf("fcc_init failed with status %d! - exit\n", status);
-        return 1;
-    }
-
-    // Resets storage to an empty state.
-    // Use this function when you want to clear storage from all the factory-tool generated data and user data.
-    // After this operation device must be injected again by using factory tool or developer certificate.
-#ifdef RESET_STORAGE
-    printf("Resets storage to an empty state\n");
-    fcc_status_e delete_status = fcc_storage_delete();
-    if (delete_status != FCC_STATUS_SUCCESS) {
-        printf("Failed to delete storage - %d\n", delete_status);
-    }
-#endif
-
-#ifdef MBED_CONF_APP_DEVELOPER_MODE
-    printf("Start developer flow\n");
-    status = fcc_developer_flow();
-    if (status == FCC_STATUS_KCM_FILE_EXIST_ERROR) {
-        printf("Developer credentials already exists\n");
-    } else if (status != FCC_STATUS_SUCCESS) {
-        printf("Failed to load developer credentials - exit\n");
-        return 1;
-    }    
-#endif
-    status = fcc_verify_device_configured_4mbed_cloud();
-    if (status != FCC_STATUS_SUCCESS) {
-        printf("Device not configured for mbed Cloud - exit\n");
-        return 1;
-    }
-    
+}
+int app_start(){
+    //Construct SimpleM2MClient from stack memory.
     SimpleM2MClient mbedClient;
+
+    //Creates resources that are defined in m2mresources.h.
     mbedClient.create_resources();
+
+    //Print to screen if available.
     clear_screen();
     print_to_screen(0, 3, "Cloud Client: Connecting");
-    increment_resource_thread(&mbedClient);
+
+    //Start registering to the cloud.
     mbedClient.call_register();
+
+    //Start a thread that increments the value of _observable_resource.
+    increment_resource_thread(&mbedClient);
+
+    //Print memory statistics if the MBED_HEAP_STATS_ENABLED is defined.
     print_heap_stats();
+
+    //Check if client is registering or registered, if true sleep and repeat.
     while (mbedClient.is_register_called()) {
         do_wait(1);
     }
+
+    //Client unregistered, exit program.
+    return 0;
+
 }

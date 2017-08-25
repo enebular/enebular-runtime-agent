@@ -1,4 +1,14 @@
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../)
+
 add_definitions(-DMBED_CLIENT_USER_CONFIG_FILE="\\"mbed_cloud_client_user_config.h"\\")
 add_definitions(-DMBED_CLOUD_CLIENT_USER_CONFIG_FILE="\\"mbed_cloud_client_user_config.h"\\")
 
+SET(PAL_TLS_BSP_DIR ${NEW_CMAKE_SOURCE_DIR}/mbed-cloud-client/mbed-client-pal/Examples/PlatformBSP/${TLS_LIBRARY})
+
+if (${TLS_LIBRARY} MATCHES mbedTLS)
+    # PAL specific configurations for mbedTLS
+    add_definitions(-DMBEDTLS_CONFIG_FILE="\\"${PAL_TLS_BSP_DIR}/mbedTLSConfig_${OS_BRAND}.h"\\")
+    message("PAL_TLS_BSP_DIR ${PAL_TLS_BSP_DIR}/pal_${OS_BRAND}.h")
+endif()
+
+add_definitions(-DMBED_CONF_MBED_TRACE_ENABLE)

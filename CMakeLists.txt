@@ -10,12 +10,18 @@ add_definitions(-DNS_EVENTLOOP_USE_TICK_TIMER)
 add_definitions(-DMBED_CONF_MBED_CLIENT_EVENT_LOOP_SIZE=8192)
 add_definitions(-DMBED_CONF_APP_CLOUD_MODE)
 add_definitions(-DMBED_CONF_APP_DEVELOPER_MODE)
+add_definitions(-DMBED_CONF_MBED_CLIENT_DNS_THREAD_STACK_SIZE=102400)
+
+set(PLATFORM_INCLUDE "")
+set(PLATFORM_SOURCES "")
+set(PLATFORM_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/platform/linux")
+set(PLATFORM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/*.cpp")
 
 # mbed-cloud-client-example
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/source)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/platform/linux)
+include_directories(${PLATFORM_INCLUDE})
 
 # mbed-cloud-client
 
@@ -68,10 +74,10 @@ include_directories(${MBED_CLOUD_CLIENT_SOURCE_DIR}/ns-hal-pal)
 
 # factory-client
 
-SET(FACTORY_CLIENT_SOURCE_DIR ${MBED_CLOUD_CLIENT_SOURCE_DIR}/factory_client)
+SET(FACTORY_CLIENT_SOURCE_DIR ${MBED_CLOUD_CLIENT_SOURCE_DIR}/factory-configurator-client)
 
-include_directories(${FACTORY_CLIENT_SOURCE_DIR}/factory_configurator_client/source/include)
-include_directories(${FACTORY_CLIENT_SOURCE_DIR}/factory_configurator_client/factory_configurator_client)
+include_directories(${FACTORY_CLIENT_SOURCE_DIR}/factory-configurator-client/source/include)
+include_directories(${FACTORY_CLIENT_SOURCE_DIR}/factory-configurator-client/factory-configurator-client)
 include_directories(${FACTORY_CLIENT_SOURCE_DIR}/mbed-trace-helper/mbed-trace-helper)
 include_directories(${FACTORY_CLIENT_SOURCE_DIR}/fc_protocol_handler/fc_protocol_handler)
 include_directories(${FACTORY_CLIENT_SOURCE_DIR}/fc_protocol_handler/source/include)
@@ -79,9 +85,9 @@ include_directories(${FACTORY_CLIENT_SOURCE_DIR}/secure_store)
 include_directories(${FACTORY_CLIENT_SOURCE_DIR}/secure_store/secure_store)
 include_directories(${FACTORY_CLIENT_SOURCE_DIR}/storage)
 include_directories(${FACTORY_CLIENT_SOURCE_DIR}/storage/storage)
-include_directories(${FACTORY_CLIENT_SOURCE_DIR}/key_config_manager)
-include_directories(${FACTORY_CLIENT_SOURCE_DIR}/key_config_manager/key_config_manager)
-include_directories(${FACTORY_CLIENT_SOURCE_DIR}/key_config_manager/source/include)
+include_directories(${FACTORY_CLIENT_SOURCE_DIR}/key-config-manager)
+include_directories(${FACTORY_CLIENT_SOURCE_DIR}/key-config-manager/key-config-manager)
+include_directories(${FACTORY_CLIENT_SOURCE_DIR}/key-config-manager/source/include)
 include_directories(${FACTORY_CLIENT_SOURCE_DIR}/utils)
 include_directories(${FACTORY_CLIENT_SOURCE_DIR}/utils/utils)
 include_directories(${FACTORY_CLIENT_SOURCE_DIR}/logger)
@@ -89,12 +95,12 @@ include_directories(${FACTORY_CLIENT_SOURCE_DIR}/logger/logger)
 include_directories(${FACTORY_CLIENT_SOURCE_DIR}/mbed-client-esfs/source/include)
 include_directories(${FACTORY_CLIENT_SOURCE_DIR}/mbed-client-esfs/source-pal/api)
 include_directories(${FACTORY_CLIENT_SOURCE_DIR}/mbed-client-esfs/source-pal/linux)
-include_directories(${FACTORY_CLIENT_SOURCE_DIR}/crypto_service/crypto_service)
-include_directories(${FACTORY_CLIENT_SOURCE_DIR}/crypto_service/source/include)
+include_directories(${FACTORY_CLIENT_SOURCE_DIR}/crypto-service/crypto-service)
+include_directories(${FACTORY_CLIENT_SOURCE_DIR}/crypto-service/source/include)
 include_directories(${FACTORY_CLIENT_SOURCE_DIR}/secsrv-cbor/secsrv-cbor)
-include_directories(${FACTORY_CLIENT_SOURCE_DIR}/fcc_bundle_handler/fcc_bundle_handler)
-include_directories(${FACTORY_CLIENT_SOURCE_DIR}/fcc_bundle_handler/source/include)
-include_directories(${FACTORY_CLIENT_SOURCE_DIR}/fcc_output_info_handler/fcc_output_info_handler)
+include_directories(${FACTORY_CLIENT_SOURCE_DIR}/fcc-bundle-handler/fcc-bundle-handler)
+include_directories(${FACTORY_CLIENT_SOURCE_DIR}/fcc-bundle-handler/source/include)
+include_directories(${FACTORY_CLIENT_SOURCE_DIR}/fcc-output-info-handler/fcc-output-info-handler)
 
 # update-client
 
@@ -135,9 +141,7 @@ FILE(GLOB MBED_CLOUD_CLIENT_EXAMPLE_SRC
     "${CMAKE_CURRENT_SOURCE_DIR}/*.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/source/*.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp"
-
-    "${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/*.cpp"
-
+    "${PLATFORM_SOURCES}"
     "${MBED_CLOUD_CLIENT_SOURCE_DIR}/source/*.c"
     "${MBED_CLOUD_CLIENT_SOURCE_DIR}/source/*.cpp"
 
@@ -159,7 +163,7 @@ FILE(GLOB MBED_CLOUD_CLIENT_EXAMPLE_SRC
     "${FACTORY_CLIENT_SOURCE_DIR}/mbed-client-esfs/source/*.c"
     "${FACTORY_CLIENT_SOURCE_DIR}/mbed-client-esfs/source-pal/linux/*.c"
     "${FACTORY_CLIENT_SOURCE_DIR}/mbed-client-esfs/source-pal/linux/*.cpp"
-    "${FACTORY_CLIENT_SOURCE_DIR}/crypto_service/source/*.c"
+    "${FACTORY_CLIENT_SOURCE_DIR}/crypto-service/source/*.c"
     "${FACTORY_CLIENT_SOURCE_DIR}/fc_protocol_handler/source/*.c"
     "${FACTORY_CLIENT_SOURCE_DIR}/secsrv-cbor/source/*.c"
     "${FACTORY_CLIENT_SOURCE_DIR}/fcc_bundle_handler/source/*.c"
