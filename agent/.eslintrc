@@ -1,5 +1,6 @@
 {
   "parser": "babel-eslint",
+  "plugins": ["flow"],
   "env": {
     "node": true,
     "es6": true
