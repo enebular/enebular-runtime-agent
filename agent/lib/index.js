@@ -47,12 +47,18 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 /**
  *
  */
+
+
+/**
+ *
+ */
 var EnebularAgent = function () {
   function EnebularAgent(_ref) {
     var command = _ref.command,
         args = _ref.args,
         pkgDir = _ref.pkgDir;
     (0, _classCallCheck3.default)(this, EnebularAgent);
+    this._cproc = null;
 
     this._command = command;
     this._args = args;
@@ -62,7 +68,7 @@ var EnebularAgent = function () {
   (0, _createClass3.default)(EnebularAgent, [{
     key: 'downloadAndUpdatePackage',
     value: function () {
-      var _ref2 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee(downloadUrl) {
+      var _ref2 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee(downloadUrl) {
         var res, body;
         return _regenerator2.default.wrap(function _callee$(_context) {
           while (1) {
@@ -106,28 +112,33 @@ var EnebularAgent = function () {
   }, {
     key: 'updatePackage',
     value: function () {
-      var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2(flowPackage) {
+      var _ref3 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee2(flowPackage) {
         var _this = this;
 
-        var updates;
+        var updates, _flows, _creds;
+
         return _regenerator2.default.wrap(function _callee2$(_context2) {
           while (1) {
             switch (_context2.prev = _context2.next) {
               case 0:
                 updates = [];
 
-                if (flowPackage.flow) {
+                if (flowPackage.flow || flowPackage.flows) {
+                  _flows = flowPackage.flow || flowPackage.flows;
+
                   updates.push(new _promise2.default(function (resolve, reject) {
                     var flowFilePath = _path2.default.join(_this._pkgDir, '.node-red-config', 'flows.json');
-                    _fs2.default.writeFile(flowFilePath, (0, _stringify2.default)(flowPackage.flow), function (err) {
+                    _fs2.default.writeFile(flowFilePath, (0, _stringify2.default)(_flows), function (err) {
                       return err ? reject(err) : resolve();
                     });
                   }));
                 }
-                if (flowPackage.cred) {
+                if (flowPackage.cred || flowPackage.creds) {
+                  _creds = flowPackage.cred || flowPackage.creds;
+
                   updates.push(new _promise2.default(function (resolve, reject) {
                     var credFilePath = _path2.default.join(_this._pkgDir, '.node-red-config', 'flows_cred.json');
-                    _fs2.default.writeFile(credFilePath, (0, _stringify2.default)(flowPackage.cred), function (err) {
+                    _fs2.default.writeFile(credFilePath, (0, _stringify2.default)(_creds), function (err) {
                       return err ? reject(err) : resolve();
                     });
                   }));
@@ -169,7 +180,7 @@ var EnebularAgent = function () {
   }, {
     key: 'resolveDependency',
     value: function () {
-      var _ref4 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3() {
+      var _ref4 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee3() {
         var _this2 = this;
 
         return _regenerator2.default.wrap(function _callee3$(_context3) {
@@ -199,7 +210,7 @@ var EnebularAgent = function () {
   }, {
     key: 'startService',
     value: function () {
-      var _ref5 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4() {
+      var _ref5 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee4() {
         var _this3 = this;
 
         return _regenerator2.default.wrap(function _callee4$(_context4) {
@@ -207,9 +218,10 @@ var EnebularAgent = function () {
             switch (_context4.prev = _context4.next) {
               case 0:
                 return _context4.abrupt('return', new _promise2.default(function (resolve, reject) {
-                  _this3._cproc = (0, _child_process.spawn)(_this3._command, _this3._args, { stdio: 'inherit', cwd: _this3._pkgDir });
-                  _this3._cproc.on('error', reject);
-                  _this3._cproc.once('exit', resolve);
+                  var cproc = (0, _child_process.spawn)(_this3._command, _this3._args, { stdio: 'inherit', cwd: _this3._pkgDir });
+                  cproc.on('error', reject);
+                  cproc.once('exit', resolve);
+                  _this3._cproc = cproc;
                 }));
 
               case 1:
@@ -229,7 +241,7 @@ var EnebularAgent = function () {
   }, {
     key: 'shutdownService',
     value: function () {
-      var _ref6 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5() {
+      var _ref6 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee5() {
         var _this4 = this;
 
         return _regenerator2.default.wrap(function _callee5$(_context5) {
@@ -237,9 +249,10 @@ var EnebularAgent = function () {
             switch (_context5.prev = _context5.next) {
               case 0:
                 return _context5.abrupt('return', new _promise2.default(function (resolve, reject) {
-                  if (_this4._cproc) {
-                    _this4._cproc.kill();
-                    _this4._cproc.once('exit', function () {
+                  var cproc = _this4._cproc;
+                  if (cproc) {
+                    cproc.kill();
+                    cproc.once('exit', function () {
                       _this4._cproc = null;
                       resolve();
                     });
@@ -265,7 +278,7 @@ var EnebularAgent = function () {
   }, {
     key: 'restartService',
     value: function () {
-      var _ref7 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee6() {
+      var _ref7 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee6() {
         return _regenerator2.default.wrap(function _callee6$(_context6) {
           while (1) {
             switch (_context6.prev = _context6.next) {
