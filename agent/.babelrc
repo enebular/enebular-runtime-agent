@@ -1,4 +1,4 @@
 {
   "presets": ["es2015","es2017", "flow"],
-  "plugins": ["transform-runtime"]
+  "plugins": ["transform-class-properties", "transform-runtime"]
 }
