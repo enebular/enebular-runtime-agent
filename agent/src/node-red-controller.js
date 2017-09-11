@@ -28,7 +28,6 @@ export default class NodeREDController {
   _isProcessingActions: ?boolean;
 
   constructor(dir: string, command: string, emitter: EventEmitter) {
-    super();
     this._dir = dir;
     this._command = command;
     this._isProcessingActions = false;

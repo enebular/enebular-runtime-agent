@@ -59,7 +59,6 @@ export default class EnebularAgent {
   _agentState: AgentState;
 
   constructor(config: EnebularAgentConfig) {
-    super();
     const {
       nodeRedDir,
       nodeRedCommand = 'npm start',
