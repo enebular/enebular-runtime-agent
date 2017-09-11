@@ -38,6 +38,7 @@ export default class NodeREDController {
   _registerHandler(emitter: EventEmitter) {
     emitter.on('update-flow', (params) => this._queueAction(() => this._fetchAndUpdateFlow(params)));
     emitter.on('deploy', (params) => this._queueAction(() => this._fetchAndUpdateFlow(params)));
+    emitter.on('start', () => this._queueAction(() => this._startService()));
     emitter.on('restart', () => this._queueAction(() => this._restartService()));
     emitter.on('shutdown', () => this._queueAction(() => this._shutdownService()));
   }

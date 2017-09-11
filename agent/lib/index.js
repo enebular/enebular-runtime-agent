@@ -92,10 +92,34 @@ var EnebularAgent = function () {
     this._agentMan = new _agentManagerMediator2.default();
     this._configFile = configFile;
     this._agentState = 'init';
-    this._loadAgentConfig();
   }
 
   (0, _createClass3.default)(EnebularAgent, [{
+    key: 'start',
+    value: function () {
+      var _ref = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee() {
+        return _regenerator2.default.wrap(function _callee$(_context) {
+          while (1) {
+            switch (_context.prev = _context.next) {
+              case 0:
+                this._loadAgentConfig();
+                return _context.abrupt('return', this._messageEmitter.emit('start', {}));
+
+              case 2:
+              case 'end':
+                return _context.stop();
+            }
+          }
+        }, _callee, this);
+      }));
+
+      function start() {
+        return _ref.apply(this, arguments);
+      }
+
+      return start;
+    }()
+  }, {
     key: '_loadAgentConfig',
     value: function _loadAgentConfig() {
       try {
@@ -137,42 +161,42 @@ var EnebularAgent = function () {
   }, {
     key: '_handleChangeState',
     value: function () {
-      var _ref = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee() {
-        return _regenerator2.default.wrap(function _callee$(_context) {
+      var _ref2 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee2() {
+        return _regenerator2.default.wrap(function _callee2$(_context2) {
           while (1) {
-            switch (_context.prev = _context.next) {
+            switch (_context2.prev = _context2.next) {
               case 0:
-                _context.t0 = this._agentState;
-                _context.next = _context.t0 === 'registered' ? 3 : _context.t0 === 'unregistered' ? 6 : _context.t0 === 'authenticated' ? 7 : 10;
+                _context2.t0 = this._agentState;
+                _context2.next = _context2.t0 === 'registered' ? 3 : _context2.t0 === 'unregistered' ? 6 : _context2.t0 === 'authenticated' ? 7 : 10;
                 break;
 
               case 3:
-                _context.next = 5;
+                _context2.next = 5;
                 return this._requestDeviceAuthentication();
 
               case 5:
-                return _context.abrupt('break', 10);
+                return _context2.abrupt('break', 10);
 
               case 6:
-                return _context.abrupt('break', 10);
+                return _context2.abrupt('break', 10);
 
               case 7:
-                _context.next = 9;
+                _context2.next = 9;
                 return this._startStatusNotification();
 
               case 9:
-                return _context.abrupt('break', 10);
+                return _context2.abrupt('break', 10);
 
               case 10:
               case 'end':
-                return _context.stop();
+                return _context2.stop();
             }
           }
-        }, _callee, this);
+        }, _callee2, this);
       }));
 
       function _handleChangeState() {
-        return _ref.apply(this, arguments);
+        return _ref2.apply(this, arguments);
       }
 
       return _handleChangeState;
@@ -180,53 +204,53 @@ var EnebularAgent = function () {
   }, {
     key: '_requestDeviceAuthentication',
     value: function () {
-      var _ref2 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee2() {
-        var connectionId, deviceId, _ref3, accessToken;
+      var _ref3 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee3() {
+        var connectionId, deviceId, _ref4, accessToken;
 
-        return _regenerator2.default.wrap(function _callee2$(_context2) {
+        return _regenerator2.default.wrap(function _callee3$(_context3) {
           while (1) {
-            switch (_context2.prev = _context2.next) {
+            switch (_context3.prev = _context3.next) {
               case 0:
                 connectionId = this._connectionId, deviceId = this._deviceId;
 
                 if (!(!connectionId || !deviceId)) {
-                  _context2.next = 3;
+                  _context3.next = 3;
                   break;
                 }
 
                 throw new Error('Connection ID and Device ID are not configured yet for the agent');
 
               case 3:
-                _context2.prev = 3;
-                _context2.next = 6;
+                _context3.prev = 3;
+                _context3.next = 6;
                 return this._deviceAuth.requestAuthenticate(connectionId, deviceId);
 
               case 6:
-                _ref3 = _context2.sent;
-                accessToken = _ref3.accessToken;
+                _ref4 = _context3.sent;
+                accessToken = _ref4.accessToken;
 
                 this._agentMan.setAccessToken(accessToken);
                 this._changeAgentState('authenticated');
-                _context2.next = 16;
+                _context3.next = 16;
                 break;
 
               case 12:
-                _context2.prev = 12;
-                _context2.t0 = _context2['catch'](3);
+                _context3.prev = 12;
+                _context3.t0 = _context3['catch'](3);
 
                 this._changeAgentState('unauthenticated');
-                throw _context2.t0;
+                throw _context3.t0;
 
               case 16:
               case 'end':
-                return _context2.stop();
+                return _context3.stop();
             }
           }
-        }, _callee2, this, [[3, 12]]);
+        }, _callee3, this, [[3, 12]]);
       }));
 
       function _requestDeviceAuthentication() {
-        return _ref2.apply(this, arguments);
+        return _ref3.apply(this, arguments);
       }
 
       return _requestDeviceAuthentication;
@@ -234,23 +258,23 @@ var EnebularAgent = function () {
   }, {
     key: '_startStatusNotification',
     value: function () {
-      var _ref4 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee3() {
-        return _regenerator2.default.wrap(function _callee3$(_context3) {
+      var _ref5 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee4() {
+        return _regenerator2.default.wrap(function _callee4$(_context4) {
           while (1) {
-            switch (_context3.prev = _context3.next) {
+            switch (_context4.prev = _context4.next) {
               case 0:
                 this._agentMan.startStatusReport();
 
               case 1:
               case 'end':
-                return _context3.stop();
+                return _context4.stop();
             }
           }
-        }, _callee3, this);
+        }, _callee4, this);
       }));
 
       function _startStatusNotification() {
-        return _ref4.apply(this, arguments);
+        return _ref5.apply(this, arguments);
       }
 
       return _startStatusNotification;

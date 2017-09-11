@@ -87,6 +87,11 @@ var NodeREDController = function () {
           return _this._fetchAndUpdateFlow(params);
         });
       });
+      emitter.on('start', function () {
+        return _this._queueAction(function () {
+          return _this._startService();
+        });
+      });
       emitter.on('restart', function () {
         return _this._queueAction(function () {
           return _this._restartService();
