@@ -13,7 +13,7 @@ import AgentManagerMediator from './agent-manager-mediator';
 export type EnebularAgentConfig = {
   nodeRedDir: string,
   nodeRedCommand?: string,
-  configFile: string,
+  configFile?: string,
 };
 
 export type AgentState =
@@ -70,7 +70,11 @@ export default class EnebularAgent {
     this._agentMan = new AgentManagerMediator();
     this._configFile = configFile;
     this._agentState = 'init';
+  }
+
+  async start() {
     this._loadAgentConfig();
+    return this._messageEmitter.emit('start', {});
   }
 
   _loadAgentConfig() {
@@ -142,5 +146,4 @@ export default class EnebularAgent {
   handleDeviceMasterMessage(messageType: string, message: any) {
     this._messageEmitter.emit(messageType, message);
   }
-
 }
