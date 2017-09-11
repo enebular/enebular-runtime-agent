@@ -74,7 +74,7 @@ export default class EnebularAgent {
 
   async start() {
     this._loadAgentConfig();
-    return this._messageEmitter.emit('start', {});
+    return this._nodeRed.startService();
   }
 
   _loadAgentConfig() {
