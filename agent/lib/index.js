@@ -103,7 +103,7 @@ var EnebularAgent = function () {
             switch (_context.prev = _context.next) {
               case 0:
                 this._loadAgentConfig();
-                return _context.abrupt('return', this._messageEmitter.emit('start', {}));
+                return _context.abrupt('return', this._nodeRed.startService());
 
               case 2:
               case 'end':

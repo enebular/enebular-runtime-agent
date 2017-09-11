@@ -24,41 +24,47 @@ export default class NodeREDController {
   _dir: string;
   _command: string;
   _cproc: ?ChildProcess = null;
-  _actions: Array<() => Promise<any>>
-  _isProcessingActions: ?boolean;
+  _actions: Array<() => Promise<any>> = [];
+  _isProcessing: ?Promise<void> = null;
 
   constructor(dir: string, command: string, emitter: EventEmitter) {
     this._dir = dir;
     this._command = command;
-    this._isProcessingActions = false;
-    this._actions = [];
     this._registerHandler(emitter);
   }
 
   _registerHandler(emitter: EventEmitter) {
-    emitter.on('update-flow', (params) => this._queueAction(() => this._fetchAndUpdateFlow(params)));
-    emitter.on('deploy', (params) => this._queueAction(() => this._fetchAndUpdateFlow(params)));
-    emitter.on('start', () => this._queueAction(() => this._startService()));
-    emitter.on('restart', () => this._queueAction(() => this._restartService()));
-    emitter.on('shutdown', () => this._queueAction(() => this._shutdownService()));
+    emitter.on('update-flow', (params) => this.fetchAndUpdateFlow(params));
+    emitter.on('deploy', (params) => this.fetchAndUpdateFlow(params));
+    emitter.on('start', () => this.startService());
+    emitter.on('restart', () => this.restartService());
+    emitter.on('shutdown', () => this.shutdownService());
   }
 
-  _queueAction(fn: () => Promise<any>) {
+  async _queueAction(fn: () => Promise<any>) {
     console.log('NodeREDController#_queueAction');
     this._actions.push(fn);
-    if (!this._isProcessingActions) {
-      this._processActions();
+    if (this._isProcessing) {
+      await this._isProcessing;
+    } else {
+      await this._processActions();
     }
   }
 
   async _processActions() {
     console.log('NodeREDController#_processActions', this._actions.length);
-    this._isProcessingActions = true;
-    while (this._actions.length > 0) {
-      const action = this._actions.shift();
-      await action();
-    }
-    this._isProcessingActions = false;
+    this._isProcessing = (async () => {
+      while (this._actions.length > 0) {
+        const action = this._actions.shift();
+        await action();
+      }
+    })();
+    await this._isProcessing;
+    this._isProcessing = null;
+  }
+
+  async fetchAndUpdateFlow(params: { downloadUrl: string }) {
+    return this._queueAction(() => this._fetchAndUpdateFlow(params));
   }
 
   async _fetchAndUpdateFlow(params: { downloadUrl: string }) {
@@ -123,15 +129,29 @@ export default class NodeREDController {
     });
   }
 
+  async startService() {
+    return this._queueAction(() => this._startService());
+  }
+
   async _startService() {
     console.log('NodeREDController#_startService');
     return new Promise((resolve, reject) => {
       const [command, ...args] = this._command.split(/\s+/);
       const cproc = spawn(command, args, { stdio: 'inherit', cwd: this._dir });
-      cproc.on('error', reject);
-      cproc.once('exit', resolve);
+      cproc.once('exit', (code) => {
+        this._cproc = null;
+      });
+      cproc.once('error', (err) => {
+        this._cproc = null;
+        reject(err);
+      });
       this._cproc = cproc;
+      setTimeout(() => resolve(), 1000);
     });
+  }
+
+  async shutdownService() {
+    return this._queueAction(() => this._shutdownService());
   }
 
   async _shutdownService() {
@@ -148,6 +168,10 @@ export default class NodeREDController {
         resolve();
       }
     });
+  }
+
+  async shutdownService() {
+    return this._queueAction(() => this._restartService());
   }
 
   async _restartService() {
