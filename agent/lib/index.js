@@ -287,6 +287,7 @@ var EnebularAgent = function () {
   }, {
     key: 'handleDeviceMasterMessage',
     value: function handleDeviceMasterMessage(messageType, message) {
+      console.log('handleDeviceMasterMessage', messageType, message);
       this._messageEmitter.emit(messageType, message);
     }
   }]);

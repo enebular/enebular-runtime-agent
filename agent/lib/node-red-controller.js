@@ -106,6 +106,7 @@ var NodeREDController = function () {
   }, {
     key: '_queueAction',
     value: function _queueAction(fn) {
+      console.log('NodeREDController#_queueAction');
       this._actions.push(fn);
       if (!this._isProcessingActions) {
         this._processActions();
@@ -120,26 +121,27 @@ var NodeREDController = function () {
           while (1) {
             switch (_context.prev = _context.next) {
               case 0:
+                console.log('NodeREDController#_processActions', this._actions.length);
                 this._isProcessingActions = true;
 
-              case 1:
+              case 2:
                 if (!(this._actions.length > 0)) {
-                  _context.next = 7;
+                  _context.next = 8;
                   break;
                 }
 
                 action = this._actions.shift();
-                _context.next = 5;
+                _context.next = 6;
                 return action();
 
-              case 5:
-                _context.next = 1;
+              case 6:
+                _context.next = 2;
                 break;
 
-              case 7:
+              case 8:
                 this._isProcessingActions = false;
 
-              case 8:
+              case 9:
               case 'end':
                 return _context.stop();
             }
@@ -161,14 +163,15 @@ var NodeREDController = function () {
           while (1) {
             switch (_context2.prev = _context2.next) {
               case 0:
-                _context2.next = 2;
+                console.log('NodeREDController#_fetchAndUpdateFlow', params);
+                _context2.next = 3;
                 return this._downloadAndUpdatePackage(params.downloadUrl);
 
-              case 2:
-                _context2.next = 4;
+              case 3:
+                _context2.next = 5;
                 return this._restartService();
 
-              case 4:
+              case 5:
               case 'end':
                 return _context2.stop();
             }
@@ -191,28 +194,29 @@ var NodeREDController = function () {
           while (1) {
             switch (_context3.prev = _context3.next) {
               case 0:
-                _context3.next = 2;
+                console.log('NodeREDController#_downloadAndUpdatePackage', downloadUrl);
+                _context3.next = 3;
                 return (0, _isomorphicFetch2.default)(downloadUrl);
 
-              case 2:
+              case 3:
                 res = _context3.sent;
 
                 if (!(res.status >= 400)) {
-                  _context3.next = 5;
+                  _context3.next = 6;
                   break;
                 }
 
                 throw new Error('invalid url');
 
-              case 5:
-                _context3.next = 7;
+              case 6:
+                _context3.next = 8;
                 return res.json();
 
-              case 7:
+              case 8:
                 body = _context3.sent;
                 return _context3.abrupt('return', this._updatePackage(body));
 
-              case 9:
+              case 10:
               case 'end':
                 return _context3.stop();
             }
@@ -238,6 +242,7 @@ var NodeREDController = function () {
           while (1) {
             switch (_context4.prev = _context4.next) {
               case 0:
+                console.log('NodeREDController#_updatePackage', flowPackage);
                 updates = [];
 
                 if (flowPackage.flow || flowPackage.flows) {
@@ -273,14 +278,14 @@ var NodeREDController = function () {
                     });
                   }));
                 }
-                _context4.next = 6;
+                _context4.next = 7;
                 return _promise2.default.all(updates);
 
-              case 6:
-                _context4.next = 8;
+              case 7:
+                _context4.next = 9;
                 return this._resolveDependency();
 
-              case 8:
+              case 9:
               case 'end':
                 return _context4.stop();
             }
@@ -334,6 +339,7 @@ var NodeREDController = function () {
           while (1) {
             switch (_context6.prev = _context6.next) {
               case 0:
+                console.log('NodeREDController#_startService');
                 return _context6.abrupt('return', new _promise2.default(function (resolve, reject) {
                   var _command$split = _this4._command.split(/\s+/),
                       _command$split2 = (0, _toArray3.default)(_command$split),
@@ -346,7 +352,7 @@ var NodeREDController = function () {
                   _this4._cproc = cproc;
                 }));
 
-              case 1:
+              case 2:
               case 'end':
                 return _context6.stop();
             }
@@ -370,6 +376,7 @@ var NodeREDController = function () {
           while (1) {
             switch (_context7.prev = _context7.next) {
               case 0:
+                console.log('NodeREDController#_shutdownService');
                 return _context7.abrupt('return', new _promise2.default(function (resolve, reject) {
                   var cproc = _this5._cproc;
                   if (cproc) {
@@ -383,7 +390,7 @@ var NodeREDController = function () {
                   }
                 }));
 
-              case 1:
+              case 2:
               case 'end':
                 return _context7.stop();
             }
@@ -405,14 +412,15 @@ var NodeREDController = function () {
           while (1) {
             switch (_context8.prev = _context8.next) {
               case 0:
-                _context8.next = 2;
+                console.log('NodeREDController#_restartService');
+                _context8.next = 3;
                 return this._shutdownService();
 
-              case 2:
-                _context8.next = 4;
+              case 3:
+                _context8.next = 5;
                 return this._startService();
 
-              case 4:
+              case 5:
               case 'end':
                 return _context8.stop();
             }

@@ -144,6 +144,7 @@ export default class EnebularAgent {
    *
    */
   handleDeviceMasterMessage(messageType: string, message: any) {
+    console.log('handleDeviceMasterMessage', messageType, message);
     this._messageEmitter.emit(messageType, message);
   }
 }

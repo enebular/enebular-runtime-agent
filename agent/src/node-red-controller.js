@@ -44,6 +44,7 @@ export default class NodeREDController {
   }
 
   _queueAction(fn: () => Promise<any>) {
+    console.log('NodeREDController#_queueAction');
     this._actions.push(fn);
     if (!this._isProcessingActions) {
       this._processActions();
@@ -51,6 +52,7 @@ export default class NodeREDController {
   }
 
   async _processActions() {
+    console.log('NodeREDController#_processActions', this._actions.length);
     this._isProcessingActions = true;
     while (this._actions.length > 0) {
       const action = this._actions.shift();
@@ -60,11 +62,13 @@ export default class NodeREDController {
   }
 
   async _fetchAndUpdateFlow(params: { downloadUrl: string }) {
+    console.log('NodeREDController#_fetchAndUpdateFlow', params);
     await this._downloadAndUpdatePackage(params.downloadUrl);
     await this._restartService();
   }
 
   async _downloadAndUpdatePackage(downloadUrl: string) {
+    console.log('NodeREDController#_downloadAndUpdatePackage', downloadUrl);
     const res = await fetch(downloadUrl);
     if (res.status >= 400) {
       throw new Error('invalid url');
@@ -74,6 +78,7 @@ export default class NodeREDController {
   }
 
   async _updatePackage(flowPackage: NodeRedFlowPackage) {
+    console.log('NodeREDController#_updatePackage', flowPackage);
     const updates = [];
     if (flowPackage.flow || flowPackage.flows) {
       const flows = flowPackage.flow || flowPackage.flows;
@@ -119,16 +124,20 @@ export default class NodeREDController {
   }
 
   async _startService() {
-    return new Promise((resolve, reject) => {
+    console.log('NodeREDController#_startService');
+    return new Promise((resolve) => {
       const [command, ...args] = this._command.split(/\s+/);
       const cproc = spawn(command, args, { stdio: 'inherit', cwd: this._dir });
-      cproc.on('error', reject);
-      cproc.once('exit', resolve);
+      cproc.once('exit', (code) => {
+        this._cproc = null;
+      });
       this._cproc = cproc;
+      resolve();
     });
   }
 
   async _shutdownService() {
+    console.log('NodeREDController#_shutdownService');
     return new Promise((resolve, reject) => {
       const cproc = this._cproc;
       if (cproc) {
@@ -144,6 +153,7 @@ export default class NodeREDController {
   }
 
   async _restartService() {
+    console.log('NodeREDController#_restartService');
     await this._shutdownService();
     await this._startService();
   }
