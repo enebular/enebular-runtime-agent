@@ -170,7 +170,7 @@ export default class NodeREDController {
     });
   }
 
-  async shutdownService() {
+  async restartService() {
     return this._queueAction(() => this._restartService());
   }
 
