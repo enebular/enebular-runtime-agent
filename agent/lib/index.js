@@ -4,14 +4,6 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _stringify = require('babel-runtime/core-js/json/stringify');
-
-var _stringify2 = _interopRequireDefault(_stringify);
-
-var _promise = require('babel-runtime/core-js/promise');
-
-var _promise2 = _interopRequireDefault(_promise);
-
 var _regenerator = require('babel-runtime/regenerator');
 
 var _regenerator2 = _interopRequireDefault(_regenerator);
@@ -36,11 +28,25 @@ var _path = require('path');
 
 var _path2 = _interopRequireDefault(_path);
 
-var _child_process = require('child_process');
+var _os = require('os');
 
-var _isomorphicFetch = require('isomorphic-fetch');
+var _os2 = _interopRequireDefault(_os);
 
-var _isomorphicFetch2 = _interopRequireDefault(_isomorphicFetch);
+var _events = require('events');
+
+var _events2 = _interopRequireDefault(_events);
+
+var _nodeRedController = require('./node-red-controller');
+
+var _nodeRedController2 = _interopRequireDefault(_nodeRedController);
+
+var _deviceAuthMediator = require('./device-auth-mediator');
+
+var _deviceAuthMediator2 = _interopRequireDefault(_deviceAuthMediator);
+
+var _agentManagerMediator = require('./agent-manager-mediator');
+
+var _agentManagerMediator2 = _interopRequireDefault(_agentManagerMediator);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -52,50 +58,112 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 /**
  *
  */
-var EnebularAgent = function () {
-  function EnebularAgent(_ref) {
-    var command = _ref.command,
-        args = _ref.args,
-        pkgDir = _ref.pkgDir;
-    (0, _classCallCheck3.default)(this, EnebularAgent);
-    this._cproc = null;
+function isPossibleStateTransition(state, nextState) {
+  switch (state) {
+    case 'init':
+      return nextState === 'registered' || nextState === 'unregistered';
+    case 'registered':
+      return nextState === 'authenticated' || nextState === 'unauthenticated';
+    case 'unregistered':
+      return nextState === 'registered';
+    case 'authenticated':
+      return nextState === 'unauthenticated';
+    case 'unauthenticated':
+      return nextState === 'authenticated';
+  }
+}
 
-    this._command = command;
-    this._args = args;
-    this._pkgDir = pkgDir;
+/**
+ *
+ */
+
+var EnebularAgent = function () {
+  function EnebularAgent(config) {
+    (0, _classCallCheck3.default)(this, EnebularAgent);
+    var nodeRedDir = config.nodeRedDir,
+        _config$nodeRedComman = config.nodeRedCommand,
+        nodeRedCommand = _config$nodeRedComman === undefined ? 'npm start' : _config$nodeRedComman,
+        _config$configFile = config.configFile,
+        configFile = _config$configFile === undefined ? _path2.default.join(_os2.default.homedir(), '.enebular-config.json') : _config$configFile;
+
+    this._messageEmitter = new _events2.default();
+    this._nodeRed = new _nodeRedController2.default(nodeRedDir, nodeRedCommand, this._messageEmitter);
+    this._deviceAuth = new _deviceAuthMediator2.default(this._messageEmitter);
+    this._agentMan = new _agentManagerMediator2.default();
+    this._configFile = configFile;
+    this._agentState = 'init';
+    this._loadAgentConfig();
   }
 
   (0, _createClass3.default)(EnebularAgent, [{
-    key: 'downloadAndUpdatePackage',
+    key: '_loadAgentConfig',
+    value: function _loadAgentConfig() {
+      try {
+        var data = _fs2.default.readFileSync(this._configFile, 'utf8');
+
+        var _JSON$parse = JSON.parse(data),
+            connectionId = _JSON$parse.connectionId,
+            deviceId = _JSON$parse.deviceId,
+            agentManagerBaseUrl = _JSON$parse.agentManagerBaseUrl,
+            authRequestUrl = _JSON$parse.authRequestUrl;
+
+        if (connectionId && deviceId && agentManagerBaseUrl && authRequestUrl) {
+          this._connectionId = deviceId;
+          this._deviceId = deviceId;
+          this._deviceAuth.setAuthRequestUrl(authRequestUrl);
+          this._agentMan.setBaseUrl(agentManagerBaseUrl);
+          this._changeAgentState('registered');
+        }
+      } catch (e) {
+        console.error(e);
+        this._changeAgentState('unregistered');
+      }
+    }
+  }, {
+    key: '_changeAgentState',
+    value: function _changeAgentState(nextState) {
+      if (isPossibleStateTransition(this._agentState, nextState)) {
+        this._agentState = nextState;
+        console.log('*** agent state : ' + this._agentState + ' ***');
+        try {
+          this._handleChangeState();
+        } catch (err) {
+          console.error(err);
+        }
+      } else {
+        console.warn('Impossible state transition requested : ' + this._agentState + ' => ' + nextState);
+      }
+    }
+  }, {
+    key: '_handleChangeState',
     value: function () {
-      var _ref2 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee(downloadUrl) {
-        var res, body;
+      var _ref = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee() {
         return _regenerator2.default.wrap(function _callee$(_context) {
           while (1) {
             switch (_context.prev = _context.next) {
               case 0:
-                _context.next = 2;
-                return (0, _isomorphicFetch2.default)(downloadUrl);
+                _context.t0 = this._agentState;
+                _context.next = _context.t0 === 'registered' ? 3 : _context.t0 === 'unregistered' ? 6 : _context.t0 === 'authenticated' ? 7 : 10;
+                break;
 
-              case 2:
-                res = _context.sent;
-
-                if (!(res.status >= 400)) {
-                  _context.next = 5;
-                  break;
-                }
-
-                throw new Error('invalid url');
+              case 3:
+                _context.next = 5;
+                return this._requestDeviceAuthentication();
 
               case 5:
-                _context.next = 7;
-                return res.json();
+                return _context.abrupt('break', 10);
+
+              case 6:
+                return _context.abrupt('break', 10);
 
               case 7:
-                body = _context.sent;
-                return _context.abrupt('return', this.updatePackage(body));
+                _context.next = 9;
+                return this._startStatusNotification();
 
               case 9:
+                return _context.abrupt('break', 10);
+
+              case 10:
               case 'end':
                 return _context.stop();
             }
@@ -103,95 +171,75 @@ var EnebularAgent = function () {
         }, _callee, this);
       }));
 
-      function downloadAndUpdatePackage(_x) {
-        return _ref2.apply(this, arguments);
+      function _handleChangeState() {
+        return _ref.apply(this, arguments);
       }
 
-      return downloadAndUpdatePackage;
+      return _handleChangeState;
     }()
   }, {
-    key: 'updatePackage',
+    key: '_requestDeviceAuthentication',
     value: function () {
-      var _ref3 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee2(flowPackage) {
-        var _this = this;
-
-        var updates, _flows, _creds;
+      var _ref2 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee2() {
+        var connectionId, deviceId, _ref3, accessToken;
 
         return _regenerator2.default.wrap(function _callee2$(_context2) {
           while (1) {
             switch (_context2.prev = _context2.next) {
               case 0:
-                updates = [];
+                connectionId = this._connectionId, deviceId = this._deviceId;
 
-                if (flowPackage.flow || flowPackage.flows) {
-                  _flows = flowPackage.flow || flowPackage.flows;
+                if (!(!connectionId || !deviceId)) {
+                  _context2.next = 3;
+                  break;
+                }
 
-                  updates.push(new _promise2.default(function (resolve, reject) {
-                    var flowFilePath = _path2.default.join(_this._pkgDir, '.node-red-config', 'flows.json');
-                    _fs2.default.writeFile(flowFilePath, (0, _stringify2.default)(_flows), function (err) {
-                      return err ? reject(err) : resolve();
-                    });
-                  }));
-                }
-                if (flowPackage.cred || flowPackage.creds) {
-                  _creds = flowPackage.cred || flowPackage.creds;
+                throw new Error('Connection ID and Device ID are not configured yet for the agent');
 
-                  updates.push(new _promise2.default(function (resolve, reject) {
-                    var credFilePath = _path2.default.join(_this._pkgDir, '.node-red-config', 'flows_cred.json');
-                    _fs2.default.writeFile(credFilePath, (0, _stringify2.default)(_creds), function (err) {
-                      return err ? reject(err) : resolve();
-                    });
-                  }));
-                }
-                if (flowPackage.packages) {
-                  updates.push(new _promise2.default(function (resolve, reject) {
-                    var packageJSONFilePath = _path2.default.join(_this._pkgDir, '.node-red-config', 'enebular-agent-dynamic-deps', 'package.json');
-                    var packageJSON = (0, _stringify2.default)({
-                      name: 'enebular-agent-dynamic-deps',
-                      version: '0.0.1',
-                      dependencies: flowPackage.packages
-                    }, null, 2);
-                    _fs2.default.writeFile(packageJSONFilePath, packageJSON, function (err) {
-                      return err ? reject(err) : resolve();
-                    });
-                  }));
-                }
+              case 3:
+                _context2.prev = 3;
                 _context2.next = 6;
-                return _promise2.default.all(updates);
+                return this._deviceAuth.requestAuthenticate(connectionId, deviceId);
 
               case 6:
-                _context2.next = 8;
-                return this.resolveDependency();
+                _ref3 = _context2.sent;
+                accessToken = _ref3.accessToken;
 
-              case 8:
+                this._agentMan.setAccessToken(accessToken);
+                this._changeAgentState('authenticated');
+                _context2.next = 16;
+                break;
+
+              case 12:
+                _context2.prev = 12;
+                _context2.t0 = _context2['catch'](3);
+
+                this._changeAgentState('unauthenticated');
+                throw _context2.t0;
+
+              case 16:
               case 'end':
                 return _context2.stop();
             }
           }
-        }, _callee2, this);
+        }, _callee2, this, [[3, 12]]);
       }));
 
-      function updatePackage(_x2) {
-        return _ref3.apply(this, arguments);
+      function _requestDeviceAuthentication() {
+        return _ref2.apply(this, arguments);
       }
 
-      return updatePackage;
+      return _requestDeviceAuthentication;
     }()
   }, {
-    key: 'resolveDependency',
+    key: '_startStatusNotification',
     value: function () {
       var _ref4 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee3() {
-        var _this2 = this;
-
         return _regenerator2.default.wrap(function _callee3$(_context3) {
           while (1) {
             switch (_context3.prev = _context3.next) {
               case 0:
-                return _context3.abrupt('return', new _promise2.default(function (resolve, reject) {
-                  var cproc = (0, _child_process.spawn)('npm', ['install', 'enebular-agent-dynamic-deps'], { stdio: 'inherit', cwd: _this2._pkgDir });
-                  cproc.on('error', reject);
-                  cproc.once('exit', resolve);
-                }));
+                this._agentMan.startStatusReport();
 
               case 1:
               case 'end':
@@ -201,109 +249,22 @@ var EnebularAgent = function () {
         }, _callee3, this);
       }));
 
-      function resolveDependency() {
+      function _startStatusNotification() {
         return _ref4.apply(this, arguments);
       }
 
-      return resolveDependency;
+      return _startStatusNotification;
     }()
+
+    /**
+     *
+     */
+
   }, {
-    key: 'startService',
-    value: function () {
-      var _ref5 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee4() {
-        var _this3 = this;
-
-        return _regenerator2.default.wrap(function _callee4$(_context4) {
-          while (1) {
-            switch (_context4.prev = _context4.next) {
-              case 0:
-                return _context4.abrupt('return', new _promise2.default(function (resolve, reject) {
-                  var cproc = (0, _child_process.spawn)(_this3._command, _this3._args, { stdio: 'inherit', cwd: _this3._pkgDir });
-                  cproc.on('error', reject);
-                  cproc.once('exit', resolve);
-                  _this3._cproc = cproc;
-                }));
-
-              case 1:
-              case 'end':
-                return _context4.stop();
-            }
-          }
-        }, _callee4, this);
-      }));
-
-      function startService() {
-        return _ref5.apply(this, arguments);
-      }
-
-      return startService;
-    }()
-  }, {
-    key: 'shutdownService',
-    value: function () {
-      var _ref6 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee5() {
-        var _this4 = this;
-
-        return _regenerator2.default.wrap(function _callee5$(_context5) {
-          while (1) {
-            switch (_context5.prev = _context5.next) {
-              case 0:
-                return _context5.abrupt('return', new _promise2.default(function (resolve, reject) {
-                  var cproc = _this4._cproc;
-                  if (cproc) {
-                    cproc.kill();
-                    cproc.once('exit', function () {
-                      _this4._cproc = null;
-                      resolve();
-                    });
-                  } else {
-                    resolve();
-                  }
-                }));
-
-              case 1:
-              case 'end':
-                return _context5.stop();
-            }
-          }
-        }, _callee5, this);
-      }));
-
-      function shutdownService() {
-        return _ref6.apply(this, arguments);
-      }
-
-      return shutdownService;
-    }()
-  }, {
-    key: 'restartService',
-    value: function () {
-      var _ref7 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee6() {
-        return _regenerator2.default.wrap(function _callee6$(_context6) {
-          while (1) {
-            switch (_context6.prev = _context6.next) {
-              case 0:
-                _context6.next = 2;
-                return this.shutdownService();
-
-              case 2:
-                _context6.next = 4;
-                return this.startService();
-
-              case 4:
-              case 'end':
-                return _context6.stop();
-            }
-          }
-        }, _callee6, this);
-      }));
-
-      function restartService() {
-        return _ref7.apply(this, arguments);
-      }
-
-      return restartService;
-    }()
+    key: 'handleDeviceMasterMessage',
+    value: function handleDeviceMasterMessage(messageType, message) {
+      this._messageEmitter.emit(messageType, message);
+    }
   }]);
   return EnebularAgent;
 }();
