@@ -6,22 +6,35 @@
   "scripts": {
     "start": "babel-node index.js",
     "flow": "flow",
-    "lint": "eslint *.js"
+    "lint": "eslint *.js",
+    "test": "ava"
   },
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "ava": "^0.22.0",
     "babel-cli": "^6.18.0",
     "babel-eslint": "^7.2.3",
     "babel-preset-es2015": "^6.18.0",
     "babel-preset-es2017": "^6.16.0",
     "babel-preset-flow": "^6.23.0",
+    "basic-auth": "^1.1.0",
     "eslint": "^3.12.2",
     "eslint-plugin-flow": "^2.29.1",
-    "flow-bin": "^0.54.1"
+    "express": "^4.15.4",
+    "flow-bin": "^0.54.1",
+    "isomorphic-fetch": "^2.2.1"
   },
   "dependencies": {
-    "@uhuru/enebular-runtime-agent": "file:../../../agent",
+    "@uhuru/enebular-runtime-agent": "file:../../agent",
+    "babel-runtime": "^6.26.0",
     "mode-device": "^1.1.5"
+  },
+  "ava": {
+    "require": [
+      "babel-register",
+      "babel-polyfill"
+    ],
+    "babel": "inherit"
   }
 }

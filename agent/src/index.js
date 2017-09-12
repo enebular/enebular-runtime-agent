@@ -77,6 +77,10 @@ export default class EnebularAgent {
     return this._nodeRed.startService();
   }
 
+  async shutdown() {
+    return this._nodeRed.shutdownService();
+  }
+
   _loadAgentConfig() {
     try {
       const data = fs.readFileSync(this._configFile, 'utf8');

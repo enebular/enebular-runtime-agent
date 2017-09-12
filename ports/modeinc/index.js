@@ -20,6 +20,7 @@ async function startup() {
     device.listenCommands();
     await agent.start();
     console.log('agent started up');
+    return agent;
   } catch (err) {
     console.error(err);
     process.exit(1);
@@ -29,3 +30,5 @@ async function startup() {
 if (require.main === module) {
   startup();
 }
+
+export default startup;
