@@ -1,5 +1,5 @@
 {
-  "name": "modeinc-agent",
+  "name": "enebular-modeinc-agent",
   "version": "2.0.0-alpha",
   "description": "",
   "main": "lib/index.js",
@@ -28,7 +28,7 @@
     "isomorphic-fetch": "^2.2.1"
   },
   "dependencies": {
-    "@uhuru/enebular-runtime-agent": "file:../../agent",
+    "enebular-runtime-agent": "file:../../agent",
     "babel-runtime": "^6.26.0",
     "mode-device": "^1.1.5"
   },

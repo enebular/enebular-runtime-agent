@@ -44,14 +44,6 @@
   dependencies:
     arrify "^1.0.1"
 
-"@uhuru/enebular-runtime-agent@file:../../agent":
-  version "2.0.0-alpha"
-  dependencies:
-    babel-preset-flow "^6.23.0"
-    babel-runtime "^6.23.0"
-    isomorphic-fetch "^2.2.1"
-    jsonwebtoken "^8.0.0"
-
 abbrev@1:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/abbrev/-/abbrev-1.1.0.tgz#d0554c2256636e2f56e7c2e5ad183f859428d81f"
@@ -1373,6 +1365,14 @@ encoding@^0.1.11:
   resolved "https://registry.yarnpkg.com/encoding/-/encoding-0.1.12.tgz#538b66f3ee62cd1ab51ec323829d1f9480c74beb"
   dependencies:
     iconv-lite "~0.4.13"
+
+"enebular-runtime-agent@file:../../agent":
+  version "2.0.0-alpha"
+  dependencies:
+    babel-preset-flow "^6.23.0"
+    babel-runtime "^6.23.0"
+    isomorphic-fetch "^2.2.1"
+    jsonwebtoken "^8.0.0"
 
 equal-length@^1.0.0:
   version "1.0.1"
