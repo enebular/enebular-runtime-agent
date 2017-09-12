@@ -7,7 +7,7 @@ import crypto from 'crypto';
 import express from 'express';
 import auth from 'basic-auth';
 import fetch from 'isomorphic-fetch';
-import startupAgent from '..';
+import { startup as startupAgent, shutdown as shutdownAgent } from '..';
 
 const MODEINC_API_URL = 'https://api.tinkermode.com';
 const { PROJECT_ID, PROJECT_API_KEY, HOME_ID, DEVICE_ID, MOCK_SERVER_PORT } = process.env;
@@ -120,14 +120,12 @@ async function waitFlowHttpCall(name, timeout = 10000) {
 }
 
 
-let agent;
-
 /**
  *
  */
 test.before(async () => {
   await startMockService();
-  agent = await startupAgent();
+  await startupAgent();
   await delay(5000);
 });
 
@@ -152,7 +150,5 @@ test('notify device to deploy flow package', async (t) => {
  */
 test.after(async () => {
   console.log('shutting down...');
-  if (agent) {
-    await agent.shutdown();
-  }
+  await shutdownAgent();
 });

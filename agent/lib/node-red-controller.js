@@ -533,7 +533,7 @@ var NodeREDController = function () {
       return _shutdownService;
     }()
   }, {
-    key: 'shutdownService',
+    key: 'restartService',
     value: function () {
       var _ref13 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee13() {
         var _this10 = this;
@@ -554,11 +554,11 @@ var NodeREDController = function () {
         }, _callee13, this);
       }));
 
-      function shutdownService() {
+      function restartService() {
         return _ref13.apply(this, arguments);
       }
 
-      return shutdownService;
+      return restartService;
     }()
   }, {
     key: '_restartService',

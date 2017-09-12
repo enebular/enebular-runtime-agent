@@ -18,8 +18,8 @@ async function startup() {
       agent.handleDeviceMasterMessage(msg.action, msg.parameters);
     };
     device.listenCommands();
-    await agent.start();
-    console.log('agent started up');
+    await agent.startup();
+    console.log('### enebular agent started up ####');
     return agent;
   } catch (err) {
     console.error(err);
@@ -27,8 +27,12 @@ async function startup() {
   }
 }
 
+async function shutdown() {
+  return agent.shutdown();
+}
+
 if (require.main === module) {
   startup();
 }
 
-export default startup;
+export { startup, shutdown };
