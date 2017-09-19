@@ -4,6 +4,7 @@
   "description": "",
   "main": "lib/index",
   "scripts": {
+    "prepublish": "npm run build",
     "build": "npm run build:clean && npm run build:lib && npm run build:flow",
     "build:clean": "rimraf lib",
     "build:lib": "babel -d lib src",
