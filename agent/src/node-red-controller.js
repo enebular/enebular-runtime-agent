@@ -9,7 +9,7 @@ import fetch from 'isomorphic-fetch';
 /**
  *
  */
-const log = debug('enebular-agent-man:node-red-controller');
+const log = debug('enebular-runtime-agent:node-red-controller');
 
 /**
  *
@@ -33,6 +33,12 @@ export default class NodeREDController {
 
   constructor(dir: string, command: string, emitter: EventEmitter) {
     this._dir = dir;
+    if (!fs.existsSync(this._dir)) {
+      throw new Error(`Given Node RED dir is not found: ${this._dir}`);
+    }
+    if (!fs.existsSync(path.join(this._dir, 'package.json'))) {
+      throw new Error(`Given Node RED dir does not have package.json file : ${this._dir}`);
+    }
     this._command = command;
     this._registerHandler(emitter);
   }

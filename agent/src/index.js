@@ -89,14 +89,20 @@ export default class EnebularAgent {
 
   _loadAgentConfig() {
     try {
-      const data = fs.readFileSync(this._configFile, 'utf8');
-      const { connectionId, deviceId, agentManagerBaseUrl, authRequestUrl } = JSON.parse(data);
-      if (connectionId && deviceId && agentManagerBaseUrl && authRequestUrl) {
-        this._connectionId = deviceId;
-        this._deviceId = deviceId;
-        this._deviceAuth.setAuthRequestUrl(authRequestUrl);
-        this._agentMan.setBaseUrl(agentManagerBaseUrl);
-        this._changeAgentState('registered');
+      if (fs.existsSync(this._configFile)) {
+        log('reading config file', this._configFile);
+        const data = fs.readFileSync(this._configFile, 'utf8');
+        const { connectionId, deviceId, agentManagerBaseUrl, authRequestUrl } = JSON.parse(data);
+        if (connectionId && deviceId && agentManagerBaseUrl && authRequestUrl) {
+          this._connectionId = deviceId;
+          this._deviceId = deviceId;
+          this._deviceAuth.setAuthRequestUrl(authRequestUrl);
+          this._agentMan.setBaseUrl(agentManagerBaseUrl);
+          this._changeAgentState('registered');
+        }
+      } else {
+        log('creating new config file ', this._configFile);
+        fs.writeFileSync(this._configFile, '{}', 'utf8');
       }
     } catch (e) {
       console.error(e);

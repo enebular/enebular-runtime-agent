@@ -7,7 +7,7 @@ import jwt from 'jsonwebtoken';
 /**
  *
  */
-const log = debug('enebular-agent-man:device-auth-mediator');
+const log = debug('enebular-runtime-agent:device-auth-mediator');
 
 /**
  *
