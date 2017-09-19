@@ -2,10 +2,14 @@
 import fs from 'fs';
 import EventEmitter from 'events';
 import path from 'path';
-import { spawn, exec } from 'child_process';
+import { spawn, exec, type ChildProcess } from 'child_process';
+import debug from 'debug';
 import fetch from 'isomorphic-fetch';
-import type { ChildProcess } from 'child_process';
 
+/**
+ *
+ */
+const log = debug('enebular-agent-man:node-red-controller');
 
 /**
  *
@@ -42,7 +46,7 @@ export default class NodeREDController {
   }
 
   async _queueAction(fn: () => Promise<any>) {
-    console.log('NodeREDController#_queueAction');
+    log('_queueAction');
     this._actions.push(fn);
     if (this._isProcessing) {
       await this._isProcessing;
@@ -52,7 +56,7 @@ export default class NodeREDController {
   }
 
   async _processActions() {
-    console.log('NodeREDController#_processActions', this._actions.length);
+    log('_processActions', this._actions.length);
     this._isProcessing = (async () => {
       while (this._actions.length > 0) {
         const action = this._actions.shift();
@@ -68,13 +72,13 @@ export default class NodeREDController {
   }
 
   async _fetchAndUpdateFlow(params: { downloadUrl: string }) {
-    console.log('NodeREDController#_fetchAndUpdateFlow', params);
+    log('_fetchAndUpdateFlow', params);
     await this._downloadAndUpdatePackage(params.downloadUrl);
     await this._restartService();
   }
 
   async _downloadAndUpdatePackage(downloadUrl: string) {
-    console.log('NodeREDController#_downloadAndUpdatePackage', downloadUrl);
+    log('_downloadAndUpdatePackage', downloadUrl);
     const res = await fetch(downloadUrl);
     if (res.status >= 400) {
       throw new Error('invalid url');
@@ -84,7 +88,7 @@ export default class NodeREDController {
   }
 
   async _updatePackage(flowPackage: NodeRedFlowPackage) {
-    console.log('NodeREDController#_updatePackage', flowPackage);
+    log('_updatePackage', flowPackage);
     const updates = [];
     if (flowPackage.flow || flowPackage.flows) {
       const flows = flowPackage.flow || flowPackage.flows;
@@ -134,7 +138,7 @@ export default class NodeREDController {
   }
 
   async _startService() {
-    console.log('NodeREDController#_startService');
+    log('_startService');
     return new Promise((resolve, reject) => {
       const [command, ...args] = this._command.split(/\s+/);
       const cproc = spawn(command, args, { stdio: 'inherit', cwd: this._dir });
@@ -155,7 +159,7 @@ export default class NodeREDController {
   }
 
   async _shutdownService() {
-    console.log('NodeREDController#_shutdownService');
+    log('_shutdownService');
     return new Promise((resolve, reject) => {
       const cproc = this._cproc;
       if (cproc) {
@@ -175,7 +179,7 @@ export default class NodeREDController {
   }
 
   async _restartService() {
-    console.log('NodeREDController#_restartService');
+    log('_restartService');
     await this._shutdownService();
     await this._startService();
   }

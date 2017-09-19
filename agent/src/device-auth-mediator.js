@@ -1,7 +1,13 @@
 /* @flow */
 import EventEmitter from 'events';
 import crypto from 'crypto';
+import debug from 'debug';
 import jwt from 'jsonwebtoken';
+
+/**
+ *
+ */
+const log = debug('enebular-agent-man:device-auth-mediator');
 
 /**
  *
@@ -28,6 +34,7 @@ export default class DeviceAuthMediator extends EventEmitter {
   }
 
   async requestAuthenticate(connectionId: string, deviceId: string): Promise<DeviceAuthResponse> {
+    log('requestAuthenticate', connectionId, deviceId);
     const authRequestUrl = this._authRequestUrl;
     if (!authRequestUrl) { throw new Error('Authentication Request URL is not configured correctly'); }
     const nonce = crypto.randomBytes(16).toString('hex');
@@ -52,6 +59,7 @@ export default class DeviceAuthMediator extends EventEmitter {
   }
 
   async _waitTokens() {
+    log('_waitTokens');
     const seq = this._seq;
     return new Promise((resolve, reject) => {
       this.on('dispatch_auth_token', ({ id_token, access_token, state }) => {
@@ -71,6 +79,7 @@ export default class DeviceAuthMediator extends EventEmitter {
   }
 
   _cleanup() {
+    log('_cleanup');
     this._nonce = null;
     this.removeAllListeners('dispatch_auth_token');
   }

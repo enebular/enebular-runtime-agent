@@ -3,9 +3,15 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import EventEmitter from 'events';
+import debug from 'debug';
 import NodeREDController from './node-red-controller';
 import DeviceAuthMediator from './device-auth-mediator';
 import AgentManagerMediator from './agent-manager-mediator';
+
+/**
+ *
+ */
+const log = debug('enebular-runtime-agent');
 
 /**
  *
@@ -101,7 +107,7 @@ export default class EnebularAgent {
   _changeAgentState(nextState: AgentState) {
     if (isPossibleStateTransition(this._agentState, nextState)) {
       this._agentState = nextState;
-      console.log(`*** agent state : ${this._agentState} ***`);
+      log(`*** agent state : ${this._agentState} ***`);
       try {
         this._handleChangeState();
       } catch (err) {
@@ -148,7 +154,7 @@ export default class EnebularAgent {
    *
    */
   handleDeviceMasterMessage(messageType: string, message: any) {
-    console.log('handleDeviceMasterMessage', messageType, message);
+    log('handleDeviceMasterMessage', messageType, message);
     this._messageEmitter.emit(messageType, message);
   }
 }
