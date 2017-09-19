@@ -1,7 +1,7 @@
 /* @flow */
 import path from 'path';
 import ModeDevice from 'mode-device';
-import EnebularAgent from '@uhuru/enebular-runtime-agent';
+import EnebularAgent from 'enebular-runtime-agent';
 
 const { DEVICE_ID, DEVICE_API_KEY, NODE_RED_DIR } = process.env;
 
