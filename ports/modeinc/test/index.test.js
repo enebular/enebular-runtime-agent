@@ -5,8 +5,10 @@ import path from 'path';
 import EventEmitter from 'events';
 import crypto from 'crypto';
 import express from 'express';
+import bodyParser from 'body-parser';
 import auth from 'basic-auth';
 import fetch from 'isomorphic-fetch';
+import jwt from 'jsonwebtoken';
 import { startup as startupAgent, shutdown as shutdownAgent } from '..';
 
 const MODEINC_API_URL = 'https://api.tinkermode.com';
@@ -79,6 +81,8 @@ const mockEvent = new EventEmitter();
 async function startMockService() {
   const app = express();
 
+  app.use(bodyParser.json());
+
   app.get('/', (req, res) => {
     res.json({ message: 'hello' });
   });
@@ -93,26 +97,66 @@ async function startMockService() {
   });
 
   app.get('/hello', (req, res) => {
-    const { name: username, pass: password } = auth(req);
+    const { name: username, pass: password } = auth(req) || {};
     console.log('username=', username, ', password', password);
     if (username === MOCK_USERNAME && password === MOCK_PASSWORD) {
-      console.log('### received HELLO request flom flow ###');
+      console.log('### received HELLO request from flow ###');
       mockEvent.emit('hello', username);
       res.json({ message: `hello, ${username}` });
     } else {
-      console.log('### invalid HELLO request received ###');
-      res.status(400).json({ message: 'unauthorized access' });
+      const message = 'Authentication required to access to /hello';
+      mockEvent.emit('hello:error', new Error(message));
+      res.status(400).json({ success: false, message });
+    }
+  });
+
+  app.post('/token', (req, res) => {
+    const { deviceId, connectionId, nonce, state } = req.body;
+    if (connectionId && deviceId) {
+      console.log('### received token request from agent ###');
+      const token = jwt.sign({
+        iss: 'MOCK_ISSUER',
+        aud: 'MOCK_ISSUER',
+        sub: `${connectionId}::${deviceId}`,
+        nonce,
+        entity_type: 'device',
+      }, 'secret', { algorithm: 'HS256' });
+      mockEvent.emit('token', [token, state]);
+      res.json({ success: true, message: `hello, ${deviceId}` });
+    } else {
+      const message = 'Invalid auth token request';
+      mockEvent.emit('token:error', new Error(message));
+      res.status(400).json({ success: false, message });
+    }
+  });
+
+  app.post('/notify-status', (req, res) => {
+    const { status } = req.body;
+    const token = req.get('authorization');
+    console.log('#### token => ', token);
+    console.log(req.body);
+    if (token) {
+      mockEvent.emit('notify-status', status);
+      res.json({ success: true, message: 'status notified' });
+    } else {
+      const message = 'No auth token specified';
+      mockEvent.emit('notify-status:error', new Error(message));
+      res.status(400).json({ success: false, message });
     }
   });
 
   return new Promise((resolve) => {
-    app.listen(port, () => resolve());
+    app.listen(port, () => {
+      console.log('### mock server started up. ###');
+      resolve();
+    });
   });
 }
 
-async function waitFlowHttpCall(name, timeout = 10000) {
+async function waitHttpCall(name, timeout = 10000) {
   return new Promise((resolve, reject) => {
     mockEvent.once(name, resolve);
+    mockEvent.once(`${name}:error`, reject);
     setTimeout(() => {
       reject(new Error('mock event wait time out'));
     }, timeout);
@@ -120,24 +164,95 @@ async function waitFlowHttpCall(name, timeout = 10000) {
 }
 
 
+let _agent;
+let _token;
+let _state;
+
+function headerline(msg) {
+  console.log('');
+  console.log('*******************************');
+  console.log(msg);
+  console.log('*******************************');
+  console.log('');
+}
+
 /**
  *
  */
 test.before(async () => {
+  headerline('before');
+  const configFile = path.join(process.cwd(), '.enebular-config.json');
+  if (fs.existsSync(configFile)) {
+    fs.unlinkSync(configFile);
+  }
+  _agent = await startupAgent();
   await startMockService();
-  await startupAgent();
   await delay(5000);
 });
 
 /**
  *
  */
-test('notify device to deploy flow package', async (t) => {
+test.serial('notify device to register client', async (t) => {
+  headerline('register client');
+  let msg = {
+    action: 'register',
+    parameters: {
+      deviceId: DEVICE_ID,
+      connectionId: 'conn001',
+      agentManagerBaseUrl: `http://localhost:${port}`,
+      authRequestUrl: `http://localhost:${port}/token`,
+    },
+  };
+
+  const waitToken = waitHttpCall('token', 20000);
+
+  let ret = await notify(DEVICE_ID, msg);
+  t.true(ret.success);
+
+  [_token, _state] = await waitToken;
+  console.log('### token and state received', _token, _state);
+
+  t.true(typeof _token === 'string');
+  t.true(_agent._agentState === 'registered');
+});
+
+/**
+ *
+ */
+test.serial('notify device to auth token dispatch', async (t) => {
+  headerline('auth token dispatch');
+  let msg = {
+    action: 'dispatch_auth_token',
+    parameters: {
+      accessToken: _token,
+      idToken: _token,
+      state: _state,
+    },
+  };
+
+  const waitStatus = waitHttpCall('notify-status', 20000);
+
+  let ret = await notify(DEVICE_ID, msg);
+  t.true(ret.success);
+
+  const status = await waitStatus;
+
+  t.true(typeof status === 'string');
+  t.true(_agent._agentState === 'authenticated');
+
+});
+
+/**
+ *
+ */
+test.serial('notify device to deploy flow package', async (t) => {
+  headerline('deploy flow package');
   let msg = await createDeployMessage('01');
   let ret = await notify(DEVICE_ID, msg);
   t.true(ret.success);
 
-  const un = await waitFlowHttpCall('hello', 20000);
+  const un = await waitHttpCall('hello', 20000);
   t.true(un === MOCK_USERNAME);
 
   msg = await createDeployMessage('02');
@@ -145,10 +260,13 @@ test('notify device to deploy flow package', async (t) => {
   t.true(ret.success);
 });
 
+
+
 /**
  *
  */
-test.after(async () => {
-  console.log('shutting down...');
+test.after.always(async () => {
+  headerline('after');
+  console.log('### shutting down... ###');
   await shutdownAgent();
 });
