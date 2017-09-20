@@ -82,7 +82,7 @@ var _modeDevice = require('mode-device');
 
 var _modeDevice2 = _interopRequireDefault(_modeDevice);
 
-var _enebularRuntimeAgent = require('@uhuru/enebular-runtime-agent');
+var _enebularRuntimeAgent = require('enebular-runtime-agent');
 
 var _enebularRuntimeAgent2 = _interopRequireDefault(_enebularRuntimeAgent);
 

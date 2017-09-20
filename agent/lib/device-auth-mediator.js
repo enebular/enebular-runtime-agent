@@ -48,6 +48,10 @@ var _crypto = require('crypto');
 
 var _crypto2 = _interopRequireDefault(_crypto);
 
+var _debug = require('debug');
+
+var _debug2 = _interopRequireDefault(_debug);
+
 var _jsonwebtoken = require('jsonwebtoken');
 
 var _jsonwebtoken2 = _interopRequireDefault(_jsonwebtoken);
@@ -57,6 +61,13 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 /**
  *
  */
+var log = (0, _debug2.default)('enebular-runtime-agent:device-auth-mediator');
+
+/**
+ *
+ */
+
+
 var AUTH_TOKEN_TIMEOUT = 10000;
 
 var DeviceAuthMediator = function (_EventEmitter) {
@@ -89,23 +100,24 @@ var DeviceAuthMediator = function (_EventEmitter) {
           while (1) {
             switch (_context.prev = _context.next) {
               case 0:
+                log('requestAuthenticate', connectionId, deviceId);
                 authRequestUrl = this._authRequestUrl;
 
                 if (authRequestUrl) {
-                  _context.next = 3;
+                  _context.next = 4;
                   break;
                 }
 
                 throw new Error('Authentication Request URL is not configured correctly');
 
-              case 3:
+              case 4:
                 nonce = _crypto2.default.randomBytes(16).toString('hex');
 
                 this._nonce = nonce;
                 this._seq++;
                 state = 'req-' + this._seq;
                 tokens_ = this._waitTokens();
-                _context.next = 10;
+                _context.next = 11;
                 return fetch(authRequestUrl, {
                   method: 'POST',
                   body: (0, _stringify2.default)({ connectionId: connectionId, deviceId: deviceId, nonce: nonce, state: state }),
@@ -114,26 +126,26 @@ var DeviceAuthMediator = function (_EventEmitter) {
                   }
                 });
 
-              case 10:
+              case 11:
                 res = _context.sent;
 
                 if (res.ok) {
-                  _context.next = 16;
+                  _context.next = 17;
                   break;
                 }
 
                 this._cleanup();
                 throw new Error('Error occurred while requesting device authentication');
 
-              case 16:
-                _context.next = 18;
+              case 17:
+                _context.next = 19;
                 return tokens_;
 
-              case 18:
+              case 19:
                 tokens = _context.sent;
                 return _context.abrupt('return', tokens);
 
-              case 20:
+              case 21:
               case 'end':
                 return _context.stop();
             }
@@ -158,19 +170,23 @@ var DeviceAuthMediator = function (_EventEmitter) {
           while (1) {
             switch (_context2.prev = _context2.next) {
               case 0:
+                log('_waitTokens');
                 seq = this._seq;
                 return _context2.abrupt('return', new _promise2.default(function (resolve, reject) {
                   _this2.on('dispatch_auth_token', function (_ref3) {
-                    var id_token = _ref3.id_token,
-                        access_token = _ref3.access_token,
+                    var idToken = _ref3.idToken,
+                        accessToken = _ref3.accessToken,
                         state = _ref3.state;
 
-                    var _jwt$decode = _jsonwebtoken2.default.decode(id_token),
-                        payload = _jwt$decode.payload;
-
+                    log('dispatch auth token message received', idToken, accessToken);
+                    var payload = _jsonwebtoken2.default.decode(idToken);
+                    log('JWT decoded result = ', payload);
                     if (state === 'req-' + _this2._seq && payload.nonce && payload.nonce === _this2._nonce) {
+                      log('accepting received auth tokens');
                       _this2._cleanup();
-                      resolve({ idToken: id_token, accessToken: access_token });
+                      resolve({ idToken: idToken, accessToken: accessToken });
+                    } else {
+                      log('received auth tokens are NOT for this device. Ignore.', payload, _this2._nonce, state, _this2._seq);
                     }
                   });
                   setTimeout(function () {
@@ -181,7 +197,7 @@ var DeviceAuthMediator = function (_EventEmitter) {
                   }, AUTH_TOKEN_TIMEOUT);
                 }));
 
-              case 2:
+              case 3:
               case 'end':
                 return _context2.stop();
             }

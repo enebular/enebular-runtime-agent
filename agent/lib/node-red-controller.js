@@ -46,6 +46,10 @@ var _path2 = _interopRequireDefault(_path);
 
 var _child_process = require('child_process');
 
+var _debug = require('debug');
+
+var _debug2 = _interopRequireDefault(_debug);
+
 var _isomorphicFetch = require('isomorphic-fetch');
 
 var _isomorphicFetch2 = _interopRequireDefault(_isomorphicFetch);
@@ -55,7 +59,11 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 /**
  *
  */
+var log = (0, _debug2.default)('enebular-runtime-agent:node-red-controller');
 
+/**
+ *
+ */
 
 /**
  *
@@ -68,6 +76,12 @@ var NodeREDController = function () {
     this._isProcessing = null;
 
     this._dir = dir;
+    if (!_fs2.default.existsSync(this._dir)) {
+      throw new Error('Given Node RED dir is not found: ' + this._dir);
+    }
+    if (!_fs2.default.existsSync(_path2.default.join(this._dir, 'package.json'))) {
+      throw new Error('Given Node RED dir does not have package.json file : ' + this._dir);
+    }
     this._command = command;
     this._registerHandler(emitter);
   }
@@ -101,7 +115,7 @@ var NodeREDController = function () {
           while (1) {
             switch (_context.prev = _context.next) {
               case 0:
-                console.log('NodeREDController#_queueAction');
+                log('_queueAction');
                 this._actions.push(fn);
 
                 if (!this._isProcessing) {
@@ -144,7 +158,7 @@ var NodeREDController = function () {
           while (1) {
             switch (_context3.prev = _context3.next) {
               case 0:
-                console.log('NodeREDController#_processActions', this._actions.length);
+                log('_processActions', this._actions.length);
                 this._isProcessing = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee2() {
                   var action;
                   return _regenerator2.default.wrap(function _callee2$(_context2) {
@@ -227,7 +241,7 @@ var NodeREDController = function () {
           while (1) {
             switch (_context5.prev = _context5.next) {
               case 0:
-                console.log('NodeREDController#_fetchAndUpdateFlow', params);
+                log('_fetchAndUpdateFlow', params);
                 _context5.next = 3;
                 return this._downloadAndUpdatePackage(params.downloadUrl);
 
@@ -258,7 +272,7 @@ var NodeREDController = function () {
           while (1) {
             switch (_context6.prev = _context6.next) {
               case 0:
-                console.log('NodeREDController#_downloadAndUpdatePackage', downloadUrl);
+                log('_downloadAndUpdatePackage', downloadUrl);
                 _context6.next = 3;
                 return (0, _isomorphicFetch2.default)(downloadUrl);
 
@@ -306,7 +320,7 @@ var NodeREDController = function () {
           while (1) {
             switch (_context7.prev = _context7.next) {
               case 0:
-                console.log('NodeREDController#_updatePackage', flowPackage);
+                log('_updatePackage', flowPackage);
                 updates = [];
 
                 if (flowPackage.flow || flowPackage.flows) {
@@ -431,7 +445,7 @@ var NodeREDController = function () {
           while (1) {
             switch (_context10.prev = _context10.next) {
               case 0:
-                console.log('NodeREDController#_startService');
+                log('_startService');
                 return _context10.abrupt('return', new _promise2.default(function (resolve, reject) {
                   var _command$split = _this7._command.split(/\s+/),
                       _command$split2 = (0, _toArray3.default)(_command$split),
@@ -504,7 +518,7 @@ var NodeREDController = function () {
           while (1) {
             switch (_context12.prev = _context12.next) {
               case 0:
-                console.log('NodeREDController#_shutdownService');
+                log('_shutdownService');
                 return _context12.abrupt('return', new _promise2.default(function (resolve, reject) {
                   var cproc = _this9._cproc;
                   if (cproc) {
@@ -568,7 +582,7 @@ var NodeREDController = function () {
           while (1) {
             switch (_context14.prev = _context14.next) {
               case 0:
-                console.log('NodeREDController#_restartService');
+                log('_restartService');
                 _context14.next = 3;
                 return this._shutdownService();
 
@@ -590,6 +604,15 @@ var NodeREDController = function () {
 
       return _restartService;
     }()
+  }, {
+    key: 'getStatus',
+    value: function getStatus() {
+      if (this._cproc) {
+        return 'started';
+      } else {
+        return 'stopped';
+      }
+    }
   }]);
   return NodeREDController;
 }();

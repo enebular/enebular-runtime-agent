@@ -4,6 +4,10 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
+var _stringify = require('babel-runtime/core-js/json/stringify');
+
+var _stringify2 = _interopRequireDefault(_stringify);
+
 var _regenerator = require('babel-runtime/regenerator');
 
 var _regenerator2 = _interopRequireDefault(_regenerator);
@@ -36,6 +40,10 @@ var _events = require('events');
 
 var _events2 = _interopRequireDefault(_events);
 
+var _debug = require('debug');
+
+var _debug2 = _interopRequireDefault(_debug);
+
 var _nodeRedController = require('./node-red-controller');
 
 var _nodeRedController2 = _interopRequireDefault(_nodeRedController);
@@ -49,6 +57,11 @@ var _agentManagerMediator = require('./agent-manager-mediator');
 var _agentManagerMediator2 = _interopRequireDefault(_agentManagerMediator);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+/**
+ *
+ */
+var log = (0, _debug2.default)('enebular-runtime-agent');
 
 /**
  *
@@ -89,7 +102,7 @@ var EnebularAgent = function () {
     this._messageEmitter = new _events2.default();
     this._nodeRed = new _nodeRedController2.default(nodeRedDir, nodeRedCommand, this._messageEmitter);
     this._deviceAuth = new _deviceAuthMediator2.default(this._messageEmitter);
-    this._agentMan = new _agentManagerMediator2.default();
+    this._agentMan = new _agentManagerMediator2.default(this._nodeRed);
     this._configFile = configFile;
     this._agentState = 'init';
   }
@@ -146,21 +159,28 @@ var EnebularAgent = function () {
   }, {
     key: '_loadAgentConfig',
     value: function _loadAgentConfig() {
+      log('_loadAgentConfig');
       try {
-        var data = _fs2.default.readFileSync(this._configFile, 'utf8');
+        if (_fs2.default.existsSync(this._configFile)) {
+          log('reading config file', this._configFile);
+          var data = _fs2.default.readFileSync(this._configFile, 'utf8');
 
-        var _JSON$parse = JSON.parse(data),
-            connectionId = _JSON$parse.connectionId,
-            deviceId = _JSON$parse.deviceId,
-            agentManagerBaseUrl = _JSON$parse.agentManagerBaseUrl,
-            authRequestUrl = _JSON$parse.authRequestUrl;
+          var _JSON$parse = JSON.parse(data),
+              _connectionId = _JSON$parse.connectionId,
+              _deviceId = _JSON$parse.deviceId,
+              _agentManagerBaseUrl = _JSON$parse.agentManagerBaseUrl,
+              _authRequestUrl = _JSON$parse.authRequestUrl;
 
-        if (connectionId && deviceId && agentManagerBaseUrl && authRequestUrl) {
-          this._connectionId = deviceId;
-          this._deviceId = deviceId;
-          this._deviceAuth.setAuthRequestUrl(authRequestUrl);
-          this._agentMan.setBaseUrl(agentManagerBaseUrl);
-          this._changeAgentState('registered');
+          if (_connectionId && _deviceId && _agentManagerBaseUrl && _authRequestUrl) {
+            this._registerAgentInfo({ connectionId: _connectionId, deviceId: _deviceId, agentManagerBaseUrl: _agentManagerBaseUrl, authRequestUrl: _authRequestUrl });
+            this._changeAgentState('registered');
+          } else {
+            this._changeAgentState('unregistered');
+          }
+        } else {
+          log('creating new config file ', this._configFile);
+          _fs2.default.writeFileSync(this._configFile, '{}', 'utf8');
+          this._changeAgentState('unregistered');
         }
       } catch (e) {
         console.error(e);
@@ -170,9 +190,10 @@ var EnebularAgent = function () {
   }, {
     key: '_changeAgentState',
     value: function _changeAgentState(nextState) {
+      log('_changeAgentState', this._agentState, '=>', nextState);
       if (isPossibleStateTransition(this._agentState, nextState)) {
         this._agentState = nextState;
-        console.log('*** agent state : ' + this._agentState + ' ***');
+        log('*** agent state : ' + this._agentState + ' ***');
         try {
           this._handleChangeState();
         } catch (err) {
@@ -183,9 +204,24 @@ var EnebularAgent = function () {
       }
     }
   }, {
+    key: '_registerAgentInfo',
+    value: function _registerAgentInfo(_ref3) {
+      var connectionId = _ref3.connectionId,
+          deviceId = _ref3.deviceId,
+          authRequestUrl = _ref3.authRequestUrl,
+          agentManagerBaseUrl = _ref3.agentManagerBaseUrl;
+
+      this._connectionId = connectionId;
+      this._deviceId = deviceId;
+      this._deviceAuth.setAuthRequestUrl(authRequestUrl);
+      this._agentMan.setBaseUrl(agentManagerBaseUrl);
+      var data = (0, _stringify2.default)({ connectionId: connectionId, deviceId: deviceId, authRequestUrl: authRequestUrl, agentManagerBaseUrl: agentManagerBaseUrl });
+      _fs2.default.writeFileSync(this._configFile, data, 'utf8');
+    }
+  }, {
     key: '_handleChangeState',
     value: function () {
-      var _ref3 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee3() {
+      var _ref4 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee3() {
         return _regenerator2.default.wrap(function _callee3$(_context3) {
           while (1) {
             switch (_context3.prev = _context3.next) {
@@ -220,7 +256,7 @@ var EnebularAgent = function () {
       }));
 
       function _handleChangeState() {
-        return _ref3.apply(this, arguments);
+        return _ref4.apply(this, arguments);
       }
 
       return _handleChangeState;
@@ -228,53 +264,54 @@ var EnebularAgent = function () {
   }, {
     key: '_requestDeviceAuthentication',
     value: function () {
-      var _ref4 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee4() {
-        var connectionId, deviceId, _ref5, accessToken;
+      var _ref5 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee4() {
+        var connectionId, deviceId, _ref6, accessToken;
 
         return _regenerator2.default.wrap(function _callee4$(_context4) {
           while (1) {
             switch (_context4.prev = _context4.next) {
               case 0:
+                log('_requestDeviceAuthentication');
                 connectionId = this._connectionId, deviceId = this._deviceId;
 
                 if (!(!connectionId || !deviceId)) {
-                  _context4.next = 3;
+                  _context4.next = 4;
                   break;
                 }
 
                 throw new Error('Connection ID and Device ID are not configured yet for the agent');
 
-              case 3:
-                _context4.prev = 3;
-                _context4.next = 6;
+              case 4:
+                _context4.prev = 4;
+                _context4.next = 7;
                 return this._deviceAuth.requestAuthenticate(connectionId, deviceId);
 
-              case 6:
-                _ref5 = _context4.sent;
-                accessToken = _ref5.accessToken;
+              case 7:
+                _ref6 = _context4.sent;
+                accessToken = _ref6.accessToken;
 
                 this._agentMan.setAccessToken(accessToken);
                 this._changeAgentState('authenticated');
-                _context4.next = 16;
+                _context4.next = 17;
                 break;
 
-              case 12:
-                _context4.prev = 12;
-                _context4.t0 = _context4['catch'](3);
+              case 13:
+                _context4.prev = 13;
+                _context4.t0 = _context4['catch'](4);
 
                 this._changeAgentState('unauthenticated');
                 throw _context4.t0;
 
-              case 16:
+              case 17:
               case 'end':
                 return _context4.stop();
             }
           }
-        }, _callee4, this, [[3, 12]]);
+        }, _callee4, this, [[4, 13]]);
       }));
 
       function _requestDeviceAuthentication() {
-        return _ref4.apply(this, arguments);
+        return _ref5.apply(this, arguments);
       }
 
       return _requestDeviceAuthentication;
@@ -282,14 +319,15 @@ var EnebularAgent = function () {
   }, {
     key: '_startStatusNotification',
     value: function () {
-      var _ref6 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee5() {
+      var _ref7 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee5() {
         return _regenerator2.default.wrap(function _callee5$(_context5) {
           while (1) {
             switch (_context5.prev = _context5.next) {
               case 0:
+                log('_startStatusNotification');
                 this._agentMan.startStatusReport();
 
-              case 1:
+              case 2:
               case 'end':
                 return _context5.stop();
             }
@@ -298,7 +336,7 @@ var EnebularAgent = function () {
       }));
 
       function _startStatusNotification() {
-        return _ref6.apply(this, arguments);
+        return _ref7.apply(this, arguments);
       }
 
       return _startStatusNotification;
@@ -311,7 +349,22 @@ var EnebularAgent = function () {
   }, {
     key: 'handleDeviceMasterMessage',
     value: function handleDeviceMasterMessage(messageType, message) {
-      console.log('handleDeviceMasterMessage', messageType, message);
+      log('handleDeviceMasterMessage', messageType, message);
+      switch (messageType) {
+        case 'register':
+          if (this._agentState === 'init' || this._agentState === 'unregistered') {
+            var _connectionId2 = message.connectionId,
+                _deviceId2 = message.deviceId,
+                _agentManagerBaseUrl2 = message.agentManagerBaseUrl,
+                _authRequestUrl2 = message.authRequestUrl;
+
+            this._registerAgentInfo({ connectionId: _connectionId2, deviceId: _deviceId2, agentManagerBaseUrl: _agentManagerBaseUrl2, authRequestUrl: _authRequestUrl2 });
+            this._changeAgentState('registered');
+          }
+          break;
+        default:
+          break;
+      }
       this._messageEmitter.emit(messageType, message);
     }
   }]);
