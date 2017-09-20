@@ -62,11 +62,16 @@ export default class DeviceAuthMediator extends EventEmitter {
     log('_waitTokens');
     const seq = this._seq;
     return new Promise((resolve, reject) => {
-      this.on('dispatch_auth_token', ({ id_token, access_token, state }) => {
-        const { payload } = jwt.decode(id_token);
+      this.on('dispatch_auth_token', ({ idToken, accessToken, state }) => {
+        log('dispatch auth token message received', idToken, accessToken);
+        const payload = jwt.decode(idToken);
+        log('JWT decoded result = ', payload);
         if (state === `req-${this._seq}` && payload.nonce && payload.nonce === this._nonce) {
+          log('accepting received auth tokens');
           this._cleanup();
-          resolve({ idToken: id_token, accessToken: access_token });
+          resolve({ idToken, accessToken });
+        } else {
+          log('received auth tokens are NOT for this device. Ignore.', payload, this._nonce, state, this._seq);
         }
       });
       setTimeout(() => {
@@ -79,7 +84,6 @@ export default class DeviceAuthMediator extends EventEmitter {
   }
 
   _cleanup() {
-    log('_cleanup');
     this._nonce = null;
     this.removeAllListeners('dispatch_auth_token');
   }

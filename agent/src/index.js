@@ -22,6 +22,13 @@ export type EnebularAgentConfig = {
   configFile?: string,
 };
 
+type AgentSetting = {
+  connectionId: string,
+  deviceId: string,
+  authRequestUrl: string,
+  agentManagerBaseUrl: string,
+};
+
 export type AgentState =
   'init' |
   'registered' |
@@ -73,7 +80,7 @@ export default class EnebularAgent {
     this._messageEmitter = new EventEmitter();
     this._nodeRed = new NodeREDController(nodeRedDir, nodeRedCommand, this._messageEmitter);
     this._deviceAuth = new DeviceAuthMediator(this._messageEmitter);
-    this._agentMan = new AgentManagerMediator();
+    this._agentMan = new AgentManagerMediator(this._nodeRed);
     this._configFile = configFile;
     this._agentState = 'init';
   }
@@ -88,21 +95,22 @@ export default class EnebularAgent {
   }
 
   _loadAgentConfig() {
+    log('_loadAgentConfig');
     try {
       if (fs.existsSync(this._configFile)) {
         log('reading config file', this._configFile);
         const data = fs.readFileSync(this._configFile, 'utf8');
         const { connectionId, deviceId, agentManagerBaseUrl, authRequestUrl } = JSON.parse(data);
         if (connectionId && deviceId && agentManagerBaseUrl && authRequestUrl) {
-          this._connectionId = deviceId;
-          this._deviceId = deviceId;
-          this._deviceAuth.setAuthRequestUrl(authRequestUrl);
-          this._agentMan.setBaseUrl(agentManagerBaseUrl);
+          this._registerAgentInfo({ connectionId, deviceId, agentManagerBaseUrl, authRequestUrl });
           this._changeAgentState('registered');
+        } else {
+          this._changeAgentState('unregistered');
         }
       } else {
         log('creating new config file ', this._configFile);
         fs.writeFileSync(this._configFile, '{}', 'utf8');
+        this._changeAgentState('unregistered');
       }
     } catch (e) {
       console.error(e);
@@ -111,6 +119,7 @@ export default class EnebularAgent {
   }
 
   _changeAgentState(nextState: AgentState) {
+    log('_changeAgentState', this._agentState, '=>', nextState);
     if (isPossibleStateTransition(this._agentState, nextState)) {
       this._agentState = nextState;
       log(`*** agent state : ${this._agentState} ***`);
@@ -122,6 +131,15 @@ export default class EnebularAgent {
     } else {
       console.warn(`Impossible state transition requested : ${this._agentState} => ${nextState}`);
     }
+  }
+
+  _registerAgentInfo({ connectionId, deviceId, authRequestUrl, agentManagerBaseUrl } : AgentSetting) {
+    this._connectionId = connectionId;
+    this._deviceId = deviceId;
+    this._deviceAuth.setAuthRequestUrl(authRequestUrl);
+    this._agentMan.setBaseUrl(agentManagerBaseUrl);
+    const data = JSON.stringify({ connectionId, deviceId, authRequestUrl, agentManagerBaseUrl });
+    fs.writeFileSync(this._configFile, data, 'utf8');
   }
 
   async _handleChangeState() {
@@ -138,6 +156,7 @@ export default class EnebularAgent {
   }
 
   async _requestDeviceAuthentication() {
+    log('_requestDeviceAuthentication');
     const { _connectionId: connectionId, _deviceId: deviceId } = this;
     if (!connectionId || !deviceId) {
       throw new Error('Connection ID and Device ID are not configured yet for the agent');
@@ -153,6 +172,7 @@ export default class EnebularAgent {
   }
 
   async _startStatusNotification() {
+    log('_startStatusNotification');
     this._agentMan.startStatusReport();
   }
 
@@ -161,6 +181,17 @@ export default class EnebularAgent {
    */
   handleDeviceMasterMessage(messageType: string, message: any) {
     log('handleDeviceMasterMessage', messageType, message);
+    switch (messageType) {
+      case 'register':
+        if (this._agentState === 'init' || this._agentState === 'unregistered') {
+          const { connectionId, deviceId, agentManagerBaseUrl, authRequestUrl } = message;
+          this._registerAgentInfo({ connectionId, deviceId, agentManagerBaseUrl, authRequestUrl });
+          this._changeAgentState('registered');
+        }
+        break;
+      default:
+        break;
+    }
     this._messageEmitter.emit(messageType, message);
   }
 }
