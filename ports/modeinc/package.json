@@ -3,6 +3,9 @@
   "version": "2.0.0-alpha",
   "description": "",
   "main": "lib/index.js",
+  "bin": {
+    "enebular-modeinc-agent": "./bin/enebular-modeinc-agent"
+  },
   "scripts": {
     "build": "babel src -d lib",
     "start": "node lib/index.js",
