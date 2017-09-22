@@ -60,15 +60,23 @@ function setupDevice(config: AWSIoTConfig, agent: EnebularAgent) {
     log('>> message', topic, payload);
   });
 
+  function handleStatusChange(messageJSON: string) {
+    try {
+      const { messageType, message } = JSON.parse(messageJSON);
+      agent.handleDeviceMasterMessage(messageType, message);
+    } catch (err) {
+      log('!!! Error parsing message property in status. Invalid JSON format !!!');
+    }
+    const newState = { message: messageJSON };
+    device.update(config.thingName, { state: { reported: newState } });
+  }
+
   device.once('status', async (thingName, stat, clientToken, stateObject) => {
     log('>> status', stateObject);
     const state = stateObject.state;
     const metadata = stateObject.metadata;
     if (state.desired.message && !isThingShadowSynced(metadata, 'message')) {
-      const { messageType, message } = state.desired.message;
-      agent.handleDeviceMasterMessage(messageType, message);
-      const newState = { message: state.desired.message };
-      device.update(thingName, { state: { reported: newState } });
+      handleStatusChange(state.desired.message);
     }
   });
 
@@ -77,10 +85,7 @@ function setupDevice(config: AWSIoTConfig, agent: EnebularAgent) {
     const state = stateObject.state;
     const metadata = stateObject.metadata;
     if (state.message && !isThingShadowSynced(metadata, 'message')) {
-      const { messageType, message } = state.message;
-      agent.handleDeviceMasterMessage(messageType, message);
-      const newState = { message: state.message };
-      device.update(thingName, { state: { reported: newState } });
+      handleStatusChange(state.message);
     }
   });
 }
