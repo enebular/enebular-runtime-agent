@@ -181,10 +181,23 @@ function setupDevice(config, agent) {
     log('>> message', topic, payload);
   });
 
+  function handleStatusChange(messageJSON) {
+    try {
+      var _JSON$parse = JSON.parse(messageJSON),
+          messageType = _JSON$parse.messageType,
+          message = _JSON$parse.message;
+
+      agent.handleDeviceMasterMessage(messageType, message);
+    } catch (err) {
+      log('!!! Error parsing message property in status. Invalid JSON format !!!');
+    }
+    var newState = { message: messageJSON };
+    device.update(config.thingName, { state: { reported: newState } });
+  }
+
   device.once('status', function () {
     var _ref2 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee2(thingName, stat, clientToken, stateObject) {
-      var state, metadata, _state$desired$messag, messageType, message, newState;
-
+      var state, metadata;
       return _regenerator2.default.wrap(function _callee2$(_context2) {
         while (1) {
           switch (_context2.prev = _context2.next) {
@@ -194,12 +207,7 @@ function setupDevice(config, agent) {
               metadata = stateObject.metadata;
 
               if (state.desired.message && !isThingShadowSynced(metadata, 'message')) {
-                _state$desired$messag = state.desired.message, messageType = _state$desired$messag.messageType, message = _state$desired$messag.message;
-
-                agent.handleDeviceMasterMessage(messageType, message);
-                newState = { message: state.desired.message };
-
-                device.update(thingName, { state: { reported: newState } });
+                handleStatusChange(state.desired.message);
               }
 
             case 4:
@@ -217,8 +225,7 @@ function setupDevice(config, agent) {
 
   device.on('delta', function () {
     var _ref3 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee3(thingName, stateObject) {
-      var state, metadata, _state$message, messageType, message, newState;
-
+      var state, metadata;
       return _regenerator2.default.wrap(function _callee3$(_context3) {
         while (1) {
           switch (_context3.prev = _context3.next) {
@@ -228,12 +235,7 @@ function setupDevice(config, agent) {
               metadata = stateObject.metadata;
 
               if (state.message && !isThingShadowSynced(metadata, 'message')) {
-                _state$message = state.message, messageType = _state$message.messageType, message = _state$message.message;
-
-                agent.handleDeviceMasterMessage(messageType, message);
-                newState = { message: state.message };
-
-                device.update(thingName, { state: { reported: newState } });
+                handleStatusChange(state.message);
               }
 
             case 4:
