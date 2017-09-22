@@ -16,5 +16,10 @@ results
 npm-debug.log
 node_modules
 
-.env
 
+# files to be ignored when running
+
+.env
+certs
+config.json
+.enebular-config.json
