@@ -134,6 +134,10 @@ export default class EnebularAgent {
   }
 
   _registerAgentInfo({ connectionId, deviceId, authRequestUrl, agentManagerBaseUrl } : AgentSetting) {
+    log('connectionId', connectionId)
+    log('deviceId', deviceId)
+    log('authRequestUrl', authRequestUrl)
+    log('agentManagerBaseUrl', agentManagerBaseUrl)
     this._connectionId = connectionId;
     this._deviceId = deviceId;
     this._deviceAuth.setAuthRequestUrl(authRequestUrl);
@@ -157,7 +161,7 @@ export default class EnebularAgent {
 
   async _requestDeviceAuthentication() {
     log('_requestDeviceAuthentication');
-    const { _connectionId: connectionId, _deviceId: deviceId } = this;
+    const { _connectionId: connectionId, _deviceId: deviceId } = this;    
     if (!connectionId || !deviceId) {
       throw new Error('Connection ID and Device ID are not configured yet for the agent');
     }

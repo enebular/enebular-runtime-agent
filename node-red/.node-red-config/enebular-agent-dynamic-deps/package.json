@@ -1,5 +1,7 @@
 {
   "name": "enebular-agent-dynamic-deps",
   "version": "0.0.1",
-  "dependencies": {}
+  "dependencies": {
+    "node-red-contrib-milkcocoa": "0.0.7"
+  }
 }

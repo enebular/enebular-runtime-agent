@@ -608,9 +608,11 @@ var NodeREDController = function () {
     key: 'getStatus',
     value: function getStatus() {
       if (this._cproc) {
-        return 'started';
+        log('getStatus started ==========');
+        return 'connected';
       } else {
-        return 'stopped';
+        log('getStatus stopped ==========');
+        return 'disconnected';
       }
     }
   }]);

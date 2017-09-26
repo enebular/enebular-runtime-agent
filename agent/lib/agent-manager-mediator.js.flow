@@ -24,10 +24,12 @@ export default class AgentManagerMediator extends EventEmitter {
   }
 
   setBaseUrl(baseUrl: string) {
+    log('setBaseUrl', baseUrl)
     this._baseUrl = baseUrl;
   }
 
   setAccessToken(accessToken: string) {
+    log('accessToken', accessToken)
     this._accessToken = accessToken;
   }
 
@@ -40,7 +42,7 @@ export default class AgentManagerMediator extends EventEmitter {
     }
     const notifyStatus = async () => {
       const status = this._nodeRed.getStatus();
-      log('*** send status notification ***', status);
+      console.log('*** send status notification ***', status);
       const res = await fetch(`${baseUrl}/notify-status`, {
         method: 'POST',
         headers: {

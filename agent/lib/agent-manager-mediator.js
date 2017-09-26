@@ -78,11 +78,13 @@ var AgentManagerMediator = function (_EventEmitter) {
   (0, _createClass3.default)(AgentManagerMediator, [{
     key: 'setBaseUrl',
     value: function setBaseUrl(baseUrl) {
+      log('setBaseUrl', baseUrl);
       this._baseUrl = baseUrl;
     }
   }, {
     key: 'setAccessToken',
     value: function setAccessToken(accessToken) {
+      log('accessToken', accessToken);
       this._accessToken = accessToken;
     }
   }, {
@@ -107,7 +109,7 @@ var AgentManagerMediator = function (_EventEmitter) {
                 case 0:
                   status = _this2._nodeRed.getStatus();
 
-                  log('*** send status notification ***', status);
+                  console.log('*** send status notification ***', status);
                   _context.next = 4;
                   return (0, _isomorphicFetch2.default)(baseUrl + '/notify-status', {
                     method: 'POST',

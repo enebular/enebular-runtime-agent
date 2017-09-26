@@ -211,6 +211,10 @@ var EnebularAgent = function () {
           authRequestUrl = _ref3.authRequestUrl,
           agentManagerBaseUrl = _ref3.agentManagerBaseUrl;
 
+      log('connectionId', connectionId);
+      log('deviceId', deviceId);
+      log('authRequestUrl', authRequestUrl);
+      log('agentManagerBaseUrl', agentManagerBaseUrl);
       this._connectionId = connectionId;
       this._deviceId = deviceId;
       this._deviceAuth.setAuthRequestUrl(authRequestUrl);
