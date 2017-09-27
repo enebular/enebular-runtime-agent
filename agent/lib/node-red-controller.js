@@ -104,7 +104,7 @@ var NodeREDController = function () {
         return _this.restartService();
       });
       emitter.on('shutdown', function () {
-        return _this.shutdownService();
+        _this.shutdownService();
       });
     }
   }, {

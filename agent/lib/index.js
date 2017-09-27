@@ -115,6 +115,9 @@ var EnebularAgent = function () {
           while (1) {
             switch (_context.prev = _context.next) {
               case 0:
+                // console.log('CLEANUP----------------------')
+                // this.Cleanup()
+
                 this._loadAgentConfig();
                 return _context.abrupt('return', this._nodeRed.startService());
 

@@ -86,6 +86,9 @@ export default class EnebularAgent {
   }
 
   async startup() {
+    // console.log('CLEANUP----------------------')
+    // this.Cleanup()
+    
     this._loadAgentConfig();
     return this._nodeRed.startService();
   }

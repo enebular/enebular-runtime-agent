@@ -48,7 +48,7 @@ export default class NodeREDController {
     emitter.on('deploy', (params) => this.fetchAndUpdateFlow(params));
     emitter.on('start', () => this.startService());
     emitter.on('restart', () => this.restartService());
-    emitter.on('shutdown', () => this.shutdownService());
+    emitter.on('shutdown', () => { this.shutdownService() });
   }
 
   async _queueAction(fn: () => Promise<any>) {

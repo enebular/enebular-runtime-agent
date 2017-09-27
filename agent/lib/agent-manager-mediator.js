@@ -88,6 +88,12 @@ var AgentManagerMediator = function (_EventEmitter) {
       this._accessToken = accessToken;
     }
   }, {
+    key: 'exitStatusReport',
+    value: function exitStatusReport() {
+      setTimeout(process.exit, 5000);
+      console.log('device shutting down in 5 seconds');
+    }
+  }, {
     key: 'startStatusReport',
     value: function startStatusReport() {
       var _this2 = this;
@@ -101,13 +107,13 @@ var AgentManagerMediator = function (_EventEmitter) {
         return;
       }
       var notifyStatus = function () {
-        var _ref = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee() {
+        var _ref = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee(kill) {
           var status, res, message, err;
           return _regenerator2.default.wrap(function _callee$(_context) {
             while (1) {
               switch (_context.prev = _context.next) {
                 case 0:
-                  status = _this2._nodeRed.getStatus();
+                  status = kill ? 'off' : _this2._nodeRed.getStatus();
 
                   console.log('*** send status notification ***', status);
                   _context.next = 4;
@@ -138,6 +144,9 @@ var AgentManagerMediator = function (_EventEmitter) {
                   _this2.emit('error', err);
 
                 case 11:
+                  kill ? _this2.exitStatusReport() : null;
+
+                case 12:
                 case 'end':
                   return _context.stop();
               }
@@ -145,12 +154,23 @@ var AgentManagerMediator = function (_EventEmitter) {
           }, _callee, _this2);
         }));
 
-        return function notifyStatus() {
+        return function notifyStatus(_x) {
           return _ref.apply(this, arguments);
         };
       }();
       notifyStatus();
       this._pid = setInterval(notifyStatus, 30000);
+
+      var cleanUp = function cleanUp() {
+        clearInterval(_this2._pid);
+        notifyStatus(true);
+      };
+      process.on('SIGINT', function () {
+        cleanUp();
+      });
+      process.on('uncaughtException', function () {
+        cleanUp();
+      });
     }
   }]);
   return AgentManagerMediator;

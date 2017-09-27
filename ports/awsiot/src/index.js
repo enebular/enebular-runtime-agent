@@ -121,7 +121,7 @@ async function startup() {
 /**
  *
  */
-async function shutdown() {
+async function shutdown() { 
   return agent.shutdown();
 }
 
