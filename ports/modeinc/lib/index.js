@@ -59,10 +59,9 @@ var shutdown = function () {
       while (1) {
         switch (_context2.prev = _context2.next) {
           case 0:
-            console.log('mODE INC DOWN---------');
             return _context2.abrupt('return', agent.shutdown());
 
-          case 2:
+          case 1:
           case 'end':
             return _context2.stop();
         }

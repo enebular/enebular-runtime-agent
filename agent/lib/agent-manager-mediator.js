@@ -91,7 +91,7 @@ var AgentManagerMediator = function (_EventEmitter) {
     key: 'exitStatusReport',
     value: function exitStatusReport() {
       setTimeout(process.exit, 5000);
-      console.log('device shutting down in 5 seconds');
+      console.log('*** device shutting down in 5 seconds ***');
     }
   }, {
     key: 'startStatusReport',
@@ -113,7 +113,7 @@ var AgentManagerMediator = function (_EventEmitter) {
             while (1) {
               switch (_context.prev = _context.next) {
                 case 0:
-                  status = kill ? 'off' : _this2._nodeRed.getStatus();
+                  status = kill ? 'disconnected' : _this2._nodeRed.getStatus();
 
                   console.log('*** send status notification ***', status);
                   _context.next = 4;

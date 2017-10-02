@@ -69,7 +69,7 @@ async function createUpdateFlowMessageParameters(flowFile, credFile, packagesFil
   if (packagesFile) {
     params.packages = JSON.parse(fs.readFileSync(packagesFile));
   }
-  console.log('updloading flow package', params);
+  console.log('uploading flow package', params);
   const store = new S3Store(getS3Config());
   const downloadUrl = await store.createPackage(params);
   return { downloadUrl };

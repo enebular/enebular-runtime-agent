@@ -388,7 +388,7 @@ var NodeREDController = function () {
             switch (_context8.prev = _context8.next) {
               case 0:
                 return _context8.abrupt('return', new _promise2.default(function (resolve, reject) {
-                  var cproc = (0, _child_process.spawn)('npm', ['install', 'enebular-agent-dynamic-deps'], { stdio: 'inherit', cwd: _this5._dir });
+                  var cproc = (0, _child_process.spawn)('npm', ['install', 'enebular-agent-dynamic-deps'], { stdio: 'inherit', cwd: _path2.default.join(_this5._dir, '.node-red-config') });
                   cproc.on('error', reject);
                   cproc.once('exit', resolve);
                 }));

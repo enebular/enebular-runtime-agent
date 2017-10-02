@@ -32,7 +32,7 @@ export default class NodeREDController {
   _isProcessing: ?Promise<void> = null;
 
   constructor(dir: string, command: string, emitter: EventEmitter) {
-    this._dir = dir;
+    this._dir = dir;    
     if (!fs.existsSync(this._dir)) {
       throw new Error(`Given Node RED dir is not found: ${this._dir}`);
     }
@@ -114,7 +114,7 @@ export default class NodeREDController {
         })
       );
     }
-    if (flowPackage.packages) {
+    if (flowPackage.packages) {      
       updates.push(
         new Promise((resolve, reject) => {
           const packageJSONFilePath = path.join(this._dir, '.node-red-config', 'enebular-agent-dynamic-deps', 'package.json');
@@ -133,7 +133,7 @@ export default class NodeREDController {
 
   async _resolveDependency() {
     return new Promise((resolve, reject) => {
-      const cproc = spawn('npm', [ 'install', 'enebular-agent-dynamic-deps' ], { stdio: 'inherit', cwd: this._dir });
+      const cproc = spawn('npm', [ 'install', 'enebular-agent-dynamic-deps' ], { stdio: 'inherit', cwd: path.join(this._dir, '.node-red-config') });
       cproc.on('error', reject);
       cproc.once('exit', resolve);
     });

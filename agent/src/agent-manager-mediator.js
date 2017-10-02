@@ -35,7 +35,7 @@ export default class AgentManagerMediator extends EventEmitter {
 
   exitStatusReport() {
     setTimeout(process.exit, 5000)
-    console.log('device shutting down in 5 seconds')
+    console.log('*** device shutting down in 5 seconds ***')
   }
 
   startStatusReport() {
@@ -46,7 +46,7 @@ export default class AgentManagerMediator extends EventEmitter {
       return;
     }
     const notifyStatus = async (kill) => {
-      const status = kill ? 'off' : this._nodeRed.getStatus();
+      const status = kill ? 'disconnected' : this._nodeRed.getStatus();
       console.log('*** send status notification ***', status);
       const res = await fetch(`${baseUrl}/notify-status`, {
         method: 'POST',
@@ -57,7 +57,7 @@ export default class AgentManagerMediator extends EventEmitter {
         body: JSON.stringify({ status }),
       });
       if (!res.ok) {
-        const message = await res.text();
+        const message = await res.text();        
         const err = new Error('Cannot notify status to agent manager: ');
         this.emit('error', err);
       }

@@ -234,7 +234,7 @@ function setupDevice(config, agent) {
               state = stateObject.state;
               metadata = stateObject.metadata;
 
-              if (state.message && !isThingShadowSynced(metadata, 'message')) {
+              if (state && state.message && !isThingShadowSynced(metadata, 'message')) {
                 handleStatusChange(state.message);
               }
 
