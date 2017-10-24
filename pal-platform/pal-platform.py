@@ -16,6 +16,7 @@ import platform
 import tempfile
 from contextlib import contextmanager
 from distutils.spawn import find_executable
+import  shutil
 
 logger = logging.getLogger('pal-platform')
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -48,6 +49,8 @@ __metaclass__ = type
 class Config(object):
     def __init__(self):
         self.verbose = False
+
+
 pass_config = click.make_pass_decorator(Config, ensure=True)
 
 
@@ -74,6 +77,7 @@ class DynamicChoice(click.Choice):
     def __repr__(self):
         self.choices = self.func(**self.kwargs)
         return super(DynamicChoice, self).__repr__()
+
 
 
 @contextmanager
@@ -316,6 +320,11 @@ def generate_plat_cmake(target):
     _mw_list = [mw.name for mw in target.middleware]
     _sdk = ' '
 
+    if target.name == 'K64F_FreeRTOS_mbedtls':
+        _os, _device = (' ', ' ')
+        _mw_list = []
+        _sdk = 'K64F_FreeRTOS'
+
     out_dir_name = '__' + target.name
     parent_dir = os.path.normpath(os.path.join(PAL_PLATFORM_ROOT, os.pardir))
     out_dir = os.path.join(parent_dir, out_dir_name)
@@ -534,6 +543,7 @@ class Target(Element):
         * *stderr* --
           Standard error handle
     """
+
     def __init__(self, name, data, stream_kwargs):
         super(Target, self).__init__(data, stream_kwargs, name)
         self.os = Element(data['os'], stream_kwargs)
@@ -616,6 +626,10 @@ def get_available_targets():
     return AVAILABLE_TARGETS
 
 
+def get_available_toolchains():
+    return AVAILABLE_TOOLCHAINS
+
+
 @click.group(context_settings=CONTEXT_SETTINGS, chain=True)
 @click.option('-v', '--verbose', is_flag=True, help='Turn ON verbose mode')
 @click.option(
@@ -633,6 +647,12 @@ def cli(config, verbose, from_file):
     config.targets = json_read(from_file)
     global AVAILABLE_TARGETS
     AVAILABLE_TARGETS = config.targets.keys()
+
+    parent_dir = os.path.normpath(os.path.join(from_file, os.pardir))
+    toolchain_dir = os.path.join(parent_dir,  "Toolchain")
+    list  = os.listdir(toolchain_dir)
+    global AVAILABLE_TOOLCHAINS
+    AVAILABLE_TOOLCHAINS = list
 
     logging.basicConfig(
         level=logging.DEBUG if verbose else logging.INFO,
@@ -750,5 +770,187 @@ def clean(config, target_name, keep_sources):
     if not keep_sources:
         target.delete_elements()
 
+
+def runCmakeAndMake(folder, debug, toolchain, outdir, envPair, external, name, numOfBuildThreads):
+    logger.info('running cmake')
+    #"""cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../pal-platform/Toolchain/ARMGCC/ARMGCC.cmake -DEXTARNAL_DEFINE_FILE=../mbed-client-pal/Examples/PlatformBSP/mbedTLS/mbedTLS_cmake_config.txt"""
+    command  = "cmake"
+    make_params = "-j1"
+    argument1 = "-G"
+    argument2 = "Unix Makefiles"
+    if debug == 1:
+        argument3 = "-DCMAKE_BUILD_TYPE=Debug"
+    else:
+        argument3 = "-DCMAKE_BUILD_TYPE=Release"
+    argument4 = "-DCMAKE_TOOLCHAIN_FILE=../pal-platform/Toolchain/"+toolchain+"/"+toolchain+".cmake"
+    if external != None:
+        argument5 = "-DEXTARNAL_DEFINE_FILE="+external
+    else:
+        argument5 = "-DEXTARNAL_DEFINE_FILE=../mbed-client-pal/Configs/pal_ext_configs.cmake"
+    if envPair != None:
+        logger.info('setting environment: %s = %s',  envPair[0], envPair[1])
+        os.environ[envPair[0]]=envPair[1]
+    if numOfBuildThreads != None:
+        make_params = "-j"+str(numOfBuildThreads)
+
+    p = subprocess.Popen([command, argument1,argument2, argument3, argument4, argument5], cwd=folder)
+    returnCode = p.wait()
+    if returnCode == 0 :
+        if name != None:
+            p = subprocess.Popen(["make",make_params, name], cwd=folder)
+        else:
+            p = subprocess.Popen(["make", make_params], cwd=folder)
+        returnCode = p.wait()
+        if returnCode == 0 :
+            if debug == 1:
+                copyFrom = os.path.join(folder, "Debug")
+            else:
+                copyFrom = os.path.join(folder, "Release")
+            if not os.path.exists(outdir):
+                os.makedirs(outdir)
+            shutil.move(copyFrom, outdir)
+
+        else:
+            logger.error( "** build failed **")
+    else:
+        logger.error( "** CMAKE failed **")
+
+
+def getPathForToolChainInPath(toolchain):
+    output = None
+    realname = toolchain
+    if platform.system() == 'Windows': #widnows type OS
+        realname = toolchain + ".exe"
+        try:
+                found = check_output(['where', realname]).strip()
+        except:
+		logger.error( "** Toolchain %s not found in path  - make sure toolchain executable [%s] is in the path **", toolchain,realname )
+		return None
+        separator = "\\"
+        double_separator = "\\\\"
+    else: # assume linux type OS
+        try:
+                found = check_output(['which', realname]).strip()
+        except:
+                logger.error( "** Toolchain %s not found in path  - make sure toolchain executable [%s] is in the path **", toolchain,realname )
+                return None
+        separator = "/"
+        double_separator = "//"
+    if found != None:
+        parent_dir = found #os.path.normpath(os.path.join(PAL_PLATFORM_ROOT, os.pardir))
+        while parent_dir.endswith(separator+realname) or parent_dir.endswith(separator+realname) or parent_dir.endswith(separator+"bin") or parent_dir.endswith(separator+"bin"+separator) or parent_dir.endswith(double_separator+"bin"+separator) or parent_dir.endswith(separator+"bin"+double_separator)or parent_dir.endswith(double_separator+"bin"+double_separator):
+            parent_dir = os.path.normpath(os.path.join(parent_dir, os.pardir))
+        output = parent_dir
+    return output
+
+
+
+
+def checkToolchainEnv(toolchain):
+    logger.info('Checking Environment for Toolchain - %s', toolchain)
+    #toolchain_env stucture: key == toolchain name , value is a tupple  with two elements:
+    #1. a tuple of relevant environment variables for the toolchain - Note : the first value is the one we want (we will export it if any of the values are found)
+    #2. a string with the expected name of compiler binary for path seach
+    toolchainEnv = {"ARMCC":(("ARMCC_DIR","ARM_PATH", "MBED_ARM_PATH"),"armcc"),
+                     "ARMGCC":(("ARMGCC_DIR", "GCC_ARM_PATH", "MBED_GCC_ARM_PATH" ), "arm-none-eabi-gcc"),
+                     "GCC": (("GCC_DIR",), "gcc"),
+                     "GCC-OPENWRT": (("TOOLCHAIN_DIR",), "arm-openwrt-linux-gcc")}
+
+    toolchainInfo = toolchainEnv.get(toolchain, None)
+    if None == toolchainInfo:
+        logger.warning('toolchain environment not found for toolchain selected [%s] - please make sure toolchain is present and the correct environment variable is set', toolchain)
+        return None
+
+    for envVariable in toolchainInfo[0]:
+        path = os.getenv(envVariable, None)
+        if path != None:
+            logger.debug("env variable %s found", envVariable)
+            return (toolchainInfo[0][0], path)
+    path = getPathForToolChainInPath(toolchainInfo[1])
+    if path != None:
+        return (toolchainInfo[0][0], path)
+
+    logger.warning('toolchain environment not found for toolchain selected [%s] - please make sure toolchain is present and correct environment variable is set [%s]', toolchain, toolchainInfo[0][0])
+    return None
+
+
+@cli.command(
+    context_settings=CONTEXT_SETTINGS,
+    short_help='fullBuild deploy and build the project (run "%s  fullBuild -h" for help)' % PROG_NAME
+)
+@click.option(
+    '--target',
+    'target_name',
+    help='The target to deploy and build',
+    required=True,
+    type=DynamicChoice(get_available_targets)
+)
+@click.option(
+    '--toolchain',
+    'toolchain',
+    help='The toolchain to use for the build',
+    required=True,
+    type=DynamicChoice(get_available_toolchains)
+)
+@click.option(
+    '--external',
+    'external',
+    help='The path fo the eternal define CMAKE file to include',
+    required=False,
+    type=click.Path()
+)
+@click.option(
+    '--name',
+    'name',
+    help='name of the build target passed to the make command',
+    required=False,
+    type=click.Path()
+)
+@click.option(
+    '-k', '--keep-sources', is_flag=True,
+    help='Keep the deployed platform-dependent files (clean only generated files)'
+)
+@click.option(
+    '-j',
+    'numOfBuildThreads',
+    help='-j parallel make parameter (Example: -j4)',
+    required=False,
+    type= int
+)
+@pass_config
+def fullbuild(config, target_name, toolchain, external,name, keep_sources, numOfBuildThreads):
+    """deploy and build target files"""
+    config.target_name = target_name
+    logger.info('fullBuild running for target = %s with toolchain = %s', target_name, toolchain)
+
+    ctx = click.get_current_context()
+    ctx.invoke(deploy , target_name=target_name, skip_update=None, instructions=None )
+    ctx.invoke(generate,target_name=target_name)
+
+    envPair = checkToolchainEnv(toolchain)
+    if (None == envPair):
+	logger.error( "** Toolchain not found - exiting **")
+	return
+    target = Target(config.target_name, config.targets[target_name], config.stream_kwargs)
+    out_dir_name = '__' + target.name
+    parent_dir = os.path.normpath(os.path.join(PAL_PLATFORM_ROOT, os.pardir))
+    out_dir = os.path.join(parent_dir, out_dir_name)
+    isDebug = 1 # build debug version
+    output = os.path.join(parent_dir, "out")
+    if os.path.exists(output):
+        shutil.rmtree(output)
+
+    runCmakeAndMake(out_dir, isDebug, toolchain, output, envPair, external, name, numOfBuildThreads)  # CMAKE + build debug version
+
+    isDebug = 0 # generate and build release version
+    if os.path.exists(out_dir):
+        shutil.rmtree(out_dir)
+    ctx.invoke(generate,target_name=target_name)
+
+    runCmakeAndMake(out_dir, isDebug, toolchain, output, envPair, external, name, numOfBuildThreads)  # CMAKE + build release version
+
+    logger.info('\nCompleted fullBuild running for target = %s\nWith toolchain = %s.\nOutput directory: %s\n', target_name, toolchain, output)
+
+
 if __name__ == '__main__':
-    cli()
+    cli(sys.argv[1:])

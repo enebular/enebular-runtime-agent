@@ -19,9 +19,9 @@ MACRO(SUBDIRLIST result curdir)
   SET(${result} ${dirlist})
 ENDMACRO()
 
-MACRO(ADD_GLOABALDIR dirname)
+MACRO(ADD_GLOBALDIR dirname)
 	include_directories(${dirname})
-	file(APPEND ${INCLUDE_FILE_NAME} "-I${dirname}")
+	file(APPEND ${INCLUDE_FILE_NAME} "-I${dirname} ")
 ENDMACRO()
 
 
@@ -46,7 +46,6 @@ MACRO(ADDSUBDIRS)
 ENDMACRO()
 
 macro(CREATE_LIBRARY NAME SOURCE_LIST DEFINES)
-      #message(STATUS "creating new library ${NAME} with sources ${SOURCE_LIST} and defines ${DEFINES}")
       file(APPEND "${COMPILATION_DETAILS_FILE_NAME}" "\n${NAME}:\n${SOURCE_LIST}")
       add_library(${NAME} STATIC ${SOURCE_LIST})
       list (APPEND SRC_LIBS ${NAME})
@@ -60,7 +59,6 @@ endmacro()
 
 
 macro(CREATE_TEST_LIBRARY NAME SOURCE_LIST DEFINES)
-      #message(STATUS "creating new library ${NAME} with sources ${SOURCE_LIST} and defines ${DEFINES}")
       file(APPEND "${COMPILATION_DETAILS_FILE_NAME}" "\n${NAME}:\n${SOURCE_LIST}")
       add_library(${NAME} STATIC ${SOURCE_LIST})
       list (APPEND TEST_LIBS ${NAME})
@@ -70,3 +68,14 @@ macro(CREATE_TEST_LIBRARY NAME SOURCE_LIST DEFINES)
       endif()
       target_compile_definitions(${NAME} PRIVATE  ${DEFINES})
 endmacro()
+
+macro(SET_COMPILER_DBG_RLZ_FLAG flag value)
+    SET(${flag}_DEBUG "${${flag}_DEBUG} ${value}")
+    SET(${flag}_RELEASE "${${flag}_RELEASE} ${value}")
+#enable this if for debugging
+if (0)
+ message("flag = ${flag}")
+ message("value = ${value}")
+ message("MY_C_FLAGS_RELEASE2 = ${CMAKE_C_FLAGS_RELEASE}")
+endif(0) # comment end
+endmacro(SET_COMPILER_DBG_RLZ_FLAG)

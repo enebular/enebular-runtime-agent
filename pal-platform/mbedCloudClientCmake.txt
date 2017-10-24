@@ -9,7 +9,15 @@ if( NOT CMAKE_BUILD_TYPE )
        FORCE )
 endif()
 SET(ORIGINAL_SRC_DIR ${CMAKE_SOURCE_DIR})
-SET (INCLUDE_FILE_NAME ${ORIGINAL_SRC_DIR}/include_file.txt)
+SET (INCLUDE_FILE_NAME ${CMAKE_SOURCE_DIR}/include_file.txt CACHE INTERNAL "" FORCE)
+file(WRITE ${INCLUDE_FILE_NAME} " ")
+include (${CMAKE_TOOLCHAIN_FILE})
+
+if (TOOLCHAIN_FLAGS_FILE)
+message("flags file is ${TOOLCHAIN_FLAGS_FILE}")
+include (${TOOLCHAIN_FLAGS_FILE})
+endif()
+
 get_filename_component(NEW_CMAKE_SOURCE_DIR ${CMAKE_SOURCE_DIR}/.. REALPATH)
 SET(CMAKE_SOURCE_DIR ${NEW_CMAKE_SOURCE_DIR} CACHE INTERNAL "" FORCE)
 
@@ -17,6 +25,8 @@ get_filename_component(CMAKE_PLATFORM ../pal-platform/platform.cmake REALPATH)
 include (${CMAKE_PLATFORM})
 
 set(MBED_CLOUD_CLIENT_BUILD_SYS_MIN_VER_CMAKE 2)
+
+
 
 if (EXTARNAL_DEFINE_FILE)
     include(${EXTARNAL_DEFINE_FILE})
@@ -27,7 +37,8 @@ INCLUDE(CMakeForceCompiler)
 cmake_minimum_required (VERSION 2.6)
 #include (${CMAKE_TOOLCHAIN_FILE})
 
-include (${CMAKE_TOOLCHAIN_FILE})
+
+
 # The version number.
 set (Test_VERSION_MAJOR 1)
 set (Test_VERSION_MINOR 0)
@@ -36,7 +47,7 @@ set (Test_VERSION_MINOR 0)
 ENABLE_LANGUAGE(ASM)
 
 file(WRITE dummy.c "int pal_cmake_dummy_refernce_for_building(void) { return 0; }")
-file(WRITE ${INCLUDE_FILE_NAME} " ")
+
 
 get_filename_component(CMAKE_COMMON ../pal-platform/common.cmake REALPATH)
 get_filename_component(CMAKE_PLATFORM ../pal-platform/platform.cmake REALPATH)
@@ -68,12 +79,9 @@ endforeach()
 get_filename_component(CMAKE_SOURCE_DIR_NAME ${CMAKE_SOURCE_DIR} NAME)
 add_subdirectory(${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR}/${CMAKE_SOURCE_DIR_NAME})
 
-message ("1. SRC_LIBS = ${SRC_LIBS}")
-message ("2. TEST_LIBS = ${TEST_LIBS}")
-
 # add the executable
 foreach(TEST_LIB ${TEST_LIBS})
-    message ("foreach ${TEST_LIB}")
+    message ("building ${TEST_LIB} with sources ${SRC_LIBS}")
 
     if (NOT Additional_SRC)
         set(Additional_SRC dummy.c)
@@ -95,6 +103,10 @@ foreach(TEST_LIB ${TEST_LIBS})
         target_link_libraries(${TEST_LIB}.elf optimized c)
         #target_link_libraries(${PROJECT_NAME} optimized gcc)
 
+        if (${OS_BRAND} MATCHES FreeRTOS)
+            target_link_libraries(${TEST_LIB}.elf optimized nosys)
+            target_link_libraries(${TEST_LIB}.elf debug nosys)
+        endif ()
     endif()
 
     if (NOT (${OS_BRAND} MATCHES "Linux"))
@@ -115,4 +127,8 @@ endforeach()
 
 
 
-#install(TARGETS mbedCloud DESTINATION bin)
+
+UNSET(CMAKE_TOOLCHAIN_FILE_CONFIGURED CACHE)
+UNSET(CMAKE_TOOLCHAIN_FILE_CONFIGURED)
+
+

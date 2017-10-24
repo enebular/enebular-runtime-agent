@@ -1,16 +1,21 @@
-//----------------------------------------------------------------------------
-// The confidential and proprietary information contained in this file may
-// only be used by a person authorised under and to the extent permitted
-// by a subsisting licensing agreement from ARM Limited or its affiliates.
+// ----------------------------------------------------------------------------
+// Copyright 2016-2017 ARM Ltd.
 //
-// (C) COPYRIGHT 2017 ARM Limited or its affiliates.
-// ALL RIGHTS RESERVED
+// SPDX-License-Identifier: Apache-2.0
 //
-// This entire notice must be reproduced on all copies of this file
-// and copies of this file may only be made by a person if such person is
-// permitted to do so under the terms of a subsisting license agreement
-// from ARM Limited or its affiliates.
-//----------------------------------------------------------------------------
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ----------------------------------------------------------------------------
+
 
 #include "mbed-trace/mbed_trace.h"
 #include "mbed-trace-helper.h"
@@ -53,6 +58,16 @@ static bool application_init_fcc(void)
     }
 #endif
 
+    // Deletes existing firmware images from storage.
+    // This deletes any existing firmware images during application startup.
+    // This compilation flag is currently implemented only for mbed OS.
+#ifdef RESET_FIRMWARE
+    bool status_erase = rmFirmwareImages();
+    if(status_erase == false) {
+        return 1;
+    }
+#endif
+
 #ifdef MBED_CONF_APP_DEVELOPER_MODE
     printf("Start developer flow\n");
     status = fcc_developer_flow();
@@ -78,10 +93,12 @@ bool application_init(void)
         printf("Failed initializing mbed trace\n" );
         return false;
     }
+
     if(initPlatform() != 0) {
        printf("ERROR - initPlatform() failed!\n");
        return false;
     }
+
     // Print some statistics of the object sizes and heap memory consumption
     // if the MBED_HEAP_STATS_ENABLED is defined.
     print_m2mobject_stats();

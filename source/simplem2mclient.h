@@ -1,24 +1,32 @@
-//----------------------------------------------------------------------------
-// The confidential and proprietary information contained in this file may
-// only be used by a person authorised under and to the extent permitted
-// by a subsisting licensing agreement from ARM Limited or its affiliates.
+// ----------------------------------------------------------------------------
+// Copyright 2016-2017 ARM Ltd.
 //
-// (C) COPYRIGHT 2016 ARM Limited or its affiliates.
-// ALL RIGHTS RESERVED
+// SPDX-License-Identifier: Apache-2.0
 //
-// This entire notice must be reproduced on all copies of this file
-// and copies of this file may only be made by a person if such person is
-// permitted to do so under the terms of a subsisting license agreement
-// from ARM Limited or its affiliates.
-//----------------------------------------------------------------------------
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ----------------------------------------------------------------------------
+
 
 #ifndef SIMPLEM2MCLIENT_H
 #define SIMPLEM2MCLIENT_H
 #include <stdio.h>
 #include "mbed-cloud-client/MbedCloudClient.h"
 #include "m2mdevice.h"
-#include "m2mresources.h"
 #include "setup.h"
+#include "m2mresource.h"
+#include "mbed-client/m2minterface.h"
+#include "key_config_manager.h"
+#include "resource.h"
 
 #ifdef MBED_CLOUD_CLIENT_USER_CONFIG_FILE
 #include MBED_CLOUD_CLIENT_USER_CONFIG_FILE
@@ -31,30 +39,20 @@
 class SimpleM2MClient {
 
 public:
+
     SimpleM2MClient() :
         _registered(false),
-        _register_called(false),
-        _exec_resource(_cloud_client) {
-    }
-
-    void create_resources() {
-        _obj_list.push_back(_observable_resource.get_object());
-        _obj_list.push_back(_exec_resource.get_object());
-        _obj_list.push_back(_writable_resource.get_object());
-
-        // Add some test resources to measure memory consumption.
-        // This code is activated only if MBED_HEAP_STATS_ENABLED is defined.
-        create_m2mobject_test_set(&_obj_list);
-
-        _cloud_client.add_objects(_obj_list);
-        _cloud_client.on_registered(this, &SimpleM2MClient::client_registered);
-        _cloud_client.on_unregistered(this, &SimpleM2MClient::client_unregistered);
-        _cloud_client.on_error(this, &SimpleM2MClient::error);
-        _cloud_client.set_update_callback(&_writable_resource);
+        _register_called(false){
     }
 
     bool call_register() {
+
+        _cloud_client.on_registered(this, &SimpleM2MClient::client_registered);
+        _cloud_client.on_unregistered(this, &SimpleM2MClient::client_unregistered);
+        _cloud_client.on_error(this, &SimpleM2MClient::error);
+
         if (init_connection()) {
+            printf("Network initialized, connecting...\n");
             bool setup = _cloud_client.setup(get_network_interface());
             _register_called = true;
             if (!setup) {
@@ -83,8 +81,8 @@ public:
         _cloud_client.close();
     }
 
-    void keep_alive() {
-        _cloud_client.keep_alive();
+    void register_update() {
+        _cloud_client.register_update();
     }
 
     void client_registered() {
@@ -191,6 +189,9 @@ public:
             case MbedCloudClient::UpdateErrorWriteToStorage:
                 error = "MbedCloudClient::UpdateErrorWriteToStorage";
                 break;
+            case MbedCloudClient::UpdateErrorInvalidHash:
+                error = "MbedCloudClient::UpdateErrorInvalidHash";
+                break;
 #endif
             default:
                 error = "UNKNOWN";
@@ -207,14 +208,32 @@ public:
     bool is_register_called() {
         return _register_called;
     }
-    void increment_resource_value() {
-        if(_registered) {
-            _observable_resource.increment_resource();
-        }
+
+    void register_and_connect() {
+        // Add some test resources to measure memory consumption.
+        // This code is activated only if MBED_HEAP_STATS_ENABLED is defined.
+        create_m2mobject_test_set(&_obj_list);
+
+        _cloud_client.add_objects(_obj_list);
+
+        // Start registering to the cloud.
+        call_register();
+
+        // Print memory statistics if the MBED_HEAP_STATS_ENABLED is defined.
+        print_heap_stats();
     }
 
     MbedCloudClient& get_cloud_client() {
         return _cloud_client;
+    }
+
+    M2MResource* add_cloud_resource(uint16_t object_id, uint16_t instance_id,
+                              uint16_t resource_id, const char *resource_type,
+                              M2MResourceInstance::ResourceType data_type,
+                              M2MBase::Operation allowed, const char *value,
+                              bool observable, void *cb) {
+         return add_resource(&_obj_list, object_id, instance_id, resource_id, resource_type, data_type,
+                      allowed, value, observable, cb);
     }
 
 private:
@@ -222,9 +241,7 @@ private:
     MbedCloudClient     _cloud_client;
     bool                _registered;
     bool                _register_called;
-    ObservableResource  _observable_resource;
-    ExecutableResource  _exec_resource;
-    WritableResource    _writable_resource;
+
 };
 
 #endif // SIMPLEM2MCLIENT_H
