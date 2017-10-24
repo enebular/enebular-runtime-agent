@@ -1,4 +1,7 @@
 {
+    "macros": [
+        "MBED_CONF_APP_MAIN_STACK_SIZE=4608"
+    ],
     "config": {
         "heap-size": {
              "help": "The amount of static RAM to reserve for nsdynmemlib heap",
@@ -64,7 +67,15 @@
         "SERIAL_TX": "NC",
         "SERIAL_RX": "NC",
         "SERIAL_CTS": "NC",
-        "SERIAL_RTS": "NC"
+        "SERIAL_RTS": "NC",
+        "button-pinname": {
+            "help": "PinName for button.",
+            "value": "BUTTON1"
+        },
+        "led-pinname": {
+            "help": "PinName for led, which is attached to led blink resource.",
+            "value": "LED_RED"
+        }
     },
     "target_overrides": {
         "*": {

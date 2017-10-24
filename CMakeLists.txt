@@ -10,12 +10,21 @@ add_definitions(-DNS_EVENTLOOP_USE_TICK_TIMER)
 add_definitions(-DMBED_CONF_MBED_CLIENT_EVENT_LOOP_SIZE=8192)
 add_definitions(-DMBED_CONF_APP_CLOUD_MODE)
 add_definitions(-DMBED_CONF_APP_DEVELOPER_MODE)
-add_definitions(-DMBED_CONF_MBED_CLIENT_DNS_THREAD_STACK_SIZE=102400)
+if(${OS_BRAND} STREQUAL "FreeRTOS")
+    add_definitions(-DMBED_CONF_MBED_CLIENT_DNS_THREAD_STACK_SIZE=2048)
+else()
+    add_definitions(-DMBED_CONF_MBED_CLIENT_DNS_THREAD_STACK_SIZE=102400)
+endif()
 
 set(PLATFORM_INCLUDE "")
 set(PLATFORM_SOURCES "")
-set(PLATFORM_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/platform/linux")
-set(PLATFORM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/*.cpp")
+if(${OS_BRAND} STREQUAL "FreeRTOS")
+    set(PLATFORM_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/source/platform/freertos")
+    set(PLATFORM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/source/platform/freertos/*.cpp")
+else()
+    set(PLATFORM_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/source/platform/linux")
+    set(PLATFORM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/source/platform/linux/*.cpp")
+endif()
 
 # mbed-cloud-client-example
 
@@ -51,7 +60,7 @@ include_directories(${MBED_CLIENT_SOURCE_DIR}/mbed-client-mbed-tls/mbed-client-m
 # pal headers
 
 SET(PAL_SOURCE_DIR ${MBED_CLOUD_CLIENT_SOURCE_DIR}/mbed-client-pal/Source)
-
+ADD_GLOBALDIR(${MBED_CLOUD_CLIENT_SOURCE_DIR}/mbed-client-pal/Configs/pal_config)
 include_directories(${PAL_SOURCE_DIR}/PAL-Impl/Services-API)
 include_directories(${PAL_SOURCE_DIR}/Port/Platform-API)
 
@@ -135,6 +144,8 @@ include_directories(${UPDATE_SOURCE_DIR}/modules/device)
 include_directories(${UPDATE_SOURCE_DIR}/modules/device/update-client-device)
 include_directories(${UPDATE_SOURCE_DIR}/modules/monitor)
 include_directories(${UPDATE_SOURCE_DIR}/modules/monitor/update-client-monitor)
+include_directories(${UPDATE_SOURCE_DIR}/modules/paal)
+include_directories(${UPDATE_SOURCE_DIR}/modules/paal/update-client-paal)
 
 FILE(GLOB MBED_CLOUD_CLIENT_EXAMPLE_SRC
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
