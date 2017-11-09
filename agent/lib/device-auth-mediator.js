@@ -143,11 +143,9 @@ var DeviceAuthMediator = function (_EventEmitter) {
 
               case 19:
                 tokens = _context.sent;
-
-                log('tokens', tokens);
                 return _context.abrupt('return', tokens);
 
-              case 22:
+              case 21:
               case 'end':
                 return _context.stop();
             }

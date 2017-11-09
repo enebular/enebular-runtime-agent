@@ -99,6 +99,7 @@ var AgentManagerMediator = function (_EventEmitter) {
       var _this2 = this;
 
       log('startStatusReport');
+
       var baseUrl = this._baseUrl,
           accessToken = this._accessToken;
 

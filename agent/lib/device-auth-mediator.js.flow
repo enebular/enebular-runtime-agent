@@ -54,7 +54,6 @@ export default class DeviceAuthMediator extends EventEmitter {
       throw new Error('Error occurred while requesting device authentication');
     } else {
       const tokens = await tokens_;
-      log('tokens', tokens)
       return tokens;
     }
   }

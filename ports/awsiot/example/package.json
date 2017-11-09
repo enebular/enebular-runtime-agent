@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "start": "AWSIOT_CONFIG_FILE=./config.json NODE_RED_DIR=../../../../node-red enebular-awsiot-agent"
+    "start": "AWSIOT_CONFIG_FILE=./config.json NODE_RED_DIR=../../../node-red enebular-awsiot-agent"
   },
   "dependencies": {
     "enebular-awsiot-agent": "file:.."

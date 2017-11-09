@@ -26,6 +26,7 @@ export default class AgentManagerMediator extends EventEmitter {
   setBaseUrl(baseUrl: string) {
     log('setBaseUrl', baseUrl)
     this._baseUrl = baseUrl;
+
   }
 
   setAccessToken(accessToken: string) {
@@ -40,6 +41,7 @@ export default class AgentManagerMediator extends EventEmitter {
 
   startStatusReport() {
     log('startStatusReport');
+    
     const { _baseUrl: baseUrl, _accessToken: accessToken } = this;
     if (!baseUrl || !accessToken) {
       log('Cannnot start status report without baseUrl or access Token.');

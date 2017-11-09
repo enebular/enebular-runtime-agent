@@ -1,10 +1,10 @@
 {
-	"host": "A3G80UFBM2R6AS.iot.us-east-1.amazonaws.com",
+	"host": "afx4xdk4zoudb.iot.ap-northeast-1.amazonaws.com",
 	"port": 8883,
-	"clientId": "MyEnebularAgent01",
-  "thingName": "MyEnebularAgent01",
+	"clientId": "testio",
+  "thingName": "testio",
 	"caCert": "./certs/root-CA.crt",
-	"clientCert": "./certs/certificate.pem.crt",
-	"privateKey": "./certs/private.pem.key",
+	"clientCert": "./certs/testio.cert.pem",
+	"privateKey": "./certs/testio.private.key",
 	"topic": "process"
 }
