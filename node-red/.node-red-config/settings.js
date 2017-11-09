@@ -1,5 +1,6 @@
 module.exports = {
   userDir: __dirname,
-  flowFile: 'flows.json'
+  flowFile: 'flows.json',
 };
+
 

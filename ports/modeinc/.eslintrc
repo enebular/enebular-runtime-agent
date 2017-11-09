@@ -5,7 +5,4 @@
     "node": true,
     "es6": true
   },
-  "rule": {
-    "no-underscore-dangle": 0
-  }
 }
