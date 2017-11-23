@@ -1,0 +1,3 @@
+#!/usr/bin/env node
+var agent = require('..');
+agent.startup();
