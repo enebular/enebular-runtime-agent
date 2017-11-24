@@ -13,6 +13,10 @@ var _fs = require('fs');
 
 var _fs2 = _interopRequireDefault(_fs);
 
+var _debug = require('debug');
+
+var _debug2 = _interopRequireDefault(_debug);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var path = '/tmp/sock.test';
@@ -20,11 +24,13 @@ var server = void 0;
 
 var END_OF_MSG_MARKER = 0x1E; // RS (Record Separator)
 
+var log = (0, _debug2.default)('enebular-local-agent');
+
 function startup() {
 
   server = _net2.default.createServer(function (socket) {
 
-    console.log('client connected');
+    log('client connected');
 
     socket.setEncoding('utf8');
 
@@ -32,36 +38,36 @@ function startup() {
     var message = '';
 
     socket.on('data', function (data) {
-      console.log('client data chunk (' + data.length + ')');
+      log('client data chunk (' + data.length + ')');
       message += data;
       if (message.charCodeAt(message.length - 1) == END_OF_MSG_MARKER) {
         message = message.slice(0, -1);
-        console.log('client message: [' + message + ']');
+        log('client message: [' + message + ']');
         message = '';
       }
     });
 
     socket.on('end', function () {
       if (message.length > 0) {
-        console.log('client ended with partial message: ' + message);
+        log('client ended with partial message: ' + message);
       } else {
-        console.log('client ended');
+        log('client ended');
       }
     });
 
     socket.on('close', function () {
-      console.log('client closed');
+      log('client closed');
     });
 
     socket.on('error', function (err) {
-      console.log('client socket error: ' + err);
+      log('client socket error: ' + err);
     });
 
     socket.write('ok' + String.fromCharCode(END_OF_MSG_MARKER));
   });
 
   server.on('listening', function () {
-    console.log('server listening on: ' + server.address());
+    log('server listening on: ' + server.address());
   });
 
   server.on('error', function (err) {
@@ -69,7 +75,7 @@ function startup() {
   });
 
   server.on('close', function () {
-    console.log('server closed');
+    log('server closed');
   });
 
   try {

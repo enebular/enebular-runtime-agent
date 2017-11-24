@@ -1,17 +1,20 @@
 
 import net from 'net';
 import fs from 'fs';
+import debug from 'debug';
 
 let path = '/tmp/sock.test';
 let server;
 
 const END_OF_MSG_MARKER = 0x1E; // RS (Record Separator)
 
+const log = debug('enebular-local-agent');
+
 function startup() {
 
   server = net.createServer((socket) => {
 
-    console.log('client connected');
+    log('client connected');
 
     socket.setEncoding('utf8');
 
@@ -19,29 +22,29 @@ function startup() {
     let message = '';
 
     socket.on('data', (data) => {
-      console.log(`client data chunk (${data.length})`);
+      log(`client data chunk (${data.length})`);
       message += data;
       if (message.charCodeAt(message.length-1) == END_OF_MSG_MARKER) {
         message = message.slice(0, -1);
-        console.log(`client message: [${message}]`);
+        log(`client message: [${message}]`);
         message = '';
       }
     });
 
     socket.on('end', () => {
       if (message.length > 0) {
-        console.log('client ended with partial message: ' + message);
+        log('client ended with partial message: ' + message);
       } else {
-        console.log('client ended');
+        log('client ended');
       }
     });
 
     socket.on('close', () => {
-      console.log('client closed');
+      log('client closed');
     });
 
     socket.on('error', (err) => {
-      console.log('client socket error: ' + err);
+      log('client socket error: ' + err);
     });
 
     socket.write('ok' + String.fromCharCode(END_OF_MSG_MARKER));
@@ -49,7 +52,7 @@ function startup() {
   });
 
   server.on('listening', () => {
-    console.log('server listening on: ' + server.address());
+    log('server listening on: ' + server.address());
   });
 
   server.on('error', (err) => {
@@ -57,7 +60,7 @@ function startup() {
   });
 
   server.on('close', () => {
-    console.log('server closed');
+    log('server closed');
   });
 
   try {
