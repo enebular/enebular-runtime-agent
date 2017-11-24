@@ -1,16 +1,30 @@
 /* @flow */
 import net from 'net';
 import fs from 'fs';
+import path from 'path';
+import EnebularAgent from 'enebular-runtime-agent';
 import debug from 'debug';
-
-let path = '/tmp/sock.test';
-let server;
-
-const END_OF_MSG_MARKER = 0x1E; // RS (Record Separator)
 
 const log = debug('enebular-local-agent');
 
-function startup() {
+const END_OF_MSG_MARKER = 0x1E; // RS (Record Separator)
+
+let socketPath = '/tmp/sock.enebular-local-agent';
+let agent: EnebularAgent;
+let server: net.Server;
+
+async function startServer(agent: EnebularAgent) {
+
+  function handleClientMessage(clientMessage: string) {
+    try {
+      const { messageType, message } = JSON.parse(clientMessage);
+      //log('messageType: ' + messageType);
+      //log('message: ' + JSON.stringify(message));
+      agent.handleDeviceMasterMessage(messageType, message);
+    } catch (err) {
+      log('JSON parse of client message failed: ' + err);
+    }
+  }
 
   server = net.createServer((socket) => {
 
@@ -22,11 +36,12 @@ function startup() {
     let message = '';
 
     socket.on('data', (data) => {
-      log(`client data chunk (${data.length})`);
+      //log(`client data chunk (${data.length})`);
       message += data;
       if (message.charCodeAt(message.length-1) == END_OF_MSG_MARKER) {
         message = message.slice(0, -1);
         log(`client message: [${message}]`);
+        handleClientMessage(message);
         message = '';
       }
     });
@@ -35,7 +50,7 @@ function startup() {
       if (message.length > 0) {
         log('client ended with partial message: ' + message);
       } else {
-        log('client ended');
+        //log('client ended');
       }
     });
 
@@ -52,7 +67,7 @@ function startup() {
   });
 
   server.on('listening', () => {
-    log('server listening on: ' + server.address());
+    log('server listening on: ' + JSON.stringify(server.address()));
   });
 
   server.on('error', (err) => {
@@ -64,11 +79,24 @@ function startup() {
   });
 
   try {
-    fs.unlinkSync(path);
+    fs.unlinkSync(socketPath);
   } catch (err) {
     // ignore any errors
   }
-  server.listen(path);
+  server.listen(socketPath);
+}
+
+async function startup() {
+
+  agent = new EnebularAgent({
+    nodeRedDir: process.env.NODE_RED_DIR || path.join(process.cwd(), 'node-red'),
+    configFile: path.join(process.cwd(), '.enebular-config.json'),
+  });
+
+  await agent.startup();
+  log('agent started');
+
+  await startServer(agent);
 }
 
 function shutdown() {

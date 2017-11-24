@@ -9,7 +9,8 @@
   "scripts": {
     "build": "babel src -d lib",
     "start": "node lib/index.js",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "flow": "flow"
   },
   "author": "",
   "license": "MIT",
