@@ -1,4 +1,4 @@
-
+/* @flow */
 import net from 'net';
 import fs from 'fs';
 import debug from 'debug';
