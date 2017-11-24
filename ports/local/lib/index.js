@@ -35,7 +35,7 @@ var startServer = function () {
 
                 agent.handleDeviceMasterMessage(messageType, message);
               } catch (err) {
-                log('JSON parse of client message failed: ' + err);
+                log('client message: JSON parse failed: ' + err);
               }
             };
 
@@ -68,7 +68,7 @@ var startServer = function () {
               });
 
               socket.on('close', function () {
-                log('client closed');
+                log('client disconnected');
               });
 
               socket.on('error', function (err) {
@@ -171,7 +171,7 @@ var log = (0, _debug2.default)('enebular-local-agent');
 
 var END_OF_MSG_MARKER = 0x1E; // RS (Record Separator)
 
-var socketPath = '/tmp/sock.enebular-local-agent';
+var socketPath = '/tmp/enebular-local-agent.socket';
 var agent = void 0;
 var server = void 0;
 
