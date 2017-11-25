@@ -1,3 +1,4 @@
 #!/usr/bin/env node
 var agent = require('..');
+console.log('the agent___-_____', agent)
 agent.startup();

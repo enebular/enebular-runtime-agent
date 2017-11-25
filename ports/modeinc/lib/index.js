@@ -22,7 +22,6 @@ var startup = function () {
             _context.prev = 0;
 
             device.commandCallback = function (msg, flags) {
-              console.log(msg, flags);
               agent.handleDeviceMasterMessage(msg.action, msg.parameters);
             };
             device.listenCommands();
@@ -30,7 +29,7 @@ var startup = function () {
             return agent.startup();
 
           case 5:
-            console.log('### enebular agent started up ####');
+            console.log('### mode enebular agent started up ####');
             return _context.abrupt('return', agent);
 
           case 9:
