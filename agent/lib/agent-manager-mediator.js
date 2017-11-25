@@ -4,13 +4,17 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
+var _stringify = require('babel-runtime/core-js/json/stringify');
+
+var _stringify2 = _interopRequireDefault(_stringify);
+
 var _regenerator = require('babel-runtime/regenerator');
 
 var _regenerator2 = _interopRequireDefault(_regenerator);
 
-var _stringify = require('babel-runtime/core-js/json/stringify');
+var _getIterator2 = require('babel-runtime/core-js/get-iterator');
 
-var _stringify2 = _interopRequireDefault(_stringify);
+var _getIterator3 = _interopRequireDefault(_getIterator2);
 
 var _asyncToGenerator2 = require('babel-runtime/helpers/asyncToGenerator');
 
@@ -51,6 +55,16 @@ var _debug2 = _interopRequireDefault(_debug);
 var _nodeRedController = require('./node-red-controller');
 
 var _nodeRedController2 = _interopRequireDefault(_nodeRedController);
+
+var _fs = require('fs');
+
+var _fs2 = _interopRequireDefault(_fs);
+
+var _formData = require('form-data');
+
+var _formData2 = _interopRequireDefault(_formData);
+
+var _util = require('util');
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -94,12 +108,145 @@ var AgentManagerMediator = function (_EventEmitter) {
       console.log('*** device shutting down in 5 seconds ***');
     }
   }, {
+    key: 'startLogReport',
+    value: function () {
+      var _ref = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee() {
+        var baseUrl, accessToken, readDir, readFile, unlink, logList, _iteratorNormalCompletion, _didIteratorError, _iteratorError, _iterator, _step, file, form, res, message, err;
+
+        return _regenerator2.default.wrap(function _callee$(_context) {
+          while (1) {
+            switch (_context.prev = _context.next) {
+              case 0:
+                log('startLogReport');
+                baseUrl = this._baseUrl, accessToken = this._accessToken;
+
+                if (!(!baseUrl || !accessToken)) {
+                  _context.next = 5;
+                  break;
+                }
+
+                log('Cannnot start status report without baseUrl or access Token.');
+                return _context.abrupt('return');
+
+              case 5:
+                readDir = (0, _util.promisify)(_fs2.default.readdir);
+                readFile = (0, _util.promisify)(_fs2.default.readFile);
+                unlink = (0, _util.promisify)(_fs2.default.unlink);
+                _context.next = 10;
+                return readDir('logs/logs');
+
+              case 10:
+                logList = _context.sent;
+
+                console.log('logList----------------------', logList);
+                _iteratorNormalCompletion = true;
+                _didIteratorError = false;
+                _iteratorError = undefined;
+                _context.prev = 15;
+                _iterator = (0, _getIterator3.default)(logList);
+
+              case 17:
+                if (_iteratorNormalCompletion = (_step = _iterator.next()).done) {
+                  _context.next = 36;
+                  break;
+                }
+
+                file = _step.value;
+                form = new _formData2.default();
+
+                form.append(file, _fs2.default.createReadStream('logs/logs/' + file));
+                _context.next = 23;
+                return (0, _isomorphicFetch2.default)(baseUrl + '/record-logs', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': 'Bearer ' + accessToken,
+                    'Content-Type': 'multipart/form-data'
+                  },
+                  body: form
+                });
+
+              case 23:
+                res = _context.sent;
+
+                if (res.ok) {
+                  _context.next = 31;
+                  break;
+                }
+
+                _context.next = 27;
+                return res.text();
+
+              case 27:
+                message = _context.sent;
+
+                console.log('message----------------------', message);
+                err = new Error('Cannot record logs to agent manager: ');
+
+                this.emit('error', err);
+
+              case 31:
+                _context.next = 33;
+                return unlink('logs/logs/' + file);
+
+              case 33:
+                _iteratorNormalCompletion = true;
+                _context.next = 17;
+                break;
+
+              case 36:
+                _context.next = 42;
+                break;
+
+              case 38:
+                _context.prev = 38;
+                _context.t0 = _context['catch'](15);
+                _didIteratorError = true;
+                _iteratorError = _context.t0;
+
+              case 42:
+                _context.prev = 42;
+                _context.prev = 43;
+
+                if (!_iteratorNormalCompletion && _iterator.return) {
+                  _iterator.return();
+                }
+
+              case 45:
+                _context.prev = 45;
+
+                if (!_didIteratorError) {
+                  _context.next = 48;
+                  break;
+                }
+
+                throw _iteratorError;
+
+              case 48:
+                return _context.finish(45);
+
+              case 49:
+                return _context.finish(42);
+
+              case 50:
+              case 'end':
+                return _context.stop();
+            }
+          }
+        }, _callee, this, [[15, 38, 42, 50], [43,, 45, 49]]);
+      }));
+
+      function startLogReport() {
+        return _ref.apply(this, arguments);
+      }
+
+      return startLogReport;
+    }()
+  }, {
     key: 'startStatusReport',
     value: function startStatusReport() {
       var _this2 = this;
 
       log('startStatusReport');
-
       var baseUrl = this._baseUrl,
           accessToken = this._accessToken;
 
@@ -108,16 +255,16 @@ var AgentManagerMediator = function (_EventEmitter) {
         return;
       }
       var notifyStatus = function () {
-        var _ref = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee(kill) {
+        var _ref2 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee2(kill) {
           var status, res, message, err;
-          return _regenerator2.default.wrap(function _callee$(_context) {
+          return _regenerator2.default.wrap(function _callee2$(_context2) {
             while (1) {
-              switch (_context.prev = _context.next) {
+              switch (_context2.prev = _context2.next) {
                 case 0:
                   status = kill ? 'disconnected' : _this2._nodeRed.getStatus();
 
                   console.log('*** send status notification ***', status);
-                  _context.next = 4;
+                  _context2.next = 4;
                   return (0, _isomorphicFetch2.default)(baseUrl + '/notify-status', {
                     method: 'POST',
                     headers: {
@@ -128,18 +275,18 @@ var AgentManagerMediator = function (_EventEmitter) {
                   });
 
                 case 4:
-                  res = _context.sent;
+                  res = _context2.sent;
 
                   if (res.ok) {
-                    _context.next = 11;
+                    _context2.next = 11;
                     break;
                   }
 
-                  _context.next = 8;
+                  _context2.next = 8;
                   return res.text();
 
                 case 8:
-                  message = _context.sent;
+                  message = _context2.sent;
                   err = new Error('Cannot notify status to agent manager: ');
 
                   _this2.emit('error', err);
@@ -149,14 +296,14 @@ var AgentManagerMediator = function (_EventEmitter) {
 
                 case 12:
                 case 'end':
-                  return _context.stop();
+                  return _context2.stop();
               }
             }
-          }, _callee, _this2);
+          }, _callee2, _this2);
         }));
 
         return function notifyStatus(_x) {
-          return _ref.apply(this, arguments);
+          return _ref2.apply(this, arguments);
         };
       }();
       notifyStatus();
@@ -173,6 +320,9 @@ var AgentManagerMediator = function (_EventEmitter) {
         cleanUp();
       });
     }
+  }, {
+    key: 'sortLogs',
+    value: function sortLogs() {}
   }]);
   return AgentManagerMediator;
 }(_events2.default);

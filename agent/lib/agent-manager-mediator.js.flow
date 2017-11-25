@@ -3,7 +3,9 @@ import EventEmitter from 'events';
 import fetch from 'isomorphic-fetch';
 import debug from 'debug';
 import NodeREDController from './node-red-controller';
-
+import fs from 'fs'
+import FormData from 'form-data'
+import { promisify } from 'util'
 /**
  *
  */
@@ -39,9 +41,43 @@ export default class AgentManagerMediator extends EventEmitter {
     console.log('*** device shutting down in 5 seconds ***')
   }
 
+  async startLogReport() {
+    log('startLogReport');
+    const { _baseUrl: baseUrl, _accessToken: accessToken } = this;
+    if (!baseUrl || !accessToken) {
+      log('Cannnot start status report without baseUrl or access Token.');
+      return;
+    }
+    const readDir = promisify(fs.readdir)
+    const readFile = promisify(fs.readFile)
+    const unlink = promisify(fs.unlink)
+    const logList = await readDir('logs/logs')
+    console.log('logList----------------------', logList)
+    for (let file of logList) {
+      const form = new FormData()
+      form.append(file, fs.createReadStream(`logs/logs/${file}`))
+      const res = await fetch(`${baseUrl}/record-logs`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'multipart/form-data',
+        },
+        body: form
+      });
+      if (!res.ok) {
+        const message = await res.text();
+        console.log('message----------------------', message)
+        const err = new Error('Cannot record logs to agent manager: ');
+        this.emit('error', err);
+      }
+      await unlink(`logs/logs/${file}`)
+    }
+    
+    // setInterval(recordLogs, 5000)
+  }
+
   startStatusReport() {
     log('startStatusReport');
-    
     const { _baseUrl: baseUrl, _accessToken: accessToken } = this;
     if (!baseUrl || !accessToken) {
       log('Cannnot start status report without baseUrl or access Token.');
@@ -59,7 +95,7 @@ export default class AgentManagerMediator extends EventEmitter {
         body: JSON.stringify({ status }),
       });
       if (!res.ok) {
-        const message = await res.text();        
+        const message = await res.text();
         const err = new Error('Cannot notify status to agent manager: ');
         this.emit('error', err);
       }
@@ -78,5 +114,9 @@ export default class AgentManagerMediator extends EventEmitter {
     process.on('uncaughtException', function () {
       cleanUp()
     });
+  }
+
+  sortLogs() {
+
   }
 }

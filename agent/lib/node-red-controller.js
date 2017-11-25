@@ -54,13 +54,16 @@ var _isomorphicFetch = require('isomorphic-fetch');
 
 var _isomorphicFetch2 = _interopRequireDefault(_isomorphicFetch);
 
+var _rotatingFileStream = require('rotating-file-stream');
+
+var _rotatingFileStream2 = _interopRequireDefault(_rotatingFileStream);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 /**
  *
  */
 var log = (0, _debug2.default)('enebular-runtime-agent:node-red-controller');
-
 /**
  *
  */
@@ -70,6 +73,8 @@ var log = (0, _debug2.default)('enebular-runtime-agent:node-red-controller');
  */
 var NodeREDController = function () {
   function NodeREDController(dir, command, emitter) {
+    var _this = this;
+
     (0, _classCallCheck3.default)(this, NodeREDController);
     this._cproc = null;
     this._actions = [];
@@ -84,27 +89,53 @@ var NodeREDController = function () {
     }
     this._command = command;
     this._registerHandler(emitter);
+    this._currentFile = (0, _rotatingFileStream2.default)(generator, {
+      size: '1M',
+      interval: '5s',
+      path: 'logs',
+      maxFiles: 100
+    });
+    this._stdoutUnhook = this._hookStream(process.stdout, function (string, encoding) {
+      _this._currentFile.write(string, encoding);
+    });
+    this._stderrUnhook = this._hookStream(process.stderr, function (string, encoding) {
+      _this._currentFile.write(string, encoding);
+    });
   }
 
   (0, _createClass3.default)(NodeREDController, [{
+    key: '_hookStream',
+    value: function _hookStream(stream, cb) {
+      var old_write = stream.write;
+      stream.write = function (write) {
+        return function (string, encoding) {
+          write.apply(stream, arguments);
+          cb(string, encoding);
+        };
+      }(stream.write);
+      return function () {
+        stream.write = old_write;
+      };
+    }
+  }, {
     key: '_registerHandler',
     value: function _registerHandler(emitter) {
-      var _this = this;
+      var _this2 = this;
 
       emitter.on('update-flow', function (params) {
-        return _this.fetchAndUpdateFlow(params);
+        return _this2.fetchAndUpdateFlow(params);
       });
       emitter.on('deploy', function (params) {
-        return _this.fetchAndUpdateFlow(params);
+        return _this2.fetchAndUpdateFlow(params);
       });
       emitter.on('start', function () {
-        return _this.startService();
+        return _this2.startService();
       });
       emitter.on('restart', function () {
-        return _this.restartService();
+        return _this2.restartService();
       });
       emitter.on('shutdown', function () {
-        _this.shutdownService();
+        _this2.shutdownService();
       });
     }
   }, {
@@ -152,7 +183,7 @@ var NodeREDController = function () {
     key: '_processActions',
     value: function () {
       var _ref2 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee3() {
-        var _this2 = this;
+        var _this3 = this;
 
         return _regenerator2.default.wrap(function _callee3$(_context3) {
           while (1) {
@@ -165,12 +196,12 @@ var NodeREDController = function () {
                     while (1) {
                       switch (_context2.prev = _context2.next) {
                         case 0:
-                          if (!(_this2._actions.length > 0)) {
+                          if (!(_this3._actions.length > 0)) {
                             _context2.next = 6;
                             break;
                           }
 
-                          action = _this2._actions.shift();
+                          action = _this3._actions.shift();
                           _context2.next = 4;
                           return action();
 
@@ -183,7 +214,7 @@ var NodeREDController = function () {
                           return _context2.stop();
                       }
                     }
-                  }, _callee2, _this2);
+                  }, _callee2, _this3);
                 }))();
                 _context3.next = 4;
                 return this._isProcessing;
@@ -209,14 +240,14 @@ var NodeREDController = function () {
     key: 'fetchAndUpdateFlow',
     value: function () {
       var _ref4 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee4(params) {
-        var _this3 = this;
+        var _this4 = this;
 
         return _regenerator2.default.wrap(function _callee4$(_context4) {
           while (1) {
             switch (_context4.prev = _context4.next) {
               case 0:
                 return _context4.abrupt('return', this._queueAction(function () {
-                  return _this3._fetchAndUpdateFlow(params);
+                  return _this4._fetchAndUpdateFlow(params);
                 }));
 
               case 1:
@@ -312,7 +343,7 @@ var NodeREDController = function () {
     key: '_updatePackage',
     value: function () {
       var _ref7 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee7(flowPackage) {
-        var _this4 = this;
+        var _this5 = this;
 
         var updates, _flows, _creds;
 
@@ -327,7 +358,7 @@ var NodeREDController = function () {
                   _flows = flowPackage.flow || flowPackage.flows;
 
                   updates.push(new _promise2.default(function (resolve, reject) {
-                    var flowFilePath = _path2.default.join(_this4._dir, '.node-red-config', 'flows.json');
+                    var flowFilePath = _path2.default.join(_this5._dir, '.node-red-config', 'flows.json');
                     _fs2.default.writeFile(flowFilePath, (0, _stringify2.default)(_flows), function (err) {
                       return err ? reject(err) : resolve();
                     });
@@ -337,7 +368,7 @@ var NodeREDController = function () {
                   _creds = flowPackage.cred || flowPackage.creds;
 
                   updates.push(new _promise2.default(function (resolve, reject) {
-                    var credFilePath = _path2.default.join(_this4._dir, '.node-red-config', 'flows_cred.json');
+                    var credFilePath = _path2.default.join(_this5._dir, '.node-red-config', 'flows_cred.json');
                     _fs2.default.writeFile(credFilePath, (0, _stringify2.default)(_creds), function (err) {
                       return err ? reject(err) : resolve();
                     });
@@ -345,7 +376,7 @@ var NodeREDController = function () {
                 }
                 if (flowPackage.packages) {
                   updates.push(new _promise2.default(function (resolve, reject) {
-                    var packageJSONFilePath = _path2.default.join(_this4._dir, '.node-red-config', 'enebular-agent-dynamic-deps', 'package.json');
+                    var packageJSONFilePath = _path2.default.join(_this5._dir, '.node-red-config', 'enebular-agent-dynamic-deps', 'package.json');
                     var packageJSON = (0, _stringify2.default)({
                       name: 'enebular-agent-dynamic-deps',
                       version: '0.0.1',
@@ -381,14 +412,14 @@ var NodeREDController = function () {
     key: '_resolveDependency',
     value: function () {
       var _ref8 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee8() {
-        var _this5 = this;
+        var _this6 = this;
 
         return _regenerator2.default.wrap(function _callee8$(_context8) {
           while (1) {
             switch (_context8.prev = _context8.next) {
               case 0:
                 return _context8.abrupt('return', new _promise2.default(function (resolve, reject) {
-                  var cproc = (0, _child_process.spawn)('npm', ['install', 'enebular-agent-dynamic-deps'], { stdio: 'inherit', cwd: _path2.default.join(_this5._dir, '.node-red-config') });
+                  var cproc = (0, _child_process.spawn)('npm', ['install', 'enebular-agent-dynamic-deps'], { stdio: 'inherit', cwd: _path2.default.join(_this6._dir, '.node-red-config') });
                   cproc.on('error', reject);
                   cproc.once('exit', resolve);
                 }));
@@ -411,14 +442,14 @@ var NodeREDController = function () {
     key: 'startService',
     value: function () {
       var _ref9 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee9() {
-        var _this6 = this;
+        var _this7 = this;
 
         return _regenerator2.default.wrap(function _callee9$(_context9) {
           while (1) {
             switch (_context9.prev = _context9.next) {
               case 0:
                 return _context9.abrupt('return', this._queueAction(function () {
-                  return _this6._startService();
+                  return _this7._startService();
                 }));
 
               case 1:
@@ -439,7 +470,7 @@ var NodeREDController = function () {
     key: '_startService',
     value: function () {
       var _ref10 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee10() {
-        var _this7 = this;
+        var _this8 = this;
 
         return _regenerator2.default.wrap(function _callee10$(_context10) {
           while (1) {
@@ -447,20 +478,26 @@ var NodeREDController = function () {
               case 0:
                 log('_startService');
                 return _context10.abrupt('return', new _promise2.default(function (resolve, reject) {
-                  var _command$split = _this7._command.split(/\s+/),
+                  var _command$split = _this8._command.split(/\s+/),
                       _command$split2 = (0, _toArray3.default)(_command$split),
                       command = _command$split2[0],
                       args = _command$split2.slice(1);
 
-                  var cproc = (0, _child_process.spawn)(command, args, { stdio: 'inherit', cwd: _this7._dir });
+                  var cproc = (0, _child_process.spawn)(command, args, { stdio: 'pipe', cwd: _this8._dir });
+                  cproc.stdout.on('data', function (data) {
+                    process.stdout.write(data);
+                  });
+                  cproc.stderr.on('data', function (data) {
+                    process.stdout.write(data);
+                  });
                   cproc.once('exit', function (code) {
-                    _this7._cproc = null;
+                    _this8._cproc = null;
                   });
                   cproc.once('error', function (err) {
-                    _this7._cproc = null;
+                    _this8._cproc = null;
                     reject(err);
                   });
-                  _this7._cproc = cproc;
+                  _this8._cproc = cproc;
                   setTimeout(function () {
                     return resolve();
                   }, 1000);
@@ -484,14 +521,14 @@ var NodeREDController = function () {
     key: 'shutdownService',
     value: function () {
       var _ref11 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee11() {
-        var _this8 = this;
+        var _this9 = this;
 
         return _regenerator2.default.wrap(function _callee11$(_context11) {
           while (1) {
             switch (_context11.prev = _context11.next) {
               case 0:
                 return _context11.abrupt('return', this._queueAction(function () {
-                  return _this8._shutdownService();
+                  return _this9._shutdownService();
                 }));
 
               case 1:
@@ -512,7 +549,7 @@ var NodeREDController = function () {
     key: '_shutdownService',
     value: function () {
       var _ref12 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee12() {
-        var _this9 = this;
+        var _this10 = this;
 
         return _regenerator2.default.wrap(function _callee12$(_context12) {
           while (1) {
@@ -520,11 +557,11 @@ var NodeREDController = function () {
               case 0:
                 log('_shutdownService');
                 return _context12.abrupt('return', new _promise2.default(function (resolve, reject) {
-                  var cproc = _this9._cproc;
+                  var cproc = _this10._cproc;
                   if (cproc) {
                     cproc.kill();
                     cproc.once('exit', function () {
-                      _this9._cproc = null;
+                      _this10._cproc = null;
                       resolve();
                     });
                   } else {
@@ -550,14 +587,14 @@ var NodeREDController = function () {
     key: 'restartService',
     value: function () {
       var _ref13 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee13() {
-        var _this10 = this;
+        var _this11 = this;
 
         return _regenerator2.default.wrap(function _callee13$(_context13) {
           while (1) {
             switch (_context13.prev = _context13.next) {
               case 0:
                 return _context13.abrupt('return', this._queueAction(function () {
-                  return _this10._restartService();
+                  return _this11._restartService();
                 }));
 
               case 1:
@@ -607,16 +644,84 @@ var NodeREDController = function () {
   }, {
     key: 'getStatus',
     value: function getStatus() {
+      log('_getStatus');
       if (this._cproc) {
-        log('getStatus started ==========');
+        log('_getStatus connected');
         return 'connected';
       } else {
-        log('getStatus stopped ==========');
+        log('_getStatus disconnected');
         return 'disconnected';
       }
     }
+  }, {
+    key: 'getLogFile',
+    value: function () {
+      var _ref15 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee15() {
+        var _this12 = this;
+
+        var currentReadableStream;
+        return _regenerator2.default.wrap(function _callee15$(_context15) {
+          while (1) {
+            switch (_context15.prev = _context15.next) {
+              case 0:
+                log('getLogFile');
+
+                if (!this._cproc) {
+                  _context15.next = 12;
+                  break;
+                }
+
+                console.log('yeah----------------------');
+                console.log('currentFile', this._currentFile);
+                currentReadableStream = _fs2.default.createReadStream(this._currentFile);
+
+                console.log('currentReadableStream', currentReadableStream);
+                this._currentFile = _fs2.default.createWriteStream('haro.txt');
+                this._stdoutUnhook = this._hookStream(process.stdout, function (string, encoding) {
+                  _this12._currentFile.write(string, encoding);
+                });
+                this._stderrUnhook = this._hookStream(process.stderr, function (string, encoding) {
+                  _this12._currentFile.write(string, encoding);
+                });
+                return _context15.abrupt('return', currentReadableStream);
+
+              case 12:
+                log('_logStatusReport finished');
+
+              case 13:
+              case 'end':
+                return _context15.stop();
+            }
+          }
+        }, _callee15, this);
+      }));
+
+      function getLogFile() {
+        return _ref15.apply(this, arguments);
+      }
+
+      return getLogFile;
+    }()
   }]);
   return NodeREDController;
 }();
 
 exports.default = NodeREDController;
+
+
+function pad(num) {
+  return (num > 9 ? "" : "0") + num;
+}
+
+function generator(time, index) {
+  if (!time) return "file.log";
+
+  var month = time.getFullYear() + "" + pad(time.getMonth() + 1);
+  var day = pad(time.getDate());
+  var hour = pad(time.getHours());
+  var minute = pad(time.getMinutes());
+  var seconds = pad(time.getSeconds());
+  return 'logs/' + month + day + '-' + hour + minute + seconds + '.log';
+  // return month +
+  //     day + "-" + hour + minute + "-" + seconds + "-" + index + "-file.log";
+}

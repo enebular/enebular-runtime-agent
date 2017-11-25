@@ -296,17 +296,18 @@ var EnebularAgent = function () {
 
                 this._agentMan.setAccessToken(accessToken);
                 this._changeAgentState('authenticated');
-                _context4.next = 17;
+                _context4.next = 18;
                 break;
 
               case 13:
                 _context4.prev = 13;
                 _context4.t0 = _context4['catch'](4);
 
+                log('err---', _context4.t0);
                 this._changeAgentState('unauthenticated');
                 throw _context4.t0;
 
-              case 17:
+              case 18:
               case 'end':
                 return _context4.stop();
             }
@@ -329,7 +330,8 @@ var EnebularAgent = function () {
             switch (_context5.prev = _context5.next) {
               case 0:
                 log('_startStatusNotification');
-                this._agentMan.startStatusReport();
+                // this._agentMan.startStatusReport();
+                this._startRecordLogs();
 
               case 2:
               case 'end':
@@ -344,6 +346,30 @@ var EnebularAgent = function () {
       }
 
       return _startStatusNotification;
+    }()
+  }, {
+    key: '_startRecordLogs',
+    value: function () {
+      var _ref8 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee6() {
+        return _regenerator2.default.wrap(function _callee6$(_context6) {
+          while (1) {
+            switch (_context6.prev = _context6.next) {
+              case 0:
+                this._agentMan.startLogReport();
+
+              case 1:
+              case 'end':
+                return _context6.stop();
+            }
+          }
+        }, _callee6, this);
+      }));
+
+      function _startRecordLogs() {
+        return _ref8.apply(this, arguments);
+      }
+
+      return _startRecordLogs;
     }()
 
     /**

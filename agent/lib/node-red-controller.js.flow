@@ -5,12 +5,11 @@ import path from 'path';
 import { spawn, exec, type ChildProcess } from 'child_process';
 import debug from 'debug';
 import fetch from 'isomorphic-fetch';
-
+import rfs from 'rotating-file-stream'
 /**
  *
  */
 const log = debug('enebular-runtime-agent:node-red-controller');
-
 /**
  *
  */
@@ -30,6 +29,7 @@ export default class NodeREDController {
   _cproc: ?ChildProcess = null;
   _actions: Array<() => Promise<any>> = [];
   _isProcessing: ?Promise<void> = null;
+  _currentFile: WritableStream
 
   constructor(dir: string, command: string, emitter: EventEmitter) {
     this._dir = dir;    
@@ -41,6 +41,31 @@ export default class NodeREDController {
     }
     this._command = command;
     this._registerHandler(emitter);
+    this._currentFile = rfs(generator, {
+      size: '1M',
+      interval: '5s',
+      path: 'logs',
+      maxFiles: 100
+    });
+    this._stdoutUnhook = this._hookStream(process.stdout, (string, encoding) => {
+      this._currentFile.write(string, encoding)
+    })
+    this._stderrUnhook = this._hookStream(process.stderr, (string, encoding) => {
+      this._currentFile.write(string, encoding)
+    })
+  }
+
+  _hookStream(stream, cb) {
+    var old_write = stream.write
+    stream.write = (function(write) {
+      return function(string, encoding) {
+        write.apply(stream, arguments)
+        cb(string, encoding)
+      }
+    })(stream.write)
+    return function() {
+      stream.write = old_write
+    }
   }
 
   _registerHandler(emitter: EventEmitter) {
@@ -114,7 +139,7 @@ export default class NodeREDController {
         })
       );
     }
-    if (flowPackage.packages) {      
+    if (flowPackage.packages) {
       updates.push(
         new Promise((resolve, reject) => {
           const packageJSONFilePath = path.join(this._dir, '.node-red-config', 'enebular-agent-dynamic-deps', 'package.json');
@@ -147,7 +172,13 @@ export default class NodeREDController {
     log('_startService');
     return new Promise((resolve, reject) => {
       const [command, ...args] = this._command.split(/\s+/);
-      const cproc = spawn(command, args, { stdio: 'inherit', cwd: this._dir });
+      const cproc = spawn(command, args, { stdio: 'pipe', cwd: this._dir });
+      cproc.stdout.on('data', (data) => {
+        process.stdout.write(data)
+      });
+      cproc.stderr.on('data', (data) => {
+        process.stdout.write(data)
+      });
       cproc.once('exit', (code) => {
         this._cproc = null;
       });
@@ -191,13 +222,54 @@ export default class NodeREDController {
   }
 
   getStatus() {
+    log('_getStatus')
     if (this._cproc) {
-      log('getStatus started ==========')
+      log('_getStatus connected')
       return 'connected';
     } else {
-      log('getStatus stopped ==========')
+      log('_getStatus disconnected')
       return 'disconnected';
     }
   }
 
+  
+
+  async getLogFile() {
+    log('getLogFile')
+    if (this._cproc) {
+      console.log('yeah----------------------')
+      console.log('currentFile', this._currentFile)
+      const currentReadableStream = fs.createReadStream(this._currentFile)
+      console.log('currentReadableStream', currentReadableStream)
+      this._currentFile = fs.createWriteStream('haro.txt')
+      this._stdoutUnhook = this._hookStream(process.stdout, (string, encoding) => {
+        this._currentFile.write(string, encoding)
+      })
+      this._stderrUnhook = this._hookStream(process.stderr, (string, encoding) => {
+        this._currentFile.write(string, encoding)
+      })
+      return currentReadableStream
+    } else {
+      log('_logStatusReport finished')
+    }
+
+  }
+}
+
+function pad(num) {
+  return (num > 9 ? "" : "0") + num;
+}
+
+function generator(time, index) {
+  if(! time)
+      return "file.log";
+
+  const month  = time.getFullYear() + "" + pad(time.getMonth() + 1);
+  const day = pad(time.getDate());
+  const hour = pad(time.getHours());
+  const minute = pad(time.getMinutes());
+  const seconds = pad(time.getSeconds());
+  return `logs/${month}${day}-${hour}${minute}${seconds}.log`
+  // return month +
+  //     day + "-" + hour + minute + "-" + seconds + "-" + index + "-file.log";
 }

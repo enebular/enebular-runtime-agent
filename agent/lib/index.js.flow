@@ -170,6 +170,7 @@ export default class EnebularAgent {
       this._agentMan.setAccessToken(accessToken);
       this._changeAgentState('authenticated');
     } catch (err) {
+      log('err---', err)
       this._changeAgentState('unauthenticated');
       throw err;
     }
@@ -177,7 +178,12 @@ export default class EnebularAgent {
 
   async _startStatusNotification() {
     log('_startStatusNotification');
-    this._agentMan.startStatusReport();
+    // this._agentMan.startStatusReport();
+    this._startRecordLogs()
+  }
+
+  async _startRecordLogs() {
+    this._agentMan.startLogReport()
   }
 
   /**
