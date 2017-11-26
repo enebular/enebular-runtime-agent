@@ -5,7 +5,6 @@ import debug from 'debug';
 import NodeREDController from './node-red-controller';
 import fs from 'fs'
 import FormData from 'form-data'
-import nodeCleanup from 'node-cleanup'
 import { promisify } from 'util'
 /**
  *
