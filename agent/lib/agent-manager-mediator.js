@@ -4,6 +4,10 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
+var _promise = require('babel-runtime/core-js/promise');
+
+var _promise2 = _interopRequireDefault(_promise);
+
 var _stringify = require('babel-runtime/core-js/json/stringify');
 
 var _stringify2 = _interopRequireDefault(_stringify);
@@ -64,6 +68,10 @@ var _formData = require('form-data');
 
 var _formData2 = _interopRequireDefault(_formData);
 
+var _nodeCleanup = require('node-cleanup');
+
+var _nodeCleanup2 = _interopRequireDefault(_nodeCleanup);
+
 var _util = require('util');
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -72,7 +80,6 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
  *
  */
 var log = (0, _debug2.default)('enebular-runtime-agent:agent-manager-mediator');
-
 
 var readDirAsync = (0, _util.promisify)(_fs2.default.readdir);
 var readFileAsync = (0, _util.promisify)(_fs2.default.readFile);
@@ -117,8 +124,8 @@ var AgentManagerMediator = function (_EventEmitter) {
   }, {
     key: 'exitStatusReport',
     value: function exitStatusReport() {
-      setTimeout(process.exit, 5000);
-      console.log('*** device shutting down in 5 seconds ***');
+      setTimeout(process.exit, 10000);
+      console.log('*** device shutting down in 10 seconds ***');
     }
   }, {
     key: 'recordLogs',
@@ -393,16 +400,10 @@ var AgentManagerMediator = function (_EventEmitter) {
                 log('_cleanUp');
                 clearInterval(this._pid);
                 clearInterval(this._logInterval);
-                this._nodeRed._stdoutUnhook;
-                this._nodeRed._stderrUnhook;
-                _context3.next = 7;
-                return this.notifyStatus(true);
+                _context3.next = 5;
+                return _promise2.default.all([this._nodeRed._stdoutUnhook(), this._nodeRed._stderrUnhook(), this.recordLogs(), this.notifyStatus(true)]);
 
-              case 7:
-                _context3.next = 9;
-                return this.recordLogs();
-
-              case 9:
+              case 5:
               case 'end':
                 return _context3.stop();
             }

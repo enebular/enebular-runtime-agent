@@ -5,6 +5,7 @@ import debug from 'debug';
 import NodeREDController from './node-red-controller';
 import fs from 'fs'
 import FormData from 'form-data'
+import nodeCleanup from 'node-cleanup'
 import { promisify } from 'util'
 /**
  *
@@ -50,8 +51,8 @@ export default class AgentManagerMediator extends EventEmitter {
   }
 
   exitStatusReport() {
-    setTimeout(process.exit, 5000)
-    console.log('*** device shutting down in 5 seconds ***')
+    setTimeout(process.exit, 10000)
+    console.log('*** device shutting down in 10 seconds ***')
   }
 
   async recordLogs() {
@@ -135,10 +136,12 @@ export default class AgentManagerMediator extends EventEmitter {
     log('_cleanUp')
     clearInterval(this._pid);
     clearInterval(this._logInterval)
-    this._nodeRed._stdoutUnhook
-    this._nodeRed._stderrUnhook
-    await this.notifyStatus(true)
-    await this.recordLogs()
+    await Promise.all([
+      this._nodeRed._stdoutUnhook(),
+      this._nodeRed._stderrUnhook(),
+      this.recordLogs(),
+      this.notifyStatus(true)
+    ])
   }
 
   startStatusReport() {
