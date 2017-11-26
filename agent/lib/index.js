@@ -330,10 +330,10 @@ var EnebularAgent = function () {
             switch (_context5.prev = _context5.next) {
               case 0:
                 log('_startStatusNotification');
-                // this._agentMan.startStatusReport();
+                this._agentMan.startStatusReport();
                 this._startRecordLogs();
 
-              case 2:
+              case 3:
               case 'end':
                 return _context5.stop();
             }

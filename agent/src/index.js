@@ -178,7 +178,7 @@ export default class EnebularAgent {
 
   async _startStatusNotification() {
     log('_startStatusNotification');
-    // this._agentMan.startStatusReport();
+    this._agentMan.startStatusReport();
     this._startRecordLogs()
   }
 
