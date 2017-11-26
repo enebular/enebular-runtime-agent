@@ -68,10 +68,6 @@ var _formData = require('form-data');
 
 var _formData2 = _interopRequireDefault(_formData);
 
-var _nodeCleanup = require('node-cleanup');
-
-var _nodeCleanup2 = _interopRequireDefault(_nodeCleanup);
-
 var _util = require('util');
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -80,6 +76,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
  *
  */
 var log = (0, _debug2.default)('enebular-runtime-agent:agent-manager-mediator');
+
 
 var readDirAsync = (0, _util.promisify)(_fs2.default.readdir);
 var readFileAsync = (0, _util.promisify)(_fs2.default.readFile);
