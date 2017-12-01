@@ -233,29 +233,6 @@ export default class NodeREDController {
       return 'disconnected';
     }
   }
-
-  
-
-  async getLogFile() {
-    log('getLogFile')
-    if (this._cproc) {
-      console.log('yeah----------------------')
-      console.log('currentFile', this._currentFile)
-      const currentReadableStream = fs.createReadStream(this._currentFile)
-      console.log('currentReadableStream', currentReadableStream)
-      this._currentFile = fs.createWriteStream('haro.txt')
-      this._stdoutUnhook = this._hookStream(process.stdout, (string, encoding) => {
-        this._currentFile.write(string, encoding)
-      })
-      this._stderrUnhook = this._hookStream(process.stderr, (string, encoding) => {
-        this._currentFile.write(string, encoding)
-      })
-      return currentReadableStream
-    } else {
-      log('_logStatusReport finished')
-    }
-
-  }
 }
 
 function pad(num) {
