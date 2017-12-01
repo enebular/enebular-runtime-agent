@@ -26,12 +26,13 @@ type NodeRedFlowPackage = {
 export default class NodeREDController {
   _dir: string;
   _command: string;
+  _killSignal: string;
   _cproc: ?ChildProcess = null;
   _actions: Array<() => Promise<any>> = [];
   _isProcessing: ?Promise<void> = null;
   _currentFile: WritableStream
 
-  constructor(dir: string, command: string, emitter: EventEmitter) {
+  constructor(dir: string, command: string, killSignal: string, emitter: EventEmitter) {
     this._dir = dir;    
     if (!fs.existsSync(this._dir)) {
       throw new Error(`Given Node RED dir is not found: ${this._dir}`);
@@ -40,6 +41,7 @@ export default class NodeREDController {
       throw new Error(`Given Node RED dir does not have package.json file : ${this._dir}`);
     }
     this._command = command;
+    this._killSignal = killSignal;
     this._registerHandler(emitter);
     this._currentFile = rfs(generator, {
       size: '1M',
@@ -200,7 +202,7 @@ export default class NodeREDController {
     return new Promise((resolve, reject) => {
       const cproc = this._cproc;
       if (cproc) {
-        cproc.kill();
+        cproc.kill(this._killSignal);
         cproc.once('exit', () => {
           this._cproc = null;
           resolve();

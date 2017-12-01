@@ -36,3 +36,7 @@ e.g.
 ```
 nf run npm start notify mything01 update-flow ./data/01/flows.json ./data/01/flows_cred.json ./data/01/packages.json
 ```
+
+```
+main branch: develop
+```
