@@ -95,12 +95,14 @@ var EnebularAgent = function () {
     (0, _classCallCheck3.default)(this, EnebularAgent);
     var nodeRedDir = config.nodeRedDir,
         _config$nodeRedComman = config.nodeRedCommand,
-        nodeRedCommand = _config$nodeRedComman === undefined ? 'npm start' : _config$nodeRedComman,
+        nodeRedCommand = _config$nodeRedComman === undefined ? './node_modules/.bin/node-red -s .node-red-config/settings.js' : _config$nodeRedComman,
+        _config$nodeRedKillSi = config.nodeRedKillSignal,
+        nodeRedKillSignal = _config$nodeRedKillSi === undefined ? 'SIGINT' : _config$nodeRedKillSi,
         _config$configFile = config.configFile,
         configFile = _config$configFile === undefined ? _path2.default.join(_os2.default.homedir(), '.enebular-config.json') : _config$configFile;
 
     this._messageEmitter = new _events2.default();
-    this._nodeRed = new _nodeRedController2.default(nodeRedDir, nodeRedCommand, this._messageEmitter);
+    this._nodeRed = new _nodeRedController2.default(nodeRedDir, nodeRedCommand, nodeRedKillSignal, this._messageEmitter);
     this._deviceAuth = new _deviceAuthMediator2.default(this._messageEmitter);
     this._agentMan = new _agentManagerMediator2.default(this._nodeRed);
     this._configFile = configFile;

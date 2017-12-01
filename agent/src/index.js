@@ -19,6 +19,7 @@ const log = debug('enebular-runtime-agent');
 export type EnebularAgentConfig = {
   nodeRedDir: string,
   nodeRedCommand?: string,
+  nodeRedKillSignal?: string,
   configFile?: string,
 };
 
@@ -74,11 +75,12 @@ export default class EnebularAgent {
   constructor(config: EnebularAgentConfig) {
     const {
       nodeRedDir,
-      nodeRedCommand = 'npm start',
+      nodeRedCommand = './node_modules/.bin/node-red -s .node-red-config/settings.js',
+      nodeRedKillSignal = 'SIGINT',
       configFile = path.join(os.homedir(), '.enebular-config.json'),
     } = config;
     this._messageEmitter = new EventEmitter();
-    this._nodeRed = new NodeREDController(nodeRedDir, nodeRedCommand, this._messageEmitter);
+    this._nodeRed = new NodeREDController(nodeRedDir, nodeRedCommand, nodeRedKillSignal, this._messageEmitter);
     this._deviceAuth = new DeviceAuthMediator(this._messageEmitter);
     this._agentMan = new AgentManagerMediator(this._nodeRed);
     this._configFile = configFile;
