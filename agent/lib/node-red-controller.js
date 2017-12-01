@@ -721,7 +721,7 @@ function generator(time, index) {
   var hour = pad(time.getHours());
   var minute = pad(time.getMinutes());
   var seconds = pad(time.getSeconds());
-  return 'logs/' + month + day + '-' + hour + minute + seconds + '.log';
+  return 'logs/' + month + day + hour + minute + seconds + '.log';
   // return month +
   //     day + "-" + hour + minute + "-" + seconds + "-" + index + "-file.log";
 }

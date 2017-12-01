@@ -88,7 +88,6 @@ export default class AgentManagerMediator extends EventEmitter {
         await unlinkAsync(`logs/logs/${destinationFile}`)
       }
       log('_recordLogs: done batching')
-      
       // post logs
       const form = new FormData()
       form.append(destinationFile, fs.createReadStream(`logs/logs/${destinationFile}`))
@@ -151,7 +150,7 @@ export default class AgentManagerMediator extends EventEmitter {
       return;
     }
     this.notifyStatus();
-    this._pid = setInterval(() => this.notifyStatus(), 10000);
+    this._pid = setInterval(() => this.notifyStatus(), 30000);
   }
 
   startLogReport() {
@@ -161,6 +160,6 @@ export default class AgentManagerMediator extends EventEmitter {
       log('Cannnot start log report without baseUrl or access Token.');
       return;
     }
-    this._logInterval = setInterval(() => this.recordLogs(), 10000)
+    this._logInterval = setInterval(() => this.recordLogs(), 30000)
   }
 }

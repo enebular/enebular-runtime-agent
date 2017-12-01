@@ -1,10 +1,10 @@
 {
 	"host": "afx4xdk4zoudb.iot.ap-northeast-1.amazonaws.com",
 	"port": 8883,
-	"clientId": "testio",
-  "thingName": "testio",
-	"caCert": "./certs/root-CA.crt",
-	"clientCert": "./certs/testio.cert.pem",
-	"privateKey": "./certs/testio.private.key",
-	"topic": "process"
+	"clientId": "saunter",
+  "thingName": "saunter",
+	"caCert": "./certs/VeriSign-Class 3-Public-Primary-Certification-Authority-G5.pem",
+	"clientCert": "./certs/saunter.cert.pem",
+	"privateKey": "./certs/saunter.private.key",
+	"topic": "aws/things/saunter/shadow/update"
 }

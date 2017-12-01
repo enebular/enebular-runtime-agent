@@ -267,7 +267,6 @@ var AgentManagerMediator = function (_EventEmitter) {
 
               case 58:
                 log('_recordLogs: done batching');
-
                 // post logs
                 form = new _formData2.default();
 
@@ -430,7 +429,7 @@ var AgentManagerMediator = function (_EventEmitter) {
       this.notifyStatus();
       this._pid = setInterval(function () {
         return _this2.notifyStatus();
-      }, 10000);
+      }, 30000);
     }
   }, {
     key: 'startLogReport',
@@ -447,7 +446,7 @@ var AgentManagerMediator = function (_EventEmitter) {
       }
       this._logInterval = setInterval(function () {
         return _this3.recordLogs();
-      }, 10000);
+      }, 30000);
     }
   }]);
   return AgentManagerMediator;

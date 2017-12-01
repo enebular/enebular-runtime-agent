@@ -269,7 +269,7 @@ function generator(time, index) {
   const hour = pad(time.getHours());
   const minute = pad(time.getMinutes());
   const seconds = pad(time.getSeconds());
-  return `logs/${month}${day}-${hour}${minute}${seconds}.log`
+  return `logs/${month}${day}${hour}${minute}${seconds}.log`
   // return month +
   //     day + "-" + hour + minute + "-" + seconds + "-" + index + "-file.log";
 }
