@@ -69,7 +69,7 @@ var log = (0, _debug2.default)('enebular-runtime-agent:node-red-controller');
  *
  */
 var NodeREDController = function () {
-  function NodeREDController(dir, command, emitter) {
+  function NodeREDController(dir, command, killSignal, emitter) {
     (0, _classCallCheck3.default)(this, NodeREDController);
     this._cproc = null;
     this._actions = [];
@@ -83,6 +83,7 @@ var NodeREDController = function () {
       throw new Error('Given Node RED dir does not have package.json file : ' + this._dir);
     }
     this._command = command;
+    this._killSignal = killSignal;
     this._registerHandler(emitter);
   }
 
@@ -522,7 +523,7 @@ var NodeREDController = function () {
                 return _context12.abrupt('return', new _promise2.default(function (resolve, reject) {
                   var cproc = _this9._cproc;
                   if (cproc) {
-                    cproc.kill();
+                    cproc.kill(_this9._killSignal);
                     cproc.once('exit', function () {
                       _this9._cproc = null;
                       resolve();
