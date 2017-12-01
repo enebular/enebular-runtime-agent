@@ -19,6 +19,7 @@ node_modules
 .env
 .DS_Store
 
-*.key
-*.pem
-*.crt
+/**/*.key
+/**/*.pem
+/**/*.crt
+
