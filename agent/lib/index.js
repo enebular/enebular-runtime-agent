@@ -82,7 +82,7 @@ function isPossibleStateTransition(state, nextState) {
     case 'authenticated':
       return nextState === 'unauthenticated';
     case 'unauthenticated':
-      return nextState === 'authenticated';
+      return nextState === 'authenticated' || nextState === 'registered';
   }
 }
 
@@ -356,7 +356,7 @@ var EnebularAgent = function () {
       log('handleDeviceMasterMessage', messageType, message);
       switch (messageType) {
         case 'register':
-          if (this._agentState === 'init' || this._agentState === 'unregistered') {
+          if (this._agentState === 'init' || this._agentState === 'unregistered' || this._agentState === 'unauthenticated') {
             var _connectionId2 = message.connectionId,
                 _deviceId2 = message.deviceId,
                 _agentManagerBaseUrl2 = message.agentManagerBaseUrl,

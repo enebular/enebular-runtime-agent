@@ -51,7 +51,7 @@ function isPossibleStateTransition(state: AgentState, nextState: AgentState) {
     case 'authenticated':
       return nextState === 'unauthenticated';
     case 'unauthenticated':
-      return nextState === 'authenticated';
+      return nextState === 'authenticated' || nextState === 'registered';
   }
 }
 
@@ -187,7 +187,7 @@ export default class EnebularAgent {
     log('handleDeviceMasterMessage', messageType, message);
     switch (messageType) {
       case 'register':
-        if (this._agentState === 'init' || this._agentState === 'unregistered') {
+        if (this._agentState === 'init' || this._agentState === 'unregistered' || this._agentState === 'unauthenticated') {
           const { connectionId, deviceId, agentManagerBaseUrl, authRequestUrl } = message;
           this._registerAgentInfo({ connectionId, deviceId, agentManagerBaseUrl, authRequestUrl });
           this._changeAgentState('registered');
