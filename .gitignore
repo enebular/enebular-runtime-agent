@@ -1,5 +1,6 @@
 ### https://raw.github.com/github/gitignore/master/Node.gitignore
 
+/**/lib
 lib-cov
 *.seed
 *.log
