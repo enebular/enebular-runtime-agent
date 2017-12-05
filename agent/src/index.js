@@ -62,6 +62,9 @@ function isPossibleStateTransition(state: AgentState, nextState: AgentState) {
 export default class EnebularAgent {
   _configFile: string;
 
+  _messengerSevice: EventEmitter;
+  _messengerSeviceConnected: bool;
+
   _messageEmitter: EventEmitter;
   _nodeRed: NodeREDController;
   _deviceAuth: DeviceAuthMediator;
@@ -72,13 +75,20 @@ export default class EnebularAgent {
 
   _agentState: AgentState;
 
-  constructor(config: EnebularAgentConfig) {
+  constructor(messengerSevice: EventEmitter, config: EnebularAgentConfig) {
     const {
       nodeRedDir,
       nodeRedCommand = './node_modules/.bin/node-red -s .node-red-config/settings.js',
       nodeRedKillSignal = 'SIGINT',
       configFile = path.join(os.homedir(), '.enebular-config.json'),
     } = config;
+
+    this._messengerSevice = messengerSevice;
+    this._messengerSeviceConnected = false;
+    this._messengerSevice.on('connect', () => this._handleMessengerConnect());
+    this._messengerSevice.on('disconnect', () => this._handleMessengerDisconnect());
+    this._messengerSevice.on('message', (params) => this._handleMessengerMessage(params));
+
     this._messageEmitter = new EventEmitter();
     this._nodeRed = new NodeREDController(nodeRedDir, nodeRedCommand, nodeRedKillSignal, this._messageEmitter);
     this._deviceAuth = new DeviceAuthMediator(this._messageEmitter);
@@ -151,7 +161,9 @@ export default class EnebularAgent {
   async _handleChangeState() {
     switch (this._agentState) {
       case 'registered':
-        await this._requestDeviceAuthentication();
+        if (this._messengerSeviceConnected) {
+          await this._requestDeviceAuthentication();
+        }
         break;
       case 'unregistered':
         break;
@@ -163,6 +175,10 @@ export default class EnebularAgent {
 
   async _requestDeviceAuthentication() {
     log('_requestDeviceAuthentication');
+    log('requesting authenticate:', this._deviceAuth.requestingAuthenticate);
+    if (this._deviceAuth.requestingAuthenticate) {
+      return;
+    }
     const { _connectionId: connectionId, _deviceId: deviceId } = this;    
     if (!connectionId || !deviceId) {
       throw new Error('Connection ID and Device ID are not configured yet for the agent');
@@ -182,15 +198,31 @@ export default class EnebularAgent {
     this._agentMan.startStatusReport();
   }
 
-  /**
-   *
-   */
-  handleDeviceMasterMessage(messageType: string, message: any) {
-    log('handleDeviceMasterMessage', messageType, message);
-    switch (messageType) {
+  async _handleMessengerConnect() {
+    log('messenger connect');
+    if (this._messengerSeviceConnected) {
+      return;
+    }
+    this._messengerSeviceConnected = true;
+    if (this._agentState === 'registered' || this._agentState === 'unauthenticated') {
+      await this._requestDeviceAuthentication();
+    }
+  }
+
+  async _handleMessengerDisconnect() {
+    log('messenger disconnect');
+    if (!this._messengerSeviceConnected) {
+      return;
+    }
+    this._messengerSeviceConnected = false;
+  }
+
+  async _handleMessengerMessage(params: { messageType: string, message: any }) {
+    log('messenger message:', params.messageType, params.message);
+    switch (params.messageType) {
       case 'register':
         if (this._agentState === 'init' || this._agentState === 'unregistered' || this._agentState === 'unauthenticated') {
-          const { connectionId, deviceId, agentManagerBaseUrl, authRequestUrl } = message;
+          const { connectionId, deviceId, agentManagerBaseUrl, authRequestUrl } = params.message;
           this._registerAgentInfo({ connectionId, deviceId, agentManagerBaseUrl, authRequestUrl });
           this._changeAgentState('registered');
         }
@@ -198,6 +230,6 @@ export default class EnebularAgent {
       default:
         break;
     }
-    this._messageEmitter.emit(messageType, message);
+    this._messageEmitter.emit(params.messageType, params.message);
   }
 }
