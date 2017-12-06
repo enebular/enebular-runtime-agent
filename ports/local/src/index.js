@@ -2,7 +2,7 @@
 import net from 'net';
 import fs from 'fs';
 import path from 'path';
-import EnebularAgent from 'enebular-runtime-agent';
+import { EnebularAgent, MessengerService } from 'enebular-runtime-agent';
 import debug from 'debug';
 
 const log = debug('enebular-local-agent');
@@ -10,17 +10,16 @@ const log = debug('enebular-local-agent');
 const END_OF_MSG_MARKER = 0x1E; // RS (Record Separator)
 
 let socketPath = '/tmp/enebular-local-agent.socket';
-let agent: EnebularAgent;
 let server: net.Server;
 
-async function startServer(agent: EnebularAgent) {
+async function startServer(messenger: MessengerService) {
 
   function handleClientMessage(clientMessage: string) {
     try {
       const { messageType, message } = JSON.parse(clientMessage);
       //log('messageType: ' + messageType);
       //log('message: ' + JSON.stringify(message));
-      agent.handleDeviceMasterMessage(messageType, message);
+      messenger.sendMessage(messageType, message);
     } catch (err) {
       log('client message: JSON parse failed: ' + err);
     }
@@ -29,6 +28,9 @@ async function startServer(agent: EnebularAgent) {
   server = net.createServer((socket) => {
 
     log('client connected');
+
+    //todo: we really need the client to tell us when mbed is really online
+    messenger.updateConnectedState(true);
 
     socket.setEncoding('utf8');
 
@@ -56,6 +58,7 @@ async function startServer(agent: EnebularAgent) {
 
     socket.on('close', () => {
       log('client disconnected');
+      messenger.updateConnectedState(false);
     });
 
     socket.on('error', (err) => {
@@ -86,9 +89,14 @@ async function startServer(agent: EnebularAgent) {
   server.listen(socketPath);
 }
 
+let agent: EnebularAgent;
+let messenger: MessengerService;
+
 async function startup() {
 
-  agent = new EnebularAgent({
+  messenger = new MessengerService();
+
+  agent = new EnebularAgent(messenger, {
     nodeRedDir: process.env.NODE_RED_DIR || path.join(process.cwd(), 'node-red'),
     configFile: path.join(process.cwd(), '.enebular-config.json'),
   });
@@ -96,7 +104,7 @@ async function startup() {
   await agent.startup();
   log('agent started');
 
-  await startServer(agent);
+  await startServer(messenger);
 }
 
 function shutdown() {
