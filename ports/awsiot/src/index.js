@@ -1,7 +1,6 @@
 /* @flow */
 import fs from 'fs';
 import path from 'path';
-import EventEmitter from 'events';
 import awsIot from 'aws-iot-device-sdk';
 import debug from 'debug';
 import { EnebularAgent, MessengerService } from 'enebular-runtime-agent';
