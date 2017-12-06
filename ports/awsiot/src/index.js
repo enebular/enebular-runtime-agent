@@ -4,7 +4,7 @@ import path from 'path';
 import EventEmitter from 'events';
 import awsIot from 'aws-iot-device-sdk';
 import debug from 'debug';
-import EnebularAgent from 'enebular-runtime-agent';
+import { EnebularAgent, MessengerService } from 'enebular-runtime-agent';
 
 
 /**
@@ -13,10 +13,6 @@ import EnebularAgent from 'enebular-runtime-agent';
 const log = debug('enebular-awsiot-agent');
 
 const { AWSIOT_CONFIG_FILE, NODE_RED_DIR } = process.env;
-
-let agent: EnebularAgent;
-let messenger: EventEmitter;
-let messengerConnected: bool = false;
 
 /**
  *
@@ -34,7 +30,7 @@ export type AWSIoTConfig = {
   thingName: string,
 };
 
-function setupDevice(config: AWSIoTConfig) {
+function setupDevice(config: AWSIoTConfig, messenger: MessengerService) {
   const device = awsIot.thingShadow(config);
 
   function handleConnectionStateUpdate(connected: bool) {
@@ -42,10 +38,7 @@ function setupDevice(config: AWSIoTConfig) {
       log('ignoring disconnect');
       return;
     }
-    if (connected !== messengerConnected) {
-      messengerConnected = connected;
-      messenger.emit(messengerConnected ? 'connect' : 'disconnect');
-    }
+    messenger.updateConnectedState(connected);
   }
 
   device.on('connect', async () => {
@@ -82,7 +75,7 @@ function setupDevice(config: AWSIoTConfig) {
   function handleStateChange(messageJSON: string) {
     try {
       const { messageType, message } = JSON.parse(messageJSON);
-      messenger.emit('message', {messageType: messageType, message: message});
+      messenger.sendMessage(messageType, message);
     } catch (err) {
       log('!!! Error parsing message property in status. Invalid JSON format !!!');
     }
@@ -109,12 +102,15 @@ function setupDevice(config: AWSIoTConfig) {
   });
 }
 
+let agent: EnebularAgent;
+let messenger: MessengerService;
+
 /**
  *
  */
 async function startup() {
   try {
-    messenger = new EventEmitter();
+    messenger = new MessengerService();
 
     agent = new EnebularAgent(messenger, {
       nodeRedDir: NODE_RED_DIR || path.join(process.cwd(), 'node-red'),
@@ -127,7 +123,7 @@ async function startup() {
     const awsIoTConfigFile = AWSIOT_CONFIG_FILE || path.join(process.cwd(), './config.json');
     log('AWS IoT config file =', awsIoTConfigFile);
     const awsIotConfig = JSON.parse(fs.readFileSync(awsIoTConfigFile, 'utf8'));
-    setupDevice(awsIotConfig);
+    setupDevice(awsIotConfig, messenger);
 
     return agent;
 

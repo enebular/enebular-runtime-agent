@@ -59,11 +59,10 @@ function isPossibleStateTransition(state: AgentState, nextState: AgentState) {
 /**
  *
  */
-export default class EnebularAgent {
+export class EnebularAgent {
   _configFile: string;
 
-  _messengerSevice: EventEmitter;
-  _messengerSeviceConnected: bool;
+  _messengerSevice: MessengerService;
 
   _messageEmitter: EventEmitter;
   _nodeRed: NodeREDController;
@@ -75,7 +74,7 @@ export default class EnebularAgent {
 
   _agentState: AgentState;
 
-  constructor(messengerSevice: EventEmitter, config: EnebularAgentConfig) {
+  constructor(messengerSevice: MessengerService, config: EnebularAgentConfig) {
     const {
       nodeRedDir,
       nodeRedCommand = './node_modules/.bin/node-red -s .node-red-config/settings.js',
@@ -84,7 +83,6 @@ export default class EnebularAgent {
     } = config;
 
     this._messengerSevice = messengerSevice;
-    this._messengerSeviceConnected = false;
     this._messengerSevice.on('connect', () => this._handleMessengerConnect());
     this._messengerSevice.on('disconnect', () => this._handleMessengerDisconnect());
     this._messengerSevice.on('message', (params) => this._handleMessengerMessage(params));
@@ -161,7 +159,7 @@ export default class EnebularAgent {
   async _handleChangeState() {
     switch (this._agentState) {
       case 'registered':
-        if (this._messengerSeviceConnected) {
+        if (this._messengerSevice.connected) {
           await this._requestDeviceAuthentication();
         }
         break;
@@ -200,10 +198,6 @@ export default class EnebularAgent {
 
   async _handleMessengerConnect() {
     log('messenger connect');
-    if (this._messengerSeviceConnected) {
-      return;
-    }
-    this._messengerSeviceConnected = true;
     if (this._agentState === 'registered' || this._agentState === 'unauthenticated') {
       await this._requestDeviceAuthentication();
     }
@@ -211,10 +205,6 @@ export default class EnebularAgent {
 
   async _handleMessengerDisconnect() {
     log('messenger disconnect');
-    if (!this._messengerSeviceConnected) {
-      return;
-    }
-    this._messengerSeviceConnected = false;
   }
 
   async _handleMessengerMessage(params: { messageType: string, message: any }) {
@@ -232,4 +222,30 @@ export default class EnebularAgent {
     }
     this._messageEmitter.emit(params.messageType, params.message);
   }
+}
+
+export class MessengerService extends EventEmitter {
+
+  _connected: bool = false;
+
+  constructor() {
+    super();
+  }
+
+  get connected() {
+    return this._connected;
+  }
+
+  updateConnectedState(connected: bool) {
+    if (connected === this._connected) {
+      return;
+    }
+    this._connected = connected;
+    this.emit(this._connected ? 'connect' : 'disconnect');
+  }
+
+  sendMessage(messageType: string, message: any) {
+    this.emit('message', {messageType: messageType, message: message});
+  }
+
 }
