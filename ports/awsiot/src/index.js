@@ -95,9 +95,7 @@ function setupDevice(config: AWSIoTConfig, messenger: MessengerService) {
     log('>> delta', stateObject);
     const state = stateObject.state;
     const metadata = stateObject.metadata;
-    if (state && state.message && !isThingShadowSynced(metadata, 'message')) {
-      handleStateChange(state.message);
-    }
+    handleStatusChange(state.message);
   });
 }
 
