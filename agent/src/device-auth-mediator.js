@@ -24,6 +24,8 @@ export default class DeviceAuthMediator extends EventEmitter {
   _nonce: ?string;
   _seq: number = 0;
 
+  requestingAuthenticate: bool = false;
+
   constructor(emitter: EventEmitter) {
     super();
     emitter.on('dispatch_auth_token', (message) => this.emit('dispatch_auth_token', message));
@@ -35,6 +37,10 @@ export default class DeviceAuthMediator extends EventEmitter {
 
   async requestAuthenticate(connectionId: string, deviceId: string): Promise<DeviceAuthResponse> {
     log('requestAuthenticate', connectionId, deviceId);
+    if (this.requestingAuthenticate) {
+      throw new Error('Already requesting authenticate');
+    }
+    this.requestingAuthenticate = true;
     const authRequestUrl = this._authRequestUrl;
     if (!authRequestUrl) { throw new Error('Authentication Request URL is not configured correctly'); }
     const nonce = crypto.randomBytes(16).toString('hex');
@@ -84,6 +90,7 @@ export default class DeviceAuthMediator extends EventEmitter {
   }
 
   _cleanup() {
+    this.requestingAuthenticate = false;
     this._nonce = null;
     this.removeAllListeners('dispatch_auth_token');
   }
