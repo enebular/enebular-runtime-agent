@@ -95,7 +95,7 @@ function setupDevice(config: AWSIoTConfig, messenger: MessengerService) {
     log('>> delta', stateObject);
     const state = stateObject.state;
     const metadata = stateObject.metadata;
-    handleStatusChange(state.message);
+    handleStateChange(state.message);
   });
 }
 
