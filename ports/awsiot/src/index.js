@@ -84,9 +84,7 @@ function setupDevice(config: AWSIoTConfig, agent: EnebularAgent) {
     log('>> delta', stateObject);
     const state = stateObject.state;
     const metadata = stateObject.metadata;
-    if (state && state.message && !isThingShadowSynced(metadata, 'message')) {
-      handleStatusChange(state.message);
-    }
+    handleStatusChange(state.message);
   });
 }
 
