@@ -32,7 +32,7 @@ export type AWSIoTConfig = {
 function setupDevice(config: AWSIoTConfig, messenger: MessengerService) {
   const device = awsIot.thingShadow(config);
 
-  function handleConnectionStateUpdate(connected: bool) {
+  function handleConnectionStateUpdate(connected: boolean) {
     if (!connected) {
       log('ignoring disconnect');
       return;

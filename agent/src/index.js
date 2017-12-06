@@ -225,7 +225,7 @@ export class EnebularAgent {
 
 export class MessengerService extends EventEmitter {
 
-  _connected: bool = false;
+  _connected: boolean = false;
 
   constructor() {
     super();
@@ -235,7 +235,7 @@ export class MessengerService extends EventEmitter {
     return this._connected;
   }
 
-  updateConnectedState(connected: bool) {
+  updateConnectedState(connected: boolean) {
     if (connected === this._connected) {
       return;
     }

@@ -24,7 +24,7 @@ export default class DeviceAuthMediator extends EventEmitter {
   _nonce: ?string;
   _seq: number = 0;
 
-  requestingAuthenticate: bool = false;
+  requestingAuthenticate: boolean = false;
 
   constructor(emitter: EventEmitter) {
     super();
