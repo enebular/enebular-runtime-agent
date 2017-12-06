@@ -173,7 +173,6 @@ export class EnebularAgent {
 
   async _requestDeviceAuthentication() {
     log('_requestDeviceAuthentication');
-    log('requesting authenticate:', this._deviceAuth.requestingAuthenticate);
     if (this._deviceAuth.requestingAuthenticate) {
       return;
     }
