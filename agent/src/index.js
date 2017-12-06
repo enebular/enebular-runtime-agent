@@ -151,11 +151,14 @@ export default class EnebularAgent {
   async _handleChangeState() {
     switch (this._agentState) {
       case 'registered':
+      this._agentMan._agentState = 'registered'
         await this._requestDeviceAuthentication();
         break;
       case 'unregistered':
+        this._agentMan._agentState = 'unregistered'
         break;
       case 'authenticated':
+        this._agentMan._agentState = 'authenticated'
         await this._startStatusNotification();
         break;
     }

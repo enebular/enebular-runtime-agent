@@ -26,6 +26,7 @@ export default class AgentManagerMediator extends EventEmitter {
   _pid: ?number;
   _logInterval: ?number
   _nodeRed: NodeREDController;
+  _agentState: ?string;
 
   constructor(nodeRed: NodeREDController) {
     super();
@@ -38,15 +39,20 @@ export default class AgentManagerMediator extends EventEmitter {
     });
   }
 
+  setAgentState(agentState: string) {
+    log('setAgentState', agentState)
+    this._agentState = agentState
+  }
+
   setBaseUrl(baseUrl: string) {
     log('setBaseUrl', baseUrl)
-    this._baseUrl = baseUrl;
+    this._baseUrl = baseUrl
 
   }
 
   setAccessToken(accessToken: string) {
     log('accessToken', accessToken)
-    this._accessToken = accessToken;
+    this._accessToken = accessToken
   }
 
   exitStatusReport() {
@@ -86,6 +92,7 @@ export default class AgentManagerMediator extends EventEmitter {
       if (!destinationFileStats.size) {
         log('_recordLogs: delete accumulated file size 0')
         await unlinkAsync(`logs/logs/${destinationFile}`)
+        return
       }
       log('_recordLogs: done batching')
       // post logs
@@ -134,12 +141,18 @@ export default class AgentManagerMediator extends EventEmitter {
     log('_cleanUp')
     clearInterval(this._pid);
     clearInterval(this._logInterval)
+    // cut stream off 
     await Promise.all([
       this._nodeRed._stdoutUnhook(),
       this._nodeRed._stderrUnhook(),
-      this.recordLogs(),
-      this.notifyStatus(true)
     ])
+    // if authenticated, then notify last minute
+    if (this._agentState === 'authenticated') {
+      await Promise.all([
+        this.recordLogs(),
+        this.notifyStatus(true)
+      ])
+    }
   }
 
   startStatusReport() {
