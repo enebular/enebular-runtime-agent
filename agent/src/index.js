@@ -231,7 +231,7 @@ export class MessengerService extends EventEmitter {
     super();
   }
 
-  get connected() {
+  get connected(): boolean {
     return this._connected;
   }
 
