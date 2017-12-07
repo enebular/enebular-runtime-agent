@@ -137,8 +137,8 @@ if (require.main === module) {
     exit();
   });
   process.on('uncaughtException', (err) => {
-    console.error(`Uncaught exception: ${err}`);
-    exit();
+    console.error(`Uncaught exception: ${err.stack}`);
+    process.exit(1);
   });
 }
 
