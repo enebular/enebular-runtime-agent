@@ -7,7 +7,7 @@ const { DEVICE_ID, DEVICE_API_KEY, NODE_RED_DIR } = process.env
 
 const messenger = new MessengerService()
 const device = new ModeDevice(DEVICE_ID, DEVICE_API_KEY)
-const agent = new EnebularAgent({
+const agent = new EnebularAgent(messenger, {
   nodeRedDir: NODE_RED_DIR || path.join(process.cwd(), 'node-red'),
   configFile: path.join(process.cwd(), '.enebular-config.json')
 })
