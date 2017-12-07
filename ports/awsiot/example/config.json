@@ -1,10 +1,10 @@
 {
-	"host": "afx4xdk4zoudb.iot.ap-northeast-1.amazonaws.com",
-	"port": 8883,
-	"clientId": "testio",
-  "thingName": "testio",
-	"caCert": "./certs/root-CA.crt",
-	"clientCert": "./certs/testio.cert.pem",
-	"privateKey": "./certs/testio.private.key",
-	"topic": "process"
+  "host": "<THING SHADOW REST API ENDPOINT>",
+  "port": 8883,
+  "clientId": "<THING NAME>",
+  "thingName": "<THING NAME>",
+  "caCert": "./certs/<ROOT CERTIFICATE>",
+  "clientCert": "./certs/<THING CERT>",
+  "privateKey": "./certs/<THING PRIVATE KEY>",
+  "topic": "aws/things/<THING NAME>/shadow/update"
 }

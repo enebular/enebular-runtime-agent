@@ -159,13 +159,16 @@ export class EnebularAgent {
   async _handleChangeState() {
     switch (this._agentState) {
       case 'registered':
+        this._agentMan._agentState = 'registered'
         if (this._messengerSevice.connected) {
           await this._requestDeviceAuthentication();
         }
         break;
       case 'unregistered':
+        this._agentMan._agentState = 'unregistered'
         break;
       case 'authenticated':
+        this._agentMan._agentState = 'authenticated'
         await this._startStatusNotification();
         break;
     }
@@ -185,6 +188,7 @@ export class EnebularAgent {
       this._agentMan.setAccessToken(accessToken);
       this._changeAgentState('authenticated');
     } catch (err) {
+      log('err---', err)
       this._changeAgentState('unauthenticated');
       throw err;
     }
@@ -193,6 +197,11 @@ export class EnebularAgent {
   async _startStatusNotification() {
     log('_startStatusNotification');
     this._agentMan.startStatusReport();
+    this._startRecordLogs()
+  }
+
+  async _startRecordLogs() {
+    this._agentMan.startLogReport()
   }
 
   async _handleMessengerConnect() {
