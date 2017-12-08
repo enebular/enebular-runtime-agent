@@ -31,12 +31,6 @@ export default class AgentManagerMediator extends EventEmitter {
   constructor(nodeRed: NodeREDController) {
     super();
     this._nodeRed = nodeRed;
-    process.on('SIGINT', () => {
-      this.cleanUp()
-    });
-    process.on('uncaughtException', () => {
-      this.cleanUp()
-    });
   }
 
   setAgentState(agentState: string) {
@@ -53,11 +47,6 @@ export default class AgentManagerMediator extends EventEmitter {
   setAccessToken(accessToken: string) {
     log('accessToken', accessToken)
     this._accessToken = accessToken
-  }
-
-  exitStatusReport() {
-    setTimeout(process.exit, 10000)
-    console.log('*** device shutting down in 10 seconds ***')
   }
 
   async recordLogs() {
@@ -118,9 +107,9 @@ export default class AgentManagerMediator extends EventEmitter {
     }
   }
 
-  async notifyStatus(kill) {
+  async notifyStatus(disconnectedOverride: boolean) {
     const { _baseUrl: baseUrl, _accessToken: accessToken } = this
-    const status = kill ? 'disconnected' : this._nodeRed.getStatus();
+    const status = disconnectedOverride ? 'disconnected' : this._nodeRed.getStatus();
     console.log('*** send status notification ***', status);
     const res = await fetch(`${baseUrl}/notify-status`, {
       method: 'POST',
@@ -135,8 +124,8 @@ export default class AgentManagerMediator extends EventEmitter {
       const err = new Error('Cannot notify status to agent manager: ');
       this.emit('error', err);
     }
-    kill ? this.exitStatusReport() : null
   }
+
   async cleanUp() {
     log('_cleanUp')
     clearInterval(this._pid);
@@ -162,8 +151,8 @@ export default class AgentManagerMediator extends EventEmitter {
       log('Cannnot start status report without baseUrl or access Token.');
       return;
     }
-    this.notifyStatus();
-    this._pid = setInterval(() => this.notifyStatus(), 30000);
+    this.notifyStatus(false);
+    this._pid = setInterval(() => this.notifyStatus(false), 30000);
   }
 
   startLogReport() {

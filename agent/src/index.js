@@ -105,6 +105,7 @@ export class EnebularAgent {
   }
 
   async shutdown() {
+    await this._agentMan.cleanUp();
     return this._nodeRed.shutdownService();
   }
 
