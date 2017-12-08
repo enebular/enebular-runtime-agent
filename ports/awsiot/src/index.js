@@ -137,8 +137,23 @@ async function shutdown() {
   return agent.shutdown();
 }
 
+async function exit() {
+  await shutdown();
+  process.exit(0);
+}
+
 if (require.main === module) {
   startup();
+  process.on('SIGINT', () => {
+    exit();
+  });
+  process.on('SIGTERM', () => {
+    exit();
+  });
+  process.on('uncaughtException', (err) => {
+    console.error(`Uncaught exception: ${err.stack}`);
+    process.exit(1);
+  });
 }
 
 export { startup, shutdown };
