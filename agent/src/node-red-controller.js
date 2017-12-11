@@ -79,7 +79,7 @@ export default class NodeREDController {
   }
 
   async _queueAction(fn: () => Promise<any>) {
-    log('_queueAction');
+    log('Queuing action');
     this._actions.push(fn);
     if (this._isProcessing) {
       await this._isProcessing;
@@ -89,7 +89,7 @@ export default class NodeREDController {
   }
 
   async _processActions() {
-    log('_processActions', this._actions.length);
+    log('Processing actions:', this._actions.length);
     this._isProcessing = (async () => {
       while (this._actions.length > 0) {
         const action = this._actions.shift();
@@ -105,13 +105,13 @@ export default class NodeREDController {
   }
 
   async _fetchAndUpdateFlow(params: { downloadUrl: string }) {
-    log('_fetchAndUpdateFlow', params);
+    log('Updating flow');
     await this._downloadAndUpdatePackage(params.downloadUrl);
     await this._restartService();
   }
 
   async _downloadAndUpdatePackage(downloadUrl: string) {
-    log('_downloadAndUpdatePackage', downloadUrl);
+    log('Downloading flow:', downloadUrl);
     const res = await fetch(downloadUrl);
     if (res.status >= 400) {
       throw new Error('invalid url');
@@ -121,7 +121,7 @@ export default class NodeREDController {
   }
 
   async _updatePackage(flowPackage: NodeRedFlowPackage) {
-    log('_updatePackage', flowPackage);
+    log('Updating package', flowPackage);
     const updates = [];
     if (flowPackage.flow || flowPackage.flows) {
       const flows = flowPackage.flow || flowPackage.flows;
@@ -171,7 +171,7 @@ export default class NodeREDController {
   }
 
   async _startService() {
-    log('_startService');
+    log('Staring service...');
     return new Promise((resolve, reject) => {
       const [command, ...args] = this._command.split(/\s+/);
       const cproc = spawn(command, args, { stdio: 'pipe', cwd: this._dir });
@@ -182,6 +182,7 @@ export default class NodeREDController {
         process.stdout.write(data)
       });
       cproc.once('exit', (code) => {
+        log(`Service exited (${code})`);
         this._cproc = null;
       });
       cproc.once('error', (err) => {
@@ -198,16 +199,18 @@ export default class NodeREDController {
   }
 
   async _shutdownService() {
-    log('_shutdownService');
     return new Promise((resolve, reject) => {
       const cproc = this._cproc;
       if (cproc) {
+        log('Shutting down service...');
         cproc.kill(this._killSignal);
         cproc.once('exit', () => {
+          log('Service ended');
           this._cproc = null;
           resolve();
         });
       } else {
+        log('Service already shutdown');
         resolve();
       }
     });
@@ -218,18 +221,15 @@ export default class NodeREDController {
   }
 
   async _restartService() {
-    log('_restartService');
+    log('Restarting service...');
     await this._shutdownService();
     await this._startService();
   }
 
   getStatus() {
-    log('_getStatus')
     if (this._cproc) {
-      log('_getStatus connected')
       return 'connected';
     } else {
-      log('_getStatus disconnected')
       return 'disconnected';
     }
   }

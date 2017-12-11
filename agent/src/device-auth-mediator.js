@@ -36,7 +36,7 @@ export default class DeviceAuthMediator extends EventEmitter {
   }
 
   async requestAuthenticate(connectionId: string, deviceId: string): Promise<DeviceAuthResponse> {
-    log('requestAuthenticate', connectionId, deviceId);
+    log('Requesting authenticate...');
     if (this.requestingAuthenticate) {
       throw new Error('Already requesting authenticate');
     }
@@ -65,19 +65,19 @@ export default class DeviceAuthMediator extends EventEmitter {
   }
 
   async _waitTokens() {
-    log('_waitTokens');
+    log('Setting up wait for tokens...');
     const seq = this._seq;
     return new Promise((resolve, reject) => {
       this.on('dispatch_auth_token', ({ idToken, accessToken, state }) => {
-        log('dispatch auth token message received', idToken, accessToken);
+        log('Tokens received');
         const payload = jwt.decode(idToken);
-        log('JWT decoded result = ', payload);
+        log('ID token:', payload);
         if (state === `req-${this._seq}` && payload.nonce && payload.nonce === this._nonce) {
-          log('accepting received auth tokens');
+          log('Accepting tokens');
           this._cleanup();
           resolve({ idToken, accessToken });
         } else {
-          log('received auth tokens are NOT for this device. Ignore.', payload, this._nonce, state, this._seq);
+          log('Received tokens are NOT for this device. Ignore.', payload, this._nonce, state, this._seq);
         }
       });
       setTimeout(() => {

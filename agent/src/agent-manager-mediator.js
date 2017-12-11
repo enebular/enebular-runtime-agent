@@ -34,18 +34,15 @@ export default class AgentManagerMediator extends EventEmitter {
   }
 
   setAgentState(agentState: string) {
-    log('setAgentState', agentState)
     this._agentState = agentState
   }
 
   setBaseUrl(baseUrl: string) {
-    log('setBaseUrl', baseUrl)
     this._baseUrl = baseUrl
 
   }
 
   setAccessToken(accessToken: string) {
-    log('accessToken', accessToken)
     this._accessToken = accessToken
   }
 
@@ -79,11 +76,11 @@ export default class AgentManagerMediator extends EventEmitter {
       // check if accumulated log file is still empty
       const destinationFileStats = await statAsync(`logs/logs/${destinationFile}`)
       if (!destinationFileStats.size) {
-        log('_recordLogs: delete accumulated file size 0')
+        log('No log content')
         await unlinkAsync(`logs/logs/${destinationFile}`)
         return
       }
-      log('_recordLogs: done batching')
+      log('Sending logs...');
       // post logs
       const form = new FormData()
       form.append(destinationFile, fs.createReadStream(`logs/logs/${destinationFile}`))
@@ -99,7 +96,7 @@ export default class AgentManagerMediator extends EventEmitter {
         const err = new Error('Cannot record logs to agent manager: ');
         this.emit('error', message);
       } else {
-        log('_recordLogs: delete after successful post')
+        log('Logs sent')
         await unlinkAsync(`logs/logs/${destinationFile}`)
       }
     } catch (err) {
@@ -110,7 +107,7 @@ export default class AgentManagerMediator extends EventEmitter {
   async notifyStatus(disconnectedOverride: boolean) {
     const { _baseUrl: baseUrl, _accessToken: accessToken } = this
     const status = disconnectedOverride ? 'disconnected' : this._nodeRed.getStatus();
-    console.log('*** send status notification ***', status);
+    log(`Sending status (${status})...`);
     const res = await fetch(`${baseUrl}/notify-status`, {
       method: 'POST',
       headers: {
@@ -127,7 +124,7 @@ export default class AgentManagerMediator extends EventEmitter {
   }
 
   async cleanUp() {
-    log('_cleanUp')
+    log('Cleanup...')
     clearInterval(this._pid);
     clearInterval(this._logInterval)
     // cut stream off 
@@ -145,7 +142,7 @@ export default class AgentManagerMediator extends EventEmitter {
   }
 
   startStatusReport() {
-    log('startStatusReport');
+    log('Starting status reporting...');
     const { _baseUrl: baseUrl, _accessToken: accessToken } = this
     if (!baseUrl || !accessToken) {
       log('Cannnot start status report without baseUrl or access Token.');
@@ -156,7 +153,7 @@ export default class AgentManagerMediator extends EventEmitter {
   }
 
   startLogReport() {
-    log('startLogReport');
+    log('Starting log reporting...');
     const { _baseUrl: baseUrl, _accessToken: accessToken } = this;
     if (!baseUrl || !accessToken) {
       log('Cannnot start log report without baseUrl or access Token.');

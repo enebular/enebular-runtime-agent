@@ -12,6 +12,7 @@ import AgentManagerMediator from './agent-manager-mediator';
  *
  */
 const log = debug('enebular-runtime-agent');
+const logv = debug('enebular-runtime-agent:verbose');
 
 /**
  *
@@ -106,10 +107,9 @@ export class EnebularAgent {
   }
 
   _loadAgentConfig() {
-    log('_loadAgentConfig');
     try {
       if (fs.existsSync(this._configFile)) {
-        log('reading config file', this._configFile);
+        log('Reading config file:', this._configFile);
         const data = fs.readFileSync(this._configFile, 'utf8');
         const { connectionId, deviceId, agentManagerBaseUrl, authRequestUrl } = JSON.parse(data);
         if (connectionId && deviceId && agentManagerBaseUrl && authRequestUrl) {
@@ -119,7 +119,7 @@ export class EnebularAgent {
           this._changeAgentState('unregistered');
         }
       } else {
-        log('creating new config file ', this._configFile);
+        log('Creating config file:', this._configFile);
         fs.writeFileSync(this._configFile, '{}', 'utf8');
         this._changeAgentState('unregistered');
       }
@@ -130,10 +130,9 @@ export class EnebularAgent {
   }
 
   _changeAgentState(nextState: AgentState) {
-    log('_changeAgentState', this._agentState, '=>', nextState);
+    log('Change agent state:', this._agentState, '=>', nextState);
     if (isPossibleStateTransition(this._agentState, nextState)) {
       this._agentState = nextState;
-      log(`*** agent state : ${this._agentState} ***`);
       try {
         this._handleChangeState();
       } catch (err) {
@@ -145,10 +144,11 @@ export class EnebularAgent {
   }
 
   _registerAgentInfo({ connectionId, deviceId, authRequestUrl, agentManagerBaseUrl } : AgentSetting) {
-    log('connectionId', connectionId)
-    log('deviceId', deviceId)
-    log('authRequestUrl', authRequestUrl)
-    log('agentManagerBaseUrl', agentManagerBaseUrl)
+    log('Config:')
+    log('  connectionId:', connectionId)
+    log('  deviceId:', deviceId)
+    log('  authRequestUrl:', authRequestUrl)
+    log('  agentManagerBaseUrl:', agentManagerBaseUrl)
     this._connectionId = connectionId;
     this._deviceId = deviceId;
     this._deviceAuth.setAuthRequestUrl(authRequestUrl);
@@ -170,13 +170,13 @@ export class EnebularAgent {
         break;
       case 'authenticated':
         this._agentMan._agentState = 'authenticated'
-        await this._startStatusNotification();
+        await this._startReporting();
         break;
     }
   }
 
   async _requestDeviceAuthentication() {
-    log('_requestDeviceAuthentication');
+    log('Requsting authentication...');
     if (this._deviceAuth.requestingAuthenticate) {
       return;
     }
@@ -189,35 +189,32 @@ export class EnebularAgent {
       this._agentMan.setAccessToken(accessToken);
       this._changeAgentState('authenticated');
     } catch (err) {
-      log('err---', err)
+      log('Authentication error', err)
       this._changeAgentState('unauthenticated');
       throw err;
     }
   }
 
-  async _startStatusNotification() {
-    log('_startStatusNotification');
+  async _startReporting() {
+    log('Staring reporting...');
     this._agentMan.startStatusReport();
-    this._startRecordLogs()
-  }
-
-  async _startRecordLogs() {
-    this._agentMan.startLogReport()
+    this._agentMan.startLogReport();
   }
 
   async _handleMessengerConnect() {
-    log('messenger connect');
+    log('Messenger connected');
     if (this._agentState === 'registered' || this._agentState === 'unauthenticated') {
       await this._requestDeviceAuthentication();
     }
   }
 
   async _handleMessengerDisconnect() {
-    log('messenger disconnect');
+    log('Messenger disconnected');
   }
 
   async _handleMessengerMessage(params: { messageType: string, message: any }) {
-    log('messenger message:', params.messageType, params.message);
+    log('Messenger message:', params.messageType);
+    logv('Messenger message: content:', params.message);
     switch (params.messageType) {
       case 'register':
         if (this._agentState === 'init' || this._agentState === 'unregistered' || this._agentState === 'unauthenticated') {
