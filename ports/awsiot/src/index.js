@@ -1,7 +1,6 @@
 /* @flow */
 import fs from 'fs';
 import path from 'path';
-import EventEmitter from 'events';
 import awsIot from 'aws-iot-device-sdk';
 import debug from 'debug';
 import { EnebularAgent, MessengerService } from 'enebular-runtime-agent';
@@ -33,7 +32,7 @@ export type AWSIoTConfig = {
 function setupDevice(config: AWSIoTConfig, messenger: MessengerService) {
   const device = awsIot.thingShadow(config);
 
-  function handleConnectionStateUpdate(connected: bool) {
+  function handleConnectionStateUpdate(connected: boolean) {
     if (!connected) {
       log('ignoring disconnect');
       return;
@@ -96,9 +95,7 @@ function setupDevice(config: AWSIoTConfig, messenger: MessengerService) {
     log('>> delta', stateObject);
     const state = stateObject.state;
     const metadata = stateObject.metadata;
-    if (state && state.message && !isThingShadowSynced(metadata, 'message')) {
-      handleStateChange(state.message);
-    }
+    handleStateChange(state.message);
   });
 }
 
@@ -140,8 +137,23 @@ async function shutdown() {
   return agent.shutdown();
 }
 
+async function exit() {
+  await shutdown();
+  process.exit(0);
+}
+
 if (require.main === module) {
   startup();
+  process.on('SIGINT', () => {
+    exit();
+  });
+  process.on('SIGTERM', () => {
+    exit();
+  });
+  process.on('uncaughtException', (err) => {
+    console.error(`Uncaught exception: ${err.stack}`);
+    process.exit(1);
+  });
 }
 
 export { startup, shutdown };

@@ -101,6 +101,7 @@ export class EnebularAgent {
   }
 
   async shutdown() {
+    await this._agentMan.cleanUp();
     return this._nodeRed.shutdownService();
   }
 
@@ -159,13 +160,16 @@ export class EnebularAgent {
   async _handleChangeState() {
     switch (this._agentState) {
       case 'registered':
+        this._agentMan._agentState = 'registered'
         if (this._messengerSevice.connected) {
           await this._requestDeviceAuthentication();
         }
         break;
       case 'unregistered':
+        this._agentMan._agentState = 'unregistered'
         break;
       case 'authenticated':
+        this._agentMan._agentState = 'authenticated'
         await this._startStatusNotification();
         break;
     }
@@ -173,7 +177,6 @@ export class EnebularAgent {
 
   async _requestDeviceAuthentication() {
     log('_requestDeviceAuthentication');
-    log('requesting authenticate:', this._deviceAuth.requestingAuthenticate);
     if (this._deviceAuth.requestingAuthenticate) {
       return;
     }
@@ -186,6 +189,7 @@ export class EnebularAgent {
       this._agentMan.setAccessToken(accessToken);
       this._changeAgentState('authenticated');
     } catch (err) {
+      log('err---', err)
       this._changeAgentState('unauthenticated');
       throw err;
     }
@@ -194,6 +198,11 @@ export class EnebularAgent {
   async _startStatusNotification() {
     log('_startStatusNotification');
     this._agentMan.startStatusReport();
+    this._startRecordLogs()
+  }
+
+  async _startRecordLogs() {
+    this._agentMan.startLogReport()
   }
 
   async _handleMessengerConnect() {
@@ -226,17 +235,17 @@ export class EnebularAgent {
 
 export class MessengerService extends EventEmitter {
 
-  _connected: bool = false;
+  _connected: boolean = false;
 
   constructor() {
     super();
   }
 
-  get connected() {
+  get connected(): boolean {
     return this._connected;
   }
 
-  updateConnectedState(connected: bool) {
+  updateConnectedState(connected: boolean) {
     if (connected === this._connected) {
       return;
     }
