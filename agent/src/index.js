@@ -196,7 +196,7 @@ export class EnebularAgent {
   }
 
   async _startReporting() {
-    log('Staring reporting...');
+    log('Starting reporting...');
     this._agentMan.startStatusReport();
     this._agentMan.startLogReport();
   }
