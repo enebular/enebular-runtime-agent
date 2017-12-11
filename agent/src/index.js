@@ -12,6 +12,7 @@ import AgentManagerMediator from './agent-manager-mediator';
  *
  */
 const log = debug('enebular-runtime-agent');
+const logv = debug('enebular-runtime-agent:verbose');
 
 /**
  *
@@ -111,10 +112,9 @@ export class EnebularAgent {
   }
 
   _loadAgentConfig() {
-    log('_loadAgentConfig');
     try {
       if (fs.existsSync(this._configFile)) {
-        log('reading config file', this._configFile);
+        log('Reading config file:', this._configFile);
         const data = fs.readFileSync(this._configFile, 'utf8');
         const { connectionId, deviceId, agentManagerBaseUrl, authRequestUrl } = JSON.parse(data);
         if (connectionId && deviceId && agentManagerBaseUrl && authRequestUrl) {
@@ -124,7 +124,7 @@ export class EnebularAgent {
           this._changeAgentState('unregistered');
         }
       } else {
-        log('creating new config file ', this._configFile);
+        log('Creating config file:', this._configFile);
         fs.writeFileSync(this._configFile, '{}', 'utf8');
         this._changeAgentState('unregistered');
       }
@@ -135,10 +135,9 @@ export class EnebularAgent {
   }
 
   _changeAgentState(nextState: AgentState) {
-    log('_changeAgentState', this._agentState, '=>', nextState);
+    log('Change agent state:', this._agentState, '=>', nextState);
     if (isPossibleStateTransition(this._agentState, nextState)) {
       this._agentState = nextState;
-      log(`*** agent state : ${this._agentState} ***`);
       try {
         this._handleChangeState();
       } catch (err) {
@@ -150,10 +149,11 @@ export class EnebularAgent {
   }
 
   _registerAgentInfo({ connectionId, deviceId, authRequestUrl, agentManagerBaseUrl } : AgentSetting) {
-    log('connectionId', connectionId)
-    log('deviceId', deviceId)
-    log('authRequestUrl', authRequestUrl)
-    log('agentManagerBaseUrl', agentManagerBaseUrl)
+    log('Config:')
+    log('  connectionId:', connectionId)
+    log('  deviceId:', deviceId)
+    log('  authRequestUrl:', authRequestUrl)
+    log('  agentManagerBaseUrl:', agentManagerBaseUrl)
     this._connectionId = connectionId;
     this._deviceId = deviceId;
     this._deviceAuth.setAuthRequestUrl(authRequestUrl);
@@ -175,13 +175,13 @@ export class EnebularAgent {
         break;
       case 'authenticated':
         this._agentMan._agentState = 'authenticated'
-        await this._startStatusNotification();
+        await this._startReporting();
         break;
     }
   }
 
   async _requestDeviceAuthentication() {
-    log('_requestDeviceAuthentication');
+    log('Requsting authentication...');
     if (this._deviceAuth.requestingAuthenticate) {
       return;
     }
@@ -195,14 +195,14 @@ export class EnebularAgent {
       this._endDeviceAuthenticationAttempt();
       this._changeAgentState('authenticated');
     } catch (err) {
-      log('authentication failed', err.message);
+      log('Authentication failed:', err.message);
       if (this._agentState !== 'unauthenticated') {
         this._changeAgentState('unauthenticated');
       }
       if (this._authAttempting) {
         this._authRetryTime = (this._authRetryTime === 0) ? 15*1000 : this._authRetryTime * 2;
         this._authRetryTime = Math.min(this._authRetryTime, 4*60*60*1000);
-        log(`retrying authentication (in ${this._authRetryTime/1000}sec)...`);
+        log(`Retrying authentication (in ${this._authRetryTime/1000}sec)...`);
         this._authRetryID = setTimeout(() => {
           this._requestDeviceAuthentication();
         }, this._authRetryTime);
@@ -211,7 +211,7 @@ export class EnebularAgent {
   }
 
   _startDeviceAuthenticationAttempt() {
-    log('starting auth...');
+    log('Starting authentication...');
     /* if it's already active, just reset the retry time */
     this._authRetryTime = 0;
     if (!this._authAttempting) {
@@ -222,7 +222,7 @@ export class EnebularAgent {
 
   _endDeviceAuthenticationAttempt() {
     if (this._authAttempting) {
-      log('ending auth');
+      log('Ending authentication');
       if (this._authRetryID) {
         clearTimeout(this._authRetryID);
         this._authRetryID = undefined;
@@ -232,30 +232,27 @@ export class EnebularAgent {
     }
   }
 
-  async _startStatusNotification() {
-    log('_startStatusNotification');
+  async _startReporting() {
+    log('Starting reporting...');
     this._agentMan.startStatusReport();
-    this._startRecordLogs();
-  }
-
-  async _startRecordLogs() {
-    this._agentMan.startLogReport()
+    this._agentMan.startLogReport();
   }
 
   _handleMessengerConnect() {
-    log('messenger connect');
+    log('Messenger connected');
     if (this._agentState === 'registered' || this._agentState === 'unauthenticated') {
       this._startDeviceAuthenticationAttempt();
     }
   }
 
   async _handleMessengerDisconnect() {
-    log('messenger disconnect');
+    log('Messenger disconnected');
     this._endDeviceAuthenticationAttempt();
   }
 
   async _handleMessengerMessage(params: { messageType: string, message: any }) {
-    log('messenger message:', params.messageType, params.message);
+    log('Messenger message:', params.messageType);
+    logv('Messenger message: content:', params.message);
     switch (params.messageType) {
       case 'register':
         if (this._agentState === 'init' || this._agentState === 'unregistered' || this._agentState === 'unauthenticated') {
