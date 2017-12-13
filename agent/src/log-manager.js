@@ -9,11 +9,12 @@ export default class LogManager {
   constructor() {
     this._transports = {};
     this._transports['console'] = new (winston.transports.Console)({
-      name: "console"
+      name: "console",
+      colorize: true,
     });
-    this._transports['httpCache'] = new (winston.transports.File)({
-      name: "httpCache",
-      filename: 'httpCache.log',
+    this._transports['enebularHTTP'] = new (winston.transports.File)({
+      name: "enebularHTTP",
+      filename: 'enebular-http-cache.log',
       json: true
     });
     this._transports['localFile'] = new (winston.transports.File)({
@@ -22,12 +23,13 @@ export default class LogManager {
       json: false
     });
     this._loggers = new winston.Container({
-      transports: [this._transports['console']],
+      transports: [],
     });
   }
 
   addLogger(id: string, transports: any) {
-    let logger = this._loggers.add(id, {
+    let options = {
+      transports: [],
       rewriters: [
         function(level, msg, meta) {
           /* include the logger id in the meta as 'context' field */
@@ -35,11 +37,12 @@ export default class LogManager {
           return meta;
         }
       ]
-    });
+    }
+    transports = transports || ['console'];
     transports.forEach((transport) => {
-      logger.add(this._transports[transport], {}, true);
+      options.transports.push(this._transports[transport]);
     });
-    return logger;
+    return this._loggers.add(id, options);
   }
 
   getLogger(id: string) {

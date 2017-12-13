@@ -92,9 +92,9 @@ export class EnebularAgent {
 
     this.LogManager = new LogManager();
 
-    let logger1 = this.LogManager.addLogger('internal1', []);
+    let logger1 = this.LogManager.addLogger('internal1');
     logger1.log('info', 'log test1!');
-    let logger2 = this.LogManager.addLogger('internal2', ['httpCache', 'localFile']);
+    let logger2 = this.LogManager.addLogger('internal2', ['console', 'enebularHTTP', 'localFile']);
     logger2.log('info', 'log test2!');
 
     this._messengerSevice = messengerSevice;
