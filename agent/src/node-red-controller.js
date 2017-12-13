@@ -31,8 +31,17 @@ export default class NodeREDController {
   _actions: Array<() => Promise<any>> = [];
   _isProcessing: ?Promise<void> = null;
   _currentFile: WritableStream
+  _log: any;
+  _logManager: any;
+  _nodeRedLog: any;
 
-  constructor(dir: string, command: string, killSignal: string, emitter: EventEmitter) {
+  constructor(
+    dir: string,
+    command: string,
+    killSignal: string,
+    emitter: EventEmitter,
+    log: any,
+    logManager: any) {
     this._dir = dir;    
     if (!fs.existsSync(this._dir)) {
       throw new Error(`Given Node RED dir is not found: ${this._dir}`);
@@ -43,31 +52,17 @@ export default class NodeREDController {
     this._command = command;
     this._killSignal = killSignal;
     this._registerHandler(emitter);
+
+    this._log = log;
+    this._logManager = logManager;
+    this._nodeRedLog = logManager.addLogger('service.node-red', ['console', 'enebularHTTP', 'localFile']);
+
     this._currentFile = rfs(generator, {
       size: '1M',
       interval: '5s',
       path: 'logs',
       maxFiles: 100
     });
-    this._stdoutUnhook = this._hookStream(process.stdout, (string, encoding) => {
-      this._currentFile.write(string, encoding)
-    })
-    this._stderrUnhook = this._hookStream(process.stderr, (string, encoding) => {
-      this._currentFile.write(string, encoding)
-    })
-  }
-
-  _hookStream(stream, cb) {
-    var old_write = stream.write
-    stream.write = (function(write) {
-      return function(string, encoding) {
-        write.apply(stream, arguments)
-        cb(string, encoding)
-      }
-    })(stream.write)
-    return function() {
-      stream.write = old_write
-    }
   }
 
   _registerHandler(emitter: EventEmitter) {
@@ -171,15 +166,17 @@ export default class NodeREDController {
   }
 
   async _startService() {
-    log('Staring service...');
+    this._log.info('Staring service...');
     return new Promise((resolve, reject) => {
       const [command, ...args] = this._command.split(/\s+/);
       const cproc = spawn(command, args, { stdio: 'pipe', cwd: this._dir });
       cproc.stdout.on('data', (data) => {
-        process.stdout.write(data)
+        let str = data.toString().replace(/(\n|\r)+$/, '');
+        this._nodeRedLog.info(str);
       });
       cproc.stderr.on('data', (data) => {
-        process.stdout.write(data)
+        let str = data.toString().replace(/(\n|\r)+$/, '');
+        this._nodeRedLog.error(str)
       });
       cproc.once('exit', (code) => {
         log(`Service exited (${code})`);

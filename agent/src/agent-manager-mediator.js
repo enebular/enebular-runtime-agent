@@ -127,11 +127,6 @@ export default class AgentManagerMediator extends EventEmitter {
     log('Cleanup...')
     clearInterval(this._pid);
     clearInterval(this._logInterval)
-    // cut stream off 
-    await Promise.all([
-      this._nodeRed._stdoutUnhook(),
-      this._nodeRed._stderrUnhook(),
-    ])
     // if authenticated, then notify last minute
     if (this._agentState === 'authenticated') {
       await Promise.all([

@@ -81,6 +81,7 @@ export class EnebularAgent {
   _agentState: AgentState;
 
   _logManager: LogManager;
+  _log: any;
 
   constructor(messengerSevice: MessengerService, config: EnebularAgentConfig) {
     const {
@@ -91,12 +92,7 @@ export class EnebularAgent {
     } = config;
 
     this._logManager = new LogManager();
-
-    let logger1 = this._logManager.addLogger('internal1');
-    logger1.log('info', 'log test1!');
-    let logger2 = this._logManager.addLogger('internal2', ['console', 'enebularHTTP', 'localFile']);
-    logger2.log('info', 'log test2!');
-    setInterval(() => {logger2.log('info', 'test!')}, 1000);
+    this._log = this._logManager.addLogger('internal', ['console', 'enebularHTTP', 'localFile']);
 
     this._messengerSevice = messengerSevice;
     this._messengerSevice.on('connect', () => this._handleMessengerConnect());
@@ -104,11 +100,26 @@ export class EnebularAgent {
     this._messengerSevice.on('message', (params) => this._handleMessengerMessage(params));
 
     this._messageEmitter = new EventEmitter();
-    this._nodeRed = new NodeREDController(nodeRedDir, nodeRedCommand, nodeRedKillSignal, this._messageEmitter);
+    this._nodeRed = new NodeREDController(
+      nodeRedDir,
+      nodeRedCommand,
+      nodeRedKillSignal,
+      this._messageEmitter,
+      this._log,
+      this._logManager
+    );
     this._deviceAuth = new DeviceAuthMediator(this._messageEmitter);
     this._agentMan = new AgentManagerMediator(this._nodeRed);
     this._configFile = configFile;
     this._agentState = 'init';
+  }
+
+  get log(): any {
+    return this._log;
+  }
+
+  get logManager(): any {
+    return this._logManager;
   }
 
   async startup() {    
@@ -125,7 +136,7 @@ export class EnebularAgent {
   _loadAgentConfig() {
     try {
       if (fs.existsSync(this._configFile)) {
-        log('Reading config file:', this._configFile);
+        this._log.info('Reading config file:' + this._configFile);
         const data = fs.readFileSync(this._configFile, 'utf8');
         const { connectionId, deviceId, agentManagerBaseUrl, authRequestUrl } = JSON.parse(data);
         if (connectionId && deviceId && agentManagerBaseUrl && authRequestUrl) {

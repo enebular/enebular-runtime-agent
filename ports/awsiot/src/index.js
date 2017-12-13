@@ -10,6 +10,7 @@ import { EnebularAgent, MessengerService } from 'enebular-runtime-agent';
  */
 const log = debug('enebular-awsiot-agent');
 const logv = debug('enebular-awsiot-agent:verbose');
+let _log;
 
 const { AWSIOT_CONFIG_FILE, NODE_RED_DIR } = process.env;
 
@@ -111,7 +112,8 @@ async function startup() {
     });
 
     await agent.startup();
-    log('Agent started');
+    _log = agent.log;
+    _log.info('Agent started');
 
     setupDevice(awsIotConfig, messenger);
 
