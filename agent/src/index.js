@@ -7,6 +7,7 @@ import debug from 'debug';
 import NodeREDController from './node-red-controller';
 import DeviceAuthMediator from './device-auth-mediator';
 import AgentManagerMediator from './agent-manager-mediator';
+import LogManager from './log-manager'
 
 /**
  *
@@ -79,6 +80,8 @@ export class EnebularAgent {
 
   _agentState: AgentState;
 
+  _logManager: LogManager;
+
   constructor(messengerSevice: MessengerService, config: EnebularAgentConfig) {
     const {
       nodeRedDir,
@@ -86,6 +89,13 @@ export class EnebularAgent {
       nodeRedKillSignal = 'SIGINT',
       configFile = path.join(os.homedir(), '.enebular-config.json'),
     } = config;
+
+    this.LogManager = new LogManager();
+
+    let logger1 = this.LogManager.addLogger('internal1', []);
+    logger1.log('info', 'log test1!');
+    let logger2 = this.LogManager.addLogger('internal2', ['httpCache', 'localFile']);
+    logger2.log('info', 'log test2!');
 
     this._messengerSevice = messengerSevice;
     this._messengerSevice.on('connect', () => this._handleMessengerConnect());
