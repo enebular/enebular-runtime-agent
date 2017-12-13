@@ -4,34 +4,43 @@ import winston from 'winston';
 import 'winston-logrotate';
 
 export default class LogManager {
-  _transports: any;
-  _loggers: any;
+  _transports: { [string]: winston.Transport };
+  _loggers: winston.Container;
 
   constructor() {
     this._transports = {};
-    this._transports['console'] = new (winston.transports.Console)({
+    this.addTransport(new (winston.transports.Console)({
       name: "console",
       colorize: true,
-    });
-    this._transports['enebularHTTP'] = new winston.transports.Rotate({
+    }));
+    this.addTransport(new winston.transports.Rotate({
+      name: "enebularHTTP",
       file: '/tmp/enebular-http-cache.log', // this path needs to be absolute
       timestamp: true,
       json: true,
       size: '10',
       keep: 100,
       compress: false
-    });
-    this._transports['localFile'] = new (winston.transports.File)({
+    }));
+    this.addTransport(new (winston.transports.File)({
       name: "localFile",
       filename: 'enebular.log',
       json: false
-    });
+    }));
     this._loggers = new winston.Container({
-      transports: [],
+      //
     });
   }
 
-  addLogger(id: string, transports: any) {
+  addTransport(transport: winston.Transport) {
+    const id = transport.name;
+    if (this._transports[id]) {
+      throw new Error("Attempted to add duplicate transport name: " + id);
+    }
+    this._transports[id] = transport;
+  }
+
+  addLogger(id: string, transports: ?string[]): winston.Logger {
     let options = {
       transports: [],
       rewriters: [
@@ -49,7 +58,7 @@ export default class LogManager {
     return this._loggers.add(id, options);
   }
 
-  getLogger(id: string) {
+  getLogger(id: string): winston.Logger {
     return this._loggers.get(id);
   }
 }

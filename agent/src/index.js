@@ -90,11 +90,11 @@ export class EnebularAgent {
       configFile = path.join(os.homedir(), '.enebular-config.json'),
     } = config;
 
-    this.LogManager = new LogManager();
+    this._logManager = new LogManager();
 
-    let logger1 = this.LogManager.addLogger('internal1');
+    let logger1 = this._logManager.addLogger('internal1');
     logger1.log('info', 'log test1!');
-    let logger2 = this.LogManager.addLogger('internal2', ['console', 'enebularHTTP', 'localFile']);
+    let logger2 = this._logManager.addLogger('internal2', ['console', 'enebularHTTP', 'localFile']);
     logger2.log('info', 'log test2!');
     setInterval(() => {logger2.log('info', 'test!')}, 1000);
 
