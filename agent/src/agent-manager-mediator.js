@@ -49,41 +49,41 @@ export default class AgentManagerMediator extends EventEmitter {
   async recordLogs() {
     try {
       const { _baseUrl: baseUrl, _accessToken: accessToken } = this;
-      // batch logs
-      let logList = fs.readdirSync('logs/logs')
-      // on some systems .DS_Store is created so 
-      if (logList[0] === '.DS_Store' || logList[logList.length-1] === '.DS_Store') {
-        await unlinkAsync('logs/logs/.DS_Store')
-        logList = logList.slice(1)
-      }
-      if (!logList.length) {
+      const logDir = '/tmp/enebular-http-log-cache';
+      const logFilenameBase = 'enebular-http-log-cache.log';
+
+      let filenames = fs.readdirSync(logDir)
+      if (!filenames.length) {
+        log('No log files');
         return
       }
-      const destinationFile = logList[0]
-      const logsToConcatenate = logList.slice(1)
+
       // concatenate existing logs into the oldest existing log file
-      for (let filename of logsToConcatenate) {
-        const fileContent = await readFileAsync(`logs/logs/${filename}`, 'utf8')
-        const stats = await statAsync(`logs/logs/${filename}`)
-        const fileSize = stats.size
-        if (!fileSize) {
-          await unlinkAsync(`logs/logs/${filename}`)
-        } else {
-          await appendFileAsync(`logs/logs/${destinationFile}`, fileContent)
-          await unlinkAsync(`logs/logs/${filename}`)
+      // todo: oldest first
+      const destinationPath = `${logDir}/${logFilenameBase}.collection.${Date.now()}`;
+      for (let filename of filenames) {
+        const filePath = `${logDir}/${filename}`;
+        console.log('stat: ' + filePath);
+        const stat = await statAsync(filePath);
+        if (stat.size > 0) {
+          const fileContent = await readFileAsync(filePath, 'utf8');
+          await appendFileAsync(destinationPath, fileContent);
         }
+        console.log('unlink: ' + filePath);
+        await unlinkAsync(filePath);
       }
       // check if accumulated log file is still empty
-      const destinationFileStats = await statAsync(`logs/logs/${destinationFile}`)
-      if (!destinationFileStats.size) {
+      const collectionStat = await statAsync(destinationPath);
+      if (!collectionStat.size) {
         log('No log content')
-        await unlinkAsync(`logs/logs/${destinationFile}`)
+        await unlinkAsync(destinationPath);
         return
       }
+
       log('Sending logs...');
       // post logs
       const form = new FormData()
-      form.append(destinationFile, fs.createReadStream(`logs/logs/${destinationFile}`))
+      form.append("events", fs.createReadStream(destinationPath))
       const res = await fetch(`${baseUrl}/record-logs`, {
         method: 'POST',
         headers: {
@@ -96,8 +96,8 @@ export default class AgentManagerMediator extends EventEmitter {
         const err = new Error('Cannot record logs to agent manager: ');
         this.emit('error', message);
       } else {
-        log('Logs sent')
-        await unlinkAsync(`logs/logs/${destinationFile}`)
+        log(`Logs sent (${collectionStat.size}B)`)
+        await unlinkAsync(destinationPath)
       }
     } catch (err) {
       console.error('_recordLog error', err)

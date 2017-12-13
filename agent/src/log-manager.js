@@ -15,10 +15,10 @@ export default class LogManager {
     }));
     this.addTransport(new winston.transports.Rotate({
       name: "enebularHTTP",
-      file: '/tmp/enebular-http-cache.log', // this path needs to be absolute
+      file: '/tmp/enebular-http-log-cache/enebular-http-log-cache.log', // this path needs to be absolute
       timestamp: true,
       json: true,
-      size: '10',
+      size: '200',
       keep: 100,
       compress: false
     }));
