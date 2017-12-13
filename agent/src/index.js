@@ -96,6 +96,7 @@ export class EnebularAgent {
     logger1.log('info', 'log test1!');
     let logger2 = this.LogManager.addLogger('internal2', ['console', 'enebularHTTP', 'localFile']);
     logger2.log('info', 'log test2!');
+    setInterval(() => {logger2.log('info', 'test!')}, 1000);
 
     this._messengerSevice = messengerSevice;
     this._messengerSevice.on('connect', () => this._handleMessengerConnect());

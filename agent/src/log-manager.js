@@ -1,6 +1,7 @@
 /* @flow */
 
 import winston from 'winston';
+import 'winston-logrotate';
 
 export default class LogManager {
   _transports: any;
@@ -12,10 +13,13 @@ export default class LogManager {
       name: "console",
       colorize: true,
     });
-    this._transports['enebularHTTP'] = new (winston.transports.File)({
-      name: "enebularHTTP",
-      filename: 'enebular-http-cache.log',
-      json: true
+    this._transports['enebularHTTP'] = new winston.transports.Rotate({
+      file: '/tmp/enebular-http-cache.log', // this path needs to be absolute
+      timestamp: true,
+      json: true,
+      size: '10',
+      keep: 100,
+      compress: false
     });
     this._transports['localFile'] = new (winston.transports.File)({
       name: "localFile",
