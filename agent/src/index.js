@@ -24,6 +24,9 @@ export type EnebularAgentConfig = {
   nodeRedKillSignal?: string,
   configFile?: string,
   enableConsoleLog? :boolean,
+  enableFileLog? :boolean,
+  logfilePath? :boolean,
+  enableEnebularHTTPLog? :boolean,
 };
 
 type AgentSetting = {
@@ -90,13 +93,15 @@ export class EnebularAgent {
       nodeRedCommand = './node_modules/.bin/node-red -s .node-red-config/settings.js',
       nodeRedKillSignal = 'SIGINT',
       configFile = path.join(os.homedir(), '.enebular-config.json'),
-      enableConsoleLog = true
     } = config;
 
-    this._logManager = new LogManager({
-      enableConsole: enableConsoleLog
-    });
-    this._log = this._logManager.addLogger('internal', ['console', 'enebularHTTP', 'localFile']);
+    let logConfig = {};
+    logConfig['enableConsole'] = config.enableConsoleLog;
+    logConfig['enableFile'] = config.enableFileLog;
+    logConfig['filePath'] = config.logfilePath;
+    logConfig['enableEnebularHTTP'] = config.enableEnebularHTTPLog;
+    this._logManager = new LogManager(logConfig);
+    this._log = this._logManager.addLogger('internal', ['console', 'enebularHTTP', 'file']);
 
     this._messengerSevice = messengerSevice;
     this._messengerSevice.on('connect', () => this._handleMessengerConnect());
@@ -133,8 +138,8 @@ export class EnebularAgent {
 
   async shutdown() {
     this._endDeviceAuthenticationAttempt();
-    await this._agentMan.cleanUp();
-    return this._nodeRed.shutdownService();
+    await this._nodeRed.shutdownService();
+    return this._agentMan.cleanUp();
   }
 
   _loadAgentConfig() {

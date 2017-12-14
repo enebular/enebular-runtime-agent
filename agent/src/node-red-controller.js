@@ -55,7 +55,7 @@ export default class NodeREDController {
 
     this._log = log;
     this._logManager = logManager;
-    this._nodeRedLog = logManager.addLogger('service.node-red', ['console', 'enebularHTTP', 'localFile']);
+    this._nodeRedLog = logManager.addLogger('service.node-red', ['console', 'enebularHTTP', 'file']);
 
     this._currentFile = rfs(generator, {
       size: '1M',
