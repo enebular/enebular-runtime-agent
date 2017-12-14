@@ -6,6 +6,7 @@ import NodeREDController from './node-red-controller';
 import fs from 'fs'
 import FormData from 'form-data'
 import { promisify } from 'util'
+
 /**
  *
  */
@@ -52,53 +53,70 @@ export default class AgentManagerMediator extends EventEmitter {
       const logDir = '/tmp/enebular-http-log-cache';
       const logFilenameBase = 'enebular-http-log-cache.log';
 
+      log('Sending logs...');
+
       let filenames = fs.readdirSync(logDir)
       if (!filenames.length) {
         log('No log files');
-        return
+        return;
       }
 
-      // concatenate existing logs into the oldest existing log file
       // todo: oldest first
-      const destinationPath = `${logDir}/${logFilenameBase}.collection.${Date.now()}`;
+
+      const nameMatch = new RegExp(`^${logFilenameBase}`);
       for (let filename of filenames) {
-        const filePath = `${logDir}/${filename}`;
-        console.log('stat: ' + filePath);
-        const stat = await statAsync(filePath);
-        if (stat.size > 0) {
-          const fileContent = await readFileAsync(filePath, 'utf8');
-          await appendFileAsync(destinationPath, fileContent);
+
+        if (!filename.match(nameMatch)) {
+          console.log('Skipping: ' + filename);
+          continue;
         }
-        console.log('unlink: ' + filePath);
-        await unlinkAsync(filePath);
-      }
-      // check if accumulated log file is still empty
-      const collectionStat = await statAsync(destinationPath);
-      if (!collectionStat.size) {
-        log('No log content')
-        await unlinkAsync(destinationPath);
-        return
+
+        const filePath = `${logDir}/${filename}`;
+
+        const stat = await statAsync(filePath);
+        if (stat.size < 1) {
+          console.log('Removing empty log: ' + filename);
+          await unlinkAsync(filePath);
+          continue;
+        }
+
+        const fileContent = await readFileAsync(filePath, 'utf8');
+        const lines = fileContent.toString().split('\n');
+        let events = [];
+        for (let line of lines) {
+          if (line.length > 0) {
+            events.push(JSON.parse(line));
+          }
+        }
+
+        const tmpFile = `${logDir}/${Date.now()}`;
+        const eventsStr = JSON.stringify(events);
+        await writeFileAsync(tmpFile, eventsStr);
+
+        log(`Sending log: ${filename} ${tmpFile} (${stat.size}B)`);
+
+        const form = new FormData();
+        form.append("events", fs.createReadStream(tmpFile))
+        const res = await fetch(`${baseUrl}/record-logs`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+          body: form
+        });
+        if (!res.ok) {
+          const message = await res.text();
+          const err = new Error('Failed to record logs to agent manager');
+          this.emit('error', message);
+        } else {
+          log('Log sent')
+          await unlinkAsync(filePath)
+        }
+
+        await unlinkAsync(tmpFile);
+
       }
 
-      log('Sending logs...');
-      // post logs
-      const form = new FormData()
-      form.append("events", fs.createReadStream(destinationPath))
-      const res = await fetch(`${baseUrl}/record-logs`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        body: form
-      });
-      if (!res.ok) {
-        const message = await res.text();        
-        const err = new Error('Cannot record logs to agent manager: ');
-        this.emit('error', message);
-      } else {
-        log(`Logs sent (${collectionStat.size}B)`)
-        await unlinkAsync(destinationPath)
-      }
     } catch (err) {
       console.error('_recordLog error', err)
     }

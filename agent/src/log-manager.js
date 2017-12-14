@@ -18,7 +18,7 @@ export default class LogManager {
       file: '/tmp/enebular-http-log-cache/enebular-http-log-cache.log', // this path needs to be absolute
       timestamp: true,
       json: true,
-      size: '200',
+      size: '500',
       keep: 100,
       compress: false
     }));
