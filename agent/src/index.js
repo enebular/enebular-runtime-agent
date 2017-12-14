@@ -23,6 +23,7 @@ export type EnebularAgentConfig = {
   nodeRedCommand?: string,
   nodeRedKillSignal?: string,
   configFile?: string,
+  enableConsoleLog? :boolean,
 };
 
 type AgentSetting = {
@@ -89,9 +90,12 @@ export class EnebularAgent {
       nodeRedCommand = './node_modules/.bin/node-red -s .node-red-config/settings.js',
       nodeRedKillSignal = 'SIGINT',
       configFile = path.join(os.homedir(), '.enebular-config.json'),
+      enableConsoleLog = true
     } = config;
 
-    this._logManager = new LogManager();
+    this._logManager = new LogManager({
+      enableConsole: enableConsoleLog
+    });
     this._log = this._logManager.addLogger('internal', ['console', 'enebularHTTP', 'localFile']);
 
     this._messengerSevice = messengerSevice;

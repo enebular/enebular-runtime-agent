@@ -109,6 +109,7 @@ async function startup() {
     agent = new EnebularAgent(messenger, {
       nodeRedDir: NODE_RED_DIR || path.join(process.cwd(), 'node-red'),
       configFile: path.join(process.cwd(), '.enebular-config.json'),
+      enableConsoleLog: true,
     });
 
     await agent.startup();

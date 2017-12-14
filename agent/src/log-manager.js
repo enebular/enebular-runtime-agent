@@ -3,16 +3,34 @@
 import winston from 'winston';
 import 'winston-logrotate';
 
+/**
+ *
+ */
+export type LogManagerConfig = {
+  enableConsole? :boolean,
+};
+
 export default class LogManager {
   _transports: { [string]: winston.Transport };
   _loggers: winston.Container;
+  _enableConsole: boolean;
 
-  constructor() {
+  constructor(config: LogManagerConfig) {
+
+    const {
+      enableConsole = true,
+    } = config;
+    this._enableConsole = enableConsole;
+
     this._transports = {};
-    this.addTransport(new (winston.transports.Console)({
-      name: "console",
-      colorize: true,
-    }));
+
+    if (this._enableConsole) {
+      this.addTransport(new (winston.transports.Console)({
+        name: "console",
+        colorize: true,
+      }));
+    }
+
     this.addTransport(new winston.transports.Rotate({
       name: "enebularHTTP",
       file: '/tmp/enebular-http-log-cache/enebular-http-log-cache.log', // this path needs to be absolute
@@ -22,14 +40,17 @@ export default class LogManager {
       keep: 100,
       compress: false
     }));
+
     this.addTransport(new (winston.transports.File)({
       name: "localFile",
       filename: 'enebular.log',
       json: false
     }));
+
     this._loggers = new winston.Container({
       //
     });
+
   }
 
   addTransport(transport: winston.Transport) {
@@ -53,7 +74,9 @@ export default class LogManager {
     }
     transports = transports || ['console'];
     transports.forEach((transport) => {
-      options.transports.push(this._transports[transport]);
+      if (this._transports[transport]) {
+        options.transports.push(this._transports[transport]);
+      }
     });
     return this._loggers.add(id, options);
   }
