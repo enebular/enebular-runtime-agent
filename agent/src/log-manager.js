@@ -54,6 +54,7 @@ export default class LogManager {
       this.addTransport(new (winston.transports.enebular)({
         name: "enebular",
         cachePath: '/tmp/enebular-log-cache',
+        agentManager: config.agentManager,
         todo: true
       }));
     }

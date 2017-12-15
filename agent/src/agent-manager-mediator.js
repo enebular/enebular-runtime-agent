@@ -26,12 +26,10 @@ export default class AgentManagerMediator extends EventEmitter {
   _accessToken: ?string;
   _pid: ?number;
   _logInterval: ?number
-  _nodeRed: NodeREDController;
   _agentState: ?string;
 
-  constructor(nodeRed: NodeREDController) {
+  constructor() {
     super();
-    this._nodeRed = nodeRed;
   }
 
   setAgentState(agentState: string) {
@@ -47,9 +45,34 @@ export default class AgentManagerMediator extends EventEmitter {
     this._accessToken = accessToken
   }
 
+  async sendLog(filename: string) {
+
+    log(`Sending log: ${filename}`);
+
+    if (this._agentState !== 'authenticated') {
+      throw new Error("Can't send log while not authenticated");
+      return;
+    }
+
+    const form = new FormData();
+    form.append("events", fs.createReadStream(filename))
+    const res = await fetch(`${this._baseUrl}/record-logs`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this._accessToken}`,
+      },
+      body: form
+    });
+    if (!res.ok) {
+      const message = await res.text();
+      throw new Error('Failed to record logs to agent manager');
+    } else {
+      log('Log sent')
+    }
+  }
+
   async recordLogs() {
     try {
-      const { _baseUrl: baseUrl, _accessToken: accessToken } = this;
       const logDir = '/tmp/enebular-http-log-cache';
       const logFilenameBase = 'enebular-http-log-cache.log';
 
@@ -93,25 +116,7 @@ export default class AgentManagerMediator extends EventEmitter {
         const eventsStr = JSON.stringify(events);
         await writeFileAsync(tmpFile, eventsStr);
 
-        log(`Sending log: ${filename} ${tmpFile} (${stat.size}B)`);
-
-        const form = new FormData();
-        form.append("events", fs.createReadStream(tmpFile))
-        const res = await fetch(`${baseUrl}/record-logs`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-          body: form
-        });
-        if (!res.ok) {
-          const message = await res.text();
-          const err = new Error('Failed to record logs to agent manager');
-          this.emit('error', message);
-        } else {
-          log('Log sent')
-          await unlinkAsync(filePath)
-        }
+        await sendLog(tmpFile);
 
         await unlinkAsync(tmpFile);
 
@@ -124,7 +129,8 @@ export default class AgentManagerMediator extends EventEmitter {
 
   async notifyStatus(disconnectedOverride: boolean) {
     const { _baseUrl: baseUrl, _accessToken: accessToken } = this
-    const status = disconnectedOverride ? 'disconnected' : this._nodeRed.getStatus();
+    //const status = disconnectedOverride ? 'disconnected' : this._nodeRed.getStatus();
+    const status = 'disconnected';
     log(`Sending status (${status})...`);
     const res = await fetch(`${baseUrl}/notify-status`, {
       method: 'POST',
@@ -148,7 +154,7 @@ export default class AgentManagerMediator extends EventEmitter {
     // if authenticated, then notify last minute
     if (this._agentState === 'authenticated') {
       await Promise.all([
-        this.recordLogs(),
+        //this.recordLogs(),
         this.notifyStatus(true)
       ])
     }
@@ -166,6 +172,7 @@ export default class AgentManagerMediator extends EventEmitter {
   }
 
   startLogReport() {
+    /*
     log('Starting log reporting...');
     const { _baseUrl: baseUrl, _accessToken: accessToken } = this;
     if (!baseUrl || !accessToken) {
@@ -173,5 +180,6 @@ export default class AgentManagerMediator extends EventEmitter {
       return;
     }
     this._logInterval = setInterval(() => this.recordLogs(), 30000)
+    */
   }
 }

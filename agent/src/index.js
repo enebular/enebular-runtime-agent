@@ -95,18 +95,22 @@ export class EnebularAgent {
       configFile = path.join(os.homedir(), '.enebular-config.json'),
     } = config;
 
-    let logConfig = {};
+    this._messengerSevice = messengerSevice;
+    this._messengerSevice.on('connect', () => this._handleMessengerConnect());
+    this._messengerSevice.on('disconnect', () => this._handleMessengerDisconnect());
+    this._messengerSevice.on('message', (params) => this._handleMessengerMessage(params));
+
+    this._agentMan = new AgentManagerMediator();
+
+    let logConfig = {
+      agentManager: this._agentMan,
+    };
     logConfig['enableConsole'] = config.enableConsoleLog;
     logConfig['enableFile'] = config.enableFileLog;
     logConfig['filePath'] = config.logfilePath;
     logConfig['enableEnebular'] = config.enableEnebularLog;
     this._logManager = new LogManager(logConfig);
     this._log = this._logManager.addLogger('internal', ['console', 'enebular', 'file']);
-
-    this._messengerSevice = messengerSevice;
-    this._messengerSevice.on('connect', () => this._handleMessengerConnect());
-    this._messengerSevice.on('disconnect', () => this._handleMessengerDisconnect());
-    this._messengerSevice.on('message', (params) => this._handleMessengerMessage(params));
 
     this._messageEmitter = new EventEmitter();
     this._nodeRed = new NodeREDController(
@@ -118,7 +122,6 @@ export class EnebularAgent {
       this._logManager
     );
     this._deviceAuth = new DeviceAuthMediator(this._messageEmitter);
-    this._agentMan = new AgentManagerMediator(this._nodeRed);
     this._configFile = configFile;
     this._agentState = 'init';
   }

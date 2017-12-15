@@ -15,16 +15,19 @@ let Enebular = exports.Enebular = function (options) {
   //  
 
   this.cachePath      = options.cachePath     || '/tmp/enebular-log-cache';
-  this.sendInterval   = 30;
+  this.sendInterval   = 15;
   this.sendSize       = 100 * 1024;
   this.maxCacheSize   = 5 * 1024 * 1024;
   this.maxUploadSize  = 1 * 1024 * 1024 / 1024;
+  this._agentManager   = options.agentManager;
 
   this._currentPath   = `${this.cachePath}/${currentFilename}`
 
   if (!fs.existsSync(this.cachePath)) {
     fs.mkdirSync(this.cachePath);
   }
+
+  this._intervalID = setInterval(() => {this._handleTimeTrigger()}, this.sendInterval*1000);
 };
 
 util.inherits(Enebular, Transport);
@@ -60,8 +63,6 @@ Enebular.prototype._appendOutput = function(output, callback) {
   output = prefix +  output;
   let outputSize = output.length;
 
-  console.log('appending: ' + outputSize);
-
   if (this._cachedSize() + outputSize >= this.maxCacheSize) {
     console.log('todo: cache oversize');
   }
@@ -78,6 +79,8 @@ Enebular.prototype._appendOutput = function(output, callback) {
   fs.appendFileSync(this._currentPath, output);
   self.emit('logged');
   callback(null, true);
+
+  // todo: check if it's time to upload based on sendSize
 }
 
 Enebular.prototype._cachedSize = function() {
@@ -87,7 +90,11 @@ Enebular.prototype._cachedSize = function() {
 
 Enebular.prototype._finalizeCurrent = function() {
 
-  let finalizedName = `${Date.now()}.###todo-hash###`;
+  if (!fs.existsSync(this._currentPath)) {
+    return;
+  }
+
+  let finalizedName = `enebular.${Date.now()}.todo-hash`;
   let finalizedPath = `${this.cachePath}/${finalizedName}`;
 
   console.log(`Finalizing current to: ${finalizedName}`);
@@ -95,6 +102,54 @@ Enebular.prototype._finalizeCurrent = function() {
   fs.appendFileSync(this._currentPath, '\n]');
 
   fs.renameSync(this._currentPath, finalizedPath);
+}
+
+Enebular.prototype._uploadFinialized = async function() {
+
+  let filenames = fs.readdirSync(this.cachePath);
+  if (!filenames.length) {
+    return;
+  }
+
+  // todo: oldest first
+
+  const nameMatch = new RegExp('^enebular.');
+
+  for (let filename of filenames) {
+
+    if (!filename.match(nameMatch)) {
+      console.log('Skipping: ' + filename);
+      continue;
+    }
+
+    const filePath = `${this.cachePath}/${filename}`;
+
+    const stat = fs.statSync(filePath);
+    if (stat.size < 1) {
+      console.log('Removing empty log: ' + filename);
+      unlinkSync(filePath);
+      continue;
+    }
+
+    console.log(`Sending log: ${filename} (${stat.size}B)`);
+
+    await this._agentManager.sendLog(filePath);
+    fs.unlinkSync(filePath);
+
+  }
+
+}
+
+Enebular.prototype._handleTimeTrigger = async function() {
+
+  if (this._agentManager._agentState !== 'authenticated') {
+    console.log('Not sending logs as not authenticated');
+    return;
+  }
+
+  await this._uploadFinialized();
+  await this._finalizeCurrent();
+  await this._uploadFinialized();
 }
 
 Enebular.prototype.close = function() {
