@@ -1,16 +1,15 @@
 /* @flow */
 
 import winston from 'winston';
-import 'winston-logrotate';
+import { Enebular } from './winston-enebular';
 
-/**
- *
- */
+winston.transports.enebular = Enebular;
+
 export type LogManagerConfig = {
   enableConsole? :boolean,
   enableFile? :boolean,
   filePath? :boolean,
-  enableEnebularHTTP? :boolean,
+  enableEnebular? :boolean,
 };
 
 export default class LogManager {
@@ -19,7 +18,7 @@ export default class LogManager {
   _enableConsole: boolean;
   _enableFile: boolean;
   _filePath: boolean;
-  _enableEnebularHTTP: boolean;
+  _enableEnebular: boolean;
 
   constructor(config: LogManagerConfig) {
 
@@ -27,12 +26,12 @@ export default class LogManager {
       enableConsole = true,
       enableFile = false,
       filePath = "/var/log/enebular/enebular.log",
-      enableEnebularHTTP = true,
+      enableEnebular = true,
     } = config;
     this._enableConsole = enableConsole;
     this._enableFile = enableFile;
     this._filePath = filePath;
-    this._enableEnebularHTTP = enableEnebularHTTP;
+    this._enableEnebular = enableEnebular;
 
     this._transports = {};
 
@@ -51,15 +50,11 @@ export default class LogManager {
       }));
     }
 
-    if (this._enableEnebularHTTP) {
-      this.addTransport(new winston.transports.Rotate({
-        name: "enebularHTTP",
-        file: '/tmp/enebular-http-log-cache/enebular-http-log-cache.log', // this path needs to be absolute
-        timestamp: true,
-        json: true,
-        size: '500',
-        keep: 100,
-        compress: false
+    if (this._enableEnebular) {
+      this.addTransport(new (winston.transports.enebular)({
+        name: "enebular",
+        cachePath: '/tmp/enebular-log-cache',
+        todo: true
       }));
     }
 

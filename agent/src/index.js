@@ -26,7 +26,7 @@ export type EnebularAgentConfig = {
   enableConsoleLog? :boolean,
   enableFileLog? :boolean,
   logfilePath? :boolean,
-  enableEnebularHTTPLog? :boolean,
+  enableEnebularLog? :boolean,
 };
 
 type AgentSetting = {
@@ -99,9 +99,9 @@ export class EnebularAgent {
     logConfig['enableConsole'] = config.enableConsoleLog;
     logConfig['enableFile'] = config.enableFileLog;
     logConfig['filePath'] = config.logfilePath;
-    logConfig['enableEnebularHTTP'] = config.enableEnebularHTTPLog;
+    logConfig['enableEnebular'] = config.enableEnebularLog;
     this._logManager = new LogManager(logConfig);
-    this._log = this._logManager.addLogger('internal', ['console', 'enebularHTTP', 'file']);
+    this._log = this._logManager.addLogger('internal', ['console', 'enebular', 'file']);
 
     this._messengerSevice = messengerSevice;
     this._messengerSevice.on('connect', () => this._handleMessengerConnect());
