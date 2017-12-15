@@ -139,7 +139,8 @@ export class EnebularAgent {
   async shutdown() {
     this._endDeviceAuthenticationAttempt();
     await this._nodeRed.shutdownService();
-    return this._agentMan.cleanUp();
+    await this._agentMan.cleanUp();
+    this._logManager.shutdown();
   }
 
   _loadAgentConfig() {

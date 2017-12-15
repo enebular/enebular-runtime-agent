@@ -100,4 +100,8 @@ export default class LogManager {
   getLogger(id: string): winston.Logger {
     return this._loggers.get(id);
   }
+
+  shutdown() {
+    this._loggers.close();
+  }
 }
