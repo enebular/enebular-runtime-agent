@@ -9,15 +9,21 @@ const Transport = winston.Transport;
 const currentFilename = 'current';
 const finalizedNameMatch = new RegExp('^enebular-([0-9]+)-([0-9]+)$');
 
+/**
+ * Todo: handling needed for the following two points of contention:
+ *  - 'current' file - between log message event append logic and log finalize logic
+ *  - currently uploading file - between log upload logic and cache shrink logic
+ */
+
 let Enebular = exports.Enebular = function (options) {
   Transport.call(this, options);
   options = options || {};
 
-  //  
+  //
 
   this.cachePath      = options.cachePath     || '/tmp/enebular-log-cache';
   this.sendInterval   = 15;
-  this.sendSize       = 200;//100 * 1024;
+  this.sendSize       = 500;//100 * 1024;
   this.maxCacheSize   = 5*1024;//5 * 1024 * 1024;
   this.maxUploadSize  = 512;//1 * 1024 * 1024;
   this._agentManager   = options.agentManager;
@@ -28,6 +34,7 @@ let Enebular = exports.Enebular = function (options) {
     fs.mkdirSync(this.cachePath);
   }
 
+  this._sending = false;
   this._intervalID = setInterval(() => {this._handleTimeTrigger()}, this.sendInterval*1000);
 };
 
@@ -86,7 +93,10 @@ Enebular.prototype._appendOutput = function(output, callback) {
   self.emit('logged');
   callback(null, true);
 
-  // todo: check if it's time to upload based on sendSize (i.e size trigger)
+  if (this._cachedSize() > this.sendSize) {
+    console.log('Send size reached');
+    this._send();
+  }
 }
 
 Enebular.prototype._cachedSize = function() {
@@ -176,7 +186,7 @@ Enebular.prototype._finalizeCurrent = function() {
   fs.renameSync(this._currentPath, finalizedPath);
 }
 
-Enebular.prototype._uploadFinialized = async function() {
+Enebular.prototype._sendFinialized = async function() {
 
   let filenames = this._getOrderedFinalized();
   if (filenames.length < 1) {
@@ -210,16 +220,34 @@ Enebular.prototype._uploadFinialized = async function() {
 
 }
 
-Enebular.prototype._handleTimeTrigger = async function() {
+Enebular.prototype._send = async function() {
+
+  console.log('Starting logs send...');
 
   if (this._agentManager._agentState !== 'authenticated') {
     console.log('Not sending logs as not authenticated');
     return;
   }
 
-  await this._uploadFinialized();
+  if (this._sending) {
+    console.log('Already sending logs');
+    return;
+  }
+
+  this._sending = true;
+
+  await this._sendFinialized();
   await this._finalizeCurrent();
-  await this._uploadFinialized();
+  await this._sendFinialized();
+
+  this._sending = false;
+
+  console.log('Logs send complete');
+}
+
+Enebular.prototype._handleTimeTrigger = async function() {
+
+  this._send();
 }
 
 Enebular.prototype.close = function() {

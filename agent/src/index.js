@@ -112,6 +112,8 @@ export class EnebularAgent {
     this._logManager = new LogManager(logConfig);
     this._log = this._logManager.addLogger('internal', ['console', 'enebular', 'file']);
 
+    setInterval(() => {this._log.info('testing...............................................')}, 2000);
+
     this._messageEmitter = new EventEmitter();
     this._nodeRed = new NodeREDController(
       nodeRedDir,
