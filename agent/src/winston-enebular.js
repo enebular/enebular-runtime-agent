@@ -7,6 +7,7 @@ import common from 'winston/lib/winston/common';
 
 const Transport = winston.Transport;
 const currentFilename = 'current';
+const finalizedNameMatch = new RegExp('^enebular-([0-9]+)-([0-9]+)$');
 
 let Enebular = exports.Enebular = function (options) {
   Transport.call(this, options);
@@ -16,9 +17,9 @@ let Enebular = exports.Enebular = function (options) {
 
   this.cachePath      = options.cachePath     || '/tmp/enebular-log-cache';
   this.sendInterval   = 15;
-  this.sendSize       = 100 * 1024;
-  this.maxCacheSize   = 5 * 1024 * 1024;
-  this.maxUploadSize  = 1 * 1024 * 1024 / 1024;
+  this.sendSize       = 512;//100 * 1024;
+  this.maxCacheSize   = 1*1024;//5 * 1024 * 1024;
+  this.maxUploadSize  = 512;//1 * 1024 * 1024;
   this._agentManager   = options.agentManager;
 
   this._currentPath   = `${this.cachePath}/${currentFilename}`
@@ -60,11 +61,16 @@ Enebular.prototype._appendOutput = function(output, callback) {
   let self = this;
 
   let prefix = (fs.existsSync(this._currentPath)) ? ',\n' : '[\n';
-  output = prefix +  output;
+  output = prefix + output;
   let outputSize = output.length;
 
-  if (this._cachedSize() + outputSize >= this.maxCacheSize) {
-    console.log('todo: cache oversize');
+  // todo: limit attempts
+  while (this._cachedSize() + outputSize >= this.maxCacheSize) {
+    let ok = this._shrinkCache();
+    if (!ok) {
+      console.log("failed to shrink cache");
+      break;
+    }
   }
 
   let currentSize = 0;
@@ -80,12 +86,72 @@ Enebular.prototype._appendOutput = function(output, callback) {
   self.emit('logged');
   callback(null, true);
 
-  // todo: check if it's time to upload based on sendSize
+  // todo: check if it's time to upload based on sendSize (i.e size trigger)
 }
 
 Enebular.prototype._cachedSize = function() {
-  console.log('todo: total cache size');
-  return 0;
+
+  let cachedSize = 0;
+
+  /* current file */
+  if (fs.existsSync(this._currentPath)) {
+    const stats = fs.statSync(this._currentPath);
+    cachedSize += stats.size;
+  }
+
+  /* finalized files */
+  let filenames = fs.readdirSync(this.cachePath);
+  for (let filename of filenames) {
+    if (!filename.match(finalizedNameMatch)) {
+      continue;
+    }
+    const filePath = `${this.cachePath}/${filename}`;
+    const stats = fs.statSync(filePath);
+    cachedSize += stats.size;
+  }
+
+  return cachedSize;
+}
+
+Enebular.prototype._shrinkCache = function() {
+
+  console.log('Shrinking cache...');
+
+  let filenames = fs.readdirSync(this.cachePath);
+  filenames = filenames.filter(filename => filename.match(finalizedNameMatch));
+  filenames.sort((a,b) => {
+    let aMatch = a.match(finalizedNameMatch);
+    let bMatch = b.match(finalizedNameMatch);
+    //console.log(`aMatch: ${aMatch[1]}:${aMatch[2]}, bMatch: ${bMatch[1]}:${bMatch[2]}`)
+    if (aMatch[1] < bMatch[1]) {
+      return -1;
+    }
+    if (aMatch[1] > bMatch[1]) {
+      return 1;
+    }
+    if (aMatch[2] < bMatch[2]) {
+      return -1;
+    }
+    if (aMatch[2] > bMatch[2]) {
+      return 1;
+    }
+    return 0;
+  })
+
+  if (filenames.length > 0) {
+      console.log(`Removing: oldest (${filenames[0]})`);
+      let filePath = `${this.cachePath}/${filenames[0]}`;
+      fs.unlinkSync(filePath);
+      return true;
+  }
+
+  if (fs.existsSync(this._currentPath)) {
+    console.log('Removing: current');
+    fs.unlinkSync(this._currentPath);
+    return true;
+  }
+
+  return false;
 }
 
 Enebular.prototype._finalizeCurrent = function() {
@@ -94,7 +160,7 @@ Enebular.prototype._finalizeCurrent = function() {
     return;
   }
 
-  let finalizedName = `enebular.${Date.now()}.todo-hash`;
+  let finalizedName = `enebular-${Date.now()}-0`;
   let finalizedPath = `${this.cachePath}/${finalizedName}`;
 
   console.log(`Finalizing current to: ${finalizedName}`);
@@ -113,11 +179,9 @@ Enebular.prototype._uploadFinialized = async function() {
 
   // todo: oldest first
 
-  const nameMatch = new RegExp('^enebular.');
-
   for (let filename of filenames) {
 
-    if (!filename.match(nameMatch)) {
+    if (!filename.match(finalizedNameMatch)) {
       console.log('Skipping: ' + filename);
       continue;
     }
@@ -127,7 +191,7 @@ Enebular.prototype._uploadFinialized = async function() {
     const stat = fs.statSync(filePath);
     if (stat.size < 1) {
       console.log('Removing empty log: ' + filename);
-      unlinkSync(filePath);
+      fs.unlinkSync(filePath);
       continue;
     }
 
