@@ -17,8 +17,8 @@ let Enebular = exports.Enebular = function (options) {
 
   this.cachePath      = options.cachePath     || '/tmp/enebular-log-cache';
   this.sendInterval   = 15;
-  this.sendSize       = 512;//100 * 1024;
-  this.maxCacheSize   = 1*1024;//5 * 1024 * 1024;
+  this.sendSize       = 200;//100 * 1024;
+  this.maxCacheSize   = 5*1024;//5 * 1024 * 1024;
   this.maxUploadSize  = 512;//1 * 1024 * 1024;
   this._agentManager   = options.agentManager;
 
@@ -113,9 +113,7 @@ Enebular.prototype._cachedSize = function() {
   return cachedSize;
 }
 
-Enebular.prototype._shrinkCache = function() {
-
-  console.log('Shrinking cache...');
+Enebular.prototype._getOrderedFinalized = function() {
 
   let filenames = fs.readdirSync(this.cachePath);
   filenames = filenames.filter(filename => filename.match(finalizedNameMatch));
@@ -138,7 +136,15 @@ Enebular.prototype._shrinkCache = function() {
     return 0;
   })
 
-  if (filenames.length > 0) {
+  return filenames;
+}
+
+Enebular.prototype._shrinkCache = function() {
+
+  console.log('Shrinking cache...');
+
+  let filenames = this._getOrderedFinalized();
+  if (filenames && filenames.length > 0) {
       console.log(`Removing: oldest (${filenames[0]})`);
       let filePath = `${this.cachePath}/${filenames[0]}`;
       fs.unlinkSync(filePath);
@@ -172,21 +178,21 @@ Enebular.prototype._finalizeCurrent = function() {
 
 Enebular.prototype._uploadFinialized = async function() {
 
-  let filenames = fs.readdirSync(this.cachePath);
-  if (!filenames.length) {
+  let filenames = this._getOrderedFinalized();
+  if (filenames.length < 1) {
     return;
   }
 
-  // todo: oldest first
+  console.log(`Sending ${filenames.length} logs...`);
 
   for (let filename of filenames) {
 
-    if (!filename.match(finalizedNameMatch)) {
-      console.log('Skipping: ' + filename);
+    const filePath = `${this.cachePath}/${filename}`;
+
+    if (!fs.existsSync(filePath)) {
+      console.log(`Upload target log no longer exists (${filename})`);
       continue;
     }
-
-    const filePath = `${this.cachePath}/${filename}`;
 
     const stat = fs.statSync(filePath);
     if (stat.size < 1) {
@@ -195,7 +201,7 @@ Enebular.prototype._uploadFinialized = async function() {
       continue;
     }
 
-    console.log(`Sending log: ${filename} (${stat.size}B)`);
+    console.log(`Sending: ${filename} (${stat.size}B)`);
 
     await this._agentManager.sendLog(filePath);
     fs.unlinkSync(filePath);
