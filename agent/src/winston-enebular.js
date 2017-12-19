@@ -12,7 +12,17 @@ const Transport = winston.Transport;
 const currentFilename = 'current';
 const finalizedNameMatch = new RegExp('^enebular-([0-9]+)-([0-9]+)$');
 
-let Enebular = exports.Enebular = function (options) {
+function debug(msg, ...args) {
+  if (process.env.DEBUG_LOG) {
+    console.log("enebular-log: " + msg, ...args);
+  }
+}
+
+function error(msg, ...args) {
+  console.error("enebular-log: " + msg, ...args);
+}
+
+let Enebular = exports.Enebular = function(options) {
   Transport.call(this, options);
   options = options || {};
 
@@ -32,7 +42,7 @@ let Enebular = exports.Enebular = function (options) {
       fs.mkdirSync(this.cachePath);
     }
   } catch (err) {
-    console.error('Failed to create log cache directory: ' + err);
+    error('Failed to create log cache directory: ' + err);
   }
 
   this._sending = false;
@@ -93,7 +103,7 @@ Enebular.prototype._appendOutput = function(output, callback) {
   let ok = this._shrinkCacheToFit(outputSize);
   if (!ok) {
       let msg = "Failed to shrink cache enough";
-      console.error(msg);
+      error(msg);
       return callback(new Error(msg));
   }
 
@@ -111,7 +121,7 @@ Enebular.prototype._appendOutput = function(output, callback) {
     callback(null, true);
 
     if (this._cacheSize() > this.sendSize) {
-      console.log('Send size reached');
+      debug('Send size reached');
       this._resetSendInterval();
       this._send();
     }
@@ -144,7 +154,7 @@ Enebular.prototype._cacheSize = function() {
     }
 
   } catch (err) {
-    console.error('Failed to correctly determine cache size: ' + err);
+    error('Failed to correctly determine cache size: ' + err);
   }
 
   return cachedSize;
@@ -160,7 +170,7 @@ Enebular.prototype._getOrderedFinalized = function() {
   try {
     filenames = fs.readdirSync(this.cachePath);
   } catch (err) {
-    console.error('Failed to get cache directory content: ' + err);
+    error('Failed to get cache directory content: ' + err);
     return null;
   }
 
@@ -206,7 +216,7 @@ Enebular.prototype._shrinkCacheToFit = function(newLength) {
 
 Enebular.prototype._shrinkCache = function() {
 
-  console.log('Shrinking cache...');
+  debug('Shrinking cache...');
 
   let target = null;
 
@@ -214,7 +224,7 @@ Enebular.prototype._shrinkCache = function() {
   if (filenames && filenames.length > 0) {
       target = filenames[0];
       if (target === this._sendingFile) {
-        console.log(`Excluding log currently being sent from cache shrink (${target})`);
+        debug(`Excluding log currently being sent from cache shrink (${target})`);
         target = (filenames.length > 1) ? filenames[1] : null;
       }
   }
@@ -225,11 +235,11 @@ Enebular.prototype._shrinkCache = function() {
 
   const filePath = `${this.cachePath}/${target}`;
   if (fs.existsSync(filePath)) {
-    console.log(`Removing: ${target}`);
+    debug(`Removing: ${target}`);
     try {
       fs.unlinkSync(filePath);
     } catch (err) {
-      console.error('Failed to remove file from cache: ' + err);
+      error('Failed to remove file from cache: ' + err);
       return false;
     }
     return true;
@@ -259,18 +269,18 @@ Enebular.prototype._finalizeCurrent = function() {
       cnt++;
     }
     if (cnt >= maxCnt) {
-      console.error('Failed to find unique name for log file');
+      error('Failed to find unique name for log file');
       return;
     }
 
-    console.log(`Finalizing current to: ${finalizedName}`);
+    debug(`Finalizing current to: ${finalizedName}`);
 
     fs.appendFileSync(this._currentPath, '\n]');
 
     fs.renameSync(this._currentPath, finalizedPath);
 
   } catch (err) {
-    console.error('Failed to finalize current log: ' + err);
+    error('Failed to finalize current log: ' + err);
   }
 }
 
@@ -281,7 +291,7 @@ Enebular.prototype._sendFinialized = async function() {
     return;
   }
 
-  console.log(`Sending ${filenames.length} logs...`);
+  debug(`Sending ${filenames.length} logs...`);
 
   for (let filename of filenames) {
 
@@ -294,16 +304,16 @@ Enebular.prototype._sendFinialized = async function() {
        * and the assignment of 'sendingFile' atomic.
        */
       if (!fs.existsSync(filePath)) {
-        console.log(`Upload target log no longer exists (${filename})`);
+        debug(`Upload target log no longer exists (${filename})`);
         continue;
       }
       this._sendingFile = filename;
 
       const stats = await statAsync(filePath);
       if (stats.size < 1) {
-        console.log('Removing empty log: ' + filename);
+        debug('Removing empty log: ' + filename);
       } else {
-        console.log(`Sending: ${filename} (${stats.size}B)`);
+        debug(`Sending: ${filename} (${stats.size}B)`);
         await this._agentManager.sendLog(filePath);
       }
 
@@ -311,10 +321,10 @@ Enebular.prototype._sendFinialized = async function() {
 
       this._sendingFile = null;
 
-      console.log(`Sent: ${filename}`);
+      debug(`Sent: ${filename}`);
 
     } catch (err) {
-      console.error('Failed to send log: ' + err);
+      error('Failed to send log: ' + err);
     }
 
   }
@@ -323,15 +333,15 @@ Enebular.prototype._sendFinialized = async function() {
 
 Enebular.prototype._send = async function() {
 
-  console.log('Starting logs send...');
+  debug('Starting logs send...');
 
   if (this._agentManager._agentState !== 'authenticated') {
-    console.log('Not sending logs as not authenticated');
+    debug('Not sending logs as not authenticated');
     return;
   }
 
   if (this._sending) {
-    console.log('Already sending logs');
+    debug('Already sending logs');
     return;
   }
 
@@ -343,11 +353,11 @@ Enebular.prototype._send = async function() {
 
   this._sending = false;
 
-  console.log('Logs send complete');
+  debug('Logs send complete');
 }
 
 Enebular.prototype._handleTimeTrigger = function() {
-  console.log('Send time trigger...');
+  debug('Send time trigger...');
   this._send();
 }
 
