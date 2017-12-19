@@ -68,22 +68,18 @@ Enebular.prototype._appendOutput = function(output, callback) {
   output = prefix + output;
   let outputSize = output.length;
 
-  // todo: limit attempts
-  while (this._cachedSize() + outputSize >= this.maxCacheSize) {
-    let ok = this._shrinkCache();
-    if (!ok) {
-      console.error("Failed to shrink cache enough");
-      break;
-    }
+  let ok = this._shrinkCacheToFit(outputSize);
+  if (!ok) {
+      let msg = "Failed to shrink cache enough";
+      console.error(msg);
+      return callback(new Error(msg));
   }
 
-  let currentSize = 0;
   if (fs.existsSync(this._currentPath)) {
     let stats = fs.statSync(this._currentPath);
-    currentSize = stats.size;
-  }
-  if (currentSize + outputSize >= this.maxUploadSize) {
-    this._finalizeCurrent();
+    if (stats.size + outputSize >= this.maxUploadSize) {
+      this._finalizeCurrent();
+    }
   }
 
   fs.appendFileSync(this._currentPath, output);
@@ -144,6 +140,24 @@ Enebular.prototype._getOrderedFinalized = function() {
   })
 
   return filenames;
+}
+
+Enebular.prototype._shrinkCacheToFit = function(newLength) {
+  const maxAttempts = 100;
+  let attempts = 0;
+
+  while ((this._cachedSize() + newLength >= this.maxCacheSize) &&
+      (attempts++ < maxAttempts)) {
+    let ok = this._shrinkCache();
+    if (!ok) {
+      return false;
+    }
+  }
+  if (attempts > maxAttempts) {
+      return false;
+  }
+
+  return true;
 }
 
 Enebular.prototype._shrinkCache = function() {
