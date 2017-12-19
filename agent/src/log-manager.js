@@ -19,6 +19,7 @@ export default class LogManager {
   _enableFile: boolean;
   _filePath: boolean;
   _enableEnebular: boolean;
+  _enebularTransport: winston.Transport = null;
 
   constructor(config: LogManagerConfig) {
 
@@ -51,12 +52,13 @@ export default class LogManager {
     }
 
     if (this._enableEnebular) {
-      this.addTransport(new (winston.transports.enebular)({
+      this._enebularTransport = new (winston.transports.enebular)({
         name: "enebular",
         cachePath: '/tmp/enebular-log-cache',
         agentManager: config.agentManager,
         todo: true
-      }));
+      });
+      this.addTransport(this._enebularTransport);
     }
 
     this._loggers = new winston.Container({
@@ -97,7 +99,10 @@ export default class LogManager {
     return this._loggers.get(id);
   }
 
-  shutdown() {
+  async shutdown() {
     this._loggers.close();
+    if (this._enebularTransport) {
+      await this._enebularTransport.cleanUp();
+    }
   }
 }

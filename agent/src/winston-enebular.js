@@ -35,6 +35,7 @@ let Enebular = exports.Enebular = function (options) {
   }
 
   this._sending = false;
+  this._closed = false;
   this._intervalID = setInterval(() => {this._handleTimeTrigger()}, this.sendInterval*1000);
 };
 
@@ -216,6 +217,8 @@ Enebular.prototype._sendFinialized = async function() {
     await this._agentManager.sendLog(filePath);
     fs.unlinkSync(filePath);
 
+    console.log(`Sent: ${filename}`);
+
   }
 
 }
@@ -245,13 +248,20 @@ Enebular.prototype._send = async function() {
   console.log('Logs send complete');
 }
 
-Enebular.prototype._handleTimeTrigger = async function() {
-
+Enebular.prototype._handleTimeTrigger = function() {
+  console.log('Send time trigger...');
   this._send();
 }
 
-Enebular.prototype.close = function() {
-  var self = this;
+Enebular.prototype.close = async function() {
+  if (this._closed) {
+    return;
+  }
 
-  //
+  clearInterval(this._intervalID);
+  this._closed = true;
+};
+
+Enebular.prototype.cleanUp = async function() {
+  await this._send();
 };
