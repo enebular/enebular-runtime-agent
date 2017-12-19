@@ -17,7 +17,7 @@ let Enebular = exports.Enebular = function (options) {
 
   this.cachePath      = options.cachePath     || '/tmp/enebular-log-cache';
   this.sendInterval   = 15;
-  this.sendSize       = 2*1024;//100 * 1024;
+  this.sendSize       = 300;//100 * 1024;
   this.maxCacheSize   = 500;//5 * 1024 * 1024;
   this.maxUploadSize  = 200;//1 * 1024 * 1024;
   this._agentManager   = options.agentManager;
@@ -32,7 +32,7 @@ let Enebular = exports.Enebular = function (options) {
   this._sendingFile = null;
   this._closed = false;
 
-  this._intervalID = setInterval(() => {this._handleTimeTrigger()}, this.sendInterval*1000);
+  this._resetSendInterval();
 };
 
 util.inherits(Enebular, Transport);
@@ -61,6 +61,14 @@ Enebular.prototype.log = function(level, msg, meta, callback) {
   this._appendOutput(output, callback);
 };
 
+Enebular.prototype._resetSendInterval = function() {
+
+  if (this._intervalID) {
+    clearInterval(this._intervalID);
+  }
+  this._intervalID = setInterval(() => {this._handleTimeTrigger()}, this.sendInterval*1000);
+}
+
 Enebular.prototype._appendOutput = function(output, callback) {
   let self = this;
 
@@ -88,6 +96,7 @@ Enebular.prototype._appendOutput = function(output, callback) {
 
   if (this._cachedSize() > this.sendSize) {
     console.log('Send size reached');
+    this._resetSendInterval();
     this._send();
   }
 }
