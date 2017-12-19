@@ -177,8 +177,22 @@ Enebular.prototype._finalizeCurrent = function() {
     return;
   }
 
-  let finalizedName = `enebular-${Date.now()}-0`;
-  let finalizedPath = `${this.cachePath}/${finalizedName}`;
+  let finalizedName;
+  let finalizedPath;
+  let cnt = 0;
+  const maxCnt = 99;
+  while (cnt <= maxCnt) {
+    finalizedName = `enebular-${Date.now()}-${cnt}`;
+    finalizedPath = `${this.cachePath}/${finalizedName}`;
+    if (!fs.existsSync(finalizedPath)) {
+      break;
+    }
+    cnt++;
+  }
+  if (cnt >= maxCnt) {
+    console.error('Failed to find unique name for log file');
+    return;
+  }
 
   console.log(`Finalizing current to: ${finalizedName}`);
 
