@@ -87,6 +87,9 @@ export class EnebularAgent {
   _logManager: LogManager;
   _log: any;
 
+  _monitoringEnabled: boolean;
+  _notifyStatusIntervalID: ?number;
+
   constructor(messengerSevice: MessengerService, config: EnebularAgentConfig) {
     const {
       nodeRedDir,
@@ -143,9 +146,34 @@ export class EnebularAgent {
 
   async shutdown() {
     this._endDeviceAuthenticationAttempt();
+    this._enableMonitoring(false);
+    await this._agentMan.notifyStatus('disconnected');
     await this._nodeRed.shutdownService();
-    await this._agentMan.cleanUp();
     await this._logManager.shutdown();
+  }
+
+  _enableMonitoring(enable: boolean) {
+    if (this._monitoringEnabled === enable) {
+      return;
+    }
+    this._monitoringEnabled = enable;
+
+    this._logManager.activateEnebular(enable);
+
+    if (this._monitoringEnabled) {
+      this._agentMan.notifyStatus(this._nodeRed.getStatus());
+      this._notifyStatusIntervalID = setInterval(() => {
+        this._agentMan.notifyStatus(this._nodeRed.getStatus());
+      }, 30000);
+    } else {
+      clearInterval(this._notifyStatusIntervalID);
+      this._notifyStatusIntervalID = null;
+    }
+  }
+
+  _startMonitoring() {
+    log('Starting monitoring...');
+    this._enableMonitoring(true);
   }
 
   _loadAgentConfig() {
@@ -202,17 +230,14 @@ export class EnebularAgent {
   async _handleChangeState() {
     switch (this._agentState) {
       case 'registered':
-        this._agentMan._agentState = 'registered'
         if (this._messengerSevice.connected) {
           this._startDeviceAuthenticationAttempt();
         }
         break;
       case 'unregistered':
-        this._agentMan._agentState = 'unregistered'
         break;
       case 'authenticated':
-        this._agentMan._agentState = 'authenticated'
-        await this._startReporting();
+        await this._startMonitoring();
         break;
     }
   }
@@ -267,12 +292,6 @@ export class EnebularAgent {
       this._authRetryTime = 0;
       this._authAttempting = false;
     }
-  }
-
-  async _startReporting() {
-    log('Starting reporting...');
-    this._agentMan.startStatusReport();
-    this._agentMan.startLogReport();
   }
 
   _handleMessengerConnect() {

@@ -99,6 +99,12 @@ export default class LogManager {
     return this._loggers.get(id);
   }
 
+  activateEnebular(active: boolean) {
+    if (this._enebularTransport) {
+      this._enebularTransport.activate(active);
+    }
+  }
+
   async shutdown() {
     this._loggers.close();
     if (this._enebularTransport) {

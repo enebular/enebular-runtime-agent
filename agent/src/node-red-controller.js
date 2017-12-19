@@ -5,24 +5,15 @@ import path from 'path';
 import { spawn, exec, type ChildProcess } from 'child_process';
 import debug from 'debug';
 import fetch from 'isomorphic-fetch';
-import rfs from 'rotating-file-stream'
-/**
- *
- */
+
 const log = debug('enebular-runtime-agent:node-red-controller');
-/**
- *
- */
+
 type NodeRedFlowPackage = {
   flows: Object[],
   creds: Object,
   packages: Object,
 };
 
-
-/**
- *
- */
 export default class NodeREDController {
   _dir: string;
   _command: string;
@@ -30,7 +21,6 @@ export default class NodeREDController {
   _cproc: ?ChildProcess = null;
   _actions: Array<() => Promise<any>> = [];
   _isProcessing: ?Promise<void> = null;
-  _currentFile: WritableStream
   _log: any;
   _logManager: any;
   _nodeRedLog: any;
@@ -56,13 +46,6 @@ export default class NodeREDController {
     this._log = log;
     this._logManager = logManager;
     this._nodeRedLog = logManager.addLogger('service.node-red', ['console', 'enebular', 'file']);
-
-    this._currentFile = rfs(generator, {
-      size: '1M',
-      interval: '5s',
-      path: 'logs',
-      maxFiles: 100
-    });
   }
 
   _registerHandler(emitter: EventEmitter) {
@@ -230,22 +213,4 @@ export default class NodeREDController {
       return 'disconnected';
     }
   }
-}
-
-function pad(num) {
-  return (num > 9 ? "" : "0") + num;
-}
-
-function generator(time, index) {
-  if(! time)
-      return "file.log";
-
-  const month  = time.getFullYear() + "" + pad(time.getMonth() + 1);
-  const day = pad(time.getDate());
-  const hour = pad(time.getHours());
-  const minute = pad(time.getMinutes());
-  const seconds = pad(time.getSeconds());
-  return `logs/${month}${day}${hour}${minute}${seconds}.log`
-  // return month +
-  //     day + "-" + hour + minute + "-" + seconds + "-" + index + "-file.log";
 }

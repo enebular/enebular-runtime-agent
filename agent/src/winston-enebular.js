@@ -45,11 +45,12 @@ let Enebular = exports.Enebular = function(options) {
     error('Failed to create log cache directory: ' + err);
   }
 
+  this._active = false;
   this._sending = false;
   this._sendingFile = null;
   this._closed = false;
 
-  this._resetSendInterval();
+  this._updateSendInterval();
 };
 
 util.inherits(Enebular, Transport);
@@ -58,6 +59,10 @@ Enebular.prototype.name = 'enebular';
 
 Enebular.prototype.log = function(level, msg, meta, callback) {
   let self = this;
+
+  if (!this._active) {
+    return;
+  }
 
   let output = common.log({
     colorize:    false,
@@ -78,14 +83,18 @@ Enebular.prototype.log = function(level, msg, meta, callback) {
   this._appendOutput(output, callback);
 };
 
-Enebular.prototype._resetSendInterval = function() {
+Enebular.prototype._updateSendInterval = function() {
 
   if (this._intervalID) {
     clearInterval(this._intervalID);
+    this._intervalID = null;
   }
-  this._intervalID = setInterval(() => {
-    this._handleTimeTrigger()
-  }, this.sendInterval*1000);
+
+  if (this._active) {
+    this._intervalID = setInterval(() => {
+      this._handleTimeTrigger()
+    }, this.sendInterval*1000);
+  }
 }
 
 Enebular.prototype._appendOutput = function(output, callback) {
@@ -122,7 +131,7 @@ Enebular.prototype._appendOutput = function(output, callback) {
 
     if (this._cacheSize() > this.sendSize) {
       debug('Send size reached');
-      this._resetSendInterval();
+      this._updateSendInterval();
       this._send();
     }
   } catch (err) {
@@ -335,11 +344,6 @@ Enebular.prototype._send = async function() {
 
   debug('Starting logs send...');
 
-  if (this._agentManager._agentState !== 'authenticated') {
-    debug('Not sending logs as not authenticated');
-    return;
-  }
-
   if (this._sending) {
     debug('Already sending logs');
     return;
@@ -360,6 +364,11 @@ Enebular.prototype._handleTimeTrigger = function() {
   debug('Send time trigger...');
   this._send();
 }
+
+Enebular.prototype.activate = async function(active) {
+  this._active = active;
+  this._updateSendInterval();
+};
 
 Enebular.prototype.close = async function() {
   if (this._closed) {
