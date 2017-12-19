@@ -1,17 +1,8 @@
 /* @flow */
 import EventEmitter from 'events';
 import crypto from 'crypto';
-import debug from 'debug';
 import jwt from 'jsonwebtoken';
 
-/**
- *
- */
-const log = debug('enebular-runtime-agent:device-auth-mediator');
-
-/**
- *
- */
 type DeviceAuthResponse = {
   idToken: string,
   accessToken: string,
@@ -23,12 +14,14 @@ export default class DeviceAuthMediator extends EventEmitter {
   _authRequestUrl: ?string;
   _nonce: ?string;
   _seq: number = 0;
+  _log: any;
 
   requestingAuthenticate: boolean = false;
 
-  constructor(emitter: EventEmitter) {
+  constructor(emitter: EventEmitter, log: any) {
     super();
     emitter.on('dispatch_auth_token', (message) => this.emit('dispatch_auth_token', message));
+    this._log = log;
   }
 
   setAuthRequestUrl(authRequestUrl: string) {
@@ -36,7 +29,7 @@ export default class DeviceAuthMediator extends EventEmitter {
   }
 
   async requestAuthenticate(connectionId: string, deviceId: string): Promise<DeviceAuthResponse> {
-    log('Requesting authenticate...');
+    this._log.debug('Requesting authenticate...');
     if (this.requestingAuthenticate) {
       throw new Error('Already requesting authenticate');
     }
@@ -65,19 +58,19 @@ export default class DeviceAuthMediator extends EventEmitter {
   }
 
   async _waitTokens() {
-    log('Setting up wait for tokens...');
+    this._log.debug('Setting up wait for tokens...');
     const seq = this._seq;
     return new Promise((resolve, reject) => {
       this.on('dispatch_auth_token', ({ idToken, accessToken, state }) => {
-        log('Tokens received');
+        this._log.debug('Tokens received');
         const payload = jwt.decode(idToken);
-        log('ID token:', payload);
+        this._log.debug('ID token:', payload);
         if (state === `req-${this._seq}` && payload.nonce && payload.nonce === this._nonce) {
-          log('Accepting tokens');
+          this._log.debug('Accepting tokens');
           this._cleanup();
           resolve({ idToken, accessToken });
         } else {
-          log('Received tokens are NOT for this device. Ignore.', payload, this._nonce, state, this._seq);
+          this._log.debug('Received tokens are NOT for this device. Ignore.', payload, this._nonce, state, this._seq);
         }
       });
       setTimeout(() => {

@@ -6,6 +6,7 @@ import { Enebular } from './winston-enebular';
 winston.transports.enebular = Enebular;
 
 export type LogManagerConfig = {
+  level? :string,
   enableConsole? :boolean,
   enableFile? :boolean,
   filePath? :boolean,
@@ -15,6 +16,7 @@ export type LogManagerConfig = {
 export default class LogManager {
   _transports: { [string]: winston.Transport };
   _loggers: winston.Container;
+  _level :string;
   _enableConsole: boolean;
   _enableFile: boolean;
   _filePath: boolean;
@@ -24,11 +26,13 @@ export default class LogManager {
   constructor(config: LogManagerConfig) {
 
     const {
+      level = 'info',
       enableConsole = true,
       enableFile = false,
       filePath = "/var/log/enebular/enebular.log",
       enableEnebular = true,
     } = config;
+    this._level = level;
     this._enableConsole = enableConsole;
     this._enableFile = enableFile;
     this._filePath = filePath;
@@ -39,6 +43,7 @@ export default class LogManager {
     if (this._enableConsole) {
       this.addTransport(new (winston.transports.Console)({
         name: "console",
+        level: this._level,
         colorize: true,
       }));
     }
@@ -46,6 +51,7 @@ export default class LogManager {
     if (this._enableFile) {
       this.addTransport(new (winston.transports.File)({
         name: "file",
+        level: this._level,
         filename: this._filePath,
         json: false
       }));
@@ -54,9 +60,8 @@ export default class LogManager {
     if (this._enableEnebular) {
       this._enebularTransport = new (winston.transports.enebular)({
         name: "enebular",
-        cachePath: '/tmp/enebular-log-cache',
-        agentManager: config.agentManager,
-        todo: true
+        level: this._level,
+        cachePath: '/tmp/enebular-log-cache'
       });
       this.addTransport(this._enebularTransport);
     }
@@ -97,6 +102,12 @@ export default class LogManager {
 
   getLogger(id: string): winston.Logger {
     return this._loggers.get(id);
+  }
+
+  setEnebularAgentManager(agentManager: any) {
+    if (this._enebularTransport) {
+      this._enebularTransport.setAgentManager(agentManager);
+    }
   }
 
   activateEnebular(active: boolean) {

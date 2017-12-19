@@ -33,7 +33,6 @@ let Enebular = exports.Enebular = function(options) {
   this.sendSize       = 1024;//100 * 1024;
   this.maxCacheSize   = 2*1024;//5 * 1024 * 1024;
   this.maxUploadSize  = 256;//1 * 1024 * 1024;
-  this._agentManager   = options.agentManager;
 
   this._currentPath   = `${this.cachePath}/${currentFilename}`
 
@@ -45,6 +44,7 @@ let Enebular = exports.Enebular = function(options) {
     error('Failed to create log cache directory: ' + err);
   }
 
+  this._agentManager = null;
   this._active = false;
   this._sending = false;
   this._sendingFile = null;
@@ -344,6 +344,11 @@ Enebular.prototype._send = async function() {
 
   debug('Starting logs send...');
 
+  if (!this._agentManager) {
+    error('Agent manager not yet set');
+    return;
+  }
+
   if (this._sending) {
     debug('Already sending logs');
     return;
@@ -368,6 +373,10 @@ Enebular.prototype._handleTimeTrigger = function() {
 Enebular.prototype.activate = async function(active) {
   this._active = active;
   this._updateSendInterval();
+};
+
+Enebular.prototype.setAgentManager = async function(agentManager) {
+  this._agentManager = agentManager;
 };
 
 Enebular.prototype.close = async function() {

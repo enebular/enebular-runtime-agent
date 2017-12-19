@@ -3,17 +3,10 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import EventEmitter from 'events';
-import debug from 'debug';
 import NodeREDController from './node-red-controller';
 import DeviceAuthMediator from './device-auth-mediator';
 import AgentManagerMediator from './agent-manager-mediator';
 import LogManager from './log-manager'
-
-/**
- *
- */
-const log = debug('enebular-runtime-agent');
-const logv = debug('enebular-runtime-agent:verbose');
 
 /**
  *
@@ -23,6 +16,7 @@ export type EnebularAgentConfig = {
   nodeRedCommand?: string,
   nodeRedKillSignal?: string,
   configFile?: string,
+  logLevel?: string,
   enableConsoleLog? :boolean,
   enableFileLog? :boolean,
   logfilePath? :boolean,
@@ -103,17 +97,22 @@ export class EnebularAgent {
     this._messengerSevice.on('disconnect', () => this._handleMessengerDisconnect());
     this._messengerSevice.on('message', (params) => this._handleMessengerMessage(params));
 
-    this._agentMan = new AgentManagerMediator();
-
-    let logConfig = {
-      agentManager: this._agentMan,
-    };
+    let logConfig = {};
+    if (process.env.DEBUG) {
+      logConfig['level'] = 'debug';
+    }
+    if (config.logLevel) {
+      logConfig['level'] = config.logLevel;
+    }
     logConfig['enableConsole'] = config.enableConsoleLog;
     logConfig['enableFile'] = config.enableFileLog;
     logConfig['filePath'] = config.logfilePath;
     logConfig['enableEnebular'] = config.enableEnebularLog;
     this._logManager = new LogManager(logConfig);
     this._log = this._logManager.addLogger('internal', ['console', 'enebular', 'file']);
+
+    this._agentMan = new AgentManagerMediator(this._log);
+    this._logManager.setEnebularAgentManager(this._agentMan);
 
     setInterval(() => {this._log.info('testing...............................................')}, 2000);
 
@@ -126,7 +125,7 @@ export class EnebularAgent {
       this._log,
       this._logManager
     );
-    this._deviceAuth = new DeviceAuthMediator(this._messageEmitter);
+    this._deviceAuth = new DeviceAuthMediator(this._messageEmitter, this._log);
     this._configFile = configFile;
     this._agentState = 'init';
   }
@@ -146,8 +145,10 @@ export class EnebularAgent {
 
   async shutdown() {
     this._endDeviceAuthenticationAttempt();
+    if (this._monitoringEnabled) {
+      await this._agentMan.notifyStatus('disconnected');
+    }
     this._enableMonitoring(false);
-    await this._agentMan.notifyStatus('disconnected');
     await this._nodeRed.shutdownService();
     await this._logManager.shutdown();
   }
@@ -172,7 +173,7 @@ export class EnebularAgent {
   }
 
   _startMonitoring() {
-    log('Starting monitoring...');
+    this._log.info('Starting monitoring...');
     this._enableMonitoring(true);
   }
 
@@ -189,7 +190,7 @@ export class EnebularAgent {
           this._changeAgentState('unregistered');
         }
       } else {
-        log('Creating config file:', this._configFile);
+        this._log.debug('Creating config file:', this._configFile);
         fs.writeFileSync(this._configFile, '{}', 'utf8');
         this._changeAgentState('unregistered');
       }
@@ -200,7 +201,7 @@ export class EnebularAgent {
   }
 
   _changeAgentState(nextState: AgentState) {
-    log('Change agent state:', this._agentState, '=>', nextState);
+    this._log.debug('Change agent state:', this._agentState, '=>', nextState);
     if (isPossibleStateTransition(this._agentState, nextState)) {
       this._agentState = nextState;
       try {
@@ -214,11 +215,11 @@ export class EnebularAgent {
   }
 
   _registerAgentInfo({ connectionId, deviceId, authRequestUrl, agentManagerBaseUrl } : AgentSetting) {
-    log('Config:')
-    log('  connectionId:', connectionId)
-    log('  deviceId:', deviceId)
-    log('  authRequestUrl:', authRequestUrl)
-    log('  agentManagerBaseUrl:', agentManagerBaseUrl)
+    this._log.debug('Config:')
+    this._log.debug('  connectionId:', connectionId)
+    this._log.debug('  deviceId:', deviceId)
+    this._log.debug('  authRequestUrl:', authRequestUrl)
+    this._log.debug('  agentManagerBaseUrl:', agentManagerBaseUrl)
     this._connectionId = connectionId;
     this._deviceId = deviceId;
     this._deviceAuth.setAuthRequestUrl(authRequestUrl);
@@ -243,7 +244,7 @@ export class EnebularAgent {
   }
 
   async _requestDeviceAuthentication() {
-    log('Requsting authentication...');
+    this._log.debug('Requsting authentication...');
     if (this._deviceAuth.requestingAuthenticate) {
       return;
     }
@@ -257,14 +258,14 @@ export class EnebularAgent {
       this._endDeviceAuthenticationAttempt();
       this._changeAgentState('authenticated');
     } catch (err) {
-      log('Authentication failed:', err.message);
+      this._log.debug('Authentication failed:', err.message);
       if (this._agentState !== 'unauthenticated') {
         this._changeAgentState('unauthenticated');
       }
       if (this._authAttempting) {
         this._authRetryTime = (this._authRetryTime === 0) ? 15*1000 : this._authRetryTime * 2;
         this._authRetryTime = Math.min(this._authRetryTime, 4*60*60*1000);
-        log(`Retrying authentication (in ${this._authRetryTime/1000}sec)...`);
+        this._log.debug(`Retrying authentication (in ${this._authRetryTime/1000}sec)...`);
         this._authRetryID = setTimeout(() => {
           this._requestDeviceAuthentication();
         }, this._authRetryTime);
@@ -273,7 +274,7 @@ export class EnebularAgent {
   }
 
   _startDeviceAuthenticationAttempt() {
-    log('Starting authentication...');
+    this._log.debug('Starting authentication...');
     /* if it's already active, just reset the retry time */
     this._authRetryTime = 0;
     if (!this._authAttempting) {
@@ -284,7 +285,7 @@ export class EnebularAgent {
 
   _endDeviceAuthenticationAttempt() {
     if (this._authAttempting) {
-      log('Ending authentication');
+      this._log.debug('Ending authentication');
       if (this._authRetryID) {
         clearTimeout(this._authRetryID);
         this._authRetryID = undefined;
@@ -295,20 +296,20 @@ export class EnebularAgent {
   }
 
   _handleMessengerConnect() {
-    log('Messenger connected');
+    this._log.debug('Messenger connected');
     if (this._agentState === 'registered' || this._agentState === 'unauthenticated') {
       this._startDeviceAuthenticationAttempt();
     }
   }
 
   async _handleMessengerDisconnect() {
-    log('Messenger disconnected');
+    this._log.debug('Messenger disconnected');
     this._endDeviceAuthenticationAttempt();
   }
 
   async _handleMessengerMessage(params: { messageType: string, message: any }) {
-    log('Messenger message:', params.messageType);
-    logv('Messenger message: content:', params.message);
+    this._log.debug('Messenger message:', params.messageType);
+    this._log.debug('Messenger message: content:', params.message);
     switch (params.messageType) {
       case 'register':
         if (this._agentState === 'init' || this._agentState === 'unregistered' || this._agentState === 'unauthenticated') {
