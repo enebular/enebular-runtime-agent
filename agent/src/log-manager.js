@@ -45,6 +45,16 @@ export default class LogManager {
         name: "console",
         level: this._level,
         colorize: true,
+        formatter: (options) => {
+          let output = '';
+          if (options.meta) {
+            output += options.meta.context ? (options.meta.context + ': ') : '';
+            output += options.meta.module ? (options.meta.module + ': ') : '';
+          }
+          output += options.level + ': ';
+          output += options.message;
+          return output;
+        }
       }));
     }
 
