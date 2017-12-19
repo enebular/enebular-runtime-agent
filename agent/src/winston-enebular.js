@@ -9,12 +9,6 @@ const Transport = winston.Transport;
 const currentFilename = 'current';
 const finalizedNameMatch = new RegExp('^enebular-([0-9]+)-([0-9]+)$');
 
-/**
- * Todo: handling needed for the following two points of contention:
- *  - 'current' file - between log message event append logic and log finalize logic
- *  - currently uploading file - between log upload logic and cache shrink logic
- */
-
 let Enebular = exports.Enebular = function (options) {
   Transport.call(this, options);
   options = options || {};
@@ -23,9 +17,9 @@ let Enebular = exports.Enebular = function (options) {
 
   this.cachePath      = options.cachePath     || '/tmp/enebular-log-cache';
   this.sendInterval   = 15;
-  this.sendSize       = 500;//100 * 1024;
-  this.maxCacheSize   = 5*1024;//5 * 1024 * 1024;
-  this.maxUploadSize  = 512;//1 * 1024 * 1024;
+  this.sendSize       = 2*1024;//100 * 1024;
+  this.maxCacheSize   = 500;//5 * 1024 * 1024;
+  this.maxUploadSize  = 200;//1 * 1024 * 1024;
   this._agentManager   = options.agentManager;
 
   this._currentPath   = `${this.cachePath}/${currentFilename}`
@@ -35,7 +29,9 @@ let Enebular = exports.Enebular = function (options) {
   }
 
   this._sending = false;
+  this._sendingFile = null;
   this._closed = false;
+
   this._intervalID = setInterval(() => {this._handleTimeTrigger()}, this.sendInterval*1000);
 };
 
@@ -76,7 +72,7 @@ Enebular.prototype._appendOutput = function(output, callback) {
   while (this._cachedSize() + outputSize >= this.maxCacheSize) {
     let ok = this._shrinkCache();
     if (!ok) {
-      console.log("failed to shrink cache");
+      console.error("Failed to shrink cache enough");
       break;
     }
   }
@@ -154,12 +150,20 @@ Enebular.prototype._shrinkCache = function() {
 
   console.log('Shrinking cache...');
 
+  let oldest = null;
   let filenames = this._getOrderedFinalized();
   if (filenames && filenames.length > 0) {
-      console.log(`Removing: oldest (${filenames[0]})`);
-      let filePath = `${this.cachePath}/${filenames[0]}`;
-      fs.unlinkSync(filePath);
-      return true;
+      oldest = filenames[0];
+      if (oldest === this._sendingFile) {
+        console.log(`Excluding log currently being sent from cache shrink (${oldest})`);
+        oldest = (filenames.length > 1) ? filenames[1] : null;
+      }
+  }
+  if (oldest) {
+    console.log(`Removing: oldest (${oldest})`);
+    let filePath = `${this.cachePath}/${oldest}`;
+    fs.unlinkSync(filePath);
+    return true;
   }
 
   if (fs.existsSync(this._currentPath)) {
@@ -219,17 +223,19 @@ Enebular.prototype._sendFinialized = async function() {
       continue;
     }
 
-    const stat = fs.statSync(filePath);
-    if (stat.size < 1) {
+    this._sendingFile = filename;
+
+    const stats = fs.statSync(filePath);
+    if (stats.size < 1) {
       console.log('Removing empty log: ' + filename);
-      fs.unlinkSync(filePath);
-      continue;
+    } else {
+      console.log(`Sending: ${filename} (${stats.size}B)`);
+      await this._agentManager.sendLog(filePath);
     }
 
-    console.log(`Sending: ${filename} (${stat.size}B)`);
-
-    await this._agentManager.sendLog(filePath);
     fs.unlinkSync(filePath);
+
+    this._sendingFile = null;
 
     console.log(`Sent: ${filename}`);
 
