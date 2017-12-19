@@ -17,15 +17,19 @@ let Enebular = exports.Enebular = function (options) {
 
   this.cachePath      = options.cachePath     || '/tmp/enebular-log-cache';
   this.sendInterval   = 15;
-  this.sendSize       = 300;//100 * 1024;
-  this.maxCacheSize   = 500;//5 * 1024 * 1024;
-  this.maxUploadSize  = 200;//1 * 1024 * 1024;
+  this.sendSize       = 1024;//100 * 1024;
+  this.maxCacheSize   = 2*1024;//5 * 1024 * 1024;
+  this.maxUploadSize  = 256;//1 * 1024 * 1024;
   this._agentManager   = options.agentManager;
 
   this._currentPath   = `${this.cachePath}/${currentFilename}`
 
-  if (!fs.existsSync(this.cachePath)) {
-    fs.mkdirSync(this.cachePath);
+  try {
+    if (!fs.existsSync(this.cachePath)) {
+      fs.mkdirSync(this.cachePath);
+    }
+  } catch (err) {
+    console.error('Failed to create log cache directory: ' + err);
   }
 
   this._sending = false;
@@ -72,6 +76,11 @@ Enebular.prototype._resetSendInterval = function() {
 Enebular.prototype._appendOutput = function(output, callback) {
   let self = this;
 
+  if (!fs.existsSync(this.cachePath)) {
+    let msg = "Log cache directory doesn't exist: " + this.cachePath;
+    return callback(new Error(msg));
+  }
+
   let prefix = (fs.existsSync(this._currentPath)) ? ',\n' : '[\n';
   output = prefix + output;
   let outputSize = output.length;
@@ -90,36 +99,47 @@ Enebular.prototype._appendOutput = function(output, callback) {
     }
   }
 
-  fs.appendFileSync(this._currentPath, output);
-  self.emit('logged');
-  callback(null, true);
+  try {
+    fs.appendFileSync(this._currentPath, output);
 
-  if (this._cachedSize() > this.sendSize) {
-    console.log('Send size reached');
-    this._resetSendInterval();
-    this._send();
+    self.emit('logged');
+    callback(null, true);
+
+    if (this._cacheSize() > this.sendSize) {
+      console.log('Send size reached');
+      this._resetSendInterval();
+      this._send();
+    }
+  } catch (err) {
+    callback(err);
   }
 }
 
-Enebular.prototype._cachedSize = function() {
+Enebular.prototype._cacheSize = function() {
 
   let cachedSize = 0;
 
-  /* current file */
-  if (fs.existsSync(this._currentPath)) {
-    const stats = fs.statSync(this._currentPath);
-    cachedSize += stats.size;
-  }
+  try {
 
-  /* finalized files */
-  let filenames = fs.readdirSync(this.cachePath);
-  for (let filename of filenames) {
-    if (!filename.match(finalizedNameMatch)) {
-      continue;
+    /* current file */
+    if (fs.existsSync(this._currentPath)) {
+      const stats = fs.statSync(this._currentPath);
+      cachedSize += stats.size;
     }
-    const filePath = `${this.cachePath}/${filename}`;
-    const stats = fs.statSync(filePath);
-    cachedSize += stats.size;
+
+    /* finalized files */
+    let filenames = fs.readdirSync(this.cachePath);
+    for (let filename of filenames) {
+      if (!filename.match(finalizedNameMatch)) {
+        continue;
+      }
+      const filePath = `${this.cachePath}/${filename}`;
+      const stats = fs.statSync(filePath);
+      cachedSize += stats.size;
+    }
+
+  } catch (err) {
+    console.error('Failed to correctly determine cache size: ' + err);
   }
 
   return cachedSize;
@@ -127,12 +147,22 @@ Enebular.prototype._cachedSize = function() {
 
 Enebular.prototype._getOrderedFinalized = function() {
 
-  let filenames = fs.readdirSync(this.cachePath);
+  if (!fs.existsSync(this.cachePath)) {
+    return null;
+  }
+
+  let filenames;
+  try {
+    filenames = fs.readdirSync(this.cachePath);
+  } catch (err) {
+    console.error('Failed to get cache directory content: ' + err);
+    return null;
+  }
+
   filenames = filenames.filter(filename => filename.match(finalizedNameMatch));
   filenames.sort((a,b) => {
     let aMatch = a.match(finalizedNameMatch);
     let bMatch = b.match(finalizedNameMatch);
-    //console.log(`aMatch: ${aMatch[1]}:${aMatch[2]}, bMatch: ${bMatch[1]}:${bMatch[2]}`)
     if (aMatch[1] < bMatch[1]) {
       return -1;
     }
@@ -155,7 +185,7 @@ Enebular.prototype._shrinkCacheToFit = function(newLength) {
   const maxAttempts = 100;
   let attempts = 0;
 
-  while ((this._cachedSize() + newLength >= this.maxCacheSize) &&
+  while ((this._cacheSize() + newLength >= this.maxCacheSize) &&
       (attempts++ < maxAttempts)) {
     let ok = this._shrinkCache();
     if (!ok) {
@@ -173,25 +203,30 @@ Enebular.prototype._shrinkCache = function() {
 
   console.log('Shrinking cache...');
 
-  let oldest = null;
+  let target = null;
+
   let filenames = this._getOrderedFinalized();
   if (filenames && filenames.length > 0) {
-      oldest = filenames[0];
-      if (oldest === this._sendingFile) {
-        console.log(`Excluding log currently being sent from cache shrink (${oldest})`);
-        oldest = (filenames.length > 1) ? filenames[1] : null;
+      target = filenames[0];
+      if (target === this._sendingFile) {
+        console.log(`Excluding log currently being sent from cache shrink (${target})`);
+        target = (filenames.length > 1) ? filenames[1] : null;
       }
   }
-  if (oldest) {
-    console.log(`Removing: oldest (${oldest})`);
-    let filePath = `${this.cachePath}/${oldest}`;
-    fs.unlinkSync(filePath);
-    return true;
+
+  if (!target) {
+    target = this._currentPath;
   }
 
-  if (fs.existsSync(this._currentPath)) {
-    console.log('Removing: current');
-    fs.unlinkSync(this._currentPath);
+  const filePath = `${this.cachePath}/${target}`;
+  if (fs.existsSync(filePath)) {
+    console.log(`Removing: ${target}`);
+    try {
+      fs.unlinkSync(filePath);
+    } catch (err) {
+      console.error('Failed to remove file from cache: ' + err);
+      return false;
+    }
     return true;
   }
 
@@ -200,38 +235,44 @@ Enebular.prototype._shrinkCache = function() {
 
 Enebular.prototype._finalizeCurrent = function() {
 
-  if (!fs.existsSync(this._currentPath)) {
-    return;
-  }
+  try {
 
-  let finalizedName;
-  let finalizedPath;
-  let cnt = 0;
-  const maxCnt = 99;
-  while (cnt <= maxCnt) {
-    finalizedName = `enebular-${Date.now()}-${cnt}`;
-    finalizedPath = `${this.cachePath}/${finalizedName}`;
-    if (!fs.existsSync(finalizedPath)) {
-      break;
+    if (!fs.existsSync(this._currentPath)) {
+      return;
     }
-    cnt++;
+
+    let finalizedName;
+    let finalizedPath;
+    let cnt = 0;
+    const maxCnt = 99;
+    while (cnt <= maxCnt) {
+      finalizedName = `enebular-${Date.now()}-${cnt}`;
+      finalizedPath = `${this.cachePath}/${finalizedName}`;
+      if (!fs.existsSync(finalizedPath)) {
+        break;
+      }
+      cnt++;
+    }
+    if (cnt >= maxCnt) {
+      console.error('Failed to find unique name for log file');
+      return;
+    }
+
+    console.log(`Finalizing current to: ${finalizedName}`);
+
+    fs.appendFileSync(this._currentPath, '\n]');
+
+    fs.renameSync(this._currentPath, finalizedPath);
+
+  } catch (err) {
+    console.error('Failed to finalize current log: ' + err);
   }
-  if (cnt >= maxCnt) {
-    console.error('Failed to find unique name for log file');
-    return;
-  }
-
-  console.log(`Finalizing current to: ${finalizedName}`);
-
-  fs.appendFileSync(this._currentPath, '\n]');
-
-  fs.renameSync(this._currentPath, finalizedPath);
 }
 
 Enebular.prototype._sendFinialized = async function() {
 
   let filenames = this._getOrderedFinalized();
-  if (filenames.length < 1) {
+  if (!filenames || filenames.length < 1) {
     return;
   }
 
@@ -239,28 +280,34 @@ Enebular.prototype._sendFinialized = async function() {
 
   for (let filename of filenames) {
 
-    const filePath = `${this.cachePath}/${filename}`;
+    try {
 
-    if (!fs.existsSync(filePath)) {
-      console.log(`Upload target log no longer exists (${filename})`);
-      continue;
+      const filePath = `${this.cachePath}/${filename}`;
+
+      if (!fs.existsSync(filePath)) {
+        console.log(`Upload target log no longer exists (${filename})`);
+        continue;
+      }
+
+      this._sendingFile = filename;
+
+      const stats = fs.statSync(filePath);
+      if (stats.size < 1) {
+        console.log('Removing empty log: ' + filename);
+      } else {
+        console.log(`Sending: ${filename} (${stats.size}B)`);
+        await this._agentManager.sendLog(filePath);
+      }
+
+      fs.unlinkSync(filePath);
+
+      this._sendingFile = null;
+
+      console.log(`Sent: ${filename}`);
+
+    } catch (err) {
+      console.error('Failed to send log: ' + err);
     }
-
-    this._sendingFile = filename;
-
-    const stats = fs.statSync(filePath);
-    if (stats.size < 1) {
-      console.log('Removing empty log: ' + filename);
-    } else {
-      console.log(`Sending: ${filename} (${stats.size}B)`);
-      await this._agentManager.sendLog(filePath);
-    }
-
-    fs.unlinkSync(filePath);
-
-    this._sendingFile = null;
-
-    console.log(`Sent: ${filename}`);
 
   }
 
