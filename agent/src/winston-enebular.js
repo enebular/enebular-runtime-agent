@@ -5,6 +5,9 @@ import fs from 'fs';
 import winston from 'winston';
 import common from 'winston/lib/winston/common';
 
+const statAsync = util.promisify(fs.stat);
+const unlinkAsync = util.promisify(fs.unlink);
+
 const Transport = winston.Transport;
 const currentFilename = 'current';
 const finalizedNameMatch = new RegExp('^enebular-([0-9]+)-([0-9]+)$');
@@ -70,7 +73,9 @@ Enebular.prototype._resetSendInterval = function() {
   if (this._intervalID) {
     clearInterval(this._intervalID);
   }
-  this._intervalID = setInterval(() => {this._handleTimeTrigger()}, this.sendInterval*1000);
+  this._intervalID = setInterval(() => {
+    this._handleTimeTrigger()
+  }, this.sendInterval*1000);
 }
 
 Enebular.prototype._appendOutput = function(output, callback) {
@@ -284,14 +289,17 @@ Enebular.prototype._sendFinialized = async function() {
 
       const filePath = `${this.cachePath}/${filename}`;
 
+      /**
+       * Don't use async/callbacks for fs.exists here to keep the exists check
+       * and the assignment of 'sendingFile' atomic.
+       */
       if (!fs.existsSync(filePath)) {
         console.log(`Upload target log no longer exists (${filename})`);
         continue;
       }
-
       this._sendingFile = filename;
 
-      const stats = fs.statSync(filePath);
+      const stats = await statAsync(filePath);
       if (stats.size < 1) {
         console.log('Removing empty log: ' + filename);
       } else {
@@ -299,7 +307,7 @@ Enebular.prototype._sendFinialized = async function() {
         await this._agentManager.sendLog(filePath);
       }
 
-      fs.unlinkSync(filePath);
+      await unlinkAsync(filePath);
 
       this._sendingFile = null;
 
