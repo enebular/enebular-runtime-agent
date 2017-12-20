@@ -5,6 +5,8 @@ import path from 'path';
 import { spawn, exec, type ChildProcess } from 'child_process';
 import fetch from 'isomorphic-fetch';
 
+const moduleName = 'node-red';
+
 type NodeRedFlowPackage = {
   flows: Object[],
   creds: Object,
@@ -45,6 +47,16 @@ export default class NodeREDController {
     this._nodeRedLog = logManager.addLogger('service.node-red', ['console', 'enebular', 'file']);
   }
 
+  debug(msg, ...args) {
+    args.push({ module: moduleName })
+    this._log.debug(msg, ...args);
+  }
+
+  info(msg, ...args) {
+    args.push({ module: moduleName })
+    this._log.info(msg, ...args);
+  }
+
   _registerHandler(emitter: EventEmitter) {
     emitter.on('update-flow', (params) => this.fetchAndUpdateFlow(params));
     emitter.on('deploy', (params) => this.fetchAndUpdateFlow(params));
@@ -54,7 +66,7 @@ export default class NodeREDController {
   }
 
   async _queueAction(fn: () => Promise<any>) {
-    this._log.debug('Queuing action');
+    this.debug('Queuing action');
     this._actions.push(fn);
     if (this._isProcessing) {
       await this._isProcessing;
@@ -64,7 +76,7 @@ export default class NodeREDController {
   }
 
   async _processActions() {
-    this._log.debug('Processing actions:', this._actions.length);
+    this.debug('Processing actions:', this._actions.length);
     this._isProcessing = (async () => {
       while (this._actions.length > 0) {
         const action = this._actions.shift();
@@ -80,13 +92,13 @@ export default class NodeREDController {
   }
 
   async _fetchAndUpdateFlow(params: { downloadUrl: string }) {
-    this._log.info('Updating flow');
+    this.info('Updating flow');
     await this._downloadAndUpdatePackage(params.downloadUrl);
     await this._restartService();
   }
 
   async _downloadAndUpdatePackage(downloadUrl: string) {
-    this._log.info('Downloading flow:', downloadUrl);
+    this.info('Downloading flow:', downloadUrl);
     const res = await fetch(downloadUrl);
     if (res.status >= 400) {
       throw new Error('invalid url');
@@ -96,7 +108,7 @@ export default class NodeREDController {
   }
 
   async _updatePackage(flowPackage: NodeRedFlowPackage) {
-    this._log.info('Updating package', flowPackage);
+    this.info('Updating package', flowPackage);
     const updates = [];
     if (flowPackage.flow || flowPackage.flows) {
       const flows = flowPackage.flow || flowPackage.flows;
@@ -146,7 +158,7 @@ export default class NodeREDController {
   }
 
   async _startService() {
-    this._log.info('Staring service...');
+    this.info('Staring service...');
     return new Promise((resolve, reject) => {
       const [command, ...args] = this._command.split(/\s+/);
       const cproc = spawn(command, args, { stdio: 'pipe', cwd: this._dir });
@@ -159,7 +171,7 @@ export default class NodeREDController {
         this._nodeRedLog.error(str)
       });
       cproc.once('exit', (code) => {
-        this._log.info(`Service exited (${code})`);
+        this.info(`Service exited (${code})`);
         this._cproc = null;
       });
       cproc.once('error', (err) => {
@@ -179,15 +191,15 @@ export default class NodeREDController {
     return new Promise((resolve, reject) => {
       const cproc = this._cproc;
       if (cproc) {
-        this._log.info('Shutting down service...');
+        this.info('Shutting down service...');
         cproc.kill(this._killSignal);
         cproc.once('exit', () => {
-          this._log.info('Service ended');
+          this.info('Service ended');
           this._cproc = null;
           resolve();
         });
       } else {
-        this._log.info('Service already shutdown');
+        this.info('Service already shutdown');
         resolve();
       }
     });
@@ -198,7 +210,7 @@ export default class NodeREDController {
   }
 
   async _restartService() {
-    this._log.info('Restarting service...');
+    this.info('Restarting service...');
     await this._shutdownService();
     await this._startService();
   }

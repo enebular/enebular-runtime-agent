@@ -310,7 +310,7 @@ export class EnebularAgent {
 
   async _handleMessengerMessage(params: { messageType: string, message: any }) {
     this._log.debug('Messenger message:', params.messageType);
-    this._log.debug('Messenger message: content:', params.message);
+    this._log.debug('Messenger message: content: ' + JSON.stringify(params.message));
     switch (params.messageType) {
       case 'register':
         if (this._agentState === 'init' || this._agentState === 'unregistered' || this._agentState === 'unauthenticated') {

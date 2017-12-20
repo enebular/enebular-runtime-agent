@@ -3,6 +3,8 @@ import EventEmitter from 'events';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 
+const moduleName = 'device-auth';
+
 type DeviceAuthResponse = {
   idToken: string,
   accessToken: string,
@@ -24,12 +26,17 @@ export default class DeviceAuthMediator extends EventEmitter {
     this._log = log;
   }
 
+  debug(msg, ...args) {
+    args.push({ module: moduleName })
+    this._log.debug(msg, ...args);
+  }
+
   setAuthRequestUrl(authRequestUrl: string) {
     this._authRequestUrl = authRequestUrl;
   }
 
   async requestAuthenticate(connectionId: string, deviceId: string): Promise<DeviceAuthResponse> {
-    this._log.debug('Requesting authenticate...');
+    this.debug('Requesting authenticate...');
     if (this.requestingAuthenticate) {
       throw new Error('Already requesting authenticate');
     }
@@ -58,19 +65,19 @@ export default class DeviceAuthMediator extends EventEmitter {
   }
 
   async _waitTokens() {
-    this._log.debug('Setting up wait for tokens...');
+    this.debug('Setting up wait for tokens...');
     const seq = this._seq;
     return new Promise((resolve, reject) => {
       this.on('dispatch_auth_token', ({ idToken, accessToken, state }) => {
-        this._log.debug('Tokens received');
+        this.debug('Tokens received');
         const payload = jwt.decode(idToken);
-        this._log.debug('ID token:', payload);
+        this.debug('ID token:', payload);
         if (state === `req-${this._seq}` && payload.nonce && payload.nonce === this._nonce) {
-          this._log.debug('Accepting tokens');
+          this.debug('Accepting tokens');
           this._cleanup();
           resolve({ idToken, accessToken });
         } else {
-          this._log.debug('Received tokens are NOT for this device. Ignore.', payload, this._nonce, state, this._seq);
+          this.debug('Received tokens are NOT for this device. Ignore.', payload, this._nonce, state, this._seq);
         }
       });
       setTimeout(() => {
