@@ -121,8 +121,6 @@ export class EnebularAgent {
     this._agentMan = new AgentManagerMediator(this._log);
     this._logManager.setEnebularAgentManager(this._agentMan);
 
-    setInterval(() => {this._log.info('testing...............................................')}, 2000);
-
     this._messageEmitter = new EventEmitter();
     this._nodeRed = new NodeREDController(
       nodeRedDir,
@@ -206,22 +204,22 @@ export class EnebularAgent {
         this._changeAgentState('unregistered');
       }
     } catch (e) {
-      console.error(e);
+      this._log.error(e);
       this._changeAgentState('unregistered');
     }
   }
 
   _changeAgentState(nextState: AgentState) {
-    this._log.debug('Change agent state:', this._agentState, '=>', nextState);
     if (isPossibleStateTransition(this._agentState, nextState)) {
+      this._log.info('Agent state change:', this._agentState, '=>', nextState);
       this._agentState = nextState;
       try {
         this._handleChangeState();
       } catch (err) {
-        console.error(err);
+        this._log.error(err);
       }
     } else {
-      console.warn(`Impossible state transition requested : ${this._agentState} => ${nextState}`);
+      this._log.error(`Impossible state transition requested : ${this._agentState} => ${nextState}`);
     }
   }
 
@@ -285,7 +283,7 @@ export class EnebularAgent {
   }
 
   _startDeviceAuthenticationAttempt() {
-    this._log.debug('Starting authentication...');
+    this._log.info('Starting authentication...');
     /* if it's already active, just reset the retry time */
     this._authRetryTime = 0;
     if (!this._authAttempting) {
@@ -296,7 +294,7 @@ export class EnebularAgent {
 
   _endDeviceAuthenticationAttempt() {
     if (this._authAttempting) {
-      this._log.debug('Ending authentication');
+      this._log.info('Ending authentication');
       if (this._authRetryID) {
         clearTimeout(this._authRetryID);
         this._authRetryID = undefined;
