@@ -9,8 +9,10 @@ const statAsync = util.promisify(fs.stat);
 const unlinkAsync = util.promisify(fs.unlink);
 
 const Transport = winston.Transport;
-const currentFilename = 'current';
-const finalizedNameMatch = new RegExp('^enebular-([0-9]+)-([0-9]+)$');
+
+const currentFilename     = 'current';
+const finalizedNameMatch  = new RegExp('^enebular-([0-9]+)-([0-9]+)$');
+const maxUploadSize       = 1 * 1024 * 1024;
 
 function debug(msg, ...args) {
   if (process.env.DEBUG_LOG) {
@@ -26,29 +28,29 @@ let Enebular = exports.Enebular = function(options) {
   Transport.call(this, options);
   options = options || {};
 
-  //
-
-  this.cachePath      = options.cachePath     || '/tmp/enebular-log-cache';
-  this.sendInterval   = 15;
-  this.sendSize       = 1024;//100 * 1024;
-  this.maxCacheSize   = 2*1024;//5 * 1024 * 1024;
-  this.maxUploadSize  = 256;//1 * 1024 * 1024;
-
-  this._currentPath   = `${this.cachePath}/${currentFilename}`
+  this._cachePath     = options.cachePath     || '/tmp/enebular-log-cache';
+  this._maxCacheSize  = options.maxCacheSize  || 5 * 1024 * 1024;
+  this._currentPath   = `${this._cachePath}/${currentFilename}`
+  this._sendInterval  = 30;
+  this._sendSize      = 100 * 1024;
+  this._agentManager  = null;
+  this._active        = false;
+  this._sending       = false;
+  this._sendingFile   = null;
+  this._closed        = false;
 
   try {
-    if (!fs.existsSync(this.cachePath)) {
-      fs.mkdirSync(this.cachePath);
+    if (!fs.existsSync(this._cachePath)) {
+      fs.mkdirSync(this._cachePath);
     }
   } catch (err) {
     error('Failed to create log cache directory: ' + err);
   }
 
-  this._agentManager = null;
-  this._active = false;
-  this._sending = false;
-  this._sendingFile = null;
-  this._closed = false;
+  debug('cachePath: ' + this._cachePath);
+  debug('maxCacheSize: ' + this._maxCacheSize);
+  debug('sendInterval: ' + this._sendInterval);
+  debug('sendSize: ' + this._sendSize);
 
   this._updateSendInterval();
 };
@@ -93,15 +95,15 @@ Enebular.prototype._updateSendInterval = function() {
   if (this._active) {
     this._intervalID = setInterval(() => {
       this._handleTimeTrigger()
-    }, this.sendInterval*1000);
+    }, this._sendInterval*1000);
   }
 }
 
 Enebular.prototype._appendOutput = function(output, callback) {
   let self = this;
 
-  if (!fs.existsSync(this.cachePath)) {
-    let msg = "Log cache directory doesn't exist: " + this.cachePath;
+  if (!fs.existsSync(this._cachePath)) {
+    let msg = "Log cache directory doesn't exist: " + this._cachePath;
     return callback(new Error(msg));
   }
 
@@ -118,7 +120,8 @@ Enebular.prototype._appendOutput = function(output, callback) {
 
   if (fs.existsSync(this._currentPath)) {
     let stats = fs.statSync(this._currentPath);
-    if (stats.size + outputSize >= this.maxUploadSize) {
+    if (stats.size + outputSize >= maxUploadSize) {
+      debug('Max upload size reached');
       this._finalizeCurrent();
     }
   }
@@ -129,7 +132,7 @@ Enebular.prototype._appendOutput = function(output, callback) {
     self.emit('logged');
     callback(null, true);
 
-    if (this._cacheSize() > this.sendSize) {
+    if (this._cacheSize() > this._sendSize) {
       debug('Send size reached');
       this._updateSendInterval();
       this._send();
@@ -152,12 +155,12 @@ Enebular.prototype._cacheSize = function() {
     }
 
     /* finalized files */
-    let filenames = fs.readdirSync(this.cachePath);
+    let filenames = fs.readdirSync(this._cachePath);
     for (let filename of filenames) {
       if (!filename.match(finalizedNameMatch)) {
         continue;
       }
-      const filePath = `${this.cachePath}/${filename}`;
+      const filePath = `${this._cachePath}/${filename}`;
       const stats = fs.statSync(filePath);
       cachedSize += stats.size;
     }
@@ -171,13 +174,13 @@ Enebular.prototype._cacheSize = function() {
 
 Enebular.prototype._getOrderedFinalized = function() {
 
-  if (!fs.existsSync(this.cachePath)) {
+  if (!fs.existsSync(this._cachePath)) {
     return null;
   }
 
   let filenames;
   try {
-    filenames = fs.readdirSync(this.cachePath);
+    filenames = fs.readdirSync(this._cachePath);
   } catch (err) {
     error('Failed to get cache directory content: ' + err);
     return null;
@@ -209,7 +212,7 @@ Enebular.prototype._shrinkCacheToFit = function(newLength) {
   const maxAttempts = 100;
   let attempts = 0;
 
-  while ((this._cacheSize() + newLength >= this.maxCacheSize) &&
+  while ((this._cacheSize() + newLength >= this._maxCacheSize) &&
       (attempts++ < maxAttempts)) {
     let ok = this._shrinkCache();
     if (!ok) {
@@ -242,7 +245,7 @@ Enebular.prototype._shrinkCache = function() {
     target = this._currentPath;
   }
 
-  const filePath = `${this.cachePath}/${target}`;
+  const filePath = `${this._cachePath}/${target}`;
   if (fs.existsSync(filePath)) {
     debug(`Removing: ${target}`);
     try {
@@ -271,7 +274,7 @@ Enebular.prototype._finalizeCurrent = function() {
     const maxCnt = 99;
     while (cnt <= maxCnt) {
       finalizedName = `enebular-${Date.now()}-${cnt}`;
-      finalizedPath = `${this.cachePath}/${finalizedName}`;
+      finalizedPath = `${this._cachePath}/${finalizedName}`;
       if (!fs.existsSync(finalizedPath)) {
         break;
       }
@@ -306,7 +309,7 @@ Enebular.prototype._sendFinialized = async function() {
 
     try {
 
-      const filePath = `${this.cachePath}/${filename}`;
+      const filePath = `${this._cachePath}/${filename}`;
 
       /**
        * Don't use async/callbacks for fs.exists here to keep the exists check
@@ -374,6 +377,21 @@ Enebular.prototype.activate = async function(active) {
   this._active = active;
   this._updateSendInterval();
 };
+
+Enebular.prototype.configure = function(options) {
+
+  if (options.sendInterval) {
+    this._sendInterval = options.sendInterval;
+    this._updateSendInterval();
+  }
+
+  if (options.sendSize) {
+    this._sendSize = options.sendSize;
+  }
+
+  debug('sendInterval: ' + this._sendInterval);
+  debug('sendSize: ' + this._sendSize);
+}
 
 Enebular.prototype.setAgentManager = async function(agentManager) {
   this._agentManager = agentManager;

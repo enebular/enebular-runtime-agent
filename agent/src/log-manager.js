@@ -12,6 +12,7 @@ export type LogManagerConfig = {
   filePath? :string,
   enableEnebular? :boolean,
   enebularCachePath? :string,
+  enebularMaxCacheSize?: number;
 };
 
 export default class LogManager {
@@ -24,23 +25,26 @@ export default class LogManager {
   _enableEnebular: boolean;
   _enebularCachePath: string;
   _enebularTransport: winston.Transport = null;
+  _enebularMaxCacheSize: number;
 
   constructor(config: LogManagerConfig) {
 
     const {
-      level             = 'info',
-      enableConsole     = false,
-      enableFile        = false,
-      filePath          = "/var/log/enebular/enebular.log",
-      enableEnebular    = true,
-      enebularCachePath = '/tmp/enebular-log-cache',
+      level                 = 'info',
+      enableConsole         = false,
+      enableFile            = false,
+      filePath              = "/var/log/enebular/enebular.log",
+      enableEnebular        = true,
+      enebularCachePath     = '/tmp/enebular-log-cache',
+      enebularMaxCacheSize  = 5*1024*1024,
     } = config;
-    this._level             = level;
-    this._enableConsole     = enableConsole;
-    this._enableFile        = enableFile;
-    this._filePath          = filePath;
-    this._enableEnebular    = enableEnebular;
-    this._enebularCachePath = enebularCachePath;
+    this._level                 = level;
+    this._enableConsole         = enableConsole;
+    this._enableFile            = enableFile;
+    this._filePath              = filePath;
+    this._enableEnebular        = enableEnebular;
+    this._enebularCachePath     = enebularCachePath;
+    this._enebularMaxCacheSize  = enebularMaxCacheSize;
 
     this._transports = {};
 
@@ -75,7 +79,8 @@ export default class LogManager {
       this._enebularTransport = new (winston.transports.enebular)({
         name: "enebular",
         level: this._level,
-        cachePath: this._enebularCachePath
+        cachePath: this._enebularCachePath,
+        maxCacheSize: this._enebularMaxCacheSize
       });
       this.addTransport(this._enebularTransport);
     }
@@ -127,6 +132,12 @@ export default class LogManager {
   activateEnebular(active: boolean) {
     if (this._enebularTransport) {
       this._enebularTransport.activate(active);
+    }
+  }
+
+  configureEnebular(options) {
+    if (this._enebularTransport) {
+      this._enebularTransport.configure(options);
     }
   }
 

@@ -12,16 +12,21 @@ import LogManager from './log-manager'
  *
  */
 export type EnebularAgentConfig = {
+
   nodeRedDir: string,
   nodeRedCommand?: string,
   nodeRedKillSignal?: string,
+
   configFile?: string,
+
   logLevel?: string,
   enableConsoleLog? :boolean,
   enableFileLog? :boolean,
   logfilePath? :boolean,
   enableEnebularLog? :boolean,
   enebularLogCachePath? :string,
+  enebularLogMaxCacheSize? :number,
+
 };
 
 type AgentSetting = {
@@ -105,6 +110,7 @@ export class EnebularAgent {
     logConfig['filePath']           = config.logfilePath;
     logConfig['enableEnebular']     = config.enableEnebularLog;
     logConfig['enebularCachePath']  = config.enebularLogCachePath;
+    logConfig['enebularMaxCacheSize']  = config.enebularLogMaxCacheSize;
     if (process.env.DEBUG) {
       logConfig['level']            = process.env.DEBUG;
       logConfig['enableConsole']    = true;
@@ -175,6 +181,10 @@ export class EnebularAgent {
 
   _startMonitoring() {
     this._log.info('Starting monitoring...');
+    this._logManager.configureEnebular({
+      sendInterval: 30,
+      sendSize: 100 * 1024,
+    });
     this._enableMonitoring(true);
   }
 
