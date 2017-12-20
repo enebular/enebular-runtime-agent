@@ -53,14 +53,25 @@ export default class LogManager {
         name: "console",
         level: this._level,
         colorize: true,
+        handleExceptions: true,
+        humanReadableUnhandledException: true,
         formatter: (options) => {
           let output = '';
           if (options.meta) {
-            output += options.meta.context ? (options.meta.context + ': ') : '';
-            output += options.meta.module ? (options.meta.module + ': ') : '';
+            if (options.meta.context) {
+              output += options.meta.context + ': ';
+              delete options.meta.context;
+            }
+            if (options.meta.module) {
+              output += options.meta.module + ': ';
+              delete options.meta.module;
+            }
           }
-          //output += options.level + ': ';
           output += options.message;
+          //output += ' (' + options.level + ')';
+          if (options.meta && Object.keys(options.meta).length > 0) {
+            output += ' ' + JSON.stringify(options.meta);
+          }
           return output;
         }
       }));
@@ -71,6 +82,7 @@ export default class LogManager {
         name: "file",
         level: this._level,
         filename: this._filePath,
+        handleExceptions: true,
         json: false
       }));
     }
@@ -79,6 +91,7 @@ export default class LogManager {
       this._enebularTransport = new (winston.transports.enebular)({
         name: "enebular",
         level: this._level,
+        handleExceptions: true,
         cachePath: this._enebularCachePath,
         maxCacheSize: this._enebularMaxCacheSize
       });
