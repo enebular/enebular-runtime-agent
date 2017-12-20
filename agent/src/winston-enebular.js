@@ -75,7 +75,7 @@ Enebular.prototype.log = function(level, msg, meta, callback) {
     stringify:   true,
     timestamp:   true,
     prettyPrint: false,
-    raw:         true, //?
+    raw:         false,
     label:       '',
     depth:       null,
     formatter:   this.formatter,
