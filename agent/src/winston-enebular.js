@@ -14,17 +14,17 @@ const currentFilename     = 'current';
 const finalizedNameMatch  = new RegExp('^enebular-([0-9]+)-([0-9]+)$');
 const maxUploadSize       = 1 * 1024 * 1024;
 
-function debug(msg, ...args) {
+function debug(msg: string, ...args: Array<mixed>) {
   if (process.env.DEBUG_LOG) {
     console.log("enebular-log: " + msg, ...args);
   }
 }
 
-function error(msg, ...args) {
+function error(msg: string, ...args: Array<mixed>) {
   console.error("enebular-log: " + msg, ...args);
 }
 
-let Enebular = exports.Enebular = function(options) {
+let Enebular = exports.Enebular = function(options: any) {
   Transport.call(this, options);
   options = options || {};
 
@@ -187,9 +187,12 @@ Enebular.prototype._getOrderedFinalized = function() {
   }
 
   filenames = filenames.filter(filename => filename.match(finalizedNameMatch));
-  filenames.sort((a,b) => {
-    let aMatch = a.match(finalizedNameMatch);
-    let bMatch = b.match(finalizedNameMatch);
+  filenames.sort((a: string, b: string) => {
+    const aMatch = a.match(finalizedNameMatch);
+    const bMatch = b.match(finalizedNameMatch);
+    if (!aMatch || !bMatch) {
+      return 0;
+    }
     if (aMatch[1] < bMatch[1]) {
       return -1;
     }
@@ -268,8 +271,8 @@ Enebular.prototype._finalizeCurrent = function() {
       return;
     }
 
-    let finalizedName;
-    let finalizedPath;
+    let finalizedName = '';
+    let finalizedPath = '';
     let cnt = 0;
     const maxCnt = 99;
     while (cnt <= maxCnt) {

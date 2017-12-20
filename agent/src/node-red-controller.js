@@ -47,12 +47,12 @@ export default class NodeREDController {
     this._nodeRedLog = logManager.addLogger('service.node-red', ['console', 'enebular', 'file']);
   }
 
-  debug(msg, ...args) {
+  debug(msg: string, ...args: Array<mixed>) {
     args.push({ module: moduleName })
     this._log.debug(msg, ...args);
   }
 
-  info(msg, ...args) {
+  info(msg: string, ...args: Array<mixed>) {
     args.push({ module: moduleName })
     this._log.info(msg, ...args);
   }

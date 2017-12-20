@@ -7,15 +7,15 @@ import FormData from 'form-data'
 const moduleName = 'agent-man';
 
 export default class AgentManagerMediator {
-  _baseUrl: ?string;
-  _accessToken: ?string;
+  _baseUrl: string;
+  _accessToken: string;
   _log: any;
 
   constructor(log: any) {
     this._log = log;
   }
 
-  debug(msg, ...args) {
+  debug(msg: string, ...args: Array<mixed>) {
     args.push({ module: moduleName })
     this._log.debug(msg, ...args);
   }
@@ -29,7 +29,7 @@ export default class AgentManagerMediator {
   }
 
   _accessRequirementsConfigured(): boolean {
-    return (this._baseUrl && this._accessToken);
+    return (!!this._baseUrl && !!this._accessToken);
   }
 
   async notifyStatus(status: string) {

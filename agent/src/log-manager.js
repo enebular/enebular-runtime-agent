@@ -18,10 +18,10 @@ export type LogManagerConfig = {
 export default class LogManager {
   _transports: { [string]: winston.Transport };
   _loggers: winston.Container;
-  _level :string;
+  _level: string;
   _enableConsole: boolean;
   _enableFile: boolean;
-  _filePath: boolean;
+  _filePath: string;
   _enableEnebular: boolean;
   _enebularCachePath: string;
   _enebularTransport: winston.Transport = null;
@@ -148,7 +148,7 @@ export default class LogManager {
     }
   }
 
-  configureEnebular(options) {
+  configureEnebular(options: any) {
     if (this._enebularTransport) {
       this._enebularTransport.configure(options);
     }

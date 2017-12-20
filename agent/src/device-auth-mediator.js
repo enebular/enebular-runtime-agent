@@ -26,7 +26,7 @@ export default class DeviceAuthMediator extends EventEmitter {
     this._log = log;
   }
 
-  debug(msg, ...args) {
+  debug(msg: string, ...args: Array<mixed>) {
     args.push({ module: moduleName })
     this._log.debug(msg, ...args);
   }

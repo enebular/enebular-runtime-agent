@@ -7,12 +7,12 @@ const { DEVICE_ID, DEVICE_API_KEY, NODE_RED_DIR } = process.env
 
 const moduleName = 'mode'
 
-function debug(msg, ...args) {
+function debug(msg: string, ...args: Array<mixed>) {
   args.push({ module: moduleName })
   agent.log.debug(msg, ...args)
 }
 
-function info(msg, ...args) {
+function info(msg: string, ...args: Array<mixed>) {
   args.push({ module: moduleName })
   agent.log.info(msg, ...args)
 }

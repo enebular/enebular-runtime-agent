@@ -8,12 +8,12 @@ let _log;
 
 const moduleName = 'aws-iot';
 
-function debug(msg, ...args) {
+function debug(msg: string, ...args: Array<mixed>) {
   args.push({ module: moduleName })
   _log.debug(msg, ...args);
 }
 
-function info(msg, ...args) {
+function info(msg: string, ...args: Array<mixed>) {
   args.push({ module: moduleName })
   _log.info(msg, ...args);
 }

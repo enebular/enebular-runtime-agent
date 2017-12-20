@@ -22,7 +22,7 @@ export type EnebularAgentConfig = {
   logLevel?: string,
   enableConsoleLog? :boolean,
   enableFileLog? :boolean,
-  logfilePath? :boolean,
+  logfilePath? :string,
   enableEnebularLog? :boolean,
   enebularLogCachePath? :string,
   enebularLogMaxCacheSize? :number,
@@ -79,7 +79,7 @@ export class EnebularAgent {
   _deviceId: ?string;
 
   _authAttempting: boolean;
-  _authRetryID: number;
+  _authRetryID: ?number;
   _authRetryTime: number = 0;
 
   _agentState: AgentState;
@@ -172,8 +172,10 @@ export class EnebularAgent {
         this._agentMan.notifyStatus(this._nodeRed.getStatus());
       }, 30000);
     } else {
-      clearInterval(this._notifyStatusIntervalID);
-      this._notifyStatusIntervalID = null;
+      if (this._notifyStatusIntervalID) {
+        clearInterval(this._notifyStatusIntervalID);
+        this._notifyStatusIntervalID = null;
+      }
     }
   }
 
@@ -297,7 +299,7 @@ export class EnebularAgent {
       this._log.info('Ending authentication');
       if (this._authRetryID) {
         clearTimeout(this._authRetryID);
-        this._authRetryID = undefined;
+        this._authRetryID = null;
       }
       this._authRetryTime = 0;
       this._authAttempting = false;
