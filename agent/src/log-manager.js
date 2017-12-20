@@ -2,8 +2,8 @@
 
 import winston from 'winston';
 import { Enebular } from './winston-enebular';
-
-winston.transports.enebular = Enebular;
+import type {WinstonEnebularConfig} from './winston-enebular';
+import type AgentManagerMediator from './agent-manager-mediator';
 
 export type LogManagerConfig = {
   level? :string,
@@ -12,20 +12,13 @@ export type LogManagerConfig = {
   filePath? :string,
   enableEnebular? :boolean,
   enebularCachePath? :string,
-  enebularMaxCacheSize?: number;
+  enebularMaxCacheSize?: number,
 };
 
 export default class LogManager {
   _transports: { [string]: winston.Transport };
   _loggers: winston.Container;
-  _level: string;
-  _enableConsole: boolean;
-  _enableFile: boolean;
-  _filePath: string;
-  _enableEnebular: boolean;
-  _enebularCachePath: string;
   _enebularTransport: winston.Transport = null;
-  _enebularMaxCacheSize: number;
 
   constructor(config: LogManagerConfig) {
 
@@ -38,20 +31,13 @@ export default class LogManager {
       enebularCachePath     = '/tmp/enebular-log-cache',
       enebularMaxCacheSize  = 5*1024*1024,
     } = config;
-    this._level                 = level;
-    this._enableConsole         = enableConsole;
-    this._enableFile            = enableFile;
-    this._filePath              = filePath;
-    this._enableEnebular        = enableEnebular;
-    this._enebularCachePath     = enebularCachePath;
-    this._enebularMaxCacheSize  = enebularMaxCacheSize;
 
     this._transports = {};
 
-    if (this._enableConsole) {
+    if (enableConsole) {
       this.addTransport(new (winston.transports.Console)({
         name: "console",
-        level: this._level,
+        level: level,
         colorize: true,
         handleExceptions: true,
         humanReadableUnhandledException: true,
@@ -77,23 +63,23 @@ export default class LogManager {
       }));
     }
 
-    if (this._enableFile) {
+    if (enableFile) {
       this.addTransport(new (winston.transports.File)({
         name: "file",
-        level: this._level,
-        filename: this._filePath,
+        level: level,
+        filename: filePath,
         handleExceptions: true,
         json: false
       }));
     }
 
-    if (this._enableEnebular) {
-      this._enebularTransport = new (winston.transports.enebular)({
+    if (enableEnebular) {
+      this._enebularTransport = new Enebular({
         name: "enebular",
-        level: this._level,
+        level: level,
         handleExceptions: true,
-        cachePath: this._enebularCachePath,
-        maxCacheSize: this._enebularMaxCacheSize
+        cachePath: enebularCachePath,
+        maxCacheSize: enebularMaxCacheSize
       });
       this.addTransport(this._enebularTransport);
     }
@@ -136,7 +122,7 @@ export default class LogManager {
     return this._loggers.get(id);
   }
 
-  setEnebularAgentManager(agentManager: any) {
+  setEnebularAgentManager(agentManager: AgentManagerMediator) {
     if (this._enebularTransport) {
       this._enebularTransport.setAgentManager(agentManager);
     }
@@ -148,9 +134,9 @@ export default class LogManager {
     }
   }
 
-  configureEnebular(options: any) {
+  configureEnebular(config: WinstonEnebularConfig) {
     if (this._enebularTransport) {
-      this._enebularTransport.configure(options);
+      this._enebularTransport.configure(config);
     }
   }
 

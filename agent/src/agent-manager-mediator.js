@@ -1,17 +1,18 @@
 /* @flow */
 import EventEmitter from 'events';
 import fetch from 'isomorphic-fetch';
-import fs from 'fs'
-import FormData from 'form-data'
+import fs from 'fs';
+import FormData from 'form-data';
+import type {Logger} from 'winston';
 
 const moduleName = 'agent-man';
 
 export default class AgentManagerMediator {
   _baseUrl: string;
   _accessToken: string;
-  _log: any;
+  _log: Logger;
 
-  constructor(log: any) {
+  constructor(log: Logger) {
     this._log = log;
   }
 

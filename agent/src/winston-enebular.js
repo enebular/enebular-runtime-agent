@@ -4,6 +4,12 @@ import util from 'util';
 import fs from 'fs';
 import winston from 'winston';
 import common from 'winston/lib/winston/common';
+import type AgentManagerMediator from './agent-manager-mediator';
+
+export type WinstonEnebularConfig = {
+  sendInterval?: number,
+  sendSize?: number,
+};
 
 const statAsync = util.promisify(fs.stat);
 const unlinkAsync = util.promisify(fs.unlink);
@@ -60,7 +66,6 @@ util.inherits(Enebular, Transport);
 Enebular.prototype.name = 'enebular';
 
 Enebular.prototype.log = function(level, msg, meta, callback) {
-  let self = this;
 
   if (!this._active) {
     return;
@@ -84,20 +89,6 @@ Enebular.prototype.log = function(level, msg, meta, callback) {
 
   this._appendOutput(output, callback);
 };
-
-Enebular.prototype._updateSendInterval = function() {
-
-  if (this._intervalID) {
-    clearInterval(this._intervalID);
-    this._intervalID = null;
-  }
-
-  if (this._active) {
-    this._intervalID = setInterval(() => {
-      this._handleTimeTrigger()
-    }, this._sendInterval*1000);
-  }
-}
 
 Enebular.prototype._appendOutput = function(output, callback) {
   let self = this;
@@ -350,6 +341,11 @@ Enebular.prototype._send = async function() {
 
   debug('Starting logs send...');
 
+  if (!this._active) {
+    debug('Not sending logs as not currently active');
+    return;
+  }
+
   if (!this._agentManager) {
     error('Agent manager not yet set');
     return;
@@ -371,32 +367,46 @@ Enebular.prototype._send = async function() {
   debug('Logs send complete');
 }
 
-Enebular.prototype._handleTimeTrigger = function() {
+Enebular.prototype._handleSendTimeTrigger = function() {
   debug('Send time trigger...');
   this._send();
 }
 
-Enebular.prototype.activate = async function(active) {
+Enebular.prototype._updateSendInterval = function() {
+
+  if (this._intervalID) {
+    clearInterval(this._intervalID);
+    this._intervalID = null;
+  }
+
+  if (this._active) {
+    this._intervalID = setInterval(() => {
+      this._handleSendTimeTrigger()
+    }, this._sendInterval*1000);
+  }
+}
+
+Enebular.prototype.activate = async function(active: boolean) {
   this._active = active;
   this._updateSendInterval();
 };
 
-Enebular.prototype.configure = function(options) {
+Enebular.prototype.configure = function(config: WinstonEnebularConfig) {
 
-  if (options.sendInterval) {
-    this._sendInterval = options.sendInterval;
+  if (config.sendInterval) {
+    this._sendInterval = config.sendInterval;
     this._updateSendInterval();
   }
 
-  if (options.sendSize) {
-    this._sendSize = options.sendSize;
+  if (config.sendSize) {
+    this._sendSize = config.sendSize;
   }
 
   debug('sendInterval: ' + this._sendInterval);
   debug('sendSize: ' + this._sendSize);
 }
 
-Enebular.prototype.setAgentManager = async function(agentManager) {
+Enebular.prototype.setAgentManager = async function(agentManager: AgentManagerMediator) {
   this._agentManager = agentManager;
 };
 

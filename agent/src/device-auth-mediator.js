@@ -2,6 +2,7 @@
 import EventEmitter from 'events';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import type {Logger} from 'winston';
 
 const moduleName = 'device-auth';
 
@@ -16,11 +17,11 @@ export default class DeviceAuthMediator extends EventEmitter {
   _authRequestUrl: ?string;
   _nonce: ?string;
   _seq: number = 0;
-  _log: any;
+  _log: Logger;
 
   requestingAuthenticate: boolean = false;
 
-  constructor(emitter: EventEmitter, log: any) {
+  constructor(emitter: EventEmitter, log: Logger) {
     super();
     emitter.on('dispatch_auth_token', (message) => this.emit('dispatch_auth_token', message));
     this._log = log;

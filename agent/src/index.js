@@ -6,7 +6,9 @@ import EventEmitter from 'events';
 import NodeREDController from './node-red-controller';
 import DeviceAuthMediator from './device-auth-mediator';
 import AgentManagerMediator from './agent-manager-mediator';
-import LogManager from './log-manager'
+import LogManager from './log-manager';
+import type {LogManagerConfig} from './log-manager';
+import type {Logger} from 'winston';
 
 /**
  *
@@ -85,9 +87,9 @@ export class EnebularAgent {
   _agentState: AgentState;
 
   _logManager: LogManager;
-  _log: any;
+  _log: Logger;
 
-  _monitoringEnabled: boolean;
+  _monitoringActivated: boolean;
   _notifyStatusIntervalID: ?number;
 
   constructor(messengerSevice: MessengerService, config: EnebularAgentConfig) {
@@ -103,43 +105,52 @@ export class EnebularAgent {
     this._messengerSevice.on('disconnect', () => this._handleMessengerDisconnect());
     this._messengerSevice.on('message', (params) => this._handleMessengerMessage(params));
 
-    let logConfig = {};
-    logConfig['level']              = config.logLevel;
-    logConfig['enableConsole']      = config.enableConsoleLog;
-    logConfig['enableFile']         = config.enableFileLog;
-    logConfig['filePath']           = config.logfilePath;
-    logConfig['enableEnebular']     = config.enableEnebularLog;
-    logConfig['enebularCachePath']  = config.enebularLogCachePath;
-    logConfig['enebularMaxCacheSize']  = config.enebularLogMaxCacheSize;
-    if (process.env.DEBUG) {
-      logConfig['level']            = process.env.DEBUG;
-      logConfig['enableConsole']    = true;
-    }
-    this._logManager = new LogManager(logConfig);
-    this._log = this._logManager.addLogger('internal', ['console', 'enebular', 'file']);
+    this._initLogging(config);
 
     this._agentMan = new AgentManagerMediator(this._log);
     this._logManager.setEnebularAgentManager(this._agentMan);
 
     this._messageEmitter = new EventEmitter();
+
     this._nodeRed = new NodeREDController(
-      nodeRedDir,
-      nodeRedCommand,
-      nodeRedKillSignal,
       this._messageEmitter,
       this._log,
-      this._logManager
+      this._logManager,
+      {
+        dir: nodeRedDir,
+        command: nodeRedCommand,
+        killSignal: nodeRedKillSignal,
+      }
     );
+
     this._deviceAuth = new DeviceAuthMediator(this._messageEmitter, this._log);
+
     this._configFile = configFile;
     this._agentState = 'init';
   }
 
-  get log(): any {
+  _initLogging(config: EnebularAgentConfig) {
+    let logConfig: LogManagerConfig   = {};
+    logConfig['level']                = config.logLevel;
+    logConfig['enableConsole']        = config.enableConsoleLog;
+    logConfig['enableFile']           = config.enableFileLog;
+    logConfig['filePath']             = config.logfilePath;
+    logConfig['enableEnebular']       = config.enableEnebularLog;
+    logConfig['enebularCachePath']    = config.enebularLogCachePath;
+    logConfig['enebularMaxCacheSize'] = config.enebularLogMaxCacheSize;
+    if (process.env.DEBUG) {
+      logConfig['level']              = process.env.DEBUG;
+      logConfig['enableConsole']      = true;
+    }
+    this._logManager = new LogManager(logConfig);
+    this._log = this._logManager.addLogger('internal', ['console', 'enebular', 'file']);
+  }
+
+  get log(): Logger {
     return this._log;
   }
 
-  get logManager(): any {
+  get logManager(): LogManager {
     return this._logManager;
   }
 
@@ -150,32 +161,33 @@ export class EnebularAgent {
 
   async shutdown() {
     this._endDeviceAuthenticationAttempt();
-    if (this._monitoringEnabled) {
+    if (this._monitoringActivated) {
       await this._agentMan.notifyStatus('disconnected');
     }
-    this._enableMonitoring(false);
     await this._nodeRed.shutdownService();
     await this._logManager.shutdown();
+    this._activateMonitoring(false);
   }
 
-  _enableMonitoring(enable: boolean) {
-    if (this._monitoringEnabled === enable) {
+  _activateMonitoring(active: boolean) {
+    if (this._monitoringActivated === active) {
       return;
     }
-    this._monitoringEnabled = enable;
+    this._monitoringActivated = active;
+    this._logManager.activateEnebular(active);
+    this._activateStatusNotification(active);
+  }
 
-    this._logManager.activateEnebular(enable);
-
-    if (this._monitoringEnabled) {
+  _activateStatusNotification(active: boolean) {
+    if (this._notifyStatusIntervalID) {
+      clearInterval(this._notifyStatusIntervalID);
+      this._notifyStatusIntervalID = null;
+    }
+    if (active) {
       this._agentMan.notifyStatus(this._nodeRed.getStatus());
       this._notifyStatusIntervalID = setInterval(() => {
         this._agentMan.notifyStatus(this._nodeRed.getStatus());
       }, 30000);
-    } else {
-      if (this._notifyStatusIntervalID) {
-        clearInterval(this._notifyStatusIntervalID);
-        this._notifyStatusIntervalID = null;
-      }
     }
   }
 
@@ -185,7 +197,7 @@ export class EnebularAgent {
       sendInterval: 30,
       sendSize: 100 * 1024,
     });
-    this._enableMonitoring(true);
+    this._activateMonitoring(true);
   }
 
   _loadAgentConfig() {

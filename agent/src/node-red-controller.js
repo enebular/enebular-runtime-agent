@@ -2,8 +2,16 @@
 import fs from 'fs';
 import EventEmitter from 'events';
 import path from 'path';
-import { spawn, exec, type ChildProcess } from 'child_process';
+import {spawn, exec, type ChildProcess} from 'child_process';
 import fetch from 'isomorphic-fetch';
+import type {Logger} from 'winston';
+import type LogManager from './log-manager';
+
+export type NodeREDConfig = {
+  dir: string,
+  command: string,
+  killSignal: string,
+};
 
 const moduleName = 'node-red';
 
@@ -20,26 +28,27 @@ export default class NodeREDController {
   _cproc: ?ChildProcess = null;
   _actions: Array<() => Promise<any>> = [];
   _isProcessing: ?Promise<void> = null;
-  _log: any;
-  _logManager: any;
-  _nodeRedLog: any;
+  _log: Logger;
+  _logManager: LogManager;
+  _nodeRedLog: Logger;
 
   constructor(
-    dir: string,
-    command: string,
-    killSignal: string,
     emitter: EventEmitter,
-    log: any,
-    logManager: any) {
-    this._dir = dir;    
+    log: Logger,
+    logManager: LogManager,
+    config: NodeREDConfig) {
+
+    this._dir = config.dir;
+    this._command = config.command;
+    this._killSignal = config.killSignal;
+
     if (!fs.existsSync(this._dir)) {
       throw new Error(`Given Node RED dir is not found: ${this._dir}`);
     }
     if (!fs.existsSync(path.join(this._dir, 'package.json'))) {
       throw new Error(`Given Node RED dir does not have package.json file : ${this._dir}`);
     }
-    this._command = command;
-    this._killSignal = killSignal;
+
     this._registerHandler(emitter);
 
     this._log = log;
