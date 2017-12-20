@@ -9,8 +9,9 @@ export type LogManagerConfig = {
   level? :string,
   enableConsole? :boolean,
   enableFile? :boolean,
-  filePath? :boolean,
+  filePath? :string,
   enableEnebular? :boolean,
+  enebularCachePath? :string,
 };
 
 export default class LogManager {
@@ -21,22 +22,25 @@ export default class LogManager {
   _enableFile: boolean;
   _filePath: boolean;
   _enableEnebular: boolean;
+  _enebularCachePath: string;
   _enebularTransport: winston.Transport = null;
 
   constructor(config: LogManagerConfig) {
 
     const {
-      level = 'info',
-      enableConsole = false,
-      enableFile = false,
-      filePath = "/var/log/enebular/enebular.log",
-      enableEnebular = true,
+      level             = 'info',
+      enableConsole     = false,
+      enableFile        = false,
+      filePath          = "/var/log/enebular/enebular.log",
+      enableEnebular    = true,
+      enebularCachePath = '/tmp/enebular-log-cache',
     } = config;
-    this._level = level;
-    this._enableConsole = enableConsole;
-    this._enableFile = enableFile;
-    this._filePath = filePath;
-    this._enableEnebular = enableEnebular;
+    this._level             = level;
+    this._enableConsole     = enableConsole;
+    this._enableFile        = enableFile;
+    this._filePath          = filePath;
+    this._enableEnebular    = enableEnebular;
+    this._enebularCachePath = enebularCachePath;
 
     this._transports = {};
 
@@ -71,7 +75,7 @@ export default class LogManager {
       this._enebularTransport = new (winston.transports.enebular)({
         name: "enebular",
         level: this._level,
-        cachePath: '/tmp/enebular-log-cache'
+        cachePath: this._enebularCachePath
       });
       this.addTransport(this._enebularTransport);
     }

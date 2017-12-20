@@ -21,6 +21,7 @@ export type EnebularAgentConfig = {
   enableFileLog? :boolean,
   logfilePath? :boolean,
   enableEnebularLog? :boolean,
+  enebularLogCachePath? :string,
 };
 
 type AgentSetting = {
@@ -87,9 +88,9 @@ export class EnebularAgent {
   constructor(messengerSevice: MessengerService, config: EnebularAgentConfig) {
     const {
       nodeRedDir,
-      nodeRedCommand = './node_modules/.bin/node-red -s .node-red-config/settings.js',
+      nodeRedCommand    = './node_modules/.bin/node-red -s .node-red-config/settings.js',
       nodeRedKillSignal = 'SIGINT',
-      configFile = path.join(os.homedir(), '.enebular-config.json'),
+      configFile        = path.join(os.homedir(), '.enebular-config.json'),
     } = config;
 
     this._messengerSevice = messengerSevice;
@@ -98,19 +99,16 @@ export class EnebularAgent {
     this._messengerSevice.on('message', (params) => this._handleMessengerMessage(params));
 
     let logConfig = {};
+    logConfig['level']              = config.logLevel;
+    logConfig['enableConsole']      = config.enableConsoleLog;
+    logConfig['enableFile']         = config.enableFileLog;
+    logConfig['filePath']           = config.logfilePath;
+    logConfig['enableEnebular']     = config.enableEnebularLog;
+    logConfig['enebularCachePath']  = config.enebularLogCachePath;
     if (process.env.DEBUG) {
-      logConfig['level'] = process.env.DEBUG;
-      logConfig['enableConsole'] = true;
+      logConfig['level']            = process.env.DEBUG;
+      logConfig['enableConsole']    = true;
     }
-    if (config.logLevel) {
-      logConfig['level'] = config.logLevel;
-    }
-    if (config.enableConsoleLog) {
-      logConfig['enableConsole'] = config.enableConsoleLog;
-    }
-    logConfig['enableFile'] = config.enableFileLog;
-    logConfig['filePath'] = config.logfilePath;
-    logConfig['enableEnebular'] = config.enableEnebularLog;
     this._logManager = new LogManager(logConfig);
     this._log = this._logManager.addLogger('internal', ['console', 'enebular', 'file']);
 
@@ -183,7 +181,7 @@ export class EnebularAgent {
   _loadAgentConfig() {
     try {
       if (fs.existsSync(this._configFile)) {
-        this._log.info('Reading config file:' + this._configFile);
+        this._log.info('Reading config file: ' + this._configFile);
         const data = fs.readFileSync(this._configFile, 'utf8');
         const { connectionId, deviceId, agentManagerBaseUrl, authRequestUrl } = JSON.parse(data);
         if (connectionId && deviceId && agentManagerBaseUrl && authRequestUrl) {
