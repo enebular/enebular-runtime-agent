@@ -67,10 +67,6 @@ Enebular.prototype.name = 'enebular';
 
 Enebular.prototype.log = function(level, msg, meta, callback) {
 
-  if (!this._active) {
-    return;
-  }
-
   let output = common.log({
     colorize:    false,
     json:        true,
