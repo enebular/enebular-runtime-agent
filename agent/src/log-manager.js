@@ -27,7 +27,7 @@ export default class LogManager {
 
     const {
       level = 'info',
-      enableConsole = true,
+      enableConsole = false,
       enableFile = false,
       filePath = "/var/log/enebular/enebular.log",
       enableEnebular = true,

@@ -99,12 +99,15 @@ export class EnebularAgent {
 
     let logConfig = {};
     if (process.env.DEBUG) {
-      logConfig['level'] = 'debug';
+      logConfig['level'] = process.env.DEBUG;
+      logConfig['enableConsole'] = true;
     }
     if (config.logLevel) {
       logConfig['level'] = config.logLevel;
     }
-    logConfig['enableConsole'] = config.enableConsoleLog;
+    if (config.enableConsoleLog) {
+      logConfig['enableConsole'] = config.enableConsoleLog;
+    }
     logConfig['enableFile'] = config.enableFileLog;
     logConfig['filePath'] = config.logfilePath;
     logConfig['enableEnebular'] = config.enableEnebularLog;
