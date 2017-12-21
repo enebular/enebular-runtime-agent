@@ -260,6 +260,27 @@ Enebular.prototype._shrinkCache = function() {
   return false;
 }
 
+function nameTimestamp(): string {
+
+  function pad(number: number, length: number): string {
+    let str = number.toString();
+    while (str.length < length) {
+      str = '0' + str;
+    }
+    return str;
+  }
+
+  const now = new Date();
+
+  return now.getUTCFullYear().toString() +
+    pad(now.getUTCMonth() + 1, 2) +
+    pad(now.getUTCDate(), 2) +
+    pad(now.getUTCHours(), 2) +
+    pad(now.getUTCMinutes(), 2) +
+    pad(now.getUTCSeconds(), 2) +
+    pad(now.getUTCMilliseconds(), 3);
+}
+
 Enebular.prototype._finalizeCurrent = function() {
 
   try {
@@ -273,7 +294,7 @@ Enebular.prototype._finalizeCurrent = function() {
     let cnt = 0;
     const maxCnt = 99;
     while (cnt <= maxCnt) {
-      finalizedName = `enebular-${Date.now()}-${cnt}`;
+      finalizedName = `enebular-${nameTimestamp()}-${cnt}`;
       finalizedPath = `${this._cachePath}/${finalizedName}`;
       if (!fs.existsSync(finalizedPath)) {
         break;
