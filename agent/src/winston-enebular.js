@@ -18,7 +18,10 @@ const Transport = winston.Transport;
 
 const currentFilename     = 'current';
 const finalizedNameMatch  = new RegExp('^enebular-([0-9]+)-([0-9]+)$');
-const maxUploadSize       = 1 * 1024 * 1024;
+/**
+ * maxUploadChunkSize is also our cache management chunk size.
+ */
+const maxUploadChunkSize  = 100 * 1024;
 
 function debug(msg: string, ...args: Array<mixed>) {
   if (process.env.DEBUG_LOG) {
@@ -35,7 +38,7 @@ let Enebular = exports.Enebular = function(options: any) {
   options = options || {};
 
   this._cachePath     = options.cachePath     || '/tmp/enebular-log-cache';
-  this._maxCacheSize  = options.maxCacheSize  || 5 * 1024 * 1024;
+  this._maxCacheSize  = options.maxCacheSize  || 2 * 1024 * 1024;
   this._currentPath   = `${this._cachePath}/${currentFilename}`
   this._sendInterval  = 30;
   this._sendSize      = 100 * 1024;
@@ -94,10 +97,13 @@ Enebular.prototype._appendOutput = function(output, callback) {
     return callback(new Error(msg));
   }
 
-  let prefix = (fs.existsSync(this._currentPath)) ? ',\n' : '[\n';
-  output = prefix + output;
-  let outputSize = output.length;
-
+  /**
+   * We need to do the size related adjustments based on an assumed prefix
+   * length as the adjustments could result in the removal of 'current', which
+   * would change what the prefix should be.
+   */
+  const prefixLength = 3;
+  let outputSize = output.length + prefixLength;
   let ok = this._shrinkCacheToFit(outputSize);
   if (!ok) {
       let msg = "Failed to shrink cache enough";
@@ -107,11 +113,15 @@ Enebular.prototype._appendOutput = function(output, callback) {
 
   if (fs.existsSync(this._currentPath)) {
     let stats = fs.statSync(this._currentPath);
-    if (stats.size + outputSize >= maxUploadSize) {
-      debug('Max upload size reached');
+    if (stats.size + outputSize >= maxUploadChunkSize) {
+      debug('Max upload chunk size reached');
       this._finalizeCurrent();
     }
   }
+
+  let prefix = (fs.existsSync(this._currentPath)) ? ',\n' : '[\n';
+  output = prefix + output;
+  outputSize = output.length;
 
   try {
     fs.appendFileSync(this._currentPath, output);
@@ -232,7 +242,7 @@ Enebular.prototype._shrinkCache = function() {
   }
 
   if (!target) {
-    target = this._currentPath;
+    target = currentFilename;
   }
 
   const filePath = `${this._cachePath}/${target}`;

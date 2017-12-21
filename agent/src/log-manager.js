@@ -29,7 +29,7 @@ export default class LogManager {
       filePath              = "/var/log/enebular/enebular.log",
       enableEnebular        = true,
       enebularCachePath     = '/tmp/enebular-log-cache',
-      enebularMaxCacheSize  = 5*1024*1024,
+      enebularMaxCacheSize  = 2 * 1024 * 1024,
     } = config;
 
     this._transports = {};
