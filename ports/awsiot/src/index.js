@@ -2,14 +2,21 @@
 import fs from 'fs';
 import path from 'path';
 import awsIot from 'aws-iot-device-sdk';
-import debug from 'debug';
 import { EnebularAgent, MessengerService } from 'enebular-runtime-agent';
 
-/**
- *
- */
-const log = debug('enebular-awsiot-agent');
-const logv = debug('enebular-awsiot-agent:verbose');
+let _log;
+
+const moduleName = 'aws-iot';
+
+function debug(msg: string, ...args: Array<mixed>) {
+  args.push({ module: moduleName })
+  _log.debug(msg, ...args);
+}
+
+function info(msg: string, ...args: Array<mixed>) {
+  args.push({ module: moduleName })
+  _log.info(msg, ...args);
+}
 
 const { AWSIOT_CONFIG_FILE, NODE_RED_DIR } = process.env;
 
@@ -25,69 +32,69 @@ function setupDevice(config: AWSIoTConfig, messenger: MessengerService) {
 
   function handleConnectionStateUpdate(connected: boolean) {
     if (!connected) {
-      log('Ignoring disconnect');
+      debug('Ignoring disconnect');
       return;
     }
     messenger.updateConnectedState(connected);
   }
 
   device.on('connect', async () => {
-    log('Connected to AWS IoT');
+    info('Connected to AWS IoT');
     device.register(config.thingName, { ignoreDeltas: false, persistentSubscribe: true });
     handleConnectionStateUpdate(true);
   });
 
   device.on('offline', () => {
-    log('AWS IoT connection offline');
+    debug('AWS IoT connection offline');
     handleConnectionStateUpdate(false);
   });
 
   device.on('close', () => {
-    log('AWS IoT connection closed');
+    debug('AWS IoT connection closed');
     device.unregister(config.thingName);
     handleConnectionStateUpdate(false);
   });
 
   device.on('reconnect', () => {
-    log('Reconnecting to AWS IoT');
+    debug('Reconnecting to AWS IoT');
     device.register(config.thingName);
   });
 
   device.on('error', (error) => {
-    log('AWS IoT connection error: ' + error);
+    debug('AWS IoT connection error: ' + error);
   });
 
   device.on('timeout', async (thingName, clientToken) => {
-    log(`AWS IoT timeout (${clientToken})`);
+    debug(`AWS IoT timeout (${clientToken})`);
   });
 
   device.on('status', async (thingName, stat, clientToken, stateObject) => {
-    log(`AWS IoT status: ${stat} (${clientToken})`);
+    debug(`AWS IoT status: ${stat} (${clientToken})`);
   });
 
   device.on('message', (topic, payload) => {
-    log('AWS IoT message', topic, payload);
+    debug('AWS IoT message', topic, payload);
   });
 
   function handleStateMessageChange(messageJSON: string) {
     try {
       const { messageType, message } = JSON.parse(messageJSON);
-      log('Message: ' + messageType);
+      debug('Message: ' + messageType);
       messenger.sendMessage(messageType, message);
     } catch (err) {
-      log('Message parse failed. ' + err);
+      _log.error('Message parse failed. ' + err);
     }
     const newState = { message: messageJSON };
     let clientToken = device.update(config.thingName, { state: { reported: newState } });
     if (clientToken === null) {
-      log('Shadow update failed');
+      _log.error('Shadow update failed');
     } else {
-      log(`Shadow update requested (${clientToken})`);
+      debug(`Shadow update requested (${clientToken})`);
     }
   }
 
   device.on('delta', async (thingName, stateObject) => {
-    logv('AWS IoT delta', stateObject);
+    debug('AWS IoT delta', stateObject);
     handleStateMessageChange(stateObject.state.message);
   });
 }
@@ -101,7 +108,7 @@ let messenger: MessengerService;
 async function startup() {
   try {
     const awsIoTConfigFile = AWSIOT_CONFIG_FILE || path.join(process.cwd(), './config.json');
-    log('AWS IoT config file: ' + awsIoTConfigFile);
+    console.log('AWS IoT config file: ' + awsIoTConfigFile);
     const awsIotConfig = JSON.parse(fs.readFileSync(awsIoTConfigFile, 'utf8'));
 
     messenger = new MessengerService();
@@ -111,7 +118,8 @@ async function startup() {
     });
 
     await agent.startup();
-    log('Agent started');
+    _log = agent.log;
+    info('Agent started');
 
     setupDevice(awsIotConfig, messenger);
 
@@ -130,6 +138,7 @@ async function shutdown() {
 
 async function exit() {
   await shutdown();
+  console.log('Exiting...');
   process.exit(0);
 }
 

@@ -2,27 +2,25 @@
 import fs from 'fs';
 import EventEmitter from 'events';
 import path from 'path';
-import { spawn, exec, type ChildProcess } from 'child_process';
-import debug from 'debug';
+import {spawn, exec, type ChildProcess} from 'child_process';
 import fetch from 'isomorphic-fetch';
-import rfs from 'rotating-file-stream'
-/**
- *
- */
-const log = debug('enebular-runtime-agent:node-red-controller');
-/**
- *
- */
+import type {Logger} from 'winston';
+import type LogManager from './log-manager';
+
+export type NodeREDConfig = {
+  dir: string,
+  command: string,
+  killSignal: string,
+};
+
+const moduleName = 'node-red';
+
 type NodeRedFlowPackage = {
   flows: Object[],
   creds: Object,
   packages: Object,
 };
 
-
-/**
- *
- */
 export default class NodeREDController {
   _dir: string;
   _command: string;
@@ -30,44 +28,42 @@ export default class NodeREDController {
   _cproc: ?ChildProcess = null;
   _actions: Array<() => Promise<any>> = [];
   _isProcessing: ?Promise<void> = null;
-  _currentFile: WritableStream
+  _log: Logger;
+  _logManager: LogManager;
+  _nodeRedLog: Logger;
 
-  constructor(dir: string, command: string, killSignal: string, emitter: EventEmitter) {
-    this._dir = dir;    
+  constructor(
+    emitter: EventEmitter,
+    log: Logger,
+    logManager: LogManager,
+    config: NodeREDConfig) {
+
+    this._dir = config.dir;
+    this._command = config.command;
+    this._killSignal = config.killSignal;
+
     if (!fs.existsSync(this._dir)) {
       throw new Error(`Given Node RED dir is not found: ${this._dir}`);
     }
     if (!fs.existsSync(path.join(this._dir, 'package.json'))) {
       throw new Error(`Given Node RED dir does not have package.json file : ${this._dir}`);
     }
-    this._command = command;
-    this._killSignal = killSignal;
+
     this._registerHandler(emitter);
-    this._currentFile = rfs(generator, {
-      size: '1M',
-      interval: '5s',
-      path: 'logs',
-      maxFiles: 100
-    });
-    this._stdoutUnhook = this._hookStream(process.stdout, (string, encoding) => {
-      this._currentFile.write(string, encoding)
-    })
-    this._stderrUnhook = this._hookStream(process.stderr, (string, encoding) => {
-      this._currentFile.write(string, encoding)
-    })
+
+    this._log = log;
+    this._logManager = logManager;
+    this._nodeRedLog = logManager.addLogger('service.node-red', ['console', 'enebular', 'file']);
   }
 
-  _hookStream(stream, cb) {
-    var old_write = stream.write
-    stream.write = (function(write) {
-      return function(string, encoding) {
-        write.apply(stream, arguments)
-        cb(string, encoding)
-      }
-    })(stream.write)
-    return function() {
-      stream.write = old_write
-    }
+  debug(msg: string, ...args: Array<mixed>) {
+    args.push({ module: moduleName })
+    this._log.debug(msg, ...args);
+  }
+
+  info(msg: string, ...args: Array<mixed>) {
+    args.push({ module: moduleName })
+    this._log.info(msg, ...args);
   }
 
   _registerHandler(emitter: EventEmitter) {
@@ -79,7 +75,7 @@ export default class NodeREDController {
   }
 
   async _queueAction(fn: () => Promise<any>) {
-    log('Queuing action');
+    this.debug('Queuing action');
     this._actions.push(fn);
     if (this._isProcessing) {
       await this._isProcessing;
@@ -89,7 +85,7 @@ export default class NodeREDController {
   }
 
   async _processActions() {
-    log('Processing actions:', this._actions.length);
+    this.debug('Processing actions:', this._actions.length);
     this._isProcessing = (async () => {
       while (this._actions.length > 0) {
         const action = this._actions.shift();
@@ -105,13 +101,13 @@ export default class NodeREDController {
   }
 
   async _fetchAndUpdateFlow(params: { downloadUrl: string }) {
-    log('Updating flow');
+    this.info('Updating flow');
     await this._downloadAndUpdatePackage(params.downloadUrl);
     await this._restartService();
   }
 
   async _downloadAndUpdatePackage(downloadUrl: string) {
-    log('Downloading flow:', downloadUrl);
+    this.info('Downloading flow:', downloadUrl);
     const res = await fetch(downloadUrl);
     if (res.status >= 400) {
       throw new Error('invalid url');
@@ -121,7 +117,7 @@ export default class NodeREDController {
   }
 
   async _updatePackage(flowPackage: NodeRedFlowPackage) {
-    log('Updating package', flowPackage);
+    this.info('Updating package', flowPackage);
     const updates = [];
     if (flowPackage.flow || flowPackage.flows) {
       const flows = flowPackage.flow || flowPackage.flows;
@@ -171,18 +167,20 @@ export default class NodeREDController {
   }
 
   async _startService() {
-    log('Staring service...');
+    this.info('Staring service...');
     return new Promise((resolve, reject) => {
       const [command, ...args] = this._command.split(/\s+/);
       const cproc = spawn(command, args, { stdio: 'pipe', cwd: this._dir });
       cproc.stdout.on('data', (data) => {
-        process.stdout.write(data)
+        let str = data.toString().replace(/(\n|\r)+$/, '');
+        this._nodeRedLog.info(str);
       });
       cproc.stderr.on('data', (data) => {
-        process.stdout.write(data)
+        let str = data.toString().replace(/(\n|\r)+$/, '');
+        this._nodeRedLog.error(str)
       });
       cproc.once('exit', (code) => {
-        log(`Service exited (${code})`);
+        this.info(`Service exited (${code})`);
         this._cproc = null;
       });
       cproc.once('error', (err) => {
@@ -202,15 +200,15 @@ export default class NodeREDController {
     return new Promise((resolve, reject) => {
       const cproc = this._cproc;
       if (cproc) {
-        log('Shutting down service...');
+        this.info('Shutting down service...');
         cproc.kill(this._killSignal);
         cproc.once('exit', () => {
-          log('Service ended');
+          this.info('Service ended');
           this._cproc = null;
           resolve();
         });
       } else {
-        log('Service already shutdown');
+        this.info('Service already shutdown');
         resolve();
       }
     });
@@ -221,7 +219,7 @@ export default class NodeREDController {
   }
 
   async _restartService() {
-    log('Restarting service...');
+    this.info('Restarting service...');
     await this._shutdownService();
     await this._startService();
   }
@@ -233,22 +231,4 @@ export default class NodeREDController {
       return 'disconnected';
     }
   }
-}
-
-function pad(num) {
-  return (num > 9 ? "" : "0") + num;
-}
-
-function generator(time, index) {
-  if(! time)
-      return "file.log";
-
-  const month  = time.getFullYear() + "" + pad(time.getMonth() + 1);
-  const day = pad(time.getDate());
-  const hour = pad(time.getHours());
-  const minute = pad(time.getMinutes());
-  const seconds = pad(time.getSeconds());
-  return `logs/${month}${day}${hour}${minute}${seconds}.log`
-  // return month +
-  //     day + "-" + hour + minute + "-" + seconds + "-" + index + "-file.log";
 }
