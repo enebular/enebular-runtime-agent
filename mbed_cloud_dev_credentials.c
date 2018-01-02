@@ -16,6 +16,10 @@
 #ifndef __MBED_CLOUD_DEV_CREDENTIALS_H__
 #define __MBED_CLOUD_DEV_CREDENTIALS_H__
 
+#if MBED_CONF_APP_DEVELOPER_MODE == 1
+#error "Replace mbed_cloud_dev_credentials.c with your own developer cert."
+#endif
+
 #include <inttypes.h>
 
 const char MBED_CLOUD_DEV_BOOTSTRAP_ENDPOINT_NAME[] = "";

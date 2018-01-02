@@ -16,8 +16,10 @@
 // limitations under the License.
 // ----------------------------------------------------------------------------
 
-
 #include "simplem2mclient.h"
+#ifdef TARGET_LIKE_MBED
+#include "mbed.h"
+#endif
 
 static int main_application(void);
 
@@ -61,6 +63,35 @@ void blink_callback(void *) {
     led_off();
 }
 
+void button_notification_status_callback(const M2MBase& object, const NoticationDeliveryStatus status)
+{
+    switch(status) {
+        case NOTIFICATION_STATUS_BUILD_ERROR:
+            printf("Notification callback: (%s) error when building CoAP message\n", object.uri_path());
+            break;
+        case NOTIFICATION_STATUS_RESEND_QUEUE_FULL:
+            printf("Notification callback: (%s) CoAP resend queue full\n", object.uri_path());
+            break;
+        case NOTIFICATION_STATUS_SENT:
+            printf("Notification callback: (%s) Notification sent to server\n", object.uri_path());
+            break;
+        case NOTIFICATION_STATUS_DELIVERED:
+            printf("Notification callback: (%s) Notification delivered\n", object.uri_path());
+            break;
+        case NOTIFICATION_STATUS_SEND_FAILED:
+            printf("Notification callback: (%s) Notification sending failed\n", object.uri_path());
+            break;
+        case NOTIFICATION_STATUS_SUBSCRIBED:
+            printf("Notification callback: (%s) subscribed\n", object.uri_path());
+            break;
+        case NOTIFICATION_STATUS_UNSUBSCRIBED:
+            printf("Notification callback: (%s) subscription removed\n", object.uri_path());
+            break;
+        default:
+            break;
+    }
+}
+
 // This function is called when a POST request is received for resource 5000/0/1.
 void unregister(void *)
 {
@@ -83,6 +114,13 @@ void factory_reset(void *)
 
 int main_application(void)
 {
+    // IOTMORF-1712: DAPLINK starts the previous application during flashing a new binary
+    // This is workaround to prevent possible deletion of credentials or storage corruption
+    // while replacing the application binary.
+#ifdef TARGET_LIKE_MBED
+    wait(2);
+#endif
+
     // SimpleClient is used for registering and unregistering resources to a server.
     SimpleM2MClient mbedClient;
 
@@ -91,23 +129,23 @@ int main_application(void)
 
     // Create resource for button count. Path of this resource will be: 3200/0/5501.
     button_res = mbedClient.add_cloud_resource(3200, 0, 5501, "button_resource", M2MResourceInstance::INTEGER,
-                              M2MBase::GET_ALLOWED, 0, true, NULL);
+                              M2MBase::GET_ALLOWED, 0, true, NULL, (void*)button_notification_status_callback);
 
     // Create resource for led blinking pattern. Path of this resource will be: 3201/0/5853.
-    pattern_res =  mbedClient.add_cloud_resource(3201, 0, 5853, "pattern_resource", M2MResourceInstance::STRING,
-                               M2MBase::GET_PUT_ALLOWED, "500:500:500:500", false, (void*)pattern_updated);
+    pattern_res = mbedClient.add_cloud_resource(3201, 0, 5853, "pattern_resource", M2MResourceInstance::STRING,
+                               M2MBase::GET_PUT_ALLOWED, "500:500:500:500", false, (void*)pattern_updated, NULL);
 
     // Create resource for starting the led blinking. Path of this resource will be: 3201/0/5850.
-    blink_res =  mbedClient.add_cloud_resource(3201, 0, 5850, "blink_resource", M2MResourceInstance::STRING,
-                             M2MBase::POST_ALLOWED, "", false, (void*)blink_callback);
+    blink_res = mbedClient.add_cloud_resource(3201, 0, 5850, "blink_resource", M2MResourceInstance::STRING,
+                             M2MBase::POST_ALLOWED, "", false, (void*)blink_callback, NULL);
 
     // Create resource for unregistering the device. Path of this resource will be: 5000/0/1.
-     mbedClient.add_cloud_resource(5000, 0, 1, "unregister", M2MResourceInstance::STRING,
-                 M2MBase::POST_ALLOWED, NULL, false, (void*)unregister);
+    mbedClient.add_cloud_resource(5000, 0, 1, "unregister", M2MResourceInstance::STRING,
+                 M2MBase::POST_ALLOWED, NULL, false, (void*)unregister, NULL);
 
-    // Create resource for  running factory reset for the device. Path of this resource will be: 5000/0/2.
-     mbedClient.add_cloud_resource(5000, 0, 2, "factory_reset", M2MResourceInstance::STRING,
-                 M2MBase::POST_ALLOWED, NULL, false, (void*)factory_reset);
+    // Create resource for running factory reset for the device. Path of this resource will be: 5000/0/2.
+    mbedClient.add_cloud_resource(5000, 0, 2, "factory_reset", M2MResourceInstance::STRING,
+                 M2MBase::POST_ALLOWED, NULL, false, (void*)factory_reset, NULL);
 
     // Print to screen if available.
     clear_screen();

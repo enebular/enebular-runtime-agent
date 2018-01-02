@@ -18,16 +18,27 @@
 
 
 #ifdef TARGET_LIKE_MBED
+///////////
+// INCLUDES
+///////////
+
+// Note: this macro is needed on armcc to get the the PRI*32 macros
+// from inttypes.h in a C++ code.
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS
+#endif
 
 #include "mbed.h"
 #include "setup.h"
 #include "memory_tests.h"
 #include "simplem2mclient.h"
-#include "SDBlockDevice.h"
-#include "FATFileSystem.h"
+#include "storage-selector/storage-selector.h"
 #include "application_init.h"
 #include "pal.h"
 
+////////////////////////////////////////
+// PLATFORM SPECIFIC DEFINES & FUNCTIONS
+////////////////////////////////////////
 #define DEFAULT_FIRMWARE_PATH       "/sd/firmware"
 
 #define MBED_CONF_APP_ESP8266_TX MBED_CONF_APP_WIFI_TX
@@ -61,34 +72,44 @@ C12832* lcd;
 
 #define LED_OFF (!LED_ON)
 
-
 DigitalOut  led(MBED_CONF_APP_LED_PINNAME, LED_OFF);
 InterruptIn button(MBED_CONF_APP_BUTTON_PINNAME);
 
-static bool clicked;
+static bool button_pressed = false;
 
 static void button_press(void);
 
 void init_screen();
 
-extern SDBlockDevice sd(MBED_CONF_SD_SPI_MOSI, MBED_CONF_SD_SPI_MISO, MBED_CONF_SD_SPI_CLK, MBED_CONF_SD_SPI_CS);
-
-FATFileSystem fs("sd", &sd);
+FileSystem* fs = filesystem_selector();
 
 Thread resource_thread;
 void *network_interface(NULL);
 
+void button_press(void)
+{
+    button_pressed = true;
+}
+
+/////////////////////////
+// SETUP.H IMPLEMENTATION
+/////////////////////////
 int initPlatform()
 {
-    int sd_ret;
-
     init_screen();
-    sd_ret = sd.init();
-    if(sd_ret != BD_ERROR_OK) {
-        tr_error("initPlatform() - sd.init() failed with %d\n", sd_ret);
-        return -1;
+
+    /* Explicit declaration to catch Block Device initialization errors. */
+    BlockDevice* sd = storage_selector();
+
+    if (sd) {
+        int sd_ret = sd->init();
+
+        if(sd_ret != BD_ERROR_OK) {
+            tr_error("initPlatform() - sd->init() failed with %d\n", sd_ret);
+            return -1;
+        }
+        tr_debug("initPlatform() - BlockDevice init OK.\n");
     }
-    tr_debug("initPlatform() - SD card init OK.\n");
 
     if(MBED_CONF_APP_BUTTON_PINNAME != NC) {
         button.fall(&button_press);
@@ -106,7 +127,7 @@ bool rmFirmwareImages()
     } else if (status == PAL_ERR_FS_NO_PATH) {
         printf("Firmware path not found/does not exist.\n");
     } else {
-        printf("Firmware storage erasing failed with %d", status);
+        printf("Firmware storage erasing failed with %" PRId32, status);
         return false;
     }
     return true;
@@ -213,16 +234,11 @@ void led_off(void)
 
 uint8_t button_clicked(void)
 {
-    if (clicked) {
-        clicked = 0;
-        return 1;
+    if (button_pressed) {
+        button_pressed = false;
+        return true;
     }
-    return 0;
-}
-
-void button_press(void)
-{
-    clicked = true;
+    return false;
 }
 
 void print_heap_stats()

@@ -27,3 +27,4 @@ if (${TLS_LIBRARY} MATCHES mbedTLS)
 endif()
 
 add_definitions(-DPAL_DTLS_PEER_MIN_TIMEOUT=5000)
+add_definitions(-DMBED_CONF_APP_DEVELOPER_MODE=1)

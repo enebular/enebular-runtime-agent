@@ -68,7 +68,7 @@ static bool application_init_fcc(void)
     }
 #endif
 
-#ifdef MBED_CONF_APP_DEVELOPER_MODE
+#if MBED_CONF_APP_DEVELOPER_MODE == 1
     printf("Start developer flow\n");
     status = fcc_developer_flow();
     if (status == FCC_STATUS_KCM_FILE_EXIST_ERROR) {

@@ -19,6 +19,9 @@
 
 #ifdef FREERTOS
 
+///////////
+// INCLUDES
+///////////
 #include <stdio.h>
 #include <unistd.h>
 #include "setup.h"
@@ -28,6 +31,10 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
+
+////////////////////////////////////////
+// PLATFORM SPECIFIC DEFINES & FUNCTIONS
+////////////////////////////////////////
 extern "C" {
     extern volatile bool dhcp_done;
 }
@@ -36,12 +43,6 @@ void *network_interface = 0;
 
 extern int initFreeRTOSPlatform();
 extern void* GetNetWorkInterfaceContext();
-
-bool rmFirmwareImages()
-{
-    printf("rmFirmwareImages is not supported on freeRTOS!\n");
-    return false;
-}
 
 int(*main_function)(void) = NULL;
 
@@ -68,6 +69,20 @@ void main_task(void)
     vTaskDelete( NULL );
 }
 
+/////////////////////////
+// SETUP.H IMPLEMENTATION
+/////////////////////////
+int initPlatform()
+{
+    return 0;
+}
+
+bool rmFirmwareImages()
+{
+    printf("rmFirmwareImages is not supported on freeRTOS!\n");
+    return false;
+}
+
 int run_application(int(*function)(void))
 {
     main_function = function;
@@ -77,11 +92,6 @@ int run_application(int(*function)(void))
     runProgram(&main_task);
 
     return 0;
-}
-
-void do_wait(int timeout_ms)
-{
-    vTaskDelay(timeout_ms);
 }
 
 bool init_connection()
@@ -95,18 +105,9 @@ void* get_network_interface()
     return network_interface;
 }
 
-int initPlatform()
-{
-    return 0;
-}
-
 void toggle_led(void)
 {
-    printf("Virtual LED toggled\r\n");
-}
-
-void led_off(void)
-{
+    printf("Virtual LED toggled\n");
 }
 
 uint8_t button_clicked(void)
@@ -114,13 +115,19 @@ uint8_t button_clicked(void)
     static uint8_t count = 0;
     if (count++ == 200) {
         count = 0;
-        printf("Virtual button clicked\r\n");
+        printf("Virtual button clicked\n");
         return 1;
     }
 
     return 0;
 }
 
+void do_wait(int timeout_ms)
+{
+    vTaskDelay(timeout_ms);
+}
+
+void led_off(void) {}
 void init_screen() {}
 void print_to_screen(int x, int y, const char* buffer) {}
 void clear_screen() {}

@@ -94,7 +94,7 @@ public:
             if (endpoint) {
                 clear_screen();
                 print_to_screen(0, 3, "Cloud Client: Ready");
-#ifdef MBED_CONF_APP_DEVELOPER_MODE
+#if MBED_CONF_APP_DEVELOPER_MODE == 1
                 print_to_screen(0, 15, endpoint->internal_endpoint_name.c_str());
                 printf("Endpoint Name: %s\r\n", endpoint->internal_endpoint_name.c_str());
 #else
@@ -231,9 +231,9 @@ public:
                               uint16_t resource_id, const char *resource_type,
                               M2MResourceInstance::ResourceType data_type,
                               M2MBase::Operation allowed, const char *value,
-                              bool observable, void *cb) {
+                              bool observable, void *cb, void *notification_status_cb) {
          return add_resource(&_obj_list, object_id, instance_id, resource_id, resource_type, data_type,
-                      allowed, value, observable, cb);
+                      allowed, value, observable, cb, notification_status_cb);
     }
 
 private:
