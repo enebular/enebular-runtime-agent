@@ -20,7 +20,16 @@
 #define SETUP_H
 
 #include <stdint.h>
-#include "m2minterface.h"
+
+//FORWARD DECLARATION
+class M2MObject;
+namespace m2m {
+    template<class ObjectTemplate> class Vector;
+}
+
+using namespace m2m;
+
+typedef Vector<M2MObject *> M2MObjectList;
 
 #ifdef __cplusplus
 extern "C" {

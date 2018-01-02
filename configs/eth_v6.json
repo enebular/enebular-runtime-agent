@@ -13,12 +13,15 @@
             "lwip.ipv4-enabled": false,
             "lwip.ipv6-enabled": true,
             "mbed-client.event-loop-size": 1024,
-            "mbed-trace.enable": null
+            "mbed-trace.enable": null,
+            "storage-selector.filesystem": "FAT",
+            "storage-selector.mount-point": "\"sd\"",
+            "storage-selector.storage": "SD_CARD"
         },
         "K64F": {
             "target.mbed_app_start": "0x00020400",
             "update-client.application-details": "0x00020000",
-            "update-client.bootloader-details": "0x172d4"
+            "update-client.bootloader-details": "0x172e4"
         },
         "NUCLEO_F429ZI": {
             "target.mbed_app_start": "0x08020400",
@@ -29,7 +32,7 @@
             "target.device_has_remove": ["EMAC"],
             "target.mbed_app_start": "0x08020400",
             "update-client.application-details": "0x08020000",
-            "update-client.bootloader-details": "0x801ae38"
+            "update-client.bootloader-details": "0x801ae78"
         }
     },
     "config": {

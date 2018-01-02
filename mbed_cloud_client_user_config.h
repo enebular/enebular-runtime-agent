@@ -45,7 +45,7 @@
 #endif
 
 /* Developer flags for Update feature */
-#ifdef MBED_CONF_APP_DEVELOPER_MODE
+#if MBED_CONF_APP_DEVELOPER_MODE == 1
     #define MBED_CLOUD_DEV_UPDATE_CERT
     #define MBED_CLOUD_DEV_UPDATE_ID
 #endif /* MBED_CONF_APP_DEVELOPER_MODE */

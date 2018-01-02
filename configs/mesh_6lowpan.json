@@ -8,7 +8,8 @@
     ],
     "target_overrides": {
         "*": {
-            "target.features_add": ["NANOSTACK", "LOWPAN_ROUTER"],
+            "target.features_add": ["NANOSTACK"],
+            "nanostack.configuration": "lowpan_router",
             "mbed-mesh-api.6lowpan-nd-channel": 1,
             "mbed-mesh-api.6lowpan-nd-panid-filter": "0xFFFF",
             "mbed-mesh-api.6lowpan-nd-security-mode": "NONE",
@@ -17,12 +18,15 @@
             "mbed-client.event-loop-size": 32768,
             "mbed-client.reconnection-count": 6,
             "mbed-client.sn-coap-blockwise-max-time-data-stored": 120,
-            "mbed-trace.enable": null
+            "mbed-trace.enable": null,
+            "storage-selector.filesystem": "FAT",
+            "storage-selector.mount-point": "\"sd\"",
+            "storage-selector.storage": "SD_CARD"
         },
         "K64F": {
             "target.mbed_app_start": "0x00020400",
             "update-client.application-details": "0x00020000",
-            "update-client.bootloader-details": "0x172d4"
+            "update-client.bootloader-details": "0x172e4"
         },
         "NUCLEO_F429ZI": {
             "target.mbed_app_start": "0x08020400",
@@ -33,7 +37,7 @@
         "UBLOX_EVK_ODIN_W2": {
             "target.mbed_app_start": "0x08020400",
             "update-client.application-details": "0x08020000",
-            "update-client.bootloader-details": "0x801ae38"
+            "update-client.bootloader-details": "0x801ae78"
         }
     },
     "config": {

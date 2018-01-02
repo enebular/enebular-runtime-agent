@@ -19,6 +19,9 @@
 
 #ifdef __linux__
 
+///////////
+// INCLUDES
+///////////
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -29,6 +32,10 @@
 #include "setup.h"
 #include "simplem2mclient.h"
 #include "application_init.h"
+
+////////////////////////////////////////
+// PLATFORM SPECIFIC DEFINES & FUNCTIONS
+////////////////////////////////////////
 
 //This has to be "./pal" for now as this is the default which is picked by ESFS.
 // If you want to pass another folder name , you need to do it through ESFS API otherwise
@@ -82,6 +89,9 @@ void *button_thread(void *)
     return NULL;
 }
 
+/////////////////////////
+// SETUP.H IMPLEMENTATION
+/////////////////////////
 int initPlatform()
 {
     init_screen();
@@ -121,25 +131,9 @@ void* get_network_interface()
     return network_interface;
 }
 
-void init_screen()
-{
-}
-
-void print_to_screen(int x, int y, const char* buffer)
-{
-}
-
-void clear_screen()
-{
-}
-
 void toggle_led(void)
 {
-    printf("Virtual LED toggled\r\n");
-}
-
-void led_off(void)
-{
+    printf("Virtual LED toggled\n");
 }
 
 uint8_t button_clicked(void)
@@ -151,20 +145,17 @@ uint8_t button_clicked(void)
     return false;
 }
 
-void print_heap_stats()
-{
-}
-
-void print_m2mobject_stats()
-{
-}
-
-void create_m2mobject_test_set(M2MObjectList* /*object_list*/)
-{
-}
-
 void do_wait(int timeout_ms)
 {
     usleep(timeout_ms * 1000);
 }
+
+void led_off(void) {}
+void init_screen() {}
+void print_to_screen(int x, int y, const char* buffer) {}
+void clear_screen() {}
+void print_heap_stats() {}
+void print_m2mobject_stats() {}
+void create_m2mobject_test_set(M2MObjectList* /*object_list*/) {}
+
 #endif // __linux__
