@@ -3,9 +3,28 @@ import net from 'net';
 import fs from 'fs';
 import path from 'path';
 import { EnebularAgent, MessengerService } from 'enebular-runtime-agent';
-import debug from 'debug';
 
-const log = debug('enebular-local-agent');
+const moduleName = 'local'
+
+let agent: EnebularAgent;
+let messenger: MessengerService;
+
+function log(level: string, msg: string, ...args: Array<mixed>) {
+  args.push({ module: moduleName })
+  agent.log(level, msg, ...args)
+}
+
+function debug(msg: string, ...args: Array<mixed>) {
+  log('debug', msg, ...args)
+}
+
+function info(msg: string, ...args: Array<mixed>) {
+  log('info', msg, ...args)
+}
+
+function error(msg: string, ...args: Array<mixed>) {
+  log('error', msg, ...args)
+}
 
 const END_OF_MSG_MARKER = 0x1E; // RS (Record Separator)
 
@@ -17,17 +36,17 @@ async function startServer(messenger: MessengerService) {
   function handleClientMessage(clientMessage: string) {
     try {
       const { messageType, message } = JSON.parse(clientMessage);
-      //log('messageType: ' + messageType);
-      //log('message: ' + JSON.stringify(message));
+      //debug('messageType: ' + messageType);
+      //debug('message: ' + JSON.stringify(message));
       messenger.sendMessage(messageType, message);
     } catch (err) {
-      log('client message: JSON parse failed: ' + err);
+      error('client message: JSON parse failed: ' + err);
     }
   }
 
   server = net.createServer((socket) => {
 
-    log('client connected');
+    info('client connected');
 
     //todo: we really need the client to tell us when mbed is really online
     messenger.updateConnectedState(true);
@@ -38,11 +57,11 @@ async function startServer(messenger: MessengerService) {
     let message = '';
 
     socket.on('data', (data) => {
-      //log(`client data chunk (${data.length})`);
+      //debug(`client data chunk (${data.length})`);
       message += data;
       if (message.charCodeAt(message.length-1) == END_OF_MSG_MARKER) {
         message = message.slice(0, -1);
-        log(`client message: [${message}]`);
+        debug(`client message: [${message}]`);
         handleClientMessage(message);
         message = '';
       }
@@ -50,19 +69,19 @@ async function startServer(messenger: MessengerService) {
 
     socket.on('end', () => {
       if (message.length > 0) {
-        log('client ended with partial message: ' + message);
+        info('client ended with partial message: ' + message);
       } else {
-        //log('client ended');
+        //debug('client ended');
       }
     });
 
     socket.on('close', () => {
-      log('client disconnected');
+      info('client disconnected');
       messenger.updateConnectedState(false);
     });
 
     socket.on('error', (err) => {
-      log('client socket error: ' + err);
+      info('client socket error: ' + err);
     });
 
     socket.write('ok' + String.fromCharCode(END_OF_MSG_MARKER));
@@ -70,7 +89,7 @@ async function startServer(messenger: MessengerService) {
   });
 
   server.on('listening', () => {
-    log('server listening on: ' + JSON.stringify(server.address()));
+    info('server listening on: ' + JSON.stringify(server.address()));
   });
 
   server.on('error', (err) => {
@@ -78,7 +97,7 @@ async function startServer(messenger: MessengerService) {
   });
 
   server.on('close', () => {
-    log('server closed');
+    info('server closed');
   });
 
   try {
@@ -88,9 +107,6 @@ async function startServer(messenger: MessengerService) {
   }
   server.listen(socketPath);
 }
-
-let agent: EnebularAgent;
-let messenger: MessengerService;
 
 async function startup() {
 
@@ -102,7 +118,7 @@ async function startup() {
   });
 
   await agent.startup();
-  log('agent started');
+  info('agent started');
 
   await startServer(messenger);
 }
