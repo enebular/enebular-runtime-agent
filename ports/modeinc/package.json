@@ -33,8 +33,8 @@
     "jsonwebtoken": "^8.0.1"
   },
   "dependencies": {
-    "enebular-runtime-agent": "file:../../agent",
     "babel-runtime": "^6.26.0",
+    "enebular-runtime-agent": "file:../../agent",
     "mode-device": "^1.1.5"
   },
   "ava": {

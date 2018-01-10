@@ -2,25 +2,23 @@
 import fs from 'fs';
 import path from 'path';
 import awsIot from 'aws-iot-device-sdk';
-import debug from 'debug';
 import { EnebularAgent, MessengerService } from 'enebular-runtime-agent';
 
+let _log;
 
-/**
- *
- */
-const log = debug('enebular-awsiot-agent');
+const moduleName = 'aws-iot';
+
+function debug(msg: string, ...args: Array<mixed>) {
+  args.push({ module: moduleName })
+  _log.debug(msg, ...args);
+}
+
+function info(msg: string, ...args: Array<mixed>) {
+  args.push({ module: moduleName })
+  _log.info(msg, ...args);
+}
 
 const { AWSIOT_CONFIG_FILE, NODE_RED_DIR } = process.env;
-
-/**
- *
- */
-function isThingShadowSynced(metadata, property) {
-  const desiredTimestamp = (metadata.desired && metadata.desired[property] || {}).timestamp;
-  const reportedTimestamp = (metadata.reported && metadata.reported[property] || {}).timestamp;
-  return reportedTimestamp >= desiredTimestamp;
-}
 
 /**
  *
@@ -34,68 +32,70 @@ function setupDevice(config: AWSIoTConfig, messenger: MessengerService) {
 
   function handleConnectionStateUpdate(connected: boolean) {
     if (!connected) {
-      log('ignoring disconnect');
+      debug('Ignoring disconnect');
       return;
     }
     messenger.updateConnectedState(connected);
   }
 
   device.on('connect', async () => {
-    log('>> connected to AWS IoT');
+    info('Connected to AWS IoT');
     device.register(config.thingName, { ignoreDeltas: false, persistentSubscribe: true });
-    setTimeout(() => device.get(config.thingName), 2000);
     handleConnectionStateUpdate(true);
   });
 
   device.on('offline', () => {
-    log('>> offline : no AWS IoT connection established');
+    debug('AWS IoT connection offline');
     handleConnectionStateUpdate(false);
   });
 
   device.on('close', () => {
-    log('>> AWS IoT connection closed');
+    debug('AWS IoT connection closed');
     device.unregister(config.thingName);
     handleConnectionStateUpdate(false);
   });
 
   device.on('reconnect', () => {
-    log('>> reconnect to AWS IoT');
+    debug('Reconnecting to AWS IoT');
     device.register(config.thingName);
   });
 
   device.on('error', (error) => {
-    log('## error', error);
+    debug('AWS IoT connection error: ' + error);
+  });
+
+  device.on('timeout', async (thingName, clientToken) => {
+    debug(`AWS IoT timeout (${clientToken})`);
+  });
+
+  device.on('status', async (thingName, stat, clientToken, stateObject) => {
+    debug(`AWS IoT status: ${stat} (${clientToken})`);
   });
 
   device.on('message', (topic, payload) => {
-    log('>> message', topic, payload);
+    debug('AWS IoT message', topic, payload);
   });
 
-  function handleStateChange(messageJSON: string) {
+  function handleStateMessageChange(messageJSON: string) {
     try {
       const { messageType, message } = JSON.parse(messageJSON);
+      debug('Message: ' + messageType);
       messenger.sendMessage(messageType, message);
     } catch (err) {
-      log('!!! Error parsing message property in status. Invalid JSON format !!!');
+      _log.error('Message parse failed. ' + err);
     }
     const newState = { message: messageJSON };
-    device.update(config.thingName, { state: { reported: newState } });
+    let clientToken = device.update(config.thingName, { state: { reported: newState } });
+    if (clientToken === null) {
+      _log.error('Shadow update failed');
+    } else {
+      debug(`Shadow update requested (${clientToken})`);
+    }
   }
 
-  device.once('status', async (thingName, stat, clientToken, stateObject) => {
-    log('>> status', stateObject);
-    const state = stateObject.state;
-    const metadata = stateObject.metadata;
-    if (state && state.desired && state.desired.message && !isThingShadowSynced(metadata, 'message')) {
-      handleStateChange(state.desired.message);
-    }
-  });
-
   device.on('delta', async (thingName, stateObject) => {
-    log('>> delta', stateObject);
-    const state = stateObject.state;
-    const metadata = stateObject.metadata;
-    handleStateChange(state.message);
+    debug('AWS IoT delta', stateObject);
+    handleStateMessageChange(stateObject.state.message);
   });
 }
 
@@ -107,22 +107,21 @@ let messenger: MessengerService;
  */
 async function startup() {
   try {
-    messenger = new MessengerService();
+    const awsIoTConfigFile = AWSIOT_CONFIG_FILE || path.join(process.cwd(), './config.json');
+    console.log('AWS IoT config file: ' + awsIoTConfigFile);
+    const awsIotConfig = JSON.parse(fs.readFileSync(awsIoTConfigFile, 'utf8'));
 
+    messenger = new MessengerService();
     agent = new EnebularAgent(messenger, {
       nodeRedDir: NODE_RED_DIR || path.join(process.cwd(), 'node-red'),
       configFile: path.join(process.cwd(), '.enebular-config.json'),
     });
 
     await agent.startup();
-    log('### enebular agent started up ####');
+    _log = agent.log;
+    info('Agent started');
 
-    const awsIoTConfigFile = AWSIOT_CONFIG_FILE || path.join(process.cwd(), './config.json');
-    log('AWS IoT config file =', awsIoTConfigFile);
-    const awsIotConfig = JSON.parse(fs.readFileSync(awsIoTConfigFile, 'utf8'));
     setupDevice(awsIotConfig, messenger);
-
-    return agent;
 
   } catch (err) {
     console.error(err);
@@ -139,6 +138,7 @@ async function shutdown() {
 
 async function exit() {
   await shutdown();
+  console.log('Exiting...');
   process.exit(0);
 }
 

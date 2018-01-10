@@ -1,17 +1,11 @@
 /* @flow */
 import EventEmitter from 'events';
 import crypto from 'crypto';
-import debug from 'debug';
 import jwt from 'jsonwebtoken';
+import type {Logger} from 'winston';
 
-/**
- *
- */
-const log = debug('enebular-runtime-agent:device-auth-mediator');
+const moduleName = 'device-auth';
 
-/**
- *
- */
 type DeviceAuthResponse = {
   idToken: string,
   accessToken: string,
@@ -23,12 +17,19 @@ export default class DeviceAuthMediator extends EventEmitter {
   _authRequestUrl: ?string;
   _nonce: ?string;
   _seq: number = 0;
+  _log: Logger;
 
   requestingAuthenticate: boolean = false;
 
-  constructor(emitter: EventEmitter) {
+  constructor(emitter: EventEmitter, log: Logger) {
     super();
     emitter.on('dispatch_auth_token', (message) => this.emit('dispatch_auth_token', message));
+    this._log = log;
+  }
+
+  debug(msg: string, ...args: Array<mixed>) {
+    args.push({ module: moduleName })
+    this._log.debug(msg, ...args);
   }
 
   setAuthRequestUrl(authRequestUrl: string) {
@@ -36,7 +37,7 @@ export default class DeviceAuthMediator extends EventEmitter {
   }
 
   async requestAuthenticate(connectionId: string, deviceId: string): Promise<DeviceAuthResponse> {
-    log('requestAuthenticate', connectionId, deviceId);
+    this.debug('Requesting authenticate...');
     if (this.requestingAuthenticate) {
       throw new Error('Already requesting authenticate');
     }
@@ -65,19 +66,19 @@ export default class DeviceAuthMediator extends EventEmitter {
   }
 
   async _waitTokens() {
-    log('_waitTokens');
+    this.debug('Setting up wait for tokens...');
     const seq = this._seq;
     return new Promise((resolve, reject) => {
       this.on('dispatch_auth_token', ({ idToken, accessToken, state }) => {
-        log('dispatch auth token message received', idToken, accessToken);
+        this.debug('Tokens received');
         const payload = jwt.decode(idToken);
-        log('JWT decoded result = ', payload);
+        this.debug('ID token:', payload);
         if (state === `req-${this._seq}` && payload.nonce && payload.nonce === this._nonce) {
-          log('accepting received auth tokens');
+          this.debug('Accepting tokens');
           this._cleanup();
           resolve({ idToken, accessToken });
         } else {
-          log('received auth tokens are NOT for this device. Ignore.', payload, this._nonce, state, this._seq);
+          this.debug('Received tokens are NOT for this device. Ignore.', payload, this._nonce, state, this._seq);
         }
       });
       setTimeout(() => {

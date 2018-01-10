@@ -5,6 +5,18 @@ import { EnebularAgent, MessengerService } from 'enebular-runtime-agent'
 
 const { DEVICE_ID, DEVICE_API_KEY, NODE_RED_DIR } = process.env
 
+const moduleName = 'mode'
+
+function debug(msg: string, ...args: Array<mixed>) {
+  args.push({ module: moduleName })
+  agent.log.debug(msg, ...args)
+}
+
+function info(msg: string, ...args: Array<mixed>) {
+  args.push({ module: moduleName })
+  agent.log.info(msg, ...args)
+}
+
 const messenger = new MessengerService()
 const device = new ModeDevice(DEVICE_ID, DEVICE_API_KEY)
 const agent = new EnebularAgent(messenger, {
@@ -14,14 +26,15 @@ const agent = new EnebularAgent(messenger, {
 
 async function startup () {
   try {
+    await agent.startup()
+    info('Agent started')
     device.commandCallback = (msg, flags) => {
+      debug('Mode command: ' + JSON.stringify(msg))
+      debug('Message: ' + msg.action)
       messenger.sendMessage(msg.action, msg.parameters)
     }
     device.listenCommands()
-    await agent.startup()
-    console.log('### mode enebular agent started up ####')
     messenger.updateConnectedState(true)
-    return agent
   } catch (err) {
     console.error(err)
     process.exit(1)
