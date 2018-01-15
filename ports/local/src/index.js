@@ -11,7 +11,7 @@ let messenger: MessengerService;
 
 function log(level: string, msg: string, ...args: Array<mixed>) {
   args.push({ module: moduleName })
-  agent.log(level, msg, ...args)
+  agent.log.log(level, msg, ...args)
 }
 
 function debug(msg: string, ...args: Array<mixed>) {
