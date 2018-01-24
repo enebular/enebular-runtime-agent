@@ -80,10 +80,6 @@ export class EnebularAgent {
   _connectionId: ?string;
   _deviceId: ?string;
 
-  _authAttempting: boolean;
-  _authRetryID: ?number;
-  _authRetryTime: number = 0;
-
   _agentState: AgentState;
 
   _logManager: LogManager;
@@ -124,6 +120,8 @@ export class EnebularAgent {
     );
 
     this._deviceAuth = new DeviceAuthMediator(this._messageEmitter, this._log);
+    this._deviceAuth.on('accessTokenUpdate', (accessToken) => this._handleAccessTokenUpdate(accessToken));
+    this._deviceAuth.on('accessTokenClear', () => this._handleAccessTokenClear());
 
     this._configFile = configFile;
     this._agentState = 'init';
@@ -154,13 +152,13 @@ export class EnebularAgent {
     return this._logManager;
   }
 
-  async startup() {    
+  async startup() {
     this._loadAgentConfig();
     return this._nodeRed.startService();
   }
 
   async shutdown() {
-    this._endDeviceAuthenticationAttempt();
+    this._deviceAuth.endAuthAttempt();
     if (this._monitoringActivated) {
       await this._agentMan.notifyStatus('disconnected');
     }
@@ -245,17 +243,24 @@ export class EnebularAgent {
     this._log.debug('  agentManagerBaseUrl:', agentManagerBaseUrl)
     this._connectionId = connectionId;
     this._deviceId = deviceId;
-    this._deviceAuth.setAuthRequestUrl(authRequestUrl);
+    this._deviceAuth.setAuthRequestParameters(
+      authRequestUrl,
+      connectionId,
+      deviceId
+    );
     this._agentMan.setBaseUrl(agentManagerBaseUrl);
     const data = JSON.stringify({ connectionId, deviceId, authRequestUrl, agentManagerBaseUrl });
     fs.writeFileSync(this._configFile, data, 'utf8');
   }
 
   async _handleChangeState() {
+    if (this._agentState !== 'authenticated') {
+      this._activateMonitoring(false);
+    }
     switch (this._agentState) {
       case 'registered':
         if (this._messengerSevice.connected) {
-          this._startDeviceAuthenticationAttempt();
+          this._deviceAuth.startAuthAttempt();
         }
         break;
       case 'unregistered':
@@ -266,68 +271,30 @@ export class EnebularAgent {
     }
   }
 
-  async _requestDeviceAuthentication() {
-    this._log.debug('Requsting authentication...');
-    if (this._deviceAuth.requestingAuthenticate) {
-      return;
-    }
-    const { _connectionId: connectionId, _deviceId: deviceId } = this;    
-    if (!connectionId || !deviceId) {
-      throw new Error('Connection ID and Device ID are not configured yet for the agent');
-    }
-    try {
-      const { accessToken } = await this._deviceAuth.requestAuthenticate(connectionId, deviceId);
-      this._agentMan.setAccessToken(accessToken);
-      this._endDeviceAuthenticationAttempt();
+  _handleAccessTokenUpdate(accessToken: string) {
+    this._agentMan.setAccessToken(accessToken);
+    if (this._agentState !== 'authenticated') {
       this._changeAgentState('authenticated');
-    } catch (err) {
-      this._log.debug('Authentication failed:', err.message);
-      if (this._agentState !== 'unauthenticated') {
-        this._changeAgentState('unauthenticated');
-      }
-      if (this._authAttempting) {
-        this._authRetryTime = (this._authRetryTime === 0) ? 15*1000 : this._authRetryTime * 2;
-        this._authRetryTime = Math.min(this._authRetryTime, 4*60*60*1000);
-        this._log.debug(`Retrying authentication (in ${this._authRetryTime/1000}sec)...`);
-        this._authRetryID = setTimeout(() => {
-          this._requestDeviceAuthentication();
-        }, this._authRetryTime);
-      }
     }
   }
 
-  _startDeviceAuthenticationAttempt() {
-    this._log.info('Starting authentication...');
-    /* if it's already active, just reset the retry time */
-    this._authRetryTime = 0;
-    if (!this._authAttempting) {
-      this._requestDeviceAuthentication();
-      this._authAttempting = true;
-    }
-  }
-
-  _endDeviceAuthenticationAttempt() {
-    if (this._authAttempting) {
-      this._log.info('Ending authentication');
-      if (this._authRetryID) {
-        clearTimeout(this._authRetryID);
-        this._authRetryID = null;
-      }
-      this._authRetryTime = 0;
-      this._authAttempting = false;
+  _handleAccessTokenClear() {
+    this._agentMan.setAccessToken('');
+    if (this._agentState !== 'unauthenticated') {
+      this._changeAgentState('unauthenticated');
     }
   }
 
   _handleMessengerConnect() {
     this._log.debug('Messenger connected');
     if (this._agentState === 'registered' || this._agentState === 'unauthenticated') {
-      this._startDeviceAuthenticationAttempt();
+      this._deviceAuth.startAuthAttempt();
     }
   }
 
   async _handleMessengerDisconnect() {
     this._log.debug('Messenger disconnected');
-    this._endDeviceAuthenticationAttempt();
+    this._deviceAuth.endAuthAttempt();
   }
 
   async _handleMessengerMessage(params: { messageType: string, message: any }) {
