@@ -23,7 +23,7 @@ export default class DeviceAuthMediator extends EventEmitter {
 
   constructor(emitter: EventEmitter, log: Logger) {
     super();
-    emitter.on('dispatch_auth_token', (message) => this.emit('dispatch_auth_token', message));
+    emitter.on('updateAuth', (message) => this.emit('updateAuth', message));
     this._log = log;
   }
 
@@ -69,7 +69,7 @@ export default class DeviceAuthMediator extends EventEmitter {
     this.debug('Setting up wait for tokens...');
     const seq = this._seq;
     return new Promise((resolve, reject) => {
-      this.on('dispatch_auth_token', ({ idToken, accessToken, state }) => {
+      this.on('updateAuth', ({ idToken, accessToken, state }) => {
         this.debug('Tokens received');
         const payload = jwt.decode(idToken);
         this.debug('ID token:', payload);
@@ -93,7 +93,7 @@ export default class DeviceAuthMediator extends EventEmitter {
   _cleanup() {
     this.requestingAuthenticate = false;
     this._nonce = null;
-    this.removeAllListeners('dispatch_auth_token');
+    this.removeAllListeners('updateAuth');
   }
 
 }
