@@ -4,6 +4,12 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import type {Logger} from 'winston';
 
+/**
+ * Events emitted (for external use):
+ *  - accessTokenUpdate (accessToken)
+ *  - accessTokenClear
+ */
+
 const moduleName = 'device-auth';
 
 type DeviceAuthResponse = {
@@ -14,17 +20,22 @@ type DeviceAuthResponse = {
 const AUTH_TOKEN_TIMEOUT = 10000;
 
 export default class DeviceAuthMediator extends EventEmitter {
-  _authRequestUrl: ?string;
+  _log: Logger;
+  _requestUrl: string;
+  _connectionId: string;
+  _deviceId: string;
+  _attemptingAuth: boolean;
+  _requestingAuth: boolean = false;
+  _requestRetryID: ?number;
+  _requestRetryTime: number = 0;
   _nonce: ?string;
   _seq: number = 0;
-  _log: Logger;
-
-  requestingAuthenticate: boolean = false;
 
   constructor(emitter: EventEmitter, log: Logger) {
     super();
-    emitter.on('dispatch_auth_token', (message) => this.emit('dispatch_auth_token', message));
     this._log = log;
+    emitter.on('updateAuth', (message) => this.emit('updateAuthCommand', message));
+    this._setupUpdateAuthCommandHandling()
   }
 
   debug(msg: string, ...args: Array<mixed>) {
@@ -32,68 +43,151 @@ export default class DeviceAuthMediator extends EventEmitter {
     this._log.debug(msg, ...args);
   }
 
-  setAuthRequestUrl(authRequestUrl: string) {
-    this._authRequestUrl = authRequestUrl;
+  info(msg: string, ...args: Array<mixed>) {
+    args.push({ module: moduleName })
+    this._log.info(msg, ...args);
   }
 
-  async requestAuthenticate(connectionId: string, deviceId: string): Promise<DeviceAuthResponse> {
-    this.debug('Requesting authenticate...');
-    if (this.requestingAuthenticate) {
-      throw new Error('Already requesting authenticate');
+  _setupUpdateAuthCommandHandling() {
+    this.on('updateAuthCommand', ({ idToken, accessToken, state }) => {
+
+      if (idToken === '' && accessToken === '' && state === '') {
+
+        this.debug('updateAuth:authRequestTrigger command received');
+        this.startAuthAttempt();
+
+      } else {
+
+        this.debug('updateAuth:tokenUpdate command received');
+        if (this._requestingAuth) {
+          const payload = jwt.decode(idToken);
+          this.debug('ID token:', payload);
+          if (state === `req-${this._seq}` && payload.nonce && payload.nonce === this._nonce) {
+            this.debug('Accepting tokens');
+            if (accessToken === '') {
+              this.debug('accessToken cleared');
+              this.emit('accessTokenClear')
+            } else {
+              this.debug('accessToken provided');
+              this.emit('accessTokenUpdate', accessToken)
+            }
+          } else {
+            this.debug('Tokens are not for this device - ignoring',
+              payload,
+              this._nonce,
+              state,
+              this._seq);
+          }
+        } else {
+          this.debug("Wasn't requesting auth so ignoring updateAuth command");
+        }
+      }
+
+    });
+  }
+
+  async _requestAuthWithRetry() {
+    this.debug('Requesting authentication...');
+    try {
+      await this._requestAuth();
+      this._requestAuthCleanup();
+      this.endAuthAttempt();
+    } catch (err) {
+      this._requestAuthCleanup();
+      this.debug('Auth failed:', err.message);
+      this.emit('authFailed')
+      if (this._attemptingAuth) {
+        this._requestRetryTime = (this._requestRetryTime === 0) ? 15*1000 : this._requestRetryTime * 2;
+        this._requestRetryTime = Math.min(this._requestRetryTime, 4*60*60*1000);
+        this.debug(`Retrying authentication (in ${this._requestRetryTime/1000}sec)...`);
+        this._requestRetryID = setTimeout(() => {
+          this._requestAuthWithRetry();
+        }, this._requestRetryTime);
+      }
     }
-    this.requestingAuthenticate = true;
-    const authRequestUrl = this._authRequestUrl;
-    if (!authRequestUrl) { throw new Error('Authentication Request URL is not configured correctly'); }
+  }
+
+  async _requestAuth() {
+    if (this._requestingAuth) {
+      throw new Error('Already requesting auth');
+    }
+    if (!this._requestUrl || !this._connectionId || !this._deviceId) {
+      throw new Error('Auth request parameters are not yet configured');
+    }
+    this._requestingAuth = true;
     const nonce = crypto.randomBytes(16).toString('hex');
     this._nonce = nonce;
     this._seq++;
     const state = `req-${this._seq}`;
-    const tokens_ = this._waitTokens();
-    const res = await fetch(authRequestUrl, {
+    const waitTokens = this._waitForTokenUpdate();
+    const res = await fetch(this._requestUrl, {
       method: 'POST',
-      body: JSON.stringify({ connectionId, deviceId, nonce, state }),
+      body: JSON.stringify({
+        connectionId: this._connectionId,
+        deviceId: this._deviceId,
+        nonce,
+        state
+      }),
       headers: {
         'Content-Type': 'application/json',
       },
     });
-    if (!res.ok) {
-      this._cleanup();
-      throw new Error('Error occurred while requesting device authentication');
+    if (res.ok) {
+      await waitTokens;
     } else {
-      const tokens = await tokens_;
-      return tokens;
+      throw new Error('Error occurred while requesting auth');
     }
   }
 
-  async _waitTokens() {
-    this.debug('Setting up wait for tokens...');
-    const seq = this._seq;
+  async _waitForTokenUpdate() {
+    this.debug('Setting up wait for token update...');
     return new Promise((resolve, reject) => {
-      this.on('dispatch_auth_token', ({ idToken, accessToken, state }) => {
-        this.debug('Tokens received');
-        const payload = jwt.decode(idToken);
-        this.debug('ID token:', payload);
-        if (state === `req-${this._seq}` && payload.nonce && payload.nonce === this._nonce) {
-          this.debug('Accepting tokens');
-          this._cleanup();
-          resolve({ idToken, accessToken });
-        } else {
-          this.debug('Received tokens are NOT for this device. Ignore.', payload, this._nonce, state, this._seq);
-        }
-      });
+      this.on('accessTokenUpdate', (accessToken) => { resolve() });
+      this.on('accessTokenClear', (accessToken) => { resolve() });
       setTimeout(() => {
-        if (this._seq === seq) {
-          this._cleanup();
-          reject(new Error('Device Authentication Timeout.'));
-        }
+        reject(new Error('Device authentication timeout'));
       }, AUTH_TOKEN_TIMEOUT);
     });
   }
 
-  _cleanup() {
-    this.requestingAuthenticate = false;
+  _requestAuthCleanup() {
+    this._requestingAuth = false;
     this._nonce = null;
-    this.removeAllListeners('dispatch_auth_token');
+    this.removeAllListeners('updateAuth');
+  }
+
+  endAuthAttempt() {
+    if (this._attemptingAuth) {
+      this.info('Ending authentication');
+      if (this._requestRetryID) {
+        clearTimeout(this._requestRetryID);
+        this._requestRetryID = null;
+      }
+      this._requestRetryTime = 0;
+      this._nonce = null;
+      this._requestingAuth = false;
+      this._attemptingAuth = false;
+    }
+  }
+
+  startAuthAttempt() {
+    this.info('Starting authentication...');
+    /* if it's already active, just reset the retry time */
+    this._requestRetryTime = 0;
+    if (!this._attemptingAuth) {
+      this._requestAuthWithRetry();
+      this._attemptingAuth = true;
+    }
+  }
+
+  setAuthRequestParameters(
+    authRequestUrl: string,
+    connectionId: string,
+    deviceId: string
+  ) {
+    this._requestUrl = authRequestUrl;
+    this._connectionId = connectionId;
+    this._deviceId = deviceId;
   }
 
 }
