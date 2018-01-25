@@ -40,20 +40,34 @@ async function startLocalServer(messenger: MessengerService): net.Server {
 
   function handleClientMessage(clientMessage: string) {
     debug(`client message: [${clientMessage}]`);
+    let message;
     try {
-      const { messageType, message } = JSON.parse(clientMessage);
-      messenger.sendMessage(messageType, message);
+      message = JSON.parse(clientMessage);
     } catch (err) {
       error('client message: JSON parse failed: ' + err);
+    }
+    switch (message.type) {
+      case 'connect':
+        messenger.updateConnectedState(true);
+      break;
+      case 'disconnect':
+        messenger.updateConnectedState(false);
+      break;
+      case 'message':
+        messenger.sendMessage(
+          message.message.messageType,
+          message.message.message
+        );
+      break;
+      default:
+        info('unsupported client message type: ' + message.type);
+      break;
     }
   }
 
   const server = net.createServer((socket) => {
 
     info('client connected');
-
-    //todo: we really need the client to tell us when mbed is really online
-    messenger.updateConnectedState(true);
 
     socket.setEncoding('utf8');
 
