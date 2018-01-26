@@ -17,7 +17,6 @@
 // ----------------------------------------------------------------------------
 
 #include "simplem2mclient.h"
-#include "enebular_agent.h"
 #include "enebular_mbed.h"
 
 static int main_application(void);
@@ -50,29 +49,23 @@ int main_application(void)
     mbedClient.add_cloud_resource(5000, 0, 1, "unregister", M2MResourceInstance::STRING,
                  M2MBase::POST_ALLOWED, NULL, false, (void*)unregister, NULL);
 
-    enebular_mbed_init(&mbedClient);
+    EnebularMbed enebularMbed(&mbedClient);
 
     // Print to screen if available.
     clear_screen();
     print_to_screen(0, 3, "Cloud Client: Connecting");
 
-    enebular_agent_init();
+    enebularMbed.init();
 
     mbedClient.register_and_connect();
 
-    bool reported_connected = false;
     // Check if client is registering or registered, if true sleep and repeat.
     while (mbedClient.is_register_called()) {
-        if (reported_connected != mbedClient.is_client_registered()) {
-            reported_connected = mbedClient.is_client_registered();
-            enebular_agent_notify_conn_state(reported_connected);
-        }
+        enebularMbed.tick();
         do_wait(100);
     }
 
-    enebular_agent_notify_conn_state(false);
-
-    enebular_agent_cleanup();
+    enebularMbed.deinit();
 
     // Client unregistered, exit program.
     return 0;
