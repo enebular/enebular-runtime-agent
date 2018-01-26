@@ -17,9 +17,8 @@
 // ----------------------------------------------------------------------------
 
 #include "simplem2mclient.h"
-#ifdef TARGET_LIKE_MBED
-#include "mbed.h"
-#endif
+#include "enebular_agent.h"
+#include <time.h>
 
 static int main_application(void);
 
@@ -29,138 +28,269 @@ int main()
     return run_application(&main_application);
 }
 
+#define MAX_RESOURCE_SET_UPDATE_GAP (10)
+
+#define OBJECT_ID_DEPLOY_FLOW       (26242)
+#define OBJECT_ID_REGISTER          (26243)
+#define OBJECT_ID_AUTH_TOKEN        (26244)
+#define OBJECT_ID_CONFIG            (26245)
+
+#define RESOURCE_ID_DOWNLOAD_URL            (26241)
+#define RESOURCE_ID_CONNECTION_ID           (26241)
+#define RESOURCE_ID_DEVICE_ID               (26242)
+#define RESOURCE_ID_AUTH_REQUEST_URL        (26243)
+#define RESOURCE_ID_AGENT_MANAGER_BASE_URL  (26244)
+#define RESOURCE_ID_ACCEESS_TOKEN           (26241)
+#define RESOURCE_ID_ID_TOKEN                (26242)
+#define RESOURCE_ID_STATE                   (26243)
+#define RESOURCE_ID_MONITOR_ENABLE          (26241)
+
 // Pointers to the resources that will be created in main_application().
-static M2MResource* button_res;
-static M2MResource* pattern_res;
-static M2MResource* blink_res;
+static M2MResource* deploy_flow_download_url_res;
+static M2MResource* register_connection_id_res;
+static M2MResource* register_device_id_res;
+static M2MResource* register_auth_request_url_res;
+static M2MResource* register_agent_manager_base_url_res;
+static M2MResource* auth_token_access_token_res;
+static M2MResource* auth_token_id_token_res;
+static M2MResource* auth_token_state_res;
+
+unsigned long long register_connection_id_time;
+unsigned long long register_device_id_time;
+unsigned long long register_auth_request_url_time;
+unsigned long long register_agent_manager_base_url_time;
+unsigned long long auth_token_access_token_time;
+unsigned long long auth_token_id_token_time;
+unsigned long long auth_token_state_time;
 
 // Pointer to mbedClient, used for calling close function.
 static SimpleM2MClient *client;
 
-void pattern_updated(const char *)
- {
-    printf("PUT received, new value: %s\n", pattern_res->get_value_string().c_str());
-}
-
-void blink_callback(void *) {
-    String pattern_string = pattern_res->get_value_string();
-    const char *pattern = pattern_string.c_str();
-    printf("LED pattern = %s\n", pattern);
-    // The pattern is something like 500:200:500, so parse that.
-    // LED blinking is done while parsing.
-    toggle_led();
-    while (*pattern != '\0') {
-        // Wait for requested time.
-        do_wait(atoi(pattern));
-        toggle_led();
-        // Search for next value.
-        pattern = strchr(pattern, ':');
-        if(!pattern) {
-            break; // while
-        }
-        pattern++;
-    }
-    led_off();
-}
-
-void button_notification_status_callback(const M2MBase& object, const NoticationDeliveryStatus status)
+static void process_deploy_flow_update(void)
 {
-    switch(status) {
-        case NOTIFICATION_STATUS_BUILD_ERROR:
-            printf("Notification callback: (%s) error when building CoAP message\n", object.uri_path());
-            break;
-        case NOTIFICATION_STATUS_RESEND_QUEUE_FULL:
-            printf("Notification callback: (%s) CoAP resend queue full\n", object.uri_path());
-            break;
-        case NOTIFICATION_STATUS_SENT:
-            printf("Notification callback: (%s) Notification sent to server\n", object.uri_path());
-            break;
-        case NOTIFICATION_STATUS_DELIVERED:
-            printf("Notification callback: (%s) Notification delivered\n", object.uri_path());
-            break;
-        case NOTIFICATION_STATUS_SEND_FAILED:
-            printf("Notification callback: (%s) Notification sending failed\n", object.uri_path());
-            break;
-        case NOTIFICATION_STATUS_SUBSCRIBED:
-            printf("Notification callback: (%s) subscribed\n", object.uri_path());
-            break;
-        case NOTIFICATION_STATUS_UNSUBSCRIBED:
-            printf("Notification callback: (%s) subscription removed\n", object.uri_path());
-            break;
-        default:
-            break;
-    }
+    char msg[1024*4];
+
+    snprintf(msg, sizeof(msg)-1,
+        "{"
+            "\"downloadUrl\": \"%s\""
+        "}",
+        deploy_flow_download_url_res->get_value_string().c_str());
+    msg[sizeof(msg)-1] = '\0';
+
+    enebular_agent_send_msg("deploy", msg);
 }
 
-// This function is called when a POST request is received for resource 5000/0/1.
+static void process_register_update(void)
+{
+    char msg[1024*4];
+    unsigned long long now;
+
+    now = time(NULL);
+
+    if (now - register_connection_id_time > MAX_RESOURCE_SET_UPDATE_GAP ||
+            now - register_device_id_time > MAX_RESOURCE_SET_UPDATE_GAP ||
+            now - register_auth_request_url_time > MAX_RESOURCE_SET_UPDATE_GAP ||
+            now - register_agent_manager_base_url_time > MAX_RESOURCE_SET_UPDATE_GAP) {
+        return;
+    }
+
+    snprintf(msg, sizeof(msg)-1,
+        "{"
+            "\"connectionId\": \"%s\","
+            "\"deviceId\": \"%s\","
+            "\"authRequestUrl\": \"%s\","
+            "\"agentManagerBaseUrl\": \"%s\""
+        "}",
+        register_connection_id_res->get_value_string().c_str(),
+        register_device_id_res->get_value_string().c_str(),
+        register_auth_request_url_res->get_value_string().c_str(),
+        register_agent_manager_base_url_res->get_value_string().c_str()
+    );
+    msg[sizeof(msg)-1] = '\0';
+
+    enebular_agent_send_msg("register", msg);
+
+    register_connection_id_time = 0;
+    register_device_id_time = 0;
+    register_auth_request_url_time = 0;
+    register_agent_manager_base_url_time = 0;
+}
+
+static void process_auth_token_update(void)
+{
+    char msg[1024*4];
+    unsigned long long now;
+
+    now = time(NULL);
+
+    if (now - auth_token_access_token_time > MAX_RESOURCE_SET_UPDATE_GAP ||
+            now - auth_token_id_token_time > MAX_RESOURCE_SET_UPDATE_GAP ||
+            now - auth_token_state_time > MAX_RESOURCE_SET_UPDATE_GAP) {
+        return;
+    }
+
+    snprintf(msg, sizeof(msg)-1,
+        "{"
+            "\"accessToken\": \"%s\","
+            "\"idToken\": \"%s\","
+            "\"state\": \"%s\""
+        "}",
+        auth_token_access_token_res->get_value_string().c_str(),
+        auth_token_id_token_res->get_value_string().c_str(),
+        auth_token_state_res->get_value_string().c_str()
+    );
+    msg[sizeof(msg)-1] = '\0';
+
+    enebular_agent_send_msg("updateAuth", msg);
+
+    auth_token_access_token_time = 0;
+    auth_token_id_token_time = 0;
+    auth_token_state_time = 0;
+}
+
 void unregister(void *)
 {
     printf("Unregister resource executed\n");
     client->close();
 }
 
-// This function is called when a POST request is received for resource 5000/0/2.
-void factory_reset(void *)
-{
-    printf("Factory reset resource executed\n");
-    client->close();
-    kcm_status_e kcm_status = kcm_factory_reset();
-    if (kcm_status != KCM_STATUS_SUCCESS) {
-        printf("Failed to do factory reset - %d\n", kcm_status);
-    } else {
-        printf("Factory reset completed. Now restart the device\n");
-    }
+static void deploy_flow_download_url_updated(const char *val)
+ {
+    printf("deploy_flow:download_url: %s\n",
+        deploy_flow_download_url_res->get_value_string().c_str());
+
+    process_deploy_flow_update();
+}
+
+static void register_connection_id_updated(const char *val)
+ {
+    printf("register:connection_id: %s\n",
+        register_connection_id_res->get_value_string().c_str());
+
+    register_connection_id_time = time(NULL);
+    process_register_update();
+}
+
+static void register_device_id_updated(const char *val)
+ {
+    printf("register:device_id: %s\n",
+        register_device_id_res->get_value_string().c_str());
+
+    register_device_id_time = time(NULL);
+    process_register_update();
+}
+
+static void register_auth_request_url_updated(const char *val)
+ {
+    printf("register:auth_request_url: %s\n",
+        register_auth_request_url_res->get_value_string().c_str());
+
+    register_auth_request_url_time = time(NULL);
+    process_register_update();
+}
+
+static void register_agent_manager_base_url_updated(const char *val)
+ {
+    printf("register:agent_manager_baseUrl: %s\n",
+        register_agent_manager_base_url_res->get_value_string().c_str());
+
+    register_agent_manager_base_url_time = time(NULL);
+    process_register_update();
+}
+
+static void auth_token_access_token_updated(const char *val)
+ {
+    printf("auth_token:access_token: %s\n",
+        auth_token_access_token_res->get_value_string().c_str());
+
+    auth_token_access_token_time = time(NULL);
+    process_auth_token_update();
+}
+
+static void auth_token_id_token_updated(const char *val)
+ {
+    printf("auth_token:id_token: %s\n",
+        auth_token_id_token_res->get_value_string().c_str());
+
+    auth_token_id_token_time = time(NULL);
+    process_auth_token_update();
+}
+
+static void auth_token_state_updated(const char *val)
+ {
+    printf("auth_token:state: %s\n",
+        auth_token_state_res->get_value_string().c_str());
+
+    auth_token_state_time = time(NULL);
+    process_auth_token_update();
 }
 
 int main_application(void)
 {
-    // IOTMORF-1712: DAPLINK starts the previous application during flashing a new binary
-    // This is workaround to prevent possible deletion of credentials or storage corruption
-    // while replacing the application binary.
-#ifdef TARGET_LIKE_MBED
-    wait(2);
-#endif
-
     // SimpleClient is used for registering and unregistering resources to a server.
     SimpleM2MClient mbedClient;
 
     // Save pointer to mbedClient so that other functions can access it.
     client = &mbedClient;
 
-    // Create resource for button count. Path of this resource will be: 3200/0/5501.
-    button_res = mbedClient.add_cloud_resource(3200, 0, 5501, "button_resource", M2MResourceInstance::INTEGER,
-                              M2MBase::GET_ALLOWED, 0, true, NULL, (void*)button_notification_status_callback);
-
-    // Create resource for led blinking pattern. Path of this resource will be: 3201/0/5853.
-    pattern_res = mbedClient.add_cloud_resource(3201, 0, 5853, "pattern_resource", M2MResourceInstance::STRING,
-                               M2MBase::GET_PUT_ALLOWED, "500:500:500:500", false, (void*)pattern_updated, NULL);
-
-    // Create resource for starting the led blinking. Path of this resource will be: 3201/0/5850.
-    blink_res = mbedClient.add_cloud_resource(3201, 0, 5850, "blink_resource", M2MResourceInstance::STRING,
-                             M2MBase::POST_ALLOWED, "", false, (void*)blink_callback, NULL);
-
     // Create resource for unregistering the device. Path of this resource will be: 5000/0/1.
     mbedClient.add_cloud_resource(5000, 0, 1, "unregister", M2MResourceInstance::STRING,
-                 M2MBase::POST_ALLOWED, NULL, false, (void*)unregister, NULL);
+                M2MBase::POST_ALLOWED, NULL, false, (void*)unregister, NULL);
 
-    // Create resource for running factory reset for the device. Path of this resource will be: 5000/0/2.
-    mbedClient.add_cloud_resource(5000, 0, 2, "factory_reset", M2MResourceInstance::STRING,
-                 M2MBase::POST_ALLOWED, NULL, false, (void*)factory_reset, NULL);
+    deploy_flow_download_url_res = mbedClient.add_cloud_resource(
+        OBJECT_ID_DEPLOY_FLOW, 0, RESOURCE_ID_DOWNLOAD_URL, "download_url",
+        M2MResourceInstance::STRING, M2MBase::GET_PUT_ALLOWED, NULL, false,
+        (void*)deploy_flow_download_url_updated, NULL);
+
+    register_connection_id_res = mbedClient.add_cloud_resource(
+        OBJECT_ID_REGISTER, 0, RESOURCE_ID_CONNECTION_ID, "connection_id",
+        M2MResourceInstance::STRING, M2MBase::GET_PUT_ALLOWED, NULL, false,
+        (void*)register_connection_id_updated, NULL);
+    register_device_id_res = mbedClient.add_cloud_resource(
+        OBJECT_ID_REGISTER, 0, RESOURCE_ID_DEVICE_ID, "device_id",
+        M2MResourceInstance::STRING, M2MBase::GET_PUT_ALLOWED, NULL, false,
+        (void*)register_device_id_updated, NULL);
+    register_auth_request_url_res = mbedClient.add_cloud_resource(
+        OBJECT_ID_REGISTER, 0, RESOURCE_ID_AUTH_REQUEST_URL, "auth_request_url",
+        M2MResourceInstance::STRING, M2MBase::GET_PUT_ALLOWED, NULL, false,
+        (void*)register_auth_request_url_updated, NULL);
+    register_agent_manager_base_url_res = mbedClient.add_cloud_resource(
+        OBJECT_ID_REGISTER, 0, RESOURCE_ID_AGENT_MANAGER_BASE_URL, "agent_manager_base_url",
+        M2MResourceInstance::STRING, M2MBase::GET_PUT_ALLOWED, NULL, false,
+        (void*)register_agent_manager_base_url_updated, NULL);
+
+    auth_token_access_token_res = mbedClient.add_cloud_resource(
+        OBJECT_ID_AUTH_TOKEN, 0, RESOURCE_ID_ACCEESS_TOKEN, "access_token",
+        M2MResourceInstance::STRING, M2MBase::GET_PUT_ALLOWED, NULL, false,
+        (void*)auth_token_access_token_updated, NULL);
+    auth_token_id_token_res = mbedClient.add_cloud_resource(
+        OBJECT_ID_AUTH_TOKEN, 0, RESOURCE_ID_ID_TOKEN, "id_token",
+        M2MResourceInstance::STRING, M2MBase::GET_PUT_ALLOWED, NULL, false,
+        (void*)auth_token_id_token_updated, NULL);
+    auth_token_state_res = mbedClient.add_cloud_resource(
+        OBJECT_ID_AUTH_TOKEN, 0, RESOURCE_ID_STATE, "state",
+        M2MResourceInstance::STRING, M2MBase::GET_PUT_ALLOWED, NULL, false,
+        (void*)auth_token_state_updated, NULL);
 
     // Print to screen if available.
     clear_screen();
     print_to_screen(0, 3, "Cloud Client: Connecting");
 
+    enebular_agent_init();
+
     mbedClient.register_and_connect();
 
+    bool reported_connected = false;
     // Check if client is registering or registered, if true sleep and repeat.
     while (mbedClient.is_register_called()) {
-        static int button_count = 0;
-        do_wait(100);
-        if (button_clicked()) {
-            button_res->set_value(++button_count);
+        if (reported_connected != mbedClient.is_client_registered()) {
+            reported_connected = mbedClient.is_client_registered();
+            enebular_agent_notify_conn_state(reported_connected);
         }
+        do_wait(100);
     }
+
+    enebular_agent_notify_conn_state(false);
 
     // Client unregistered, exit program.
     return 0;
