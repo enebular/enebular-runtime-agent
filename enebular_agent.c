@@ -331,14 +331,14 @@ int enebular_agent_send_msg(const char *type, const char *content)
         content
     );
 
-    agent_send_msg(msg);
+    return agent_send_msg(msg);
 }
 
 int enebular_agent_notify_conn_state(bool connected)
 {
     if (connected) {
-        agent_send_msg("{\"type\": \"connect\"}");
+        return agent_send_msg("{\"type\": \"connect\"}");
     } else {
-        agent_send_msg("{\"type\": \"disconnect\"}");
+        return agent_send_msg("{\"type\": \"disconnect\"}");
     }
 }
