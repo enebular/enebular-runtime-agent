@@ -292,6 +292,8 @@ int main_application(void)
 
     enebular_agent_notify_conn_state(false);
 
+    enebular_agent_cleanup();
+
     // Client unregistered, exit program.
     return 0;
 }
