@@ -51,7 +51,7 @@ export default class DeviceAuthMediator extends EventEmitter {
   _setupUpdateAuthCommandHandling() {
     this.on('updateAuthCommand', ({ idToken, accessToken, state }) => {
 
-      if (idToken === '' && accessToken === '' && state === '') {
+      if (idToken === '-' && accessToken === '-' && state === '-') {
 
         this.debug('updateAuth:authRequestTrigger command received');
         this.startAuthAttempt();
@@ -64,7 +64,7 @@ export default class DeviceAuthMediator extends EventEmitter {
           this.debug('ID token:', payload);
           if (state === `req-${this._seq}` && payload.nonce && payload.nonce === this._nonce) {
             this.debug('Accepting tokens');
-            if (accessToken === '') {
+            if (accessToken === '-') {
               this.debug('accessToken cleared');
               this.emit('accessTokenClear')
             } else {
