@@ -185,15 +185,15 @@ export class EnebularAgent {
       this._agentMan.notifyStatus(this._nodeRed.getStatus());
       this._notifyStatusIntervalID = setInterval(() => {
         this._agentMan.notifyStatus(this._nodeRed.getStatus());
-      }, 30000);
+      }, 300 * 1000);
     }
   }
 
   _startMonitoring() {
     this._log.info('Starting monitoring...');
     this._logManager.configureEnebular({
-      sendInterval: 30,
-      sendSize: 100 * 1024,
+      sendInterval: 300,
+      sendSize: 256 * 1024,
     });
     this._activateMonitoring(true);
   }
