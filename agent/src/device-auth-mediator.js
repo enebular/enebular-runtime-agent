@@ -30,12 +30,13 @@ export default class DeviceAuthMediator extends EventEmitter {
   _requestRetryTime: number = 0;
   _nonce: ?string;
   _seq: number = 0;
+  _tokenEmitter;
 
-  constructor(emitter: EventEmitter, log: Logger) {
+  constructor(messageEmitter: EventEmitter, log: Logger) {
     super();
     this._log = log;
-    emitter.on('updateAuth', (message) => this.emit('updateAuthCommand', message));
-    this._setupUpdateAuthCommandHandling()
+    messageEmitter.on('updateAuth', (message) => this._handleUpdateAuth(message));
+    this._tokenEmitter = new EventEmitter();
   }
 
   debug(msg: string, ...args: Array<mixed>) {
@@ -48,42 +49,39 @@ export default class DeviceAuthMediator extends EventEmitter {
     this._log.info(msg, ...args);
   }
 
-  _setupUpdateAuthCommandHandling() {
-    this.on('updateAuthCommand', ({ idToken, accessToken, state }) => {
+  _handleUpdateAuth({ idToken, accessToken, state }) {
+    if (idToken === '-' && accessToken === '-' && state === '-') {
 
-      if (idToken === '-' && accessToken === '-' && state === '-') {
+      this.debug('updateAuth:authRequestTrigger command received');
+      this.startAuthAttempt();
 
-        this.debug('updateAuth:authRequestTrigger command received');
-        this.startAuthAttempt();
+    } else {
 
-      } else {
-
-        this.debug('updateAuth:tokenUpdate command received');
-        if (this._requestingAuth) {
-          const payload = jwt.decode(idToken);
-          this.debug('ID token:', payload);
-          if (state === `req-${this._seq}` && payload.nonce && payload.nonce === this._nonce) {
-            this.debug('Accepting tokens');
-            if (accessToken === '-') {
-              this.debug('accessToken cleared');
-              this.emit('accessTokenClear')
-            } else {
-              this.debug('accessToken provided');
-              this.emit('accessTokenUpdate', accessToken)
-            }
+      this.debug('updateAuth:tokenUpdate command received');
+      if (this._requestingAuth) {
+        const payload = jwt.decode(idToken);
+        this.debug('ID token:', payload);
+        if (state === `req-${this._seq}` && payload.nonce && payload.nonce === this._nonce) {
+          this.debug('Accepting tokens');
+          this._tokenEmitter.emit('tokenUpdate');
+          if (accessToken === '-') {
+            this.debug('accessToken cleared');
+            this.emit('accessTokenClear')
           } else {
-            this.debug('Tokens are not for this device - ignoring',
-              payload,
-              this._nonce,
-              state,
-              this._seq);
+            this.debug('accessToken provided');
+            this.emit('accessTokenUpdate', accessToken)
           }
         } else {
-          this.debug("Wasn't requesting auth so ignoring updateAuth command");
+          this.debug('Tokens are not for this device - ignoring',
+            payload,
+            this._nonce,
+            state,
+            this._seq);
         }
+      } else {
+        this.debug("Wasn't requesting auth so ignoring updateAuth command");
       }
-
-    });
+    }
   }
 
   async _requestAuthWithRetry() {
@@ -120,30 +118,32 @@ export default class DeviceAuthMediator extends EventEmitter {
     this._seq++;
     const state = `req-${this._seq}`;
     const waitTokens = this._waitForTokenUpdate();
-    const res = await fetch(this._requestUrl, {
-      method: 'POST',
-      body: JSON.stringify({
-        connectionId: this._connectionId,
-        deviceId: this._deviceId,
-        nonce,
-        state
-      }),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    if (res.ok) {
-      await waitTokens;
-    } else {
-      throw new Error('Error occurred while requesting auth');
+    try {
+      const res = await fetch(this._requestUrl, {
+        method: 'POST',
+        body: JSON.stringify({
+          connectionId: this._connectionId,
+          deviceId: this._deviceId,
+          nonce,
+          state
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!res.ok) {
+        this.debug(`Auth request returned failed response (${res.status} ${res.statusText})`);
+      }
+    } catch (err) {
+      this.debug('Auth request failed: ' + err.message);
     }
+    await waitTokens;
   }
 
   async _waitForTokenUpdate() {
     this.debug('Setting up wait for token update...');
     return new Promise((resolve, reject) => {
-      this.on('accessTokenUpdate', (accessToken) => { resolve() });
-      this.on('accessTokenClear', (accessToken) => { resolve() });
+      this._tokenEmitter.on('tokenUpdate', (accessToken) => { resolve() });
       setTimeout(() => {
         reject(new Error('Device authentication timeout'));
       }, AUTH_TOKEN_TIMEOUT);
@@ -153,7 +153,7 @@ export default class DeviceAuthMediator extends EventEmitter {
   _requestAuthCleanup() {
     this._requestingAuth = false;
     this._nonce = null;
-    this.removeAllListeners('updateAuth');
+    this._tokenEmitter.removeAllListeners('tokenUpdate');
   }
 
   endAuthAttempt() {
