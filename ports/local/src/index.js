@@ -43,25 +43,25 @@ async function startLocalServer(messenger: MessengerService): net.Server {
     let message;
     try {
       message = JSON.parse(clientMessage);
+      switch (message.type) {
+        case 'connect':
+          messenger.updateConnectedState(true);
+        break;
+        case 'disconnect':
+          messenger.updateConnectedState(false);
+        break;
+        case 'message':
+          messenger.sendMessage(
+            message.message.messageType,
+            message.message.message
+          );
+        break;
+        default:
+          info('unsupported client message type: ' + message.type);
+        break;
+      }
     } catch (err) {
-      error('client message: JSON parse failed: ' + err);
-    }
-    switch (message.type) {
-      case 'connect':
-        messenger.updateConnectedState(true);
-      break;
-      case 'disconnect':
-        messenger.updateConnectedState(false);
-      break;
-      case 'message':
-        messenger.sendMessage(
-          message.message.messageType,
-          message.message.message
-        );
-      break;
-      default:
-        info('unsupported client message type: ' + message.type);
-      break;
+      error('client message: failed to handle: ' + err);
     }
   }
 
