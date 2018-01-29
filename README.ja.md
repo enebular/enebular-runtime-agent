@@ -38,4 +38,4 @@ Node-REDもNode.jsのモジュールとしてインストールされます。
 
 エージェントの設定と実行の詳細については、各ポートのreadmeファイルを参照してください。
 
-- [AWS IoT](ports/awsiot/README.md)
+- [AWS IoT](ports/awsiot/README.ja.md)
