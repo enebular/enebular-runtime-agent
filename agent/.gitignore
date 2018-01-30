@@ -1,0 +1,23 @@
+### https://raw.github.com/github/gitignore/master/Node.gitignore
+
+lib-cov
+*.seed
+*.log
+*.csv
+*.dat
+*.out
+*.pid
+*.gz
+
+pids
+logs
+results
+
+lib/
+
+npm-debug.log
+node_modules
+
+.env
+.DS_Store
+.enebular-config.json

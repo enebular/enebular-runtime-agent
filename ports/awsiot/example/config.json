@@ -1,0 +1,10 @@
+{
+  "host": "<THING SHADOW REST API ENDPOINT>",
+  "port": 8883,
+  "clientId": "<THING NAME>",
+  "thingName": "<THING NAME>",
+  "caCert": "./certs/<ROOT CERTIFICATE>",
+  "clientCert": "./certs/<THING CERT>",
+  "privateKey": "./certs/<THING PRIVATE KEY>",
+  "topic": "aws/things/<THING NAME>/shadow/update"
+}
