@@ -13,6 +13,7 @@ The following describes an example of setting up and running the AWS IoT port. A
 
 ```
 cd agent
+npm install
 npm run build
 ```
 

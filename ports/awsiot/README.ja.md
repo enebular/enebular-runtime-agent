@@ -13,6 +13,7 @@ AWS IoTポートを使用すると、enebular-agentをAWS IoT接続で使用で�
 
 ```
 cd agent
+npm install
 npm run build
 ```
 
