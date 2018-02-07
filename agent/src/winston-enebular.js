@@ -21,7 +21,7 @@ const finalizedNameMatch  = new RegExp('^enebular-([0-9]+)-([0-9]+)$');
 /**
  * maxUploadChunkSize is also our cache management chunk size.
  */
-const maxUploadChunkSize  = 100 * 1024;
+const maxUploadChunkSize  = 256 * 1024;
 
 function debug(msg: string, ...args: Array<mixed>) {
   if (process.env.DEBUG_LOG) {
