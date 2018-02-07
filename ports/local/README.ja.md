@@ -13,6 +13,7 @@ Localポートを使用すると、EnebularランタイムエージェントをU
 
 ```
 cd agent
+npm install
 npm run build
 ```
 
