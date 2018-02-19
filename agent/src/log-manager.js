@@ -79,7 +79,8 @@ export default class LogManager {
         level: level,
         handleExceptions: true,
         cachePath: enebularCachePath,
-        maxCacheSize: enebularMaxCacheSize
+        maxCacheSize: enebularMaxCacheSize,
+        maxSizePerInterval: 10*1024
       });
       this.addTransport(this._enebularTransport);
     }

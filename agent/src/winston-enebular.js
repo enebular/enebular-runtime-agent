@@ -33,20 +33,38 @@ function error(msg: string, ...args: Array<mixed>) {
   console.error("enebular-log: " + msg, ...args);
 }
 
+/**
+ * The enebular transport supports a number of configuration options, as
+ * explained below. Note that there is some interplay between some of the
+ * options in terms of how they combine to affect runtime behavior.
+ *
+ * Options:
+ *  - cachePath: The directory path to use for log caching
+ *  - maxCacheSize: The max size of the log cache
+ *  - sendInterval: The time interval at which to trigger the uploading of
+ *      cached log events. The interval timer is reset when the sendInterval is
+ *      changed or when a send is triggered due to sendSize being reached.
+ *  - sendSize: The size at which to trigger uploading of cache log events.
+ *  - maxSizePerInterval: The max total size of logged events allowed in one
+ *      sendInterval
+ */
 let Enebular = exports.Enebular = function(options: any) {
   Transport.call(this, options);
   options = options || {};
 
-  this._cachePath     = options.cachePath     || '/tmp/enebular-log-cache';
-  this._maxCacheSize  = options.maxCacheSize  || 2 * 1024 * 1024;
-  this._currentPath   = `${this._cachePath}/${currentFilename}`
-  this._sendInterval  = 30;
-  this._sendSize      = 100 * 1024;
+  this._cachePath           = options.cachePath     || '/tmp/enebular-log-cache';
+  this._maxCacheSize        = options.maxCacheSize  || 2 * 1024 * 1024;
+  this._currentPath         = `${this._cachePath}/${currentFilename}`;
+  this._sendInterval        = options.sendInterval  || 30;
+  this._sendSize            = options.sendSize || 100 * 1024;
+  this._maxSizePerInterval  = options.maxSizePerInterval || 100 * 1024;
+
   this._agentManager  = null;
   this._active        = false;
   this._sending       = false;
   this._sendingFile   = null;
   this._closed        = false;
+  this._intervalTotal = 0;
 
   try {
     if (!fs.existsSync(this._cachePath)) {
@@ -60,6 +78,7 @@ let Enebular = exports.Enebular = function(options: any) {
   debug('maxCacheSize: ' + this._maxCacheSize);
   debug('sendInterval: ' + this._sendInterval);
   debug('sendSize: ' + this._sendSize);
+  debug('maxSizePerInterval: ' + this._maxSizePerInterval);
 
   this._updateSendInterval();
 };
@@ -97,6 +116,11 @@ Enebular.prototype._appendOutput = function(output, callback) {
     return callback(new Error(msg));
   }
 
+  if (this._intervalTotal >= this._maxSizePerInterval) {
+    debug('max-size-per-interval reached so ignoring new log event');
+    return callback(null, true);
+  }
+
   /**
    * We need to do the size related adjustments based on an assumed prefix
    * length as the adjustments could result in the removal of 'current', which
@@ -125,6 +149,8 @@ Enebular.prototype._appendOutput = function(output, callback) {
 
   try {
     fs.appendFileSync(this._currentPath, output);
+
+    this._intervalTotal += outputSize;
 
     self.emit('logged');
     callback(null, true);
@@ -396,6 +422,7 @@ Enebular.prototype._send = async function() {
 
 Enebular.prototype._handleSendTimeTrigger = function() {
   debug('Send time trigger...');
+  this._intervalTotal = 0;
   this._send();
 }
 
