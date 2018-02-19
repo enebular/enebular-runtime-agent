@@ -38,6 +38,11 @@ type AgentSetting = {
   agentManagerBaseUrl: string,
 };
 
+const MONITOR_INTERVAL_FAST         = 30;
+const MONITOR_INTERVAL_NORMAL       = 60*5;
+/* the +1 is to allow the last fast interval to trigger first */
+const MONITOR_INTERVAL_FAST_PERIOD  = 60*3 + 1;
+
 export type AgentState =
   'init' |
   'registered' |
@@ -86,6 +91,9 @@ export class EnebularAgent {
   _log: Logger;
 
   _monitoringActivated: boolean;
+  _monitoringUpdateID: ?number;
+  _notifyStatusActivated: boolean;
+  _notifyStatusInterval: number;
   _notifyStatusIntervalID: ?number;
 
   constructor(messengerSevice: MessengerService, config: EnebularAgentConfig) {
@@ -124,6 +132,8 @@ export class EnebularAgent {
     this._deviceAuth.on('accessTokenClear', () => this._handleAccessTokenClear());
 
     this._configFile = configFile;
+    this._notifyStatusInterval = MONITOR_INTERVAL_NORMAL;
+    this._notifyStatusActivated = false;
     this._agentState = 'init';
   }
 
@@ -168,34 +178,65 @@ export class EnebularAgent {
   }
 
   _activateMonitoring(active: boolean) {
-    if (this._monitoringActivated === active) {
+    if (active === this._monitoringActivated) {
       return;
     }
+
     this._monitoringActivated = active;
+
+    if (active) {
+      this._log.info('Activating monitoring...');
+      this._refreshMonitoringInterval();
+    } else {
+      this._log.info('Deactivating monitoring...');
+    }
+
     this._logManager.activateEnebular(active);
     this._activateStatusNotification(active);
   }
 
-  _activateStatusNotification(active: boolean) {
+  _refreshMonitoringInterval() {
+    if (this._monitoringUpdateID) {
+      clearTimeout(this._monitoringUpdateID);
+      this._monitoringUpdateID = null;
+    }
+    if (this._monitoringActivated) {
+      this._setMonitoringInterval(MONITOR_INTERVAL_FAST);
+      this._monitoringUpdateID = setTimeout(() => {
+        this._setMonitoringInterval(MONITOR_INTERVAL_NORMAL);
+      }, MONITOR_INTERVAL_FAST_PERIOD * 1000);
+    }
+  }
+
+  _setMonitoringInterval(interval: number) {
+    this._log.debug(`Setting monitoring report interval to: ${interval}sec`);
+    this._logManager.configureEnebular({
+      sendInterval: interval
+    });
+    this._setStatusNotificationInterval(interval);
+  }
+
+  _updateStatusNotificationInterval() {
     if (this._notifyStatusIntervalID) {
       clearInterval(this._notifyStatusIntervalID);
       this._notifyStatusIntervalID = null;
     }
-    if (active) {
+    if (this._notifyStatusActivated) {
       this._agentMan.notifyStatus(this._nodeRed.getStatus());
       this._notifyStatusIntervalID = setInterval(() => {
         this._agentMan.notifyStatus(this._nodeRed.getStatus());
-      }, 300 * 1000);
+      }, this._notifyStatusInterval * 1000);
     }
   }
 
-  _startMonitoring() {
-    this._log.info('Starting monitoring...');
-    this._logManager.configureEnebular({
-      sendInterval: 300,
-      sendSize: 256 * 1024,
-    });
-    this._activateMonitoring(true);
+  _setStatusNotificationInterval(interval: number) {
+    this._notifyStatusInterval = interval;
+    this._updateStatusNotificationInterval();
+  }
+
+  _activateStatusNotification(active: boolean) {
+    this._notifyStatusActivated = active;
+    this._updateStatusNotificationInterval();
   }
 
   _loadAgentConfig() {
@@ -266,7 +307,7 @@ export class EnebularAgent {
       case 'unregistered':
         break;
       case 'authenticated':
-        await this._startMonitoring();
+        await this._activateMonitoring(true);
         break;
     }
   }
@@ -307,6 +348,9 @@ export class EnebularAgent {
           this._registerAgentInfo({ connectionId, deviceId, agentManagerBaseUrl, authRequestUrl });
           this._changeAgentState('registered');
         }
+        break;
+      case 'deploy':
+        this._refreshMonitoringInterval();
         break;
       default:
         break;
