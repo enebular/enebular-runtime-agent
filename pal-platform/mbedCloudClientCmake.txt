@@ -1,4 +1,20 @@
 
+#################################################################################
+#  Copyright 2016, 2017 ARM Ltd.
+#  
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  
+#      http://www.apache.org/licenses/LICENSE-2.0
+#  
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#################################################################################
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project (mbedCloud)
@@ -27,10 +43,15 @@ include (${CMAKE_PLATFORM})
 set(MBED_CLOUD_CLIENT_BUILD_SYS_MIN_VER_CMAKE 2)
 
 
-
 if (EXTARNAL_DEFINE_FILE)
-    include(${EXTARNAL_DEFINE_FILE})
+    message("**** EXTARNAL_DEFINE_FILE is deprecated due a spell error please use EXTERNAL_DEFINE_FILE instead ****")
+    set(EXTERNAL_DEFINE_FILE ${EXTARNAL_DEFINE_FILE})
 ENDIF()
+
+if (EXTERNAL_DEFINE_FILE)
+    include(${EXTERNAL_DEFINE_FILE})
+ENDIF()
+
 
 
 INCLUDE(CMakeForceCompiler)
@@ -47,6 +68,19 @@ set (Test_VERSION_MINOR 0)
 ENABLE_LANGUAGE(ASM)
 
 file(WRITE dummy.c "int pal_cmake_dummy_refernce_for_building(void) { return 0; }")
+
+
+if(DEFINED PAL_PLATFORM_DEFINED_CONFIGURATION)
+  add_definitions(-DPAL_PLATFORM_DEFINED_CONFIGURATION="${PAL_PLATFORM_DEFINED_CONFIGURATION}")
+endif()
+
+if(DEFINED PAL_USER_DEFINED_CONFIGURATION)
+  add_definitions(-DPAL_USER_DEFINED_CONFIGURATION="${PAL_USER_DEFINED_CONFIGURATION}")
+endif()
+
+if(DEFINED PAL_BOARD_SPECIFIC_CONFIG)
+  add_definitions(-DPAL_BOARD_SPECIFIC_CONFIG="${PAL_BOARD_SPECIFIC_CONFIG}")
+endif()
 
 
 get_filename_component(CMAKE_COMMON ../pal-platform/common.cmake REALPATH)
@@ -88,12 +122,10 @@ foreach(TEST_LIB ${TEST_LIBS})
     endif()
 
     add_executable (${TEST_LIB}.elf ${Additional_SRC})
-    target_link_libraries (${TEST_LIB}.elf  ${TEST_LIB} ${SRC_LIBS} ${PLATFORM_LIBS} ${SRC_LIBS} ${TEST_LIB} ) # SRC_LIBS appear twice to resolve linker dependency issues between pal and tls static libraries
-    target_link_libraries (${TEST_LIB}.elf  ${SRC_LIBS})
-    list(REVERSE SRC_LIBS)
-    target_link_libraries (${TEST_LIB}.elf  ${PLATFORM_LIBS} ${SRC_LIBS} ${PLATFORM_LIBS})
-    #target_link_libraries(${TEST_LIB} debug ${DEBUG_LIBS})
-    #target_link_libraries(${TEST_LIB} release ${DEBUG_RELEASE})
+	if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+		TARGET_LINK_LIBRARIES(${TEST_LIB}.elf -Wl,--start-group)
+	endif()
+    target_link_libraries (${TEST_LIB}.elf  ${TEST_LIB} ${SRC_LIBS} ${PLATFORM_LIBS} ) # SRC_LIBS appear twice to resolve linker dependency issues between pal and tls static libraries
 
     if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
         target_link_libraries(${TEST_LIB}.elf debug m)
@@ -109,9 +141,6 @@ foreach(TEST_LIB ${TEST_LIBS})
         endif ()
     endif()
 
-    if (NOT (${OS_BRAND} MATCHES "Linux"))
-        ELF_TO_BIN(${TEST_LIB} ${EXECUTABLE_OUTPUT_PATH})
-    endif()
 
     if (${OS_BRAND} MATCHES Linux)
         target_link_libraries(${TEST_LIB}.elf optimized rt)
@@ -119,6 +148,16 @@ foreach(TEST_LIB ${TEST_LIBS})
         target_link_libraries(${TEST_LIB}.elf optimized pthread)
         target_link_libraries(${TEST_LIB}.elf debug pthread)
     endif ()
+
+	if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+		TARGET_LINK_LIBRARIES(${TEST_LIB}.elf -Wl,--end-group)
+	endif()
+
+    if (NOT (${OS_BRAND} MATCHES "Linux"))
+        ELF_TO_BIN(${TEST_LIB} ${EXECUTABLE_OUTPUT_PATH})
+    endif()
+
+
 
     set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES  ${TEST_LIB}.elf)
     set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES  ${TEST_LIB}.bin)

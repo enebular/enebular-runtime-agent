@@ -77,6 +77,11 @@ int initPlatform()
     return 0;
 }
 
+int reformat_storage()
+{
+    return 0;
+}
+
 bool rmFirmwareImages()
 {
     printf("rmFirmwareImages is not supported on freeRTOS!\n");

@@ -36,6 +36,10 @@
 #include "update_ui_example.h"
 #endif
 
+#ifdef MBED_HEAP_STATS_ENABLED
+#include "memory_tests.h"
+#endif
+
 class SimpleM2MClient {
 
 public:
@@ -104,13 +108,18 @@ public:
                 printf("Device Id: %s\r\n", endpoint->internal_endpoint_name.c_str());
             }
         }
+#ifdef MBED_HEAP_STATS_ENABLED
+        heap_stats();
+#endif
     }
 
     void client_unregistered() {
         _registered = false;
         _register_called = false;
         printf("\nClient unregistered - Exiting application\n\n");
-
+#ifdef MBED_HEAP_STATS_ENABLED
+        heap_stats();
+#endif
     }
 
     void error(int error_code) {
@@ -220,7 +229,10 @@ public:
         call_register();
 
         // Print memory statistics if the MBED_HEAP_STATS_ENABLED is defined.
-        print_heap_stats();
+        #ifdef MBED_HEAP_STATS_ENABLED
+            printf("Register being called\r\n");
+            heap_stats();
+        #endif
     }
 
     MbedCloudClient& get_cloud_client() {

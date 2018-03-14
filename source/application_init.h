@@ -30,6 +30,7 @@
 
 extern bool application_init(void);
 extern bool rmFirmwareImages(void);
+extern int reformat_storage(void);
 
 #endif //APPLICATION_INIT_H
 

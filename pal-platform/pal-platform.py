@@ -1,3 +1,19 @@
+#################################################################################
+#  Copyright 2016, 2017 ARM Ltd.
+#  
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  
+#      http://www.apache.org/licenses/LICENSE-2.0
+#  
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#################################################################################
+
 #!/usr/bin/env python
 import json
 import os
@@ -144,6 +160,14 @@ def is_git_pull_required(repo_dir, branch, **stream_kwargs):
 def is_git_dir(_dir):
     return os.path.isdir(_dir) and os.path.isdir(os.path.join(_dir, '.git'))
 
+def extract_repo_name(url):
+     """
+     Extract repository remote and name from a git URL, ignoring protocol and .git endings
+     """
+     regex_git_url = r'^(git\://|ssh\://|https?\://|)(([^/:@]+)(\:([^/:@]+))?@)?([^/:]+)[:/](.+?)(\.git|\/?)$'
+     m = re.match(regex_git_url, url)
+     return m.group(7) or url
+
 
 def git_fetch(git_url, tree_ref, dest_dir, **stream_kwargs):
     """
@@ -172,7 +196,7 @@ def git_fetch(git_url, tree_ref, dest_dir, **stream_kwargs):
     else:
         logger.info('%s already exists, updating from %s', dest_dir, git_url)
         remote_url = check_output(['git', 'ls-remote', '--get-url'], cwd=dest_dir).decode(encoding='utf-8').strip()
-        assert git_url == remote_url, 'Trying to update %s from different remote (%s)' % (dest_dir, git_url)
+        assert extract_repo_name(git_url) == extract_repo_name(remote_url), 'Trying to update %s from different remote (%s)' % (dest_dir, git_url)
 
         check_cmd(['git', 'fetch', '--all'], cwd=dest_dir, **stream_kwargs)
 
@@ -284,7 +308,7 @@ def apply_patch(patch_file, reverse=False, **stream_kwargs):
 
     is_integrated = False
     try:
-        check_cmd(cmd + ['--reverse', '--dry-run', '--force'], cwd=_dir, **stream_kwargs)
+        check_cmd_and_raise(cmd + ['--reverse', '--dry-run', '--force'], cwd=_dir, **stream_kwargs)
         is_integrated = True
         logger.info('%s already integrated, %s', patch_file, 'reverting' if reverse else 'no need to patch')
     except subprocess.CalledProcessError:
@@ -297,8 +321,8 @@ def apply_patch(patch_file, reverse=False, **stream_kwargs):
 
     if not is_integrated and not reverse:
         try:
-            check_cmd(cmd + ['--dry-run'], cwd=_dir, **stream_kwargs)
-            check_cmd(cmd, cwd=_dir, **stream_kwargs)
+            check_cmd_and_raise(cmd + ['--dry-run'], cwd=_dir, **stream_kwargs)
+            check_cmd_and_raise(cmd, cwd=_dir, **stream_kwargs)
         except subprocess.CalledProcessError:
             click.echo('Applying %s on %s failed, check target directory is clean' % (patch_file, _dir))
             raise click.Abort
@@ -354,6 +378,17 @@ def generate_plat_cmake(target):
     return out_dir
 
 
+def check_cmd_and_raise(cmd, **kwargs):
+    """
+    Wrapper function for subprocess.check_call
+
+    :param cmd: The command to execute
+    :param kwargs: See `https://docs.python.org/2/library/subprocess.html#subprocess.Popen`_
+    """
+    logger.debug(" ".join(cmd))
+
+    subprocess.check_call(cmd, **kwargs)
+    
 def check_cmd(cmd, **kwargs):
     """
     Wrapper function for subprocess.check_call
@@ -362,10 +397,33 @@ def check_cmd(cmd, **kwargs):
     :param kwargs: See `https://docs.python.org/2/library/subprocess.html#subprocess.Popen`_
     """
     logger.debug(" ".join(cmd))
-    subprocess.check_call(cmd, **kwargs)
+    try:
+        subprocess.check_call(cmd, **kwargs)
+    except Exception as e:
+        logger.error(e)
+        logger.error( "** failed to run command  %s **", cmd)
+        sys.exit()
 
 
 def check_output(cmd, **kwargs):
+    """
+    Wrapper function for subprocess.check_output
+
+    :param cmd: The command to execute
+    :param kwargs: See `https://docs.python.org/2/library/subprocess.html#subprocess.Popen`_
+    :return: Output of subprocess.check_output
+    """
+    kwargs.pop('stdout', None)
+    logger.debug(" ".join(cmd))
+    try:
+        output = subprocess.check_output(cmd, **kwargs)
+    except Exception as e:
+        logger.error(e)
+        logger.error( "** failed to run command  %s **", cmd)
+        sys.exit()
+    return output
+    
+def check_output_and_raise(cmd, **kwargs):
     """
     Wrapper function for subprocess.check_output
 
@@ -394,8 +452,12 @@ class GitSource(Source):
 
     def fetch(self, dst, name):
         logger.info('Getting %s from git', name)
-        git_fetch(self.location, self.tag, dst, **self.stream_kwargs)
-
+        try:
+            git_fetch(self.location, self.tag, dst, **self.stream_kwargs)
+        except Exception as e:
+            logger.error(e)
+            logger.error( "** failed to fetch %s from git - please check that remote is correct and avialable **", name)
+            sys.exit()
 
 class LocalSource(Source):
     def __init__(self, src, stream_kwargs):
@@ -822,16 +884,18 @@ def getPathForToolChainInPath(toolchain):
     if platform.system() == 'Windows': #widnows type OS
         realname = toolchain + ".exe"
         try:
-                found = check_output(['where', realname]).strip()
-        except:
-		logger.error( "** Toolchain %s not found in path  - make sure toolchain executable [%s] is in the path **", toolchain,realname )
-		return None
+            found = check_output_and_raise(['where', realname]).strip()
+        except Exception as e:
+            logger.error(e)
+            logger.error( "** Toolchain %s not found in path  - make sure toolchain executable [%s] is in the path **",toolchain,realname)
+            return None
         separator = "\\"
         double_separator = "\\\\"
     else: # assume linux type OS
         try:
-                found = check_output(['which', realname]).strip()
-        except:
+                found = check_output_and_raise(['which', realname]).strip()
+        except Exception as e:
+                logger.error(e)
                 logger.error( "** Toolchain %s not found in path  - make sure toolchain executable [%s] is in the path **", toolchain,realname )
                 return None
         separator = "/"
@@ -929,8 +993,8 @@ def fullbuild(config, target_name, toolchain, external,name, keep_sources, numOf
 
     envPair = checkToolchainEnv(toolchain)
     if (None == envPair):
-	logger.error( "** Toolchain not found - exiting **")
-	return
+        logger.error( "** Toolchain not found - exiting **")
+        return
     target = Target(config.target_name, config.targets[target_name], config.stream_kwargs)
     out_dir_name = '__' + target.name
     parent_dir = os.path.normpath(os.path.join(PAL_PLATFORM_ROOT, os.pardir))

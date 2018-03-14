@@ -9,10 +9,9 @@
     "target_overrides": {
         "*": {
             "target.features_add": ["NANOSTACK"],
-            "nanostack.configuration": "lowpan_router",
-            "mbed-mesh-api.6lowpan-nd-channel": 12,
-            "mbed-mesh-api.6lowpan-nd-panid-filter": "0xFFFF",
-            "mbed-mesh-api.6lowpan-nd-security-mode": "NONE",
+            "nanostack.configuration": "thread_router",
+            "mbed-mesh-api.thread-config-channel": 22,
+            "mbed-mesh-api.thread-config-panid": "0x0700",
             "platform.stdio-baud-rate": 115200,
             "platform.stdio-convert-newlines": true,
             "mbed-client.event-loop-size": 32768,
@@ -25,25 +24,22 @@
             "storage-selector.storage": "SD_CARD"
         },
         "K64F": {
-            "target.mbed_app_start": "0x00020400",
             "update-client.application-details": "0x00020000",
             "update-client.bootloader-details": "0x172e4"
         },
         "NUCLEO_F429ZI": {
-            "target.mbed_app_start": "0x08020400",
             "update-client.application-details": "0x08020000",
             "update-client.bootloader-details": "0x8018630",
             "target.macros_add": ["ATMEL_SPI_MOSI=PB_5"]
         },
         "UBLOX_EVK_ODIN_W2": {
-            "target.mbed_app_start": "0x08020400",
             "update-client.application-details": "0x08020000",
             "update-client.bootloader-details": "0x801ae78"
         }
     },
     "config": {
         "network-interface":{
-            "value": "MESH_LOWPAN_ND"
+            "value": "MESH_THREAD"
         },
         "mesh_radio_type": {
             "help": "options are ATMEL, MCR20, SPIRIT1",

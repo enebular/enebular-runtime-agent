@@ -67,7 +67,7 @@ static void handle_signal(void)
 static int fileSystemCreateRootFolders(void)
 {
     // Make the sub-folder
-    int res = mkdir(DEFAULT_FOLDER_NAME,0777);
+    int res = mkdir(DEFAULT_FOLDER_NAME,0744);
 
     if(res)
     {
@@ -98,6 +98,11 @@ int initPlatform()
     pthread_create(&resource_thread, NULL, &button_thread, NULL);
     signal(SIGTERM, (signalhandler_t)handle_signal);
     return fileSystemCreateRootFolders();
+}
+
+int reformat_storage()
+{
+    return 0;
 }
 
 bool rmFirmwareImages()

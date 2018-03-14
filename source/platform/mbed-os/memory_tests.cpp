@@ -176,7 +176,7 @@ void m2mobject_stats()
     M2MSecurity *security = M2MInterfaceFactory::create_security(M2MSecurity::M2MServer);
     mbed_stats_heap_get(&stats);
     printf("M2MSecurity heap size: %" PRIu32 "\n", stats.current_size - initial);
-    delete security;
+    M2MSecurity::delete_instance();
     mbed_stats_heap_get(&stats);
     if (initial != stats.current_size) {
         printf("M2MSecurity leaked: %" PRIu32 "bytes\n", stats.current_size - initial);

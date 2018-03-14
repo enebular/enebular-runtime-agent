@@ -35,7 +35,7 @@
     "from": {
       "protocol": "git",
       "location": "git@github.com:ARMmbed/Example-PAL-Port-using-FreeRTOS.git",
-      "tag": "PAL-RR1.2.3-RC7"
+      "tag": "PAL-RR.1.2.5-RC2"
     },
     "to": "SDK/K64F_FreeRTOS/K64F_FreeRTOS"
   },

@@ -1,3 +1,4 @@
+
 #################################################################################
 #  Copyright 2016, 2017 ARM Ltd.
 #  
@@ -14,9 +15,19 @@
 #  limitations under the License.
 #################################################################################
 
-#  additional directories to look for CMakeLists.txt
-include_directories(./pal-platform/Middleware/mmcau_2.0.0/mmcau_2.0.0) 
 
-set (EXTRA_CMAKE_DIRS ${EXTRA_CMAKE_DIRS} "./pal-platform/Middleware/mmcau_2.0.0/mmcau_2.0.0")
-list (APPEND PLATFORM_LIBS mmcau_2.0.0)
-      
+
+macro(SET_COMPILER_DBG_RLZ_FLAG flag value)
+    SET(${flag}_DEBUG "${${flag}_DEBUG} ${value}")
+    SET(${flag}_RELEASE "${${flag}_RELEASE} ${value}")
+#enable this if for debugging
+if (0)
+ message("flag = ${flag}")
+ message("value = ${value}")
+ message("MY_C_FLAGS_RELEASE2 = ${CMAKE_C_FLAGS_RELEASE}")
+endif(0) # comment end
+endmacro(SET_COMPILER_DBG_RLZ_FLAG)
+
+
+SET_COMPILER_DBG_RLZ_FLAG (CMAKE_C_FLAGS "@${CMAKE_SOURCE_DIR}/include_file.txt")
+SET_COMPILER_DBG_RLZ_FLAG (CMAKE_CXX_FLAGS "@${CMAKE_SOURCE_DIR}/include_file.txt")

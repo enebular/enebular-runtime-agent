@@ -82,6 +82,8 @@ static void button_press(void);
 void init_screen();
 
 FileSystem* fs = filesystem_selector();
+BlockDevice* sd = NULL;
+
 
 Thread resource_thread;
 void *network_interface(NULL);
@@ -97,15 +99,15 @@ void button_press(void)
 int initPlatform()
 {
     init_screen();
-
     /* Explicit declaration to catch Block Device initialization errors. */
-    BlockDevice* sd = storage_selector();
+    sd = storage_selector();
 
     if (sd) {
         int sd_ret = sd->init();
 
         if(sd_ret != BD_ERROR_OK) {
             tr_error("initPlatform() - sd->init() failed with %d\n", sd_ret);
+            printf("SD card initialization failed. Verify that SD-card is attached.\n");
             return -1;
         }
         tr_debug("initPlatform() - BlockDevice init OK.\n");
@@ -131,6 +133,19 @@ bool rmFirmwareImages()
         return false;
     }
     return true;
+}
+
+int reformat_storage()
+{
+    int reformat_result = -1;
+    printf("Autoformatting the storage.\n");
+    if (sd) {
+        reformat_result = fs->reformat(sd);
+        if (reformat_result != 0) {
+            printf("Autoformatting failed with error %d\n", reformat_result);
+        }
+    }
+    return reformat_result;
 }
 
 int run_application(int(*function)(void))

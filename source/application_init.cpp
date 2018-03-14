@@ -39,6 +39,15 @@ static bool application_init_mbed_trace(void)
     return 0;
 }
 
+static void reset_storage(void)
+{
+    printf("Resets storage to an empty state.\n");
+    fcc_status_e delete_status = fcc_storage_delete();
+    if (delete_status != FCC_STATUS_SUCCESS) {
+        printf("Failed to delete storage - %d\n", delete_status);
+    }
+}
+
 static bool application_init_fcc(void)
 {
     fcc_status_e status = fcc_init();
@@ -47,15 +56,24 @@ static bool application_init_fcc(void)
         return 1;
     }
 
+    // This is designed to simplify user-experience by auto-formatting the
+    // primary storage if no valid certificates exist.
+    // This should never be used for any kind of production devices.
+#ifndef MBED_CONF_APP_MCC_NO_AUTO_FORMAT
+    status = fcc_verify_device_configured_4mbed_cloud();
+    if (status != FCC_STATUS_SUCCESS) {
+        if (reformat_storage() != 0) {
+            return 1;
+        }
+    reset_storage();
+    }
+#endif
+
     // Resets storage to an empty state.
     // Use this function when you want to clear storage from all the factory-tool generated data and user data.
     // After this operation device must be injected again by using factory tool or developer certificate.
 #ifdef RESET_STORAGE
-    printf("Resets storage to an empty state\n");
-    fcc_status_e delete_status = fcc_storage_delete();
-    if (delete_status != FCC_STATUS_SUCCESS) {
-        printf("Failed to delete storage - %d\n", delete_status);
-    }
+    reset_storage();
 #endif
 
     // Deletes existing firmware images from storage.
