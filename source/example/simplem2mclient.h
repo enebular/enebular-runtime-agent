@@ -28,9 +28,7 @@
 #include "key_config_manager.h"
 #include "resource.h"
 
-#ifdef MBED_CLOUD_CLIENT_USER_CONFIG_FILE
-#include MBED_CLOUD_CLIENT_USER_CONFIG_FILE
-#endif
+#include "../../mbed_cloud_client_user_config.h"
 
 #ifdef MBED_CLOUD_CLIENT_SUPPORT_UPDATE
 #include "update_ui_example.h"

@@ -1,2 +1,5 @@
 __x86_x64_NativeLinux_mbedtls/*
 pal-platform/*
+pal/*
+out/*
+compilation_info.txt
