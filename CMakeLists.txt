@@ -3,7 +3,7 @@ INCLUDE(CMakeForceCompiler)
 cmake_minimum_required (VERSION 2.8)
 SET(CMAKE_SYSTEM_NAME Generic)
 
-project(enebular-mbed-connector)
+project(enebular-agent-mbed-cloud-connector)
 
 add_definitions(-DNS_EXCLUDE_HIGHRES_TIMER)
 add_definitions(-DNS_EVENTLOOP_USE_TICK_TIMER)
@@ -25,8 +25,8 @@ FILE(GLOB MBED_CLOUD_CLIENT_EXAMPLE_SRC
     "${EXAMPLE_SOURCES}"
     )
 
-CREATE_TEST_LIBRARY(enebular-mbed-connector "${MBED_CLOUD_CLIENT_EXAMPLE_SRC}" "")
+CREATE_TEST_LIBRARY(enebular-agent-mbed-cloud-connector "${MBED_CLOUD_CLIENT_EXAMPLE_SRC}" "")
 
-add_dependencies(enebular-mbed-connector mbedCloudClient)
+add_dependencies(enebular-agent-mbed-cloud-connector mbedCloudClient)
 
 ADDSUBDIRS()
