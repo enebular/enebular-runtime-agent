@@ -146,3 +146,41 @@ void *get_network_interface()
 {
     return network_interface;
 }
+
+#ifdef MBED_CLOUD_CLIENT_SUPPORT_UPDATE
+
+/**
+ * Note: update implementation is temp / blank
+ */
+
+void update_authorize(int32_t request)
+{
+    switch (request) {
+        case MbedCloudClient::UpdateRequestDownload:
+            printf("Firmware download requested\n");
+            printf("Granting download authorization...\n");
+            client->get_cloud_client().update_authorize(MbedCloudClient::UpdateRequestDownload);
+            break;
+        case MbedCloudClient::UpdateRequestInstall:
+            printf("Firmware install requested\n");
+            printf("Granting install authorization...\n");
+            client->get_cloud_client().update_authorize(MbedCloudClient::UpdateRequestInstall);
+            break;
+        default:
+            printf("Unknown update request (%d)\n", request);
+            break;
+    }
+}
+
+void update_progress(uint32_t progress, uint32_t total)
+{
+    uint8_t percent = (uint8_t)((uint64_t)progress * 100 / total);
+
+    printf("Downloading: %d%%\n", percent);
+
+    if (progress == total) {
+        printf("\nDownload completed\n");
+    }
+}
+
+#endif

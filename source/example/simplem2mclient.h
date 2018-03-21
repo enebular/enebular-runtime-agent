@@ -29,15 +29,15 @@
 
 #include "../../mbed_cloud_client_user_config.h"
 
-#ifdef MBED_CLOUD_CLIENT_SUPPORT_UPDATE
-#include "update_ui_example.h"
-#endif
-
 #ifdef MBED_HEAP_STATS_ENABLED
 #include "memory_tests.h"
 #endif
 
-extern void* get_network_interface();
+extern void * get_network_interface();
+#ifdef MBED_CLOUD_CLIENT_SUPPORT_UPDATE
+void update_authorize(int32_t request);
+void update_progress(uint32_t progress, uint32_t total);
+#endif
 
 class SimpleM2MClient {
 
@@ -63,12 +63,6 @@ public:
         }
 
 #ifdef MBED_CLOUD_CLIENT_SUPPORT_UPDATE
-        /* Set callback functions for authorizing updates and monitoring progress.
-           Code is implemented in update_ui_example.cpp
-           Both callbacks are completely optional. If no authorization callback
-           is set, the update process will procede immediately in each step.
-        */
-        update_ui_set_cloud_client(&_cloud_client);
         _cloud_client.set_update_authorize_handler(update_authorize);
         _cloud_client.set_update_progress_handler(update_progress);
 #endif
