@@ -1,48 +1,124 @@
-// ----------------------------------------------------------------------------
-// Copyright 2016-2017 ARM Ltd.
-//
-// SPDX-License-Identifier: Apache-2.0
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-// ----------------------------------------------------------------------------
 
+
+#include <stdio.h>
+#include <unistd.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include "factory_configurator_client.h"
+#include "mbed-trace/mbed_trace.h"
+#include "mbed-trace-helper.h"
 #include "simplem2mclient.h"
 #include "enebular_mbed.h"
 
-static int main_application(void);
+/**
+ * Comments from the example:
+ * This has to be "./pal" for now as this is the default which is picked by
+ * ESFS. If you want to pass another folder name , you need to do it through
+ * ESFS API otherwise mounting of folder will fail.
+ */
+#define DEFAULT_STORAGE_PATH "./pal"
 
-int main()
-{
-    // run_application() will first initialize the program and then call main_application()
-    return run_application(&main_application);
-}
+/**
+ * PAL_NET_DEFAULT_INTERFACE == 0xFFFFFFFF
+ */
+static unsigned int _network_interface = 0xFFFFFFFF;
+static void *network_interface = &_network_interface;
 
-// Pointer to mbedClient, used for calling close function.
 static SimpleM2MClient *client;
 
+static bool init_mbed_trace(void)
+{
+    if (!mbed_trace_helper_create_mutex()) {
+        return false;
+    }
+
+    mbed_trace_init();
+    mbed_trace_mutex_wait_function_set(mbed_trace_helper_mutex_wait);
+    mbed_trace_mutex_release_function_set(mbed_trace_helper_mutex_release);
+
+    return true;
+}
+
+static bool init_storage_dir(void)
+{
+    int ret = mkdir(DEFAULT_STORAGE_PATH, 0744);
+    if (ret < 0) {
+        if (errno != EEXIST) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static bool init_fcc(void)
+{
+    fcc_status_e status;
+
+    status = fcc_init();
+    if (status != FCC_STATUS_SUCCESS) {
+        printf("Failed to initialize FCC (%d)\n", status);
+        return false;
+    }
+
+#if MBED_CONF_APP_DEVELOPER_MODE == 1
+    printf("Starting developer flow...\n");
+    status = fcc_developer_flow();
+    if (status == FCC_STATUS_KCM_FILE_EXIST_ERROR) {
+        printf("Developer credentials already exist\n");
+    } else if (status != FCC_STATUS_SUCCESS) {
+        printf("Failed to load developer credentials\n");
+        return false;
+    }
+#endif
+
+    status = fcc_verify_device_configured_4mbed_cloud();
+    if (status != FCC_STATUS_SUCCESS) {
+        printf("Not configured for mbed cloud\n");
+        return false;
+    } else {
+        printf("Configured for mbed cloud\n");
+    }
+
+    return true;
+}
+
+static bool init(void)
+{
+    if (!init_mbed_trace()) {
+        printf("Failed to initialize mbed trace\n");
+        return false;
+    }
+
+    if (!init_storage_dir()) {
+        printf("Failed to initialize storage directory\n");
+        return false;
+    }
+
+    if (!init_fcc()) {
+        printf("Failed to initialize FCC\n");
+        return false;
+    }
+
+    return true;
+}
+
 // This function is called when a POST request is received for resource 5000/0/1.
-void unregister(void *)
+static void unregister(void *)
 {
     printf("Unregister resource executed\n");
     client->close();
 }
 
-int main_application(void)
+int main(int argc, char **argv)
 {
-    // SimpleClient is used for registering and unregistering resources to a server.
+    if (!init()) {
+        printf("Initialization failed\n");
+        return EXIT_FAILURE;
+    }
+
     SimpleM2MClient mbedClient;
 
-    // Save pointer to mbedClient so that other functions can access it.
     client = &mbedClient;
 
     // Create resource for unregistering the device. Path of this resource will be: 5000/0/1.
@@ -51,10 +127,6 @@ int main_application(void)
 
     EnebularMbed enebularMbed(&mbedClient);
 
-    // Print to screen if available.
-    clear_screen();
-    print_to_screen(0, 3, "Cloud Client: Connecting");
-
     enebularMbed.init();
 
     mbedClient.register_and_connect();
@@ -62,11 +134,15 @@ int main_application(void)
     // Check if client is registering or registered, if true sleep and repeat.
     while (mbedClient.is_register_called()) {
         enebularMbed.tick();
-        do_wait(100);
+        usleep(100 * 1000);
     }
 
     enebularMbed.deinit();
 
-    // Client unregistered, exit program.
-    return 0;
+    return EXIT_SUCCESS;
+}
+
+void *get_network_interface()
+{
+    return network_interface;
 }
