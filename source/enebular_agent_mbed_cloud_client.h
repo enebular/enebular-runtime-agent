@@ -3,25 +3,33 @@
 #define ENEBULAR_AGENT_MBED_CLOUD_CLIENT_H
 
 #include "mbed-cloud-client/MbedCloudClient.h"
+#include "mbed-client/m2mobject.h"
+
+class M2MResource;
+class M2MResourceInstance;
+
+/**
+ * Todo:
+ *  - Standard device/security objects/resources
+ */
 
 class EnebularAgentMbedCloudClient {
 
 public:
 
-    /** Constructor
+    /**
+     * Constructor
      */
     EnebularAgentMbedCloudClient();
 
-    /** Deconstructor
+    /**
+     * Deconstructor
      */
     ~EnebularAgentMbedCloudClient();
 
-    // todo: add_objects is external like this or handled internally?
-    void add_object(M2MObject *object);
-
-    // todo: standard device objects/resources?
-
-    /** Sets up the client ready for connection.
+    /**
+     * Sets up the client ready for connection.
+     * 
      * @param iface A handler to the network interface on mbedOS, can be NULL on
      *              other platforms.
      */
@@ -36,13 +44,53 @@ public:
 private:
 
     MbedCloudClient _cloud_client;
+    //MbedCloudClientCallback _client_callback;
     M2MObjectList _object_list;
     bool _registered;
+
+    M2MResource *_deploy_flow_download_url_res;
+
+    void setup_objects();
 
     void client_registered();
     void client_registration_updated();
     void client_unregistered();
     void client_error(int error_code);
+
+    M2MResource *add_resource(
+        uint16_t object_id,
+        uint16_t instance_id,
+        uint16_t resource_id,
+        const char *resource_type,
+        M2MResourceInstance::ResourceType data_type,
+        M2MBase::Operation operations,
+        const char *value,
+        bool observable,
+        value_updated_callback value_updated_cb,
+        execute_callback execute_cb);
+
+    // PUT/GET
+    M2MResource *add_rw_resource(
+        uint16_t object_id,
+        uint16_t instance_id,
+        uint16_t resource_id,
+        const char *resource_type,
+        M2MResourceInstance::ResourceType data_type,
+        const char *value,
+        bool observable,
+        value_updated_callback value_updated_cb);
+
+    // POST
+    M2MResource *add_execute_resource(
+        uint16_t object_id,
+        uint16_t instance_id,
+        uint16_t resource_id,
+        const char *resource_type,
+        execute_callback execute_cb);
+
+    void deploy_flow_download_url_cb(const char *name);
+
+    //void example_execute_function(void * argument);
 
 };
 

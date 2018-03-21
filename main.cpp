@@ -9,6 +9,7 @@
 #include "mbed-trace-helper.h"
 #include "simplem2mclient.h"
 #include "enebular_mbed.h"
+#include "enebular_agent_mbed_cloud_client.h"
 
 /**
  * Comments from the example:
@@ -116,7 +117,7 @@ int main(int argc, char **argv)
         printf("Initialization failed\n");
         return EXIT_FAILURE;
     }
-
+#if 0
     SimpleM2MClient mbedClient;
 
     client = &mbedClient;
@@ -138,6 +139,17 @@ int main(int argc, char **argv)
     }
 
     enebularMbed.deinit();
+#endif
+    EnebularAgentMbedCloudClient mbedClient;
+    //client = &mbedClient;
+
+    mbedClient.setup();
+    mbedClient.connect(network_interface);
+
+    while (1) {
+        //enebularMbed.tick();
+        usleep(100 * 1000);
+    }
 
     return EXIT_SUCCESS;
 }
@@ -159,12 +171,12 @@ void update_authorize(int32_t request)
         case MbedCloudClient::UpdateRequestDownload:
             printf("Firmware download requested\n");
             printf("Granting download authorization...\n");
-            client->get_cloud_client().update_authorize(MbedCloudClient::UpdateRequestDownload);
+            //client->get_cloud_client().update_authorize(MbedCloudClient::UpdateRequestDownload);
             break;
         case MbedCloudClient::UpdateRequestInstall:
             printf("Firmware install requested\n");
             printf("Granting install authorization...\n");
-            client->get_cloud_client().update_authorize(MbedCloudClient::UpdateRequestInstall);
+            //client->get_cloud_client().update_authorize(MbedCloudClient::UpdateRequestInstall);
             break;
         default:
             printf("Unknown update request (%d)\n", request);
