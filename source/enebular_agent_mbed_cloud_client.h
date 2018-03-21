@@ -16,25 +16,33 @@ public:
      */
     ~EnebularAgentMbedCloudClient();
 
+    // todo: add_objects is external like this or handled internally?
+    void add_object(M2MObject *object);
+
+    // todo: standard device objects/resources?
+
     /** Sets up the client ready for connection.
      * @param iface A handler to the network interface on mbedOS, can be NULL on
      *              other platforms.
      */
-    bool setup(void *iface);
+    bool setup();
 
-    bool connect();
+    bool connect(void *iface);
 
     bool disconnect();
 
-    bool isConnected();
+    bool is_connected();
 
 private:
 
+    MbedCloudClient _cloud_client;
+    M2MObjectList _object_list;
     bool _registered;
 
-    M2MObjectList _object_list;
-
-    MbedCloudClient _mbed_cloud_client;
+    void client_registered();
+    void client_registration_updated();
+    void client_unregistered();
+    void client_error(int error_code);
 
 };
 
