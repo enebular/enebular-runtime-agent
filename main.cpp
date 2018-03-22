@@ -149,8 +149,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    int ret = enebular_agent_init();
-    if (ret < 0) {
+    if (enebular_agent_init() < 0) {
         printf("Agent initialization failed\n");
         return EXIT_FAILURE;
     }
@@ -165,14 +164,23 @@ int main(int argc, char **argv)
     mbed_cloud_client->register_agent_manager_msg_callback(agent_man_msg_cb);
 
     /* setup & connect */
-    mbed_cloud_client->setup();
-    mbed_cloud_client->connect(network_interface);
+    if (!mbed_cloud_client->setup()) {
+        printf("Client setup failed\n");
+        return EXIT_FAILURE;
+    }
+    if (!mbed_cloud_client->connect(network_interface)) {
+        printf("Client connect failed\n");
+        return EXIT_FAILURE;
+    }
 
     // todo: clean shutdown on sig
 
     while (1) {
         usleep(100 * 1000);
     }
+
+    mbed_cloud_client->disconnect();
+    // todo: wait for disconnect state update
 
     enebular_agent_notify_conn_state(false);
     enebular_agent_cleanup();

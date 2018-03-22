@@ -242,13 +242,10 @@ bool EnebularAgentMbedCloudClient::connect(void *iface)
 {
     printf("Client connecting...\n");
 
-    bool setup = _cloud_client.setup(iface);
-    if (!setup) {
-        return false;
-    }
+    return _cloud_client.setup(iface);
 }
 
-bool EnebularAgentMbedCloudClient::disconnect()
+void EnebularAgentMbedCloudClient::disconnect()
 {
     printf("Client disconnecting...\n");
 

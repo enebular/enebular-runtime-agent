@@ -29,25 +29,28 @@ public:
 
     /**
      * Sets up the client ready for connection.
+     */
+    bool setup();
+
+    /**
+     * Connect to Mbed Cloud.
      * 
      * @param iface A handler to the network interface on mbedOS, can be NULL on
      *              other platforms.
      */
-    bool setup();
-
     bool connect(void *iface);
 
-    bool disconnect();
+    void disconnect();
 
     bool is_connected();
-
-    void register_connection_state_callback(ConnectionStateCallback cb);
-
-    void register_agent_manager_msg_callback(AgentManagerMsgCallback cb);
 
     const char *get_device_id(void);
 
     const char *get_endpoint_name(void);
+
+    void register_connection_state_callback(ConnectionStateCallback cb);
+
+    void register_agent_manager_msg_callback(AgentManagerMsgCallback cb);
 
     // todo: update handler reg
 
