@@ -5,8 +5,7 @@
 #include "mbed-cloud-client/MbedCloudClient.h"
 #include "mbed-client/m2mobject.h"
 
-class M2MResource;
-class M2MResourceInstance;
+typedef FP2<void,const char *,const char *> agent_manager_msg_callback;
 
 /**
  * Todo:
@@ -41,14 +40,17 @@ public:
 
     bool is_connected();
 
-    // todo: agent-manager message notification
+    void register_agent_manager_msg_callback(agent_manager_msg_callback cb);
+
     // todo: connection status change notification
+    // todo: update handler reg
+    // todo: deviceID get
 
 private:
 
     MbedCloudClient _cloud_client;
-    //MbedCloudClientCallback _client_callback;
     M2MObjectList _object_list;
+    vector<agent_manager_msg_callback> _agent_man_msg_callbacks;
     bool _registered;
 
     M2MResource *_deploy_flow_download_url_res;
@@ -59,6 +61,14 @@ private:
     M2MResource *_update_auth_access_token_res;
     M2MResource *_update_auth_id_token_res;
     M2MResource *_update_auth_state_res;
+
+    unsigned long long _register_connection_id_time;
+    unsigned long long _register_device_id_time;
+    unsigned long long _register_auth_request_url_time;
+    unsigned long long _register_agent_manager_base_url_time;
+    unsigned long long _update_auth_access_token_time;
+    unsigned long long _update_auth_id_token_time;
+    unsigned long long _update_auth_state_time;
 
     void client_registered();
     void client_registration_updated();
@@ -108,6 +118,12 @@ private:
     void update_auth_state_cb(const char *name);
 
     //void example_execute_function(void * argument);
+
+    void process_deploy_flow_update(void);
+    void process_register_update(void);
+    void process_update_auth_update(void);
+
+    void notify_agent_man_msg(const char *type, const char *content);
 
 };
 

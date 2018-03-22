@@ -124,6 +124,16 @@ static void tick(void) {
     }
 }
 
+class TmpEnebularAgentHandler {
+
+public:
+    void agent_manager_msg_cb(const char *type, const char *content) {
+        printf("agent-man message: type:%s, content:%s\n", type, content);
+        enebular_agent_send_msg(type, content);
+    };
+
+};
+
 int main(int argc, char **argv)
 {
     if (!init()) {
@@ -140,6 +150,10 @@ int main(int argc, char **argv)
     mbed_cloud_client = new EnebularAgentMbedCloudClient();
     mbed_cloud_client->setup();
     mbed_cloud_client->connect(network_interface);
+
+    TmpEnebularAgentHandler tmpHandler;
+    mbed_cloud_client->register_agent_manager_msg_callback(
+        agent_manager_msg_callback(&tmpHandler, &TmpEnebularAgentHandler::agent_manager_msg_cb));
 
     // todo: clean shutdown on sig
 

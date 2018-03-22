@@ -1,5 +1,6 @@
 
 #include <cstdio>
+#include <ctime>
 #include "enebular_agent_mbed_cloud_client.h"
 
 #define OBJECT_ID_DEPLOY_FLOW       (26242)
@@ -16,6 +17,8 @@
 #define RESOURCE_ID_ID_TOKEN                (26242)
 #define RESOURCE_ID_STATE                   (26243)
 #define RESOURCE_ID_MONITOR_ENABLE          (26241)
+
+#define MAX_RESOURCE_SET_UPDATE_GAP (10)
 
 #ifdef MBED_CLOUD_CLIENT_SUPPORT_UPDATE
 void update_authorize(int32_t request);
@@ -69,44 +72,157 @@ void EnebularAgentMbedCloudClient::setup_objects()
         value_updated_callback(this, &EnebularAgentMbedCloudClient::update_auth_state_cb));
 }
 
+void EnebularAgentMbedCloudClient::notify_agent_man_msg(const char *type, const char *content)
+{
+    vector<agent_manager_msg_callback>::iterator it;
+    for (it = _agent_man_msg_callbacks.begin(); it != _agent_man_msg_callbacks.end(); it++) {
+        it->call(type, content);
+    }
+}
+
+void EnebularAgentMbedCloudClient::process_deploy_flow_update(void)
+{
+    char msg[1024*4];
+
+    snprintf(msg, sizeof(msg)-1,
+        "{"
+            "\"downloadUrl\": \"%s\""
+        "}",
+        _deploy_flow_download_url_res->get_value_string().c_str());
+    msg[sizeof(msg)-1] = '\0';
+
+    notify_agent_man_msg("deploy", msg);
+}
+
+void EnebularAgentMbedCloudClient::process_register_update(void)
+{
+    char msg[1024*4];
+    unsigned long long now;
+
+    now = time(NULL);
+
+    if (now - _register_connection_id_time > MAX_RESOURCE_SET_UPDATE_GAP ||
+            now - _register_device_id_time > MAX_RESOURCE_SET_UPDATE_GAP ||
+            now - _register_auth_request_url_time > MAX_RESOURCE_SET_UPDATE_GAP ||
+            now - _register_agent_manager_base_url_time > MAX_RESOURCE_SET_UPDATE_GAP) {
+        return;
+    }
+
+    snprintf(msg, sizeof(msg)-1,
+        "{"
+            "\"connectionId\": \"%s\","
+            "\"deviceId\": \"%s\","
+            "\"authRequestUrl\": \"%s\","
+            "\"agentManagerBaseUrl\": \"%s\""
+        "}",
+        _register_connection_id_res->get_value_string().c_str(),
+        _register_device_id_res->get_value_string().c_str(),
+        _register_auth_request_url_res->get_value_string().c_str(),
+        _register_agent_manager_base_url_res->get_value_string().c_str()
+    );
+    msg[sizeof(msg)-1] = '\0';
+
+    notify_agent_man_msg("register", msg);
+
+    _register_connection_id_time = 0;
+    _register_device_id_time = 0;
+    _register_auth_request_url_time = 0;
+    _register_agent_manager_base_url_time = 0;
+}
+
+void EnebularAgentMbedCloudClient::process_update_auth_update(void)
+{
+    char msg[1024*4];
+    unsigned long long now;
+
+    now = time(NULL);
+
+    if (now - _update_auth_access_token_time > MAX_RESOURCE_SET_UPDATE_GAP ||
+            now - _update_auth_id_token_time > MAX_RESOURCE_SET_UPDATE_GAP ||
+            now - _update_auth_state_time > MAX_RESOURCE_SET_UPDATE_GAP) {
+        return;
+    }
+
+    snprintf(msg, sizeof(msg)-1,
+        "{"
+            "\"accessToken\": \"%s\","
+            "\"idToken\": \"%s\","
+            "\"state\": \"%s\""
+        "}",
+        _update_auth_access_token_res->get_value_string().c_str(),
+        _update_auth_id_token_res->get_value_string().c_str(),
+        _update_auth_state_res->get_value_string().c_str()
+    );
+    msg[sizeof(msg)-1] = '\0';
+
+    notify_agent_man_msg("updateAuth", msg);
+
+    _update_auth_access_token_time = 0;
+    _update_auth_id_token_time = 0;
+    _update_auth_state_time = 0;
+}
+
 void EnebularAgentMbedCloudClient::deploy_flow_download_url_cb(const char *name)
 {
     printf("deploy_flow_download_url: %s\n", _deploy_flow_download_url_res->get_value_string().c_str());
+
+    process_deploy_flow_update();
 }
 
 void EnebularAgentMbedCloudClient::register_connection_id_cb(const char *name)
 {
     printf("register_connection_id: %s\n", _register_connection_id_res->get_value_string().c_str());
+
+    _register_connection_id_time = time(NULL);
+    process_register_update();
 }
 
 void EnebularAgentMbedCloudClient::register_device_id_cb(const char *name)
 {
     printf("register_device_id: %s\n", _register_device_id_res->get_value_string().c_str());
+
+    _register_device_id_time = time(NULL);
+    process_register_update();
 }
 
 void EnebularAgentMbedCloudClient::register_auth_request_url_cb(const char *name)
 {
     printf("register_auth_request_url: %s\n", _register_auth_request_url_res->get_value_string().c_str());
+
+    _register_auth_request_url_time = time(NULL);
+    process_register_update();
 }
 
 void EnebularAgentMbedCloudClient::register_agent_manager_base_url_cb(const char *name)
 {
     printf("register_agent_manager_base_url: %s\n", _register_agent_manager_base_url_res->get_value_string().c_str());
+
+    _register_agent_manager_base_url_time = time(NULL);
+    process_register_update();
 }
 
 void EnebularAgentMbedCloudClient::update_auth_access_token_cb(const char *name)
 {
     printf("update_auth_access_token: %s\n", _update_auth_access_token_res->get_value_string().c_str());
+
+    _update_auth_access_token_time = time(NULL);
+    process_update_auth_update();
 }
 
 void EnebularAgentMbedCloudClient::update_auth_id_token_cb(const char *name)
 {
     printf("update_auth_id_token: %s\n", _update_auth_id_token_res->get_value_string().c_str());
+
+    _update_auth_id_token_time = time(NULL);
+    process_update_auth_update();
 }
 
 void EnebularAgentMbedCloudClient::update_auth_state_cb(const char *name)
 {
     printf("update_auth_state: %s\n", _update_auth_state_res->get_value_string().c_str());
+
+    _update_auth_state_time = time(NULL);
+    process_update_auth_update();
 }
 
 bool EnebularAgentMbedCloudClient::setup()
@@ -150,6 +266,11 @@ bool EnebularAgentMbedCloudClient::disconnect()
 bool EnebularAgentMbedCloudClient::is_connected()
 {
     return _registered;
+}
+
+void EnebularAgentMbedCloudClient::register_agent_manager_msg_callback(agent_manager_msg_callback cb)
+{
+    _agent_man_msg_callbacks.push_back(cb);
 }
 
 void EnebularAgentMbedCloudClient::client_registered()
