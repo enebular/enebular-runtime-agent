@@ -32,6 +32,8 @@ public:
      */
     bool setup();
 
+    // void cleanup();
+
     /**
      * Connect to Mbed Cloud.
      * 

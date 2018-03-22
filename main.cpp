@@ -7,7 +7,7 @@
 #include "mbed-trace/mbed_trace.h"
 #include "mbed-trace-helper.h"
 #include "enebular_agent_mbed_cloud_client.h"
-#include "enebular_agent.h"
+#include "enebular_agent_interface.h"
 
 /**
  * Comments from the example:
@@ -24,6 +24,7 @@ static unsigned int _network_interface = 0xFFFFFFFF;
 static void *network_interface = &_network_interface;
 
 static EnebularAgentMbedCloudClient *mbed_cloud_client;
+static EnebularAgentInterface *agent;
 static bool reported_connected;
 
 static bool init_mbed_trace(void)
@@ -132,12 +133,12 @@ public:
                 printf("Endpoint name: %s\n", name);
             }
         }
-        enebular_agent_notify_conn_state(connected);
+        agent->notify_connection_state(connected);
     };
 
     void agent_manager_msg_cb(const char *type, const char *content) {
         printf("agent-man message: type:%s, content:%s\n", type, content);
-        enebular_agent_send_msg(type, content);
+        agent->send_message(type, content);
     };
 
 };
@@ -149,8 +150,9 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    if (enebular_agent_init() < 0) {
-        printf("Agent initialization failed\n");
+    agent = new EnebularAgentInterface();
+    if (!agent->connect()) {
+        printf("Failed to connect to agent\n");
         return EXIT_FAILURE;
     }
 
@@ -182,8 +184,8 @@ int main(int argc, char **argv)
     mbed_cloud_client->disconnect();
     // todo: wait for disconnect state update
 
-    enebular_agent_notify_conn_state(false);
-    enebular_agent_cleanup();
+    agent->notify_connection_state(false);
+    agent->disconnect();
 
     return EXIT_SUCCESS;
 }
