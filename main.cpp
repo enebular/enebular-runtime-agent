@@ -1,5 +1,4 @@
 
-
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
@@ -7,8 +6,6 @@
 #include "factory_configurator_client.h"
 #include "mbed-trace/mbed_trace.h"
 #include "mbed-trace-helper.h"
-#include "simplem2mclient.h"
-#include "enebular_mbed.h"
 #include "enebular_agent_mbed_cloud_client.h"
 
 /**
@@ -24,8 +21,6 @@
  */
 static unsigned int _network_interface = 0xFFFFFFFF;
 static void *network_interface = &_network_interface;
-
-static SimpleM2MClient *client;
 
 static bool init_mbed_trace(void)
 {
@@ -104,6 +99,7 @@ static bool init(void)
     return true;
 }
 
+#if 0
 // This function is called when a POST request is received for resource 5000/0/1.
 static void unregister(void *)
 {
@@ -111,52 +107,28 @@ static void unregister(void *)
     client->close();
 }
 
+    // Create resource for unregistering the device. Path of this resource will be: 5000/0/1.
+    mbedClient.add_cloud_resource(5000, 0, 1, "unregister", M2MResourceInstance::STRING,
+                 M2MBase::POST_ALLOWED, NULL, false, (void*)unregister, NULL);
+#endif
+
 int main(int argc, char **argv)
 {
     if (!init()) {
         printf("Initialization failed\n");
         return EXIT_FAILURE;
     }
-#if 0
-    SimpleM2MClient mbedClient;
 
-    client = &mbedClient;
-
-    // Create resource for unregistering the device. Path of this resource will be: 5000/0/1.
-    mbedClient.add_cloud_resource(5000, 0, 1, "unregister", M2MResourceInstance::STRING,
-                 M2MBase::POST_ALLOWED, NULL, false, (void*)unregister, NULL);
-
-    EnebularMbed enebularMbed(&mbedClient);
-
-    enebularMbed.init();
-
-    mbedClient.register_and_connect();
-
-    // Check if client is registering or registered, if true sleep and repeat.
-    while (mbedClient.is_register_called()) {
-        enebularMbed.tick();
-        usleep(100 * 1000);
-    }
-
-    enebularMbed.deinit();
-#endif
     EnebularAgentMbedCloudClient mbedClient;
-    //client = &mbedClient;
 
     mbedClient.setup();
     mbedClient.connect(network_interface);
 
     while (1) {
-        //enebularMbed.tick();
         usleep(100 * 1000);
     }
 
     return EXIT_SUCCESS;
-}
-
-void *get_network_interface()
-{
-    return network_interface;
 }
 
 #ifdef MBED_CLOUD_CLIENT_SUPPORT_UPDATE

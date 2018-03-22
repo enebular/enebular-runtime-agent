@@ -1,4 +1,6 @@
 
+#if 0
+
 #include <time.h>
 #include "enebular_agent.h"
 #include "enebular_mbed.h"
@@ -256,3 +258,5 @@ void EnebularMbed::tick(void) {
         enebular_agent_notify_conn_state(_reported_connected);
     }
 }
+
+#endif
