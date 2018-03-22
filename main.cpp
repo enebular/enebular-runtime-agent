@@ -156,14 +156,17 @@ int main(int argc, char **argv)
     }
 
     mbed_cloud_client = new EnebularAgentMbedCloudClient();
+
+    /* hook up callbacks */
+    TmpEnebularAgentHandler tmpHandler;
+    ConnectionStateCallback connection_state_cb(&tmpHandler, &TmpEnebularAgentHandler::connection_state_cb);
+    AgentManagerMsgCallback agent_man_msg_cb(&tmpHandler, &TmpEnebularAgentHandler::agent_manager_msg_cb);
+    mbed_cloud_client->register_connection_state_callback(connection_state_cb);
+    mbed_cloud_client->register_agent_manager_msg_callback(agent_man_msg_cb);
+
+    /* setup & connect */
     mbed_cloud_client->setup();
     mbed_cloud_client->connect(network_interface);
-
-    TmpEnebularAgentHandler tmpHandler;
-    mbed_cloud_client->register_connection_state_callback(
-        connection_state_callback(&tmpHandler, &TmpEnebularAgentHandler::connection_state_cb));
-    mbed_cloud_client->register_agent_manager_msg_callback(
-        agent_manager_msg_callback(&tmpHandler, &TmpEnebularAgentHandler::agent_manager_msg_cb));
 
     // todo: clean shutdown on sig
 

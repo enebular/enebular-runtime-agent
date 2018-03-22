@@ -260,12 +260,12 @@ bool EnebularAgentMbedCloudClient::is_connected()
     return _registered;
 }
 
-void EnebularAgentMbedCloudClient::register_connection_state_callback(connection_state_callback cb)
+void EnebularAgentMbedCloudClient::register_connection_state_callback(ConnectionStateCallback cb)
 {
     _connection_state_callbacks.push_back(cb);
 }
 
-void EnebularAgentMbedCloudClient::register_agent_manager_msg_callback(agent_manager_msg_callback cb)
+void EnebularAgentMbedCloudClient::register_agent_manager_msg_callback(AgentManagerMsgCallback cb)
 {
     _agent_man_msg_callbacks.push_back(cb);
 }
@@ -292,7 +292,7 @@ const char *EnebularAgentMbedCloudClient::get_endpoint_name(void)
 
 void EnebularAgentMbedCloudClient::notify_conntection_state(void)
 {
-    vector<connection_state_callback>::iterator it;
+    vector<ConnectionStateCallback>::iterator it;
     for (it = _connection_state_callbacks.begin(); it != _connection_state_callbacks.end(); it++) {
         it->call();
     }
@@ -300,7 +300,7 @@ void EnebularAgentMbedCloudClient::notify_conntection_state(void)
 
 void EnebularAgentMbedCloudClient::notify_agent_man_msg(const char *type, const char *content)
 {
-    vector<agent_manager_msg_callback>::iterator it;
+    vector<AgentManagerMsgCallback>::iterator it;
     for (it = _agent_man_msg_callbacks.begin(); it != _agent_man_msg_callbacks.end(); it++) {
         it->call(type, content);
     }
