@@ -37,11 +37,76 @@ void EnebularAgentMbedCloudClient::setup_objects()
         OBJECT_ID_DEPLOY_FLOW, 0, RESOURCE_ID_DOWNLOAD_URL, "download_url",
         M2MResourceInstance::STRING, NULL, false,
         value_updated_callback(this, &EnebularAgentMbedCloudClient::deploy_flow_download_url_cb));
+
+    _register_connection_id_res = add_rw_resource(
+        OBJECT_ID_REGISTER, 0, RESOURCE_ID_CONNECTION_ID, "connection_id",
+        M2MResourceInstance::STRING, NULL, false,
+        value_updated_callback(this, &EnebularAgentMbedCloudClient::register_connection_id_cb));
+    _register_device_id_res = add_rw_resource(
+        OBJECT_ID_REGISTER, 0, RESOURCE_ID_DEVICE_ID, "device_id",
+        M2MResourceInstance::STRING, NULL, false,
+        value_updated_callback(this, &EnebularAgentMbedCloudClient::register_device_id_cb));
+    _register_auth_request_url_res = add_rw_resource(
+        OBJECT_ID_REGISTER, 0, RESOURCE_ID_AUTH_REQUEST_URL, "auth_request_url",
+        M2MResourceInstance::STRING, NULL, false,
+        value_updated_callback(this, &EnebularAgentMbedCloudClient::register_auth_request_url_cb));
+    _register_agent_manager_base_url_res = add_rw_resource(
+        OBJECT_ID_REGISTER, 0, RESOURCE_ID_AGENT_MANAGER_BASE_URL, "agent_manager_base_url",
+        M2MResourceInstance::STRING, NULL, false,
+        value_updated_callback(this, &EnebularAgentMbedCloudClient::register_agent_manager_base_url_cb));
+
+    _update_auth_access_token_res = add_rw_resource(
+        OBJECT_ID_AUTH_TOKEN, 0, RESOURCE_ID_ACCEESS_TOKEN, "access_token",
+        M2MResourceInstance::STRING, NULL, false,
+        value_updated_callback(this, &EnebularAgentMbedCloudClient::update_auth_access_token_cb));
+    _update_auth_id_token_res = add_rw_resource(
+        OBJECT_ID_AUTH_TOKEN, 0, RESOURCE_ID_ID_TOKEN, "id_token",
+        M2MResourceInstance::STRING, NULL, false,
+        value_updated_callback(this, &EnebularAgentMbedCloudClient::update_auth_id_token_cb));
+    _update_auth_state_res = add_rw_resource(
+        OBJECT_ID_AUTH_TOKEN, 0, RESOURCE_ID_STATE, "state",
+        M2MResourceInstance::STRING, NULL, false,
+        value_updated_callback(this, &EnebularAgentMbedCloudClient::update_auth_state_cb));
 }
 
 void EnebularAgentMbedCloudClient::deploy_flow_download_url_cb(const char *name)
 {
     printf("deploy_flow_download_url: %s\n", _deploy_flow_download_url_res->get_value_string().c_str());
+}
+
+void EnebularAgentMbedCloudClient::register_connection_id_cb(const char *name)
+{
+    printf("register_connection_id: %s\n", _register_connection_id_res->get_value_string().c_str());
+}
+
+void EnebularAgentMbedCloudClient::register_device_id_cb(const char *name)
+{
+    printf("register_device_id: %s\n", _register_device_id_res->get_value_string().c_str());
+}
+
+void EnebularAgentMbedCloudClient::register_auth_request_url_cb(const char *name)
+{
+    printf("register_auth_request_url: %s\n", _register_auth_request_url_res->get_value_string().c_str());
+}
+
+void EnebularAgentMbedCloudClient::register_agent_manager_base_url_cb(const char *name)
+{
+    printf("register_agent_manager_base_url: %s\n", _register_agent_manager_base_url_res->get_value_string().c_str());
+}
+
+void EnebularAgentMbedCloudClient::update_auth_access_token_cb(const char *name)
+{
+    printf("update_auth_access_token: %s\n", _update_auth_access_token_res->get_value_string().c_str());
+}
+
+void EnebularAgentMbedCloudClient::update_auth_id_token_cb(const char *name)
+{
+    printf("update_auth_id_token: %s\n", _update_auth_id_token_res->get_value_string().c_str());
+}
+
+void EnebularAgentMbedCloudClient::update_auth_state_cb(const char *name)
+{
+    printf("update_auth_state: %s\n", _update_auth_state_res->get_value_string().c_str());
 }
 
 bool EnebularAgentMbedCloudClient::setup()
@@ -257,6 +322,7 @@ M2MResource *EnebularAgentMbedCloudClient::add_resource(
     }
     if (observable) {
 #if 0
+        // todo
         resource->set_notification_delivery_status_cb(
                     (void(*)(const M2MBase&,
                              const NoticationDeliveryStatus,

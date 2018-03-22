@@ -49,13 +49,20 @@ private:
     bool _registered;
 
     M2MResource *_deploy_flow_download_url_res;
-
-    void setup_objects();
+    M2MResource *_register_connection_id_res;
+    M2MResource *_register_device_id_res;
+    M2MResource *_register_auth_request_url_res;
+    M2MResource *_register_agent_manager_base_url_res;
+    M2MResource *_update_auth_access_token_res;
+    M2MResource *_update_auth_id_token_res;
+    M2MResource *_update_auth_state_res;
 
     void client_registered();
     void client_registration_updated();
     void client_unregistered();
     void client_error(int error_code);
+
+    void setup_objects();
 
     M2MResource *add_resource(
         uint16_t object_id,
@@ -89,6 +96,13 @@ private:
         execute_callback execute_cb);
 
     void deploy_flow_download_url_cb(const char *name);
+    void register_connection_id_cb(const char *name);
+    void register_device_id_cb(const char *name);
+    void register_auth_request_url_cb(const char *name);
+    void register_agent_manager_base_url_cb(const char *name);
+    void update_auth_access_token_cb(const char *name);
+    void update_auth_id_token_cb(const char *name);
+    void update_auth_state_cb(const char *name);
 
     //void example_execute_function(void * argument);
 
