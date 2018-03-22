@@ -20,6 +20,20 @@
 
 #define MAX_RESOURCE_SET_UPDATE_GAP (10)
 
+// todo
+#if 0
+// This function is called when a POST request is received for resource 5000/0/1.
+static void unregister(void *)
+{
+    printf("Unregister resource executed\n");
+    client->close();
+}
+
+    // Create resource for unregistering the device. Path of this resource will be: 5000/0/1.
+    mbedClient.add_cloud_resource(5000, 0, 1, "unregister", M2MResourceInstance::STRING,
+                 M2MBase::POST_ALLOWED, NULL, false, (void*)unregister, NULL);
+#endif
+
 #ifdef MBED_CLOUD_CLIENT_SUPPORT_UPDATE
 void update_authorize(int32_t request);
 void update_progress(uint32_t progress, uint32_t total);

@@ -6,8 +6,7 @@
 #include "factory_configurator_client.h"
 #include "mbed-trace/mbed_trace.h"
 #include "mbed-trace-helper.h"
-#include "enebular_agent_mbed_cloud_client.h"
-#include "enebular_agent_interface.h"
+#include "enebular_agent_mbed_cloud_connector.h"
 
 /**
  * Comments from the example:
@@ -22,10 +21,6 @@
  */
 static unsigned int _network_interface = 0xFFFFFFFF;
 static void *network_interface = &_network_interface;
-
-static EnebularAgentMbedCloudClient *mbed_cloud_client;
-static EnebularAgentInterface *agent;
-static bool reported_connected;
 
 static bool init_mbed_trace(void)
 {
@@ -104,45 +99,6 @@ static bool init(void)
     return true;
 }
 
-#if 0
-// This function is called when a POST request is received for resource 5000/0/1.
-static void unregister(void *)
-{
-    printf("Unregister resource executed\n");
-    client->close();
-}
-
-    // Create resource for unregistering the device. Path of this resource will be: 5000/0/1.
-    mbedClient.add_cloud_resource(5000, 0, 1, "unregister", M2MResourceInstance::STRING,
-                 M2MBase::POST_ALLOWED, NULL, false, (void*)unregister, NULL);
-#endif
-
-class TmpEnebularAgentHandler {
-
-public:
-
-    void connection_state_cb(void) {
-        bool connected = mbed_cloud_client->is_connected();
-        if (connected) {
-            const char *device_id = mbed_cloud_client->get_device_id();
-            const char *name = mbed_cloud_client->get_endpoint_name();
-            if (device_id && strlen(device_id) > 0) {
-                printf("Device ID: %s\n", device_id);
-            }
-            if (name && strlen(name) > 0) {
-                printf("Endpoint name: %s\n", name);
-            }
-        }
-        agent->notify_connection_state(connected);
-    };
-
-    void agent_manager_msg_cb(const char *type, const char *content) {
-        printf("agent-man message: type:%s, content:%s\n", type, content);
-        agent->send_message(type, content);
-    };
-
-};
-
 int main(int argc, char **argv)
 {
     if (!init()) {
@@ -150,28 +106,9 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    agent = new EnebularAgentInterface();
-    if (!agent->connect()) {
-        printf("Failed to connect to agent\n");
-        return EXIT_FAILURE;
-    }
-
-    mbed_cloud_client = new EnebularAgentMbedCloudClient();
-
-    /* hook up callbacks */
-    TmpEnebularAgentHandler tmpHandler;
-    ConnectionStateCallback connection_state_cb(&tmpHandler, &TmpEnebularAgentHandler::connection_state_cb);
-    AgentManagerMsgCallback agent_man_msg_cb(&tmpHandler, &TmpEnebularAgentHandler::agent_manager_msg_cb);
-    mbed_cloud_client->register_connection_state_callback(connection_state_cb);
-    mbed_cloud_client->register_agent_manager_msg_callback(agent_man_msg_cb);
-
-    /* setup & connect */
-    if (!mbed_cloud_client->setup()) {
-        printf("Client setup failed\n");
-        return EXIT_FAILURE;
-    }
-    if (!mbed_cloud_client->connect(network_interface)) {
-        printf("Client connect failed\n");
+    EnebularAgentMbedCloudConnector connector;
+    if (!connector.startup(network_interface)) {
+        printf("Connector startup failed\n");
         return EXIT_FAILURE;
     }
 
@@ -180,12 +117,6 @@ int main(int argc, char **argv)
     while (1) {
         usleep(100 * 1000);
     }
-
-    mbed_cloud_client->disconnect();
-    // todo: wait for disconnect state update
-
-    agent->notify_connection_state(false);
-    agent->disconnect();
 
     return EXIT_SUCCESS;
 }
