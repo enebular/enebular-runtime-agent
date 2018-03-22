@@ -41,6 +41,9 @@ public:
 
     bool is_connected();
 
+    // todo: agent-manager message notification
+    // todo: connection status change notification
+
 private:
 
     MbedCloudClient _cloud_client;

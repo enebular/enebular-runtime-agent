@@ -156,17 +156,16 @@ void EnebularAgentMbedCloudClient::client_registered()
 {
     _registered = true;
 
-    printf("Client registered\n");
+    printf("Client registered:\n");
 
     const ConnectorClientEndpointInfo * info = _cloud_client.endpoint_info();
     if (info) {
         const char *device_id = info->internal_endpoint_name.c_str();
         const char *name = info->endpoint_name.c_str();
-        printf("Device ID: %s", device_id);
+        printf("Device ID: %s\n", device_id);
         if (name && strlen(name) > 0) {
-            printf(" (name: %s)", name);
+            printf("Endpoint name: %s\n", name);
         }
-        printf("\n");
     }
 }
 

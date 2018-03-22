@@ -7,6 +7,7 @@
 #include "mbed-trace/mbed_trace.h"
 #include "mbed-trace-helper.h"
 #include "enebular_agent_mbed_cloud_client.h"
+#include "enebular_agent.h"
 
 /**
  * Comments from the example:
@@ -21,6 +22,9 @@
  */
 static unsigned int _network_interface = 0xFFFFFFFF;
 static void *network_interface = &_network_interface;
+
+static EnebularAgentMbedCloudClient *mbed_cloud_client;
+static bool reported_connected;
 
 static bool init_mbed_trace(void)
 {
@@ -112,21 +116,40 @@ static void unregister(void *)
                  M2MBase::POST_ALLOWED, NULL, false, (void*)unregister, NULL);
 #endif
 
+static void tick(void) {
+    bool is_connected = mbed_cloud_client->is_connected();
+    if (is_connected != reported_connected) {
+        reported_connected = is_connected;
+        enebular_agent_notify_conn_state(is_connected);
+    }
+}
+
 int main(int argc, char **argv)
 {
     if (!init()) {
-        printf("Initialization failed\n");
+        printf("Base initialization failed\n");
         return EXIT_FAILURE;
     }
 
-    EnebularAgentMbedCloudClient mbedClient;
+    int ret = enebular_agent_init();
+    if (ret < 0) {
+        printf("Agent initialization failed\n");
+        return EXIT_FAILURE;
+    }
 
-    mbedClient.setup();
-    mbedClient.connect(network_interface);
+    mbed_cloud_client = new EnebularAgentMbedCloudClient();
+    mbed_cloud_client->setup();
+    mbed_cloud_client->connect(network_interface);
+
+    // todo: clean shutdown on sig
 
     while (1) {
+        tick();
         usleep(100 * 1000);
     }
+
+    enebular_agent_notify_conn_state(false);
+    enebular_agent_cleanup();
 
     return EXIT_SUCCESS;
 }
