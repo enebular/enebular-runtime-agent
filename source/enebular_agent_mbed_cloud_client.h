@@ -5,6 +5,7 @@
 #include "mbed-cloud-client/MbedCloudClient.h"
 #include "mbed-client/m2mobject.h"
 
+typedef FP0<void> connection_state_callback;
 typedef FP2<void,const char *,const char *> agent_manager_msg_callback;
 
 /**
@@ -40,16 +41,21 @@ public:
 
     bool is_connected();
 
+    void register_connection_state_callback(connection_state_callback cb);
+
     void register_agent_manager_msg_callback(agent_manager_msg_callback cb);
 
-    // todo: connection status change notification
+    const char *get_device_id(void);
+
+    const char *get_endpoint_name(void);
+
     // todo: update handler reg
-    // todo: deviceID get
 
 private:
 
     MbedCloudClient _cloud_client;
     M2MObjectList _object_list;
+    vector<connection_state_callback> _connection_state_callbacks;
     vector<agent_manager_msg_callback> _agent_man_msg_callbacks;
     bool _registered;
 
@@ -123,6 +129,7 @@ private:
     void process_register_update(void);
     void process_update_auth_update(void);
 
+    void notify_conntection_state(void);
     void notify_agent_man_msg(const char *type, const char *content);
 
 };

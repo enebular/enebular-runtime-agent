@@ -116,17 +116,25 @@ static void unregister(void *)
                  M2MBase::POST_ALLOWED, NULL, false, (void*)unregister, NULL);
 #endif
 
-static void tick(void) {
-    bool is_connected = mbed_cloud_client->is_connected();
-    if (is_connected != reported_connected) {
-        reported_connected = is_connected;
-        enebular_agent_notify_conn_state(is_connected);
-    }
-}
-
 class TmpEnebularAgentHandler {
 
 public:
+
+    void connection_state_cb(void) {
+        bool connected = mbed_cloud_client->is_connected();
+        if (connected) {
+            const char *device_id = mbed_cloud_client->get_device_id();
+            const char *name = mbed_cloud_client->get_endpoint_name();
+            if (device_id && strlen(device_id) > 0) {
+                printf("Device ID: %s\n", device_id);
+            }
+            if (name && strlen(name) > 0) {
+                printf("Endpoint name: %s\n", name);
+            }
+        }
+        enebular_agent_notify_conn_state(connected);
+    };
+
     void agent_manager_msg_cb(const char *type, const char *content) {
         printf("agent-man message: type:%s, content:%s\n", type, content);
         enebular_agent_send_msg(type, content);
@@ -152,13 +160,14 @@ int main(int argc, char **argv)
     mbed_cloud_client->connect(network_interface);
 
     TmpEnebularAgentHandler tmpHandler;
+    mbed_cloud_client->register_connection_state_callback(
+        connection_state_callback(&tmpHandler, &TmpEnebularAgentHandler::connection_state_cb));
     mbed_cloud_client->register_agent_manager_msg_callback(
         agent_manager_msg_callback(&tmpHandler, &TmpEnebularAgentHandler::agent_manager_msg_cb));
 
     // todo: clean shutdown on sig
 
     while (1) {
-        tick();
         usleep(100 * 1000);
     }
 

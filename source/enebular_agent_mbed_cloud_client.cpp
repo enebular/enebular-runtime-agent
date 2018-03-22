@@ -72,14 +72,6 @@ void EnebularAgentMbedCloudClient::setup_objects()
         value_updated_callback(this, &EnebularAgentMbedCloudClient::update_auth_state_cb));
 }
 
-void EnebularAgentMbedCloudClient::notify_agent_man_msg(const char *type, const char *content)
-{
-    vector<agent_manager_msg_callback>::iterator it;
-    for (it = _agent_man_msg_callbacks.begin(); it != _agent_man_msg_callbacks.end(); it++) {
-        it->call(type, content);
-    }
-}
-
 void EnebularAgentMbedCloudClient::process_deploy_flow_update(void)
 {
     char msg[1024*4];
@@ -268,26 +260,59 @@ bool EnebularAgentMbedCloudClient::is_connected()
     return _registered;
 }
 
+void EnebularAgentMbedCloudClient::register_connection_state_callback(connection_state_callback cb)
+{
+    _connection_state_callbacks.push_back(cb);
+}
+
 void EnebularAgentMbedCloudClient::register_agent_manager_msg_callback(agent_manager_msg_callback cb)
 {
     _agent_man_msg_callbacks.push_back(cb);
+}
+
+const char *EnebularAgentMbedCloudClient::get_device_id(void)
+{
+    const ConnectorClientEndpointInfo * info = _cloud_client.endpoint_info();
+    if (info) {
+        return info->internal_endpoint_name.c_str();
+    }
+
+    return NULL;
+}
+
+const char *EnebularAgentMbedCloudClient::get_endpoint_name(void)
+{
+    const ConnectorClientEndpointInfo * info = _cloud_client.endpoint_info();
+    if (info) {
+        return info->endpoint_name.c_str();
+    }
+
+    return NULL;
+}
+
+void EnebularAgentMbedCloudClient::notify_conntection_state(void)
+{
+    vector<connection_state_callback>::iterator it;
+    for (it = _connection_state_callbacks.begin(); it != _connection_state_callbacks.end(); it++) {
+        it->call();
+    }
+}
+
+void EnebularAgentMbedCloudClient::notify_agent_man_msg(const char *type, const char *content)
+{
+    vector<agent_manager_msg_callback>::iterator it;
+    for (it = _agent_man_msg_callbacks.begin(); it != _agent_man_msg_callbacks.end(); it++) {
+        it->call(type, content);
+    }
 }
 
 void EnebularAgentMbedCloudClient::client_registered()
 {
     _registered = true;
 
-    printf("Client registered:\n");
+    printf("Client registered\n");
 
-    const ConnectorClientEndpointInfo * info = _cloud_client.endpoint_info();
-    if (info) {
-        const char *device_id = info->internal_endpoint_name.c_str();
-        const char *name = info->endpoint_name.c_str();
-        printf("Device ID: %s\n", device_id);
-        if (name && strlen(name) > 0) {
-            printf("Endpoint name: %s\n", name);
-        }
-    }
+    notify_conntection_state();
 }
 
 void EnebularAgentMbedCloudClient::client_registration_updated()
@@ -300,13 +325,15 @@ void EnebularAgentMbedCloudClient::client_unregistered()
     _registered = false;
 
     printf("Client unregistered\n");
+
+    notify_conntection_state();
 }
 
 void EnebularAgentMbedCloudClient::client_error(int error_code)
 {
     const char * err;
 
-    switch(error_code) {
+    switch (error_code) {
         case MbedCloudClient::ConnectErrorNone:
             err = "ConnectErrorNone";
             break;
