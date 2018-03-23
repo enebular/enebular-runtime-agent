@@ -11,7 +11,7 @@ EnebularAgentMbedCloudConnector::~EnebularAgentMbedCloudConnector()
 {
 }
 
-void EnebularAgentMbedCloudConnector::connection_state_cb()
+void EnebularAgentMbedCloudConnector::client_connection_state_cb()
 {
     bool connected = _mbed_cloud_client.is_connected();
 
@@ -48,7 +48,7 @@ bool EnebularAgentMbedCloudConnector::startup(void *iface)
     }
 
     /* hook up client callbacks */
-    ConnectionStateCallback connection_state_cb(this, &EnebularAgentMbedCloudConnector::connection_state_cb);
+    ConnectionStateCallback connection_state_cb(this, &EnebularAgentMbedCloudConnector::client_connection_state_cb);
     AgentManagerMsgCallback agent_man_msg_cb(this, &EnebularAgentMbedCloudConnector::agent_manager_msg_cb);
     _mbed_cloud_client.register_connection_state_callback(connection_state_cb);
     _mbed_cloud_client.register_agent_manager_msg_callback(agent_man_msg_cb);

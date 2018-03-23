@@ -1,6 +1,9 @@
 
-#include <cstdio>
-#include <ctime>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#include "factory_configurator_client.h"
 #include "enebular_agent_mbed_cloud_client.h"
 
 #define OBJECT_ID_DEPLOY_FLOW       (26242)
@@ -231,8 +234,44 @@ void EnebularAgentMbedCloudClient::update_auth_state_cb(const char *name)
     process_update_auth_update();
 }
 
+bool EnebularAgentMbedCloudClient::init_fcc()
+{
+    fcc_status_e status;
+
+    status = fcc_init();
+    if (status != FCC_STATUS_SUCCESS) {
+        printf("Failed to initialize FCC (%d)\n", status);
+        return false;
+    }
+
+#if MBED_CONF_APP_DEVELOPER_MODE == 1
+    printf("Starting developer flow...\n");
+    status = fcc_developer_flow();
+    if (status == FCC_STATUS_KCM_FILE_EXIST_ERROR) {
+        printf("Developer credentials already exist\n");
+    } else if (status != FCC_STATUS_SUCCESS) {
+        printf("Failed to load developer credentials\n");
+        return false;
+    }
+#endif
+
+    status = fcc_verify_device_configured_4mbed_cloud();
+    if (status != FCC_STATUS_SUCCESS) {
+        printf("Not configured for mbed cloud\n");
+        return false;
+    } else {
+        printf("Configured for mbed cloud\n");
+    }
+
+    return true;
+}
+
 bool EnebularAgentMbedCloudClient::setup()
 {
+    if (!init_fcc()) {
+        return false;
+    }
+
     setup_objects();
 
     _cloud_client.add_objects(_object_list);

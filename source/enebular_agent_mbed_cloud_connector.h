@@ -21,6 +21,8 @@ public:
 
     /**
      * Start up the connector.
+     *
+     * @param iface A handler to the network interface.
      */
     bool startup(void *iface);
 
@@ -35,7 +37,7 @@ private:
     EnebularAgentInterface _agent;
     bool _started;
 
-    void connection_state_cb();
+    void client_connection_state_cb();
     void agent_manager_msg_cb(const char *type, const char *content);
 
 };

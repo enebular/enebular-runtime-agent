@@ -3,13 +3,14 @@
 #define ENEBULAR_AGENT_MBED_CLOUD_CLIENT_H
 
 #include "mbed-cloud-client/MbedCloudClient.h"
-#include "mbed-client/m2mobject.h"
 
 typedef FP0<void> ConnectionStateCallback;
 typedef FP2<void,const char *,const char *> AgentManagerMsgCallback;
 
 /**
  * Todo:
+ *  - All MbedCloudClient callbacks occur on a separate thread, so this must be
+ *    handled correctly (transfer back to main thread).
  *  - Standard device/security objects/resources
  */
 
@@ -37,8 +38,7 @@ public:
     /**
      * Connect to Mbed Cloud.
      * 
-     * @param iface A handler to the network interface on mbedOS, can be NULL on
-     *              other platforms.
+     * @param iface A handler to the network interface.
      */
     bool connect(void *iface);
 
@@ -86,6 +86,7 @@ private:
     void client_unregistered();
     void client_error(int error_code);
 
+    bool init_fcc();
     void setup_objects();
 
     M2MResource *add_resource(

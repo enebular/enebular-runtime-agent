@@ -3,7 +3,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/stat.h>
-#include "factory_configurator_client.h"
 #include "mbed-trace/mbed_trace.h"
 #include "mbed-trace-helper.h"
 #include "enebular_agent_mbed_cloud_connector.h"
@@ -22,6 +21,9 @@
 static unsigned int _network_interface = 0xFFFFFFFF;
 static void *network_interface = &_network_interface;
 
+/**
+ * Todo: confirm the details of this.
+ */
 static bool init_mbed_trace(void)
 {
     if (!mbed_trace_helper_create_mutex()) {
@@ -47,38 +49,6 @@ static bool init_storage_dir(void)
     return true;
 }
 
-static bool init_fcc(void)
-{
-    fcc_status_e status;
-
-    status = fcc_init();
-    if (status != FCC_STATUS_SUCCESS) {
-        printf("Failed to initialize FCC (%d)\n", status);
-        return false;
-    }
-
-#if MBED_CONF_APP_DEVELOPER_MODE == 1
-    printf("Starting developer flow...\n");
-    status = fcc_developer_flow();
-    if (status == FCC_STATUS_KCM_FILE_EXIST_ERROR) {
-        printf("Developer credentials already exist\n");
-    } else if (status != FCC_STATUS_SUCCESS) {
-        printf("Failed to load developer credentials\n");
-        return false;
-    }
-#endif
-
-    status = fcc_verify_device_configured_4mbed_cloud();
-    if (status != FCC_STATUS_SUCCESS) {
-        printf("Not configured for mbed cloud\n");
-        return false;
-    } else {
-        printf("Configured for mbed cloud\n");
-    }
-
-    return true;
-}
-
 static bool init(void)
 {
     if (!init_mbed_trace()) {
@@ -88,11 +58,6 @@ static bool init(void)
 
     if (!init_storage_dir()) {
         printf("Failed to initialize storage directory\n");
-        return false;
-    }
-
-    if (!init_fcc()) {
-        printf("Failed to initialize FCC\n");
         return false;
     }
 
