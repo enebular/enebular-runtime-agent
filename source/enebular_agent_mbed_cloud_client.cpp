@@ -45,6 +45,7 @@ void update_progress(uint32_t progress, uint32_t total);
 EnebularAgentMbedCloudClient::EnebularAgentMbedCloudClient()
 {
     _registered = false;
+    _registered_state_updated = false;
 }
 
 EnebularAgentMbedCloudClient::~EnebularAgentMbedCloudClient()
@@ -291,6 +292,16 @@ bool EnebularAgentMbedCloudClient::setup()
     return true;
 }
 
+void EnebularAgentMbedCloudClient::tick()
+{
+    //todo: agent message
+
+    if (_registered_state_updated) {
+        _registered_state_updated = false;
+        notify_conntection_state();
+    }
+}
+
 bool EnebularAgentMbedCloudClient::connect(void *iface)
 {
     printf("Client connecting...\n");
@@ -356,13 +367,17 @@ void EnebularAgentMbedCloudClient::notify_agent_man_msg(const char *type, const 
     }
 }
 
+void EnebularAgentMbedCloudClient::update_registered_state(bool registered)
+{
+    _registered = registered;
+    _registered_state_updated = true;
+}
+
 void EnebularAgentMbedCloudClient::client_registered()
 {
-    _registered = true;
+    update_registered_state(true);
 
     printf("Client registered\n");
-
-    notify_conntection_state();
 }
 
 void EnebularAgentMbedCloudClient::client_registration_updated()
@@ -372,11 +387,9 @@ void EnebularAgentMbedCloudClient::client_registration_updated()
 
 void EnebularAgentMbedCloudClient::client_unregistered()
 {
-    _registered = false;
+    update_registered_state(false);
 
     printf("Client unregistered\n");
-
-    notify_conntection_state();
 }
 
 void EnebularAgentMbedCloudClient::client_error(int error_code)

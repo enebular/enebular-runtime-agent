@@ -21,7 +21,8 @@
  */
 static unsigned int _network_interface = 0xFFFFFFFF;
 static void *network_interface = &_network_interface;
-static bool run;
+
+EnebularAgentMbedCloudConnector *connector;
 
 /**
  * Todo: confirm the details of this.
@@ -53,7 +54,11 @@ static bool init_storage_dir(void)
 
 static void sigaction_handler(int sig)
 {
-    run = false;
+    if (!connector) {
+        return;
+    }
+
+    connector->halt();
 }
 
 static bool init_signals(void)
@@ -99,24 +104,21 @@ static bool init(void)
 
 int main(int argc, char **argv)
 {
-    run = true;
-
     if (!init()) {
         printf("Base initialization failed\n");
         return EXIT_FAILURE;
     }
 
-    EnebularAgentMbedCloudConnector connector;
-    if (!connector.startup(network_interface)) {
+    connector = new EnebularAgentMbedCloudConnector();
+
+    if (!connector->startup(network_interface)) {
         printf("Connector startup failed\n");
         return EXIT_FAILURE;
     }
 
-    while (run) {
-        usleep(100 * 1000);
-    }
+    connector->run();
 
-    connector.shutdown();
+    connector->shutdown();
 
     return EXIT_SUCCESS;
 }

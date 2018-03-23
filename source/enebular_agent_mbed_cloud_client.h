@@ -12,6 +12,7 @@ typedef FP2<void,const char *,const char *> AgentManagerMsgCallback;
  *  - All MbedCloudClient callbacks occur on a separate thread, so this must be
  *    handled correctly (transfer back to main thread).
  *  - Standard device/security objects/resources
+ *  - Auto reconnection (registration) needed?
  */
 
 class EnebularAgentMbedCloudClient {
@@ -34,6 +35,8 @@ public:
     bool setup();
 
     // void cleanup();
+
+    void tick();
 
     /**
      * Connect to Mbed Cloud.
@@ -63,6 +66,7 @@ private:
     vector<ConnectionStateCallback> _connection_state_callbacks;
     vector<AgentManagerMsgCallback> _agent_man_msg_callbacks;
     bool _registered;
+    bool _registered_state_updated;
 
     M2MResource *_deploy_flow_download_url_res;
     M2MResource *_register_connection_id_res;
@@ -88,6 +92,7 @@ private:
 
     bool init_fcc();
     void setup_objects();
+    void update_registered_state(bool registered);
 
     M2MResource *add_resource(
         uint16_t object_id,

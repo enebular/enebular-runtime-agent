@@ -6,6 +6,7 @@
 EnebularAgentMbedCloudConnector::EnebularAgentMbedCloudConnector()
 {
     _started = false;
+    _running = false;
 }
 
 EnebularAgentMbedCloudConnector::~EnebularAgentMbedCloudConnector()
@@ -84,4 +85,28 @@ void EnebularAgentMbedCloudConnector::shutdown()
 
     _agent.notify_connection_state(false);
     _agent.disconnect();
+}
+
+void EnebularAgentMbedCloudConnector::run()
+{
+    if (_running) {
+        return;
+    }
+
+    _running = true;
+
+    while (_running) {
+
+        // todo: epoll loop
+
+        _mbed_cloud_client.tick();
+
+        usleep(100*1000);
+
+    }
+}
+
+void EnebularAgentMbedCloudConnector::halt()
+{
+    _running = false;
 }

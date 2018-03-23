@@ -27,6 +27,20 @@ public:
     bool startup(void *iface);
 
     /**
+     * Run the connector.
+     *
+     * This doesn't return until halt is called.
+     */
+    void run();
+
+    /**
+     * Stop the running connector.
+     *
+     * This can be called from a separate thread or signal handler etc.
+     */
+    void halt();
+
+    /**
      * Shut down the connector.
      */
     void shutdown();
@@ -36,6 +50,7 @@ private:
     EnebularAgentMbedCloudClient _mbed_cloud_client;
     EnebularAgentInterface _agent;
     bool _started;
+    volatile bool _running;
 
     void client_connection_state_cb();
     void agent_manager_msg_cb(const char *type, const char *content);
