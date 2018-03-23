@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <pthread.h>
 
 #include "factory_configurator_client.h"
 #include "enebular_agent_mbed_cloud_client.h"
@@ -46,10 +47,12 @@ EnebularAgentMbedCloudClient::EnebularAgentMbedCloudClient()
 {
     _registered = false;
     _registered_state_updated = false;
+    pthread_mutex_init(&_lock, NULL);
 }
 
 EnebularAgentMbedCloudClient::~EnebularAgentMbedCloudClient()
 {
+    pthread_mutex_destroy(&_lock);
 }
 
 void EnebularAgentMbedCloudClient::setup_objects()
@@ -90,7 +93,7 @@ void EnebularAgentMbedCloudClient::setup_objects()
         value_updated_callback(this, &EnebularAgentMbedCloudClient::update_auth_state_cb));
 }
 
-void EnebularAgentMbedCloudClient::process_deploy_flow_update(void)
+void EnebularAgentMbedCloudClient::process_deploy_flow_update()
 {
     char msg[1024*4];
 
@@ -101,10 +104,10 @@ void EnebularAgentMbedCloudClient::process_deploy_flow_update(void)
         _deploy_flow_download_url_res->get_value_string().c_str());
     msg[sizeof(msg)-1] = '\0';
 
-    notify_agent_man_msg("deploy", msg);
+    queue_agent_man_msg("deploy", msg);
 }
 
-void EnebularAgentMbedCloudClient::process_register_update(void)
+void EnebularAgentMbedCloudClient::process_register_update()
 {
     char msg[1024*4];
     unsigned long long now;
@@ -132,7 +135,7 @@ void EnebularAgentMbedCloudClient::process_register_update(void)
     );
     msg[sizeof(msg)-1] = '\0';
 
-    notify_agent_man_msg("register", msg);
+    queue_agent_man_msg("register", msg);
 
     _register_connection_id_time = 0;
     _register_device_id_time = 0;
@@ -140,7 +143,7 @@ void EnebularAgentMbedCloudClient::process_register_update(void)
     _register_agent_manager_base_url_time = 0;
 }
 
-void EnebularAgentMbedCloudClient::process_update_auth_update(void)
+void EnebularAgentMbedCloudClient::process_update_auth_update()
 {
     char msg[1024*4];
     unsigned long long now;
@@ -165,13 +168,14 @@ void EnebularAgentMbedCloudClient::process_update_auth_update(void)
     );
     msg[sizeof(msg)-1] = '\0';
 
-    notify_agent_man_msg("updateAuth", msg);
+    queue_agent_man_msg("updateAuth", msg);
 
     _update_auth_access_token_time = 0;
     _update_auth_id_token_time = 0;
     _update_auth_state_time = 0;
 }
 
+/* Note: called from separate thread */
 void EnebularAgentMbedCloudClient::deploy_flow_download_url_cb(const char *name)
 {
     printf("deploy_flow_download_url: %s\n", _deploy_flow_download_url_res->get_value_string().c_str());
@@ -179,6 +183,7 @@ void EnebularAgentMbedCloudClient::deploy_flow_download_url_cb(const char *name)
     process_deploy_flow_update();
 }
 
+/* Note: called from separate thread */
 void EnebularAgentMbedCloudClient::register_connection_id_cb(const char *name)
 {
     printf("register_connection_id: %s\n", _register_connection_id_res->get_value_string().c_str());
@@ -187,6 +192,7 @@ void EnebularAgentMbedCloudClient::register_connection_id_cb(const char *name)
     process_register_update();
 }
 
+/* Note: called from separate thread */
 void EnebularAgentMbedCloudClient::register_device_id_cb(const char *name)
 {
     printf("register_device_id: %s\n", _register_device_id_res->get_value_string().c_str());
@@ -195,6 +201,7 @@ void EnebularAgentMbedCloudClient::register_device_id_cb(const char *name)
     process_register_update();
 }
 
+/* Note: called from separate thread */
 void EnebularAgentMbedCloudClient::register_auth_request_url_cb(const char *name)
 {
     printf("register_auth_request_url: %s\n", _register_auth_request_url_res->get_value_string().c_str());
@@ -203,6 +210,7 @@ void EnebularAgentMbedCloudClient::register_auth_request_url_cb(const char *name
     process_register_update();
 }
 
+/* Note: called from separate thread */
 void EnebularAgentMbedCloudClient::register_agent_manager_base_url_cb(const char *name)
 {
     printf("register_agent_manager_base_url: %s\n", _register_agent_manager_base_url_res->get_value_string().c_str());
@@ -211,6 +219,7 @@ void EnebularAgentMbedCloudClient::register_agent_manager_base_url_cb(const char
     process_register_update();
 }
 
+/* Note: called from separate thread */
 void EnebularAgentMbedCloudClient::update_auth_access_token_cb(const char *name)
 {
     printf("update_auth_access_token: %s\n", _update_auth_access_token_res->get_value_string().c_str());
@@ -219,6 +228,7 @@ void EnebularAgentMbedCloudClient::update_auth_access_token_cb(const char *name)
     process_update_auth_update();
 }
 
+/* Note: called from separate thread */
 void EnebularAgentMbedCloudClient::update_auth_id_token_cb(const char *name)
 {
     printf("update_auth_id_token: %s\n", _update_auth_id_token_res->get_value_string().c_str());
@@ -227,6 +237,7 @@ void EnebularAgentMbedCloudClient::update_auth_id_token_cb(const char *name)
     process_update_auth_update();
 }
 
+/* Note: called from separate thread */
 void EnebularAgentMbedCloudClient::update_auth_state_cb(const char *name)
 {
     printf("update_auth_state: %s\n", _update_auth_state_res->get_value_string().c_str());
@@ -294,7 +305,7 @@ bool EnebularAgentMbedCloudClient::setup()
 
 void EnebularAgentMbedCloudClient::tick()
 {
-    //todo: agent message
+    notify_agent_man_msgs();
 
     if (_registered_state_updated) {
         _registered_state_updated = false;
@@ -359,12 +370,32 @@ void EnebularAgentMbedCloudClient::notify_conntection_state(void)
     }
 }
 
-void EnebularAgentMbedCloudClient::notify_agent_man_msg(const char *type, const char *content)
+void EnebularAgentMbedCloudClient::notify_agent_man_msgs()
 {
-    vector<AgentManagerMsgCallback>::iterator it;
-    for (it = _agent_man_msg_callbacks.begin(); it != _agent_man_msg_callbacks.end(); it++) {
-        it->call(type, content);
+    while (!_agent_man_msgs.empty()) {
+
+        pthread_mutex_lock(&_lock);
+        agent_msg_t msg = _agent_man_msgs.front();
+        _agent_man_msgs.pop();
+        pthread_mutex_unlock(&_lock);
+
+        vector<AgentManagerMsgCallback>::iterator it;
+        for (it = _agent_man_msg_callbacks.begin(); it != _agent_man_msg_callbacks.end(); it++) {
+            it->call(msg.type.c_str(), msg.content.c_str());
+        }
+
     }
+}
+
+void EnebularAgentMbedCloudClient::queue_agent_man_msg(const char *type, const char *content)
+{
+    agent_msg_t msg;
+    msg.type = type;
+    msg.content = content;
+
+    pthread_mutex_lock(&_lock);
+    _agent_man_msgs.push(msg);
+    pthread_mutex_unlock(&_lock);
 }
 
 void EnebularAgentMbedCloudClient::update_registered_state(bool registered)
@@ -373,6 +404,7 @@ void EnebularAgentMbedCloudClient::update_registered_state(bool registered)
     _registered_state_updated = true;
 }
 
+/* Note: called from separate thread */
 void EnebularAgentMbedCloudClient::client_registered()
 {
     update_registered_state(true);
@@ -380,11 +412,13 @@ void EnebularAgentMbedCloudClient::client_registered()
     printf("Client registered\n");
 }
 
+/* Note: called from separate thread */
 void EnebularAgentMbedCloudClient::client_registration_updated()
 {
     printf("Client registration updated\n");
 }
 
+/* Note: called from separate thread */
 void EnebularAgentMbedCloudClient::client_unregistered()
 {
     update_registered_state(false);
@@ -392,6 +426,7 @@ void EnebularAgentMbedCloudClient::client_unregistered()
     printf("Client unregistered\n");
 }
 
+/* Note: called from separate thread */
 void EnebularAgentMbedCloudClient::client_error(int error_code)
 {
     const char * err;

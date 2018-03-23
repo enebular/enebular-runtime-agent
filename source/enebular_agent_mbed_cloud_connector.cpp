@@ -97,7 +97,7 @@ void EnebularAgentMbedCloudConnector::run()
 
     while (_running) {
 
-        // todo: epoll loop
+        // todo: epoll fd waiting based loop
 
         _mbed_cloud_client.tick();
 

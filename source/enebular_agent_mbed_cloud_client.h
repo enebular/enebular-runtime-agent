@@ -2,10 +2,16 @@
 #ifndef ENEBULAR_AGENT_MBED_CLOUD_CLIENT_H
 #define ENEBULAR_AGENT_MBED_CLOUD_CLIENT_H
 
+#include <queue>
 #include "mbed-cloud-client/MbedCloudClient.h"
 
 typedef FP0<void> ConnectionStateCallback;
 typedef FP2<void,const char *,const char *> AgentManagerMsgCallback;
+
+typedef struct _agent_msg {
+    string type;
+    string content;
+} agent_msg_t;
 
 /**
  * Todo:
@@ -65,8 +71,12 @@ private:
     M2MObjectList _object_list;
     vector<ConnectionStateCallback> _connection_state_callbacks;
     vector<AgentManagerMsgCallback> _agent_man_msg_callbacks;
+
+    /* the following are thread-shared */
     bool _registered;
     bool _registered_state_updated;
+    queue<agent_msg_t> _agent_man_msgs;
+    pthread_mutex_t _lock;
 
     M2MResource *_deploy_flow_download_url_res;
     M2MResource *_register_connection_id_res;
@@ -136,12 +146,14 @@ private:
 
     //void example_execute_function(void * argument);
 
-    void process_deploy_flow_update(void);
-    void process_register_update(void);
-    void process_update_auth_update(void);
+    void process_deploy_flow_update();
+    void process_register_update();
+    void process_update_auth_update();
 
-    void notify_conntection_state(void);
-    void notify_agent_man_msg(const char *type, const char *content);
+    void queue_agent_man_msg(const char *type, const char *content);
+
+    void notify_conntection_state();
+    void notify_agent_man_msgs();
 
 };
 
