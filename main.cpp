@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <signal.h>
 #include "mbed-trace/mbed_trace.h"
 #include "mbed-trace-helper.h"
 #include "enebular_agent_mbed_cloud_connector.h"
@@ -20,6 +21,7 @@
  */
 static unsigned int _network_interface = 0xFFFFFFFF;
 static void *network_interface = &_network_interface;
+static bool run;
 
 /**
  * Todo: confirm the details of this.
@@ -49,6 +51,33 @@ static bool init_storage_dir(void)
     return true;
 }
 
+static void sigaction_handler(int sig)
+{
+    run = false;
+}
+
+static bool init_signals(void)
+{
+    struct sigaction sigact;
+    int ret;
+
+    sigact.sa_flags = 0;
+    sigemptyset(&sigact.sa_mask);
+    sigact.sa_handler = sigaction_handler;
+
+    ret = sigaction(SIGINT, &sigact, NULL);
+    if (ret < 0) {
+        return false;
+    }
+
+    ret = sigaction(SIGTERM, &sigact, NULL);
+    if (ret < 0) {
+        return false;
+    }
+
+    return true;
+}
+
 static bool init(void)
 {
     if (!init_mbed_trace()) {
@@ -61,11 +90,17 @@ static bool init(void)
         return false;
     }
 
+    if (!init_signals()) {
+        return false;
+    }
+
     return true;
 }
 
 int main(int argc, char **argv)
 {
+    run = true;
+
     if (!init()) {
         printf("Base initialization failed\n");
         return EXIT_FAILURE;
@@ -77,11 +112,11 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    // todo: clean shutdown on sig
-
-    while (1) {
+    while (run) {
         usleep(100 * 1000);
     }
+
+    connector.shutdown();
 
     return EXIT_SUCCESS;
 }

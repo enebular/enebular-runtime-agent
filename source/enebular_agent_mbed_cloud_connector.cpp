@@ -1,5 +1,6 @@
 
 #include <stdio.h>
+#include <unistd.h>
 #include "enebular_agent_mbed_cloud_connector.h"
 
 EnebularAgentMbedCloudConnector::EnebularAgentMbedCloudConnector()
@@ -63,6 +64,8 @@ bool EnebularAgentMbedCloudConnector::startup(void *iface)
         return false;
     }
 
+    _started = true;
+
     return true;
 }
 
@@ -72,8 +75,12 @@ void EnebularAgentMbedCloudConnector::shutdown()
         return;
     }
 
+    printf("Shutting down...\n");
+
     _mbed_cloud_client.disconnect();
-    // todo: wait for disconnect state update
+    while (_mbed_cloud_client.is_connected()) {
+        usleep(100*1000);
+    }
 
     _agent.notify_connection_state(false);
     _agent.disconnect();
