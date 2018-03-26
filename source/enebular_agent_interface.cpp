@@ -313,6 +313,30 @@ void EnebularAgentInterface::send_message(const char *type, const char *content)
     send_msg(msg);
 }
 
+/**
+ * Todo:
+ *  - JSON string escaping for message content
+ */
+void EnebularAgentInterface::send_log_message(const char *level, const char *prefix, const char *message)
+{
+    char msg[1024*4];
+
+    snprintf(msg, sizeof(msg)-1,
+        "{"
+            "\"type\": \"log\","
+            "\"log\": {"
+                "\"level\": \"%s\","
+                "\"message\": \"%s: %s\""
+            "}"
+        "}",
+        level,
+        prefix,
+        message
+    );
+
+    send_msg(msg);
+}
+
 void EnebularAgentInterface::notify_connector_connection_state(bool connected)
 {
     if (connected) {

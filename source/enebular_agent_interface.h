@@ -61,7 +61,13 @@ public:
      */
     void send_message(const char *type, const char *content);
 
-    // void send_log_message();
+    /**
+     * Send a log message to the agent.
+     *
+     * @param level   Log level
+     * @param message Log message
+     */
+    void send_log_message(const char *level, const char *prefix, const char *message);
 
     // handle (connector) connection state change request
 

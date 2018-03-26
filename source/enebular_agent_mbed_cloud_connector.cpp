@@ -13,6 +13,8 @@ EnebularAgentMbedCloudConnector::EnebularAgentMbedCloudConnector()
 {
     _agent = new EnebularAgentInterface(this);
     _mbed_cloud_client = new EnebularAgentMbedCloudClient(this);
+    _logger = Logger::get_instance();
+    _logger->set_agent_interface(_agent);
     _started = false;
     _running = false;
 }
@@ -28,6 +30,7 @@ void EnebularAgentMbedCloudConnector::agent_connection_state_cb()
     bool connected = _agent->is_connected();
 
     printf("Agent: %s\n", connected ? "connected" : "disconnected");
+    _logger->log(INFO, "Agent: %s\n", connected ? "connected" : "disconnected");
 }
 
 void EnebularAgentMbedCloudConnector::client_connection_state_cb()

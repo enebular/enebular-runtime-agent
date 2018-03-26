@@ -4,6 +4,7 @@
 
 #include "enebular_agent_mbed_cloud_client.h"
 #include "enebular_agent_interface.h"
+#include "logger.h"
 
 class EnebularAgentMbedCloudConnector {
 
@@ -79,6 +80,7 @@ private:
     volatile bool _running;
     int _epoll_fd;
     int _kick_fd;
+    Logger *_logger;
 
     bool init_events();
     void uninit_events();
