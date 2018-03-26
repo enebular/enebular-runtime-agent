@@ -11,6 +11,7 @@
 
 EnebularAgentMbedCloudConnector::EnebularAgentMbedCloudConnector()
 {
+    _agent = new EnebularAgentInterface(this);
     _mbed_cloud_client = new EnebularAgentMbedCloudClient(this);
     _started = false;
     _running = false;
@@ -19,6 +20,14 @@ EnebularAgentMbedCloudConnector::EnebularAgentMbedCloudConnector()
 EnebularAgentMbedCloudConnector::~EnebularAgentMbedCloudConnector()
 {
     delete _mbed_cloud_client;
+    delete _agent;
+}
+
+void EnebularAgentMbedCloudConnector::agent_connection_state_cb()
+{
+    bool connected = _agent->is_connected();
+
+    printf("agent: %s\n", connected ? "connected" : "disconnected");
 }
 
 void EnebularAgentMbedCloudConnector::client_connection_state_cb()
@@ -36,13 +45,18 @@ void EnebularAgentMbedCloudConnector::client_connection_state_cb()
         }
     }
 
-    _agent.notify_connection_state(connected);
+    if (_agent->is_connected()) {
+        _agent->notify_connection_state(connected);
+    }
 }
 
 void EnebularAgentMbedCloudConnector::agent_manager_msg_cb(const char *type, const char *content)
 {
     printf("agent-man message: type:%s, content:%s\n", type, content);
-    _agent.send_message(type, content);
+
+    if (_agent->is_connected()) {
+        _agent->send_message(type, content);
+    }
 }
 
 bool EnebularAgentMbedCloudConnector::init_events()
@@ -92,7 +106,7 @@ void EnebularAgentMbedCloudConnector::wait_for_events()
                 break;
             }
         } else if (nfds == 0) {
-            //printf("timeout\n");
+            printf("timeout\n");
             break;
         } else {
             break;
@@ -100,7 +114,7 @@ void EnebularAgentMbedCloudConnector::wait_for_events()
     }
 
     for (int i = 0; i < nfds; ++i) {
-        //printf("triggered fd: %d\n", events[i].data.fd);
+        printf("triggered fd: %d\n", events[i].data.fd);
         if (events[i].data.fd == _kick_fd) {
             uint64_t val;
             ssize_t ret = read(_kick_fd, &val, sizeof(val));
@@ -126,6 +140,16 @@ void EnebularAgentMbedCloudConnector::kick()
     }
 }
 
+void EnebularAgentMbedCloudConnector::register_wait_fd(int fd)
+{
+    //
+}
+
+void EnebularAgentMbedCloudConnector::deregister_wait_fd(int fd)
+{
+    //
+}
+
 bool EnebularAgentMbedCloudConnector::startup(void *iface)
 {
     if (_started) {
@@ -137,19 +161,23 @@ bool EnebularAgentMbedCloudConnector::startup(void *iface)
         return false;
     }
 
+    /* hook up agent callbacks */
+    ConnectionStateCallback agent_conn_state_cb(this, &EnebularAgentMbedCloudConnector::agent_connection_state_cb);
+    _agent->register_connection_state_callback(agent_conn_state_cb);
+
     /* connect to agent */
-    if (!_agent.connect()) {
+    if (!_agent->connect()) {
         printf("Failed to connect to agent\n");
         return false;
     }
 
     /* hook up client callbacks */
-    ConnectionStateCallback connection_state_cb(this, &EnebularAgentMbedCloudConnector::client_connection_state_cb);
+    ConnectionStateCallback client_conn_state_cb(this, &EnebularAgentMbedCloudConnector::client_connection_state_cb);
     AgentManagerMsgCallback agent_man_msg_cb(this, &EnebularAgentMbedCloudConnector::agent_manager_msg_cb);
-    _mbed_cloud_client->register_connection_state_callback(connection_state_cb);
+    _mbed_cloud_client->register_connection_state_callback(client_conn_state_cb);
     _mbed_cloud_client->register_agent_manager_msg_callback(agent_man_msg_cb);
 
-    /* client setup & connect */
+    /* client setup & connect client */
     if (!_mbed_cloud_client->setup()) {
         printf("Client setup failed\n");
         return false;
@@ -177,8 +205,8 @@ void EnebularAgentMbedCloudConnector::shutdown()
         usleep(100*1000);
     }
 
-    _agent.notify_connection_state(false);
-    _agent.disconnect();
+    _agent->notify_connection_state(false);
+    _agent->disconnect();
 
     uninit_events();
 }
@@ -192,7 +220,8 @@ void EnebularAgentMbedCloudConnector::run()
     _running = true;
 
     while (_running) {
-        _mbed_cloud_client->tick();
+        _agent->run();
+        _mbed_cloud_client->run();
         wait_for_events();
     }
 }

@@ -44,7 +44,7 @@ public:
 
     // void cleanup();
 
-    void tick();
+    void run();
 
     /**
      * Connect to Mbed Cloud.

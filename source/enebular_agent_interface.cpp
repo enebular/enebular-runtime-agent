@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include "enebular_agent_mbed_cloud_connector.h"
 #include "enebular_agent_interface.h"
 
 #define MODULE_NAME             "enebular-agent"
@@ -29,8 +30,9 @@
 #  define debug(format, ...)
 #endif
 
-EnebularAgentInterface::EnebularAgentInterface()
+EnebularAgentInterface::EnebularAgentInterface(EnebularAgentMbedCloudConnector * connector)
 {
+    _connector = connector;
     _is_connected = false;
 }
 
@@ -41,89 +43,62 @@ EnebularAgentInterface::~EnebularAgentInterface()
 bool EnebularAgentInterface::connected_check()
 {
     if (!_is_connected) {
-        errmsg(MODULE_NAME " has not been initialized\n");
+        errmsg("not connected\n");
         return false;
     }
 
     return true;
 }
 
-/**
- * Note: The timeout currently functions as a per data chunk receive timeout,
- * not an overall total message receive timeout.
- */
-bool EnebularAgentInterface::recv_msg_wait(int timeout_msec)
+void EnebularAgentInterface::update_connected_state(bool connected)
 {
-    struct timeval tv;
-    fd_set readfds;
-    int ret;
-    int cnt;
+    _is_connected = connected;
 
-    _recv_cnt = 0;
+    notify_conntection_state();
+}
 
-    while (1) {
+void EnebularAgentInterface::handle_recv_msg(const char *msg)
+{
+    debug("received message: [%s]\n", msg);
 
-        tv.tv_sec = timeout_msec / 1000;
-        tv.tv_usec = (timeout_msec % 1000) * 1000;
-
-        /* this is dependant on tv being updated (linux only) */
-        while (tv.tv_sec != 0 && tv.tv_sec != 0) {
-            FD_ZERO(&readfds);
-            FD_SET(_agent_fd, &readfds);
-            ret = select(_agent_fd + 1, &readfds, NULL, NULL, &tv);
-            if (ret > 0) {
-                break;
-            }
+    if (strcmp(msg, "ok") == 0) {
+        if (_waiting_for_connect_ok) {
+            _waiting_for_connect_ok = false;
+            update_connected_state(true);
         }
-        if (tv.tv_sec == 0 && tv.tv_sec == 0) {
-            debug("receive timed out\n");
-            return false;
-        }
+    }
+}
 
-        cnt = read(_agent_fd, _recv_buf, RECV_BUF_SIZE - _recv_cnt);
-        if (cnt < 0) {
+void EnebularAgentInterface::recv()
+{
+    ssize_t cnt;
+
+    cnt = read(_agent_fd, &_recv_buf[_recv_cnt], RECV_BUF_SIZE - _recv_cnt);
+    if (cnt < 0) {
+        if (errno != EAGAIN && errno != EWOULDBLOCK) {
             errmsg("receive read error: %s\n", strerror(errno));
         }
-        if (cnt > 0) {
-            debug("received data (%d)\n", cnt);
-        }
-        _recv_cnt += cnt;
-
-        if (_recv_buf[_recv_cnt-1] == END_OF_MSG_MARKER) {
-            _recv_cnt--;
-            _recv_buf[_recv_cnt] = '\0';
-            debug("received message: [%s] (%d)\n", _recv_buf, _recv_cnt);
-            break;
-        }
-
-        if (_recv_cnt == RECV_BUF_SIZE) {
-            debug("receive buffer full\n");
-            return false;
-        }
-
+        return;
+    }
+    if (cnt < 1) {
+        return;
     }
 
-    return true;
-}
+    debug("received data (%ld)\n", cnt);
+    _recv_cnt += cnt;
 
-bool EnebularAgentInterface::recv_msg_wait_for_match(const char *match, int timeout_msec)
-{
-    if (!recv_msg_wait(timeout_msec)) {
-        return false;
+    if (_recv_buf[_recv_cnt-1] == END_OF_MSG_MARKER) {
+        _recv_cnt--;
+        _recv_buf[_recv_cnt] = '\0';
+        handle_recv_msg(_recv_buf);
+        _recv_buf = 0;
+        return;
     }
 
-    if (strlen(match) != _recv_cnt) {
-        return false;
+    if (_recv_cnt == RECV_BUF_SIZE) {
+        debug("receive buffer full. clearing.\n");
+        _recv_buf = 0;
     }
-
-    return (memcmp(match, _recv_buf, _recv_cnt) == 0) ? true : false;
-}
-
-bool EnebularAgentInterface::ok_msg_wait()
-{
-    debug("wait for ok...\n");
-
-    return recv_msg_wait_for_match("ok", 5 * 1000);
 }
 
 bool EnebularAgentInterface::connect_agent()
@@ -137,7 +112,7 @@ bool EnebularAgentInterface::connect_agent()
 
     debug("connecting...\n");
 
-    fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    fd = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (fd < 0) {
         errmsg("failed to open socket: %s\n", strerror(errno));
         return false;
@@ -212,9 +187,9 @@ void EnebularAgentInterface::disconnect_agent()
 
 bool EnebularAgentInterface::connect()
 {
-    debug("init...\n");
+    debug("connect...\n");
 
-    if (_is_connected) {
+    if (_is_connected || _waiting_for_connect_ok) {
         return true;
     }
 
@@ -223,30 +198,48 @@ bool EnebularAgentInterface::connect()
         return false;
     }
 
-    if (!ok_msg_wait()) {
-        errmsg("wait-for-ok failed\n");
-        disconnect_agent();
-        return false;
-    }
+    _waiting_for_connect_ok = true;
 
-    debug("ready\n");
-
-    _is_connected = true;
+    debug("waiting for connect confirmation...\n");
 
     return true;
 }
 
 void EnebularAgentInterface::disconnect()
 {
-    if (!_is_connected) {
+    if (!_waiting_for_connect_ok && !_is_connected) {
         return;
     }
 
-    debug("cleanup...\n");
+    debug("disconnect...\n");
 
     disconnect_agent();
 
-    _is_connected = false;
+    _waiting_for_connect_ok = false;
+    update_connected_state(false);
+}
+
+bool EnebularAgentInterface::is_connected()
+{
+    return _is_connected;
+}
+
+void EnebularAgentInterface::register_connection_state_callback(ConnectionStateCallback cb)
+{
+    _connection_state_callbacks.push_back(cb);
+}
+
+void EnebularAgentInterface::notify_conntection_state()
+{
+    vector<ConnectionStateCallback>::iterator it;
+    for (it = _connection_state_callbacks.begin(); it != _connection_state_callbacks.end(); it++) {
+        it->call();
+    }
+}
+
+void EnebularAgentInterface::run()
+{
+    recv();
 }
 
 void EnebularAgentInterface::xfer_msg(const char *msg)

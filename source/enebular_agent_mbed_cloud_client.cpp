@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <time.h>
 #include <pthread.h>
-
 #include "factory_configurator_client.h"
 #include "enebular_agent_mbed_cloud_connector.h"
 #include "enebular_agent_mbed_cloud_client.h"
@@ -305,7 +304,7 @@ bool EnebularAgentMbedCloudClient::setup()
     return true;
 }
 
-void EnebularAgentMbedCloudClient::tick()
+void EnebularAgentMbedCloudClient::run()
 {
     notify_agent_man_msgs();
 
@@ -364,7 +363,7 @@ const char *EnebularAgentMbedCloudClient::get_endpoint_name(void)
     return NULL;
 }
 
-void EnebularAgentMbedCloudClient::notify_conntection_state(void)
+void EnebularAgentMbedCloudClient::notify_conntection_state()
 {
     vector<ConnectionStateCallback>::iterator it;
     for (it = _connection_state_callbacks.begin(); it != _connection_state_callbacks.end(); it++) {

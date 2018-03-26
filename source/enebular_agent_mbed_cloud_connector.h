@@ -26,7 +26,17 @@ public:
      */
     bool startup(void *iface);
 
-    //todo: void register_wait_fd(int fd);
+    /**
+     * Register a file descriptor to wait on.
+     *
+     * The connector's main loop will run when the file descriptor is ready to
+     * be read.
+     * 
+     * @param fd File descriptor to wait on.
+     */
+    void register_wait_fd(int fd);
+
+    void deregister_wait_fd(int fd);
 
     /**
      * Run the connector's main loop.
@@ -59,7 +69,7 @@ public:
 private:
 
     EnebularAgentMbedCloudClient *_mbed_cloud_client;
-    EnebularAgentInterface _agent;
+    EnebularAgentInterface *_agent;
     bool _started;
     volatile bool _running;
     int _epoll_fd;
@@ -69,6 +79,7 @@ private:
     void uninit_events();
     void wait_for_events();
 
+    void agent_connection_state_cb();
     void client_connection_state_cb();
     void agent_manager_msg_cb(const char *type, const char *content);
 
