@@ -5,6 +5,7 @@
 #include <pthread.h>
 
 #include "factory_configurator_client.h"
+#include "enebular_agent_mbed_cloud_connector.h"
 #include "enebular_agent_mbed_cloud_client.h"
 
 #define OBJECT_ID_DEPLOY_FLOW       (26242)
@@ -43,8 +44,9 @@ void update_authorize(int32_t request);
 void update_progress(uint32_t progress, uint32_t total);
 #endif
 
-EnebularAgentMbedCloudClient::EnebularAgentMbedCloudClient()
+EnebularAgentMbedCloudClient::EnebularAgentMbedCloudClient(EnebularAgentMbedCloudConnector * connector)
 {
+    _connector = connector;
     _registered = false;
     _registered_state_updated = false;
     pthread_mutex_init(&_lock, NULL);
@@ -396,12 +398,16 @@ void EnebularAgentMbedCloudClient::queue_agent_man_msg(const char *type, const c
     pthread_mutex_lock(&_lock);
     _agent_man_msgs.push(msg);
     pthread_mutex_unlock(&_lock);
+
+    _connector->kick();
 }
 
 void EnebularAgentMbedCloudClient::update_registered_state(bool registered)
 {
     _registered = registered;
     _registered_state_updated = true;
+
+    _connector->kick();
 }
 
 /* Note: called from separate thread */

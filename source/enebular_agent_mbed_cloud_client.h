@@ -5,6 +5,8 @@
 #include <queue>
 #include "mbed-cloud-client/MbedCloudClient.h"
 
+class EnebularAgentMbedCloudConnector;
+
 typedef FP0<void> ConnectionStateCallback;
 typedef FP2<void,const char *,const char *> AgentManagerMsgCallback;
 
@@ -28,7 +30,7 @@ public:
     /**
      * Constructor
      */
-    EnebularAgentMbedCloudClient();
+    EnebularAgentMbedCloudClient(EnebularAgentMbedCloudConnector * connector);
 
     /**
      * Deconstructor
@@ -66,6 +68,8 @@ public:
     // todo: update handler reg
 
 private:
+
+    EnebularAgentMbedCloudConnector * _connector;
 
     MbedCloudClient _cloud_client;
     M2MObjectList _object_list;
