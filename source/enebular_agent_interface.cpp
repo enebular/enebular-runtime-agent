@@ -50,6 +50,14 @@ bool EnebularAgentInterface::connected_check()
     return true;
 }
 
+void EnebularAgentInterface::notify_conntection_state()
+{
+    vector<AgentConnectionStateCB>::iterator it;
+    for (it = _connection_state_callbacks.begin(); it != _connection_state_callbacks.end(); it++) {
+        it->call();
+    }
+}
+
 void EnebularAgentInterface::update_connected_state(bool connected)
 {
     _is_connected = connected;
@@ -66,6 +74,8 @@ void EnebularAgentInterface::handle_recv_msg(const char *msg)
             _waiting_for_connect_ok = false;
             update_connected_state(true);
         }
+    } else {
+        debug("unsupported message");
     }
 }
 
@@ -167,6 +177,8 @@ bool EnebularAgentInterface::connect_agent()
         goto err;
     }
 
+    _connector->register_wait_fd(_agent_fd);
+
     debug("connected\n");
 
     return true;
@@ -179,6 +191,8 @@ bool EnebularAgentInterface::connect_agent()
 void EnebularAgentInterface::disconnect_agent()
 {
     debug("disconnect...\n");
+
+    _connector->deregister_wait_fd(_agent_fd);
 
     free(_recv_buf);
     close(_agent_fd);
@@ -224,25 +238,12 @@ bool EnebularAgentInterface::is_connected()
     return _is_connected;
 }
 
-void EnebularAgentInterface::register_connection_state_callback(ConnectionStateCallback cb)
-{
-    _connection_state_callbacks.push_back(cb);
-}
-
-void EnebularAgentInterface::notify_conntection_state()
-{
-    vector<ConnectionStateCallback>::iterator it;
-    for (it = _connection_state_callbacks.begin(); it != _connection_state_callbacks.end(); it++) {
-        it->call();
-    }
-}
-
 void EnebularAgentInterface::run()
 {
     recv();
 }
 
-void EnebularAgentInterface::xfer_msg(const char *msg)
+void EnebularAgentInterface::send_msg(const char *msg)
 {
     char *full_msg;
     int msg_len;
@@ -309,14 +310,19 @@ void EnebularAgentInterface::send_message(const char *type, const char *content)
         content
     );
 
-    xfer_msg(msg);
+    send_msg(msg);
 }
 
-void EnebularAgentInterface::notify_connection_state(bool connected)
+void EnebularAgentInterface::notify_connector_connection_state(bool connected)
 {
     if (connected) {
-        xfer_msg("{\"type\": \"connect\"}");
+        send_msg("{\"type\": \"connect\"}");
     } else {
-        xfer_msg("{\"type\": \"disconnect\"}");
+        send_msg("{\"type\": \"disconnect\"}");
     }
+}
+
+void EnebularAgentInterface::register_connection_state_callback(AgentConnectionStateCB cb)
+{
+    _connection_state_callbacks.push_back(cb);
 }

@@ -333,12 +333,12 @@ bool EnebularAgentMbedCloudClient::is_connected()
     return _registered;
 }
 
-void EnebularAgentMbedCloudClient::register_connection_state_callback(ConnectionStateCallback cb)
+void EnebularAgentMbedCloudClient::register_connection_state_callback(ClientConnectionStateCB cb)
 {
     _connection_state_callbacks.push_back(cb);
 }
 
-void EnebularAgentMbedCloudClient::register_agent_manager_msg_callback(AgentManagerMsgCallback cb)
+void EnebularAgentMbedCloudClient::register_agent_manager_msg_callback(AgentManagerMsgCB cb)
 {
     _agent_man_msg_callbacks.push_back(cb);
 }
@@ -365,7 +365,7 @@ const char *EnebularAgentMbedCloudClient::get_endpoint_name(void)
 
 void EnebularAgentMbedCloudClient::notify_conntection_state()
 {
-    vector<ConnectionStateCallback>::iterator it;
+    vector<ClientConnectionStateCB>::iterator it;
     for (it = _connection_state_callbacks.begin(); it != _connection_state_callbacks.end(); it++) {
         it->call();
     }
@@ -380,7 +380,7 @@ void EnebularAgentMbedCloudClient::notify_agent_man_msgs()
         _agent_man_msgs.pop();
         pthread_mutex_unlock(&_lock);
 
-        vector<AgentManagerMsgCallback>::iterator it;
+        vector<AgentManagerMsgCB>::iterator it;
         for (it = _agent_man_msg_callbacks.begin(); it != _agent_man_msg_callbacks.end(); it++) {
             it->call(msg.type.c_str(), msg.content.c_str());
         }
@@ -413,8 +413,6 @@ void EnebularAgentMbedCloudClient::update_registered_state(bool registered)
 void EnebularAgentMbedCloudClient::client_registered()
 {
     update_registered_state(true);
-
-    printf("Client registered\n");
 }
 
 /* Note: called from separate thread */
@@ -427,8 +425,6 @@ void EnebularAgentMbedCloudClient::client_registration_updated()
 void EnebularAgentMbedCloudClient::client_unregistered()
 {
     update_registered_state(false);
-
-    printf("Client unregistered\n");
 }
 
 /* Note: called from separate thread */

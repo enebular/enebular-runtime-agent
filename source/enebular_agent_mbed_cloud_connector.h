@@ -36,6 +36,11 @@ public:
      */
     void register_wait_fd(int fd);
 
+    /**
+     * Deregister a file descriptor that had been registered to wait on.
+     *
+     * @param fd File descriptor to deregister.
+     */
     void deregister_wait_fd(int fd);
 
     /**

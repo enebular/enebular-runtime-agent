@@ -27,12 +27,14 @@ void EnebularAgentMbedCloudConnector::agent_connection_state_cb()
 {
     bool connected = _agent->is_connected();
 
-    printf("agent: %s\n", connected ? "connected" : "disconnected");
+    printf("Agent: %s\n", connected ? "connected" : "disconnected");
 }
 
 void EnebularAgentMbedCloudConnector::client_connection_state_cb()
 {
     bool connected = _mbed_cloud_client->is_connected();
+
+    printf("Client: %s\n", connected ? "connected" : "disconnected");
 
     if (connected) {
         const char *device_id = _mbed_cloud_client->get_device_id();
@@ -46,13 +48,13 @@ void EnebularAgentMbedCloudConnector::client_connection_state_cb()
     }
 
     if (_agent->is_connected()) {
-        _agent->notify_connection_state(connected);
+        _agent->notify_connector_connection_state(connected);
     }
 }
 
 void EnebularAgentMbedCloudConnector::agent_manager_msg_cb(const char *type, const char *content)
 {
-    printf("agent-man message: type:%s, content:%s\n", type, content);
+    printf("Agent-man message: type:%s, content:%s\n", type, content);
 
     if (_agent->is_connected()) {
         _agent->send_message(type, content);
@@ -106,7 +108,7 @@ void EnebularAgentMbedCloudConnector::wait_for_events()
                 break;
             }
         } else if (nfds == 0) {
-            printf("timeout\n");
+            //printf("timeout\n");
             break;
         } else {
             break;
@@ -114,12 +116,12 @@ void EnebularAgentMbedCloudConnector::wait_for_events()
     }
 
     for (int i = 0; i < nfds; ++i) {
-        printf("triggered fd: %d\n", events[i].data.fd);
+        //printf("triggered fd: %d\n", events[i].data.fd);
         if (events[i].data.fd == _kick_fd) {
             uint64_t val;
             ssize_t ret = read(_kick_fd, &val, sizeof(val));
             if (ret != sizeof(val)) {
-                printf("kick fd read failed\n");
+                //printf("kick fd read failed\n");
             }
         }
     }
@@ -142,12 +144,20 @@ void EnebularAgentMbedCloudConnector::kick()
 
 void EnebularAgentMbedCloudConnector::register_wait_fd(int fd)
 {
-    //
+    struct epoll_event ev;
+
+    ev.events = EPOLLIN;
+    ev.data.fd = fd;
+    if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, fd, &ev) < 0) {
+        printf("Failed to register wait fd\n");
+    }
 }
 
 void EnebularAgentMbedCloudConnector::deregister_wait_fd(int fd)
 {
-    //
+    if (epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL) < 0) {
+        printf("Failed to deregister wait fd\n");
+    }
 }
 
 bool EnebularAgentMbedCloudConnector::startup(void *iface)
@@ -162,7 +172,7 @@ bool EnebularAgentMbedCloudConnector::startup(void *iface)
     }
 
     /* hook up agent callbacks */
-    ConnectionStateCallback agent_conn_state_cb(this, &EnebularAgentMbedCloudConnector::agent_connection_state_cb);
+    AgentConnectionStateCB agent_conn_state_cb(this, &EnebularAgentMbedCloudConnector::agent_connection_state_cb);
     _agent->register_connection_state_callback(agent_conn_state_cb);
 
     /* connect to agent */
@@ -172,8 +182,8 @@ bool EnebularAgentMbedCloudConnector::startup(void *iface)
     }
 
     /* hook up client callbacks */
-    ConnectionStateCallback client_conn_state_cb(this, &EnebularAgentMbedCloudConnector::client_connection_state_cb);
-    AgentManagerMsgCallback agent_man_msg_cb(this, &EnebularAgentMbedCloudConnector::agent_manager_msg_cb);
+    ClientConnectionStateCB client_conn_state_cb(this, &EnebularAgentMbedCloudConnector::client_connection_state_cb);
+    AgentManagerMsgCB agent_man_msg_cb(this, &EnebularAgentMbedCloudConnector::agent_manager_msg_cb);
     _mbed_cloud_client->register_connection_state_callback(client_conn_state_cb);
     _mbed_cloud_client->register_agent_manager_msg_callback(agent_man_msg_cb);
 
@@ -205,7 +215,7 @@ void EnebularAgentMbedCloudConnector::shutdown()
         usleep(100*1000);
     }
 
-    _agent->notify_connection_state(false);
+    _agent->notify_connector_connection_state(false);
     _agent->disconnect();
 
     uninit_events();
