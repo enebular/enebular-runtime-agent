@@ -48,6 +48,7 @@ void EnebularAgentMbedCloudConnector::client_connection_state_cb()
         if (name && strlen(name) > 0) {
             _logger->log(INFO, "Endpoint name: %s", name);
         }
+        _agent->notify_registration_state(true, device_id);
     }
 
     if (_agent->is_connected()) {

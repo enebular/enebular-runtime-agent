@@ -19,6 +19,7 @@
 
 #define CLIENT_IFACE_PERM       S_IRWXU
 #define CONNECT_RETRIES_MAX     (5)
+#define SEND_BUF_SIZE           (100 * 1024)
 #define RECV_BUF_SIZE           (1024 * 1024)
 
 EnebularAgentInterface::EnebularAgentInterface(EnebularAgentMbedCloudConnector * connector)
@@ -161,8 +162,15 @@ bool EnebularAgentInterface::connect_agent()
     _agent_fd = fd;
     strncpy(_client_path, path, sizeof(_client_path));
 
+    _send_buf = (char *)calloc(1, SEND_BUF_SIZE);
+    if (!_send_buf) {
+        _logger->log_console(ERROR, "Agent: oom");
+        goto err;
+    }
+
     _recv_buf = (char *)calloc(1, RECV_BUF_SIZE);
     if (!_recv_buf) {
+        free(_send_buf);
         _logger->log_console(ERROR, "Agent: oom");
         goto err;
     }
@@ -180,6 +188,7 @@ void EnebularAgentInterface::disconnect_agent()
 {
     _connector->deregister_wait_fd(_agent_fd);
 
+    free(_send_buf);
     free(_recv_buf);
     close(_agent_fd);
     unlink(_client_path);
@@ -284,9 +293,7 @@ void EnebularAgentInterface::send_msg(const char *msg)
 
 void EnebularAgentInterface::send_message(const char *type, const char *content)
 {
-    char msg[1024*4];
-
-    snprintf(msg, sizeof(msg)-1,
+    snprintf(_send_buf, SEND_BUF_SIZE-1,
         "{"
             "\"type\": \"message\","
             "\"message\": {"
@@ -298,7 +305,7 @@ void EnebularAgentInterface::send_message(const char *type, const char *content)
         content
     );
 
-    send_msg(msg);
+    send_msg(_send_buf);
 }
 
 /**
@@ -307,9 +314,7 @@ void EnebularAgentInterface::send_message(const char *type, const char *content)
  */
 void EnebularAgentInterface::send_log_message(const char *level, const char *prefix, const char *message)
 {
-    char msg[1024*4];
-
-    snprintf(msg, sizeof(msg)-1,
+    snprintf(_send_buf, SEND_BUF_SIZE-1,
         "{"
             "\"type\": \"log\","
             "\"log\": {"
@@ -322,7 +327,7 @@ void EnebularAgentInterface::send_log_message(const char *level, const char *pre
         message
     );
 
-    send_msg(msg);
+    send_msg(_send_buf);
 }
 
 void EnebularAgentInterface::notify_connector_connection_state(bool connected)
@@ -332,6 +337,23 @@ void EnebularAgentInterface::notify_connector_connection_state(bool connected)
     } else {
         send_msg("{\"type\": \"disconnect\"}");
     }
+}
+
+void EnebularAgentInterface::notify_registration_state(bool registered, const char *device_id)
+{
+    snprintf(_send_buf, SEND_BUF_SIZE-1,
+        "{"
+            "\"type\": \"registration\","
+            "\"registration\": {"
+                "\"registered\": \"%s\","
+                "\"deviceId\": \"%s\""
+            "}"
+        "}",
+        registered ? "true" : "false",
+        device_id ? device_id : ""
+    );
+
+    send_msg(_send_buf);
 }
 
 void EnebularAgentInterface::register_connection_state_callback(AgentConnectionStateCB cb)

@@ -81,7 +81,8 @@ public:
     void notify_connector_connection_state(bool connected);
 
     // handle device reg state change request
-    // notify device reg state (with deviceID)
+
+    void notify_registration_state(bool registered, const char *device_id);
 
 private:
 
@@ -89,6 +90,7 @@ private:
 
     int _agent_fd;
     char _client_path[PATH_MAX];
+    char *_send_buf;
     char *_recv_buf;
     int _recv_cnt;
     bool _waiting_for_connect_ok;
