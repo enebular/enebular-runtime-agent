@@ -2,6 +2,7 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
+#include <pthread.h>
 #include "enebular_agent_interface.h"
 
 enum LogLevel {
@@ -22,7 +23,19 @@ public:
 
     void enable_console(bool enable);
 
+    /**
+     * Log to all destinations (both agent and console).
+     *
+     * This is not thread-safe (can only be called from the main thread).
+     */
     void log(LogLevel level, const char *fmt, ...);
+
+    /**
+     * Log to only the console.
+     *
+     * This is thread-safe (can be called from any thread).
+     */
+    void log_console(LogLevel level, const char *fmt, ...);
 
 private:
 
@@ -30,8 +43,11 @@ private:
     LogLevel _level;
     bool _console_enabled;
     EnebularAgentInterface *_agent;
+    pthread_mutex_t _lock;
 
     Logger();
+    void out_console(LogLevel level, const char *msg);
+    void out_agent(LogLevel level, const char *msg);
 
 };
 

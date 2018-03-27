@@ -4,6 +4,7 @@
 
 #include <queue>
 #include "mbed-cloud-client/MbedCloudClient.h"
+#include "logger.h"
 
 class EnebularAgentMbedCloudConnector;
 
@@ -70,6 +71,7 @@ public:
 private:
 
     EnebularAgentMbedCloudConnector * _connector;
+    Logger *_logger;
 
     MbedCloudClient _cloud_client;
     M2MObjectList _object_list;

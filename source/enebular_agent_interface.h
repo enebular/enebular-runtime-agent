@@ -4,8 +4,10 @@
 
 #include <limits.h>
 #include "mbed-cloud-client/MbedCloudClient.h"
+#include "logger.h"
 
 class EnebularAgentMbedCloudConnector;
+class Logger;
 
 typedef FP0<void> AgentConnectionStateCB;
 
@@ -92,6 +94,7 @@ private:
     bool _waiting_for_connect_ok;
     bool _is_connected;
     vector<AgentConnectionStateCB> _connection_state_callbacks;
+    Logger *_logger;
 
     bool connect_agent();
     void disconnect_agent();

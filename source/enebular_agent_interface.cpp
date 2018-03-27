@@ -21,18 +21,10 @@
 #define CONNECT_RETRIES_MAX     (5)
 #define RECV_BUF_SIZE           (1024 * 1024)
 
-#define errmsg(format, ...) fprintf(stderr, MODULE_NAME ": error: " format, ##__VA_ARGS__)
-
-#define DEBUG
-#ifdef DEBUG
-#  define debug(format, ...) printf(MODULE_NAME ": debug: " format, ##__VA_ARGS__)
-#else
-#  define debug(format, ...)
-#endif
-
 EnebularAgentInterface::EnebularAgentInterface(EnebularAgentMbedCloudConnector * connector)
 {
     _connector = connector;
+    _logger = Logger::get_instance();
     _is_connected = false;
 }
 
@@ -43,7 +35,7 @@ EnebularAgentInterface::~EnebularAgentInterface()
 bool EnebularAgentInterface::connected_check()
 {
     if (!_is_connected) {
-        errmsg("not connected\n");
+        _logger->log_console(ERROR, "Agent: not connected");
         return false;
     }
 
@@ -67,7 +59,7 @@ void EnebularAgentInterface::update_connected_state(bool connected)
 
 void EnebularAgentInterface::handle_recv_msg(const char *msg)
 {
-    debug("received message: [%s]\n", msg);
+    _logger->log_console(DEBUG, "Agent: received message: [%s]", msg);
 
     if (strcmp(msg, "ok") == 0) {
         if (_waiting_for_connect_ok) {
@@ -75,7 +67,7 @@ void EnebularAgentInterface::handle_recv_msg(const char *msg)
             update_connected_state(true);
         }
     } else {
-        debug("unsupported message");
+        _logger->log_console(INFO, "Agent: unsupported message: [%s]", msg);
     }
 }
 
@@ -86,7 +78,7 @@ void EnebularAgentInterface::recv()
     cnt = read(_agent_fd, &_recv_buf[_recv_cnt], RECV_BUF_SIZE - _recv_cnt);
     if (cnt < 0) {
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
-            errmsg("receive read error: %s\n", strerror(errno));
+            _logger->log_console(ERROR, "Agent: receive read error: %s", strerror(errno));
         }
         return;
     }
@@ -94,7 +86,7 @@ void EnebularAgentInterface::recv()
         return;
     }
 
-    debug("received data (%ld)\n", cnt);
+    _logger->log_console(DEBUG, "Agent: received data (%ld)", cnt);
     _recv_cnt += cnt;
 
     if (_recv_buf[_recv_cnt-1] == END_OF_MSG_MARKER) {
@@ -106,7 +98,7 @@ void EnebularAgentInterface::recv()
     }
 
     if (_recv_cnt == RECV_BUF_SIZE) {
-        debug("receive buffer full. clearing.\n");
+        _logger->log_console(DEBUG, "Agent: receive buffer full. clearing.");
         _recv_buf = 0;
     }
 }
@@ -120,11 +112,9 @@ bool EnebularAgentInterface::connect_agent()
     int retry_wait_ms = 500;
     int ret;
 
-    debug("connecting...\n");
-
     fd = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (fd < 0) {
-        errmsg("failed to open socket: %s\n", strerror(errno));
+        _logger->log_console(ERROR, "Agent: failed to open socket: %s", strerror(errno));
         return false;
     }
 
@@ -138,13 +128,13 @@ bool EnebularAgentInterface::connect_agent()
 
     ret = bind(fd, (struct sockaddr *)&addr, sizeof(addr));
     if (ret < 0) {
-        errmsg("failed to bind socket: %s\n", strerror(errno));
+        _logger->log_console(ERROR, "Agent: failed to bind socket: %s", strerror(errno));
         goto err;
     }
 
     ret = chmod(addr.sun_path, CLIENT_IFACE_PERM);
     if (ret < 0) {
-        errmsg("failed to chmod socket path: %s\n", strerror(errno));
+        _logger->log_console(ERROR, "Agent: failed to chmod socket path: %s", strerror(errno));
         goto err;
     }
 
@@ -157,12 +147,12 @@ bool EnebularAgentInterface::connect_agent()
         if (ret == 0) {
             break;
         } else if (retries++ < CONNECT_RETRIES_MAX) {
-            errmsg("connect failed, retrying in %dms\n", retry_wait_ms);
+            _logger->log_console(INFO, "Agent: connect failed, retrying in %dms", retry_wait_ms);
             usleep(retry_wait_ms * 1000);
             retry_wait_ms *= 2;
             continue;
         } else {
-            errmsg("failed to connect: %s\n", strerror(errno));
+            _logger->log_console(ERROR, "Agent: failed to connect: %s", strerror(errno));
             goto err;
         }
 
@@ -173,13 +163,11 @@ bool EnebularAgentInterface::connect_agent()
 
     _recv_buf = (char *)calloc(1, RECV_BUF_SIZE);
     if (!_recv_buf) {
-        errmsg("oom\n");
+        _logger->log_console(ERROR, "Agent: oom");
         goto err;
     }
 
     _connector->register_wait_fd(_agent_fd);
-
-    debug("connected\n");
 
     return true;
  err:
@@ -190,8 +178,6 @@ bool EnebularAgentInterface::connect_agent()
 
 void EnebularAgentInterface::disconnect_agent()
 {
-    debug("disconnect...\n");
-
     _connector->deregister_wait_fd(_agent_fd);
 
     free(_recv_buf);
@@ -201,20 +187,20 @@ void EnebularAgentInterface::disconnect_agent()
 
 bool EnebularAgentInterface::connect()
 {
-    debug("connect...\n");
+    _logger->log_console(DEBUG, "Agent: connect...");
 
     if (_is_connected || _waiting_for_connect_ok) {
         return true;
     }
 
     if (!connect_agent()) {
-        errmsg("connect failed\n");
+        _logger->log_console(ERROR, "Agent: connect failed");
         return false;
     }
 
     _waiting_for_connect_ok = true;
 
-    debug("waiting for connect confirmation...\n");
+    _logger->log_console(DEBUG, "Agent: waiting for connect confirmation...");
 
     return true;
 }
@@ -225,7 +211,7 @@ void EnebularAgentInterface::disconnect()
         return;
     }
 
-    debug("disconnect...\n");
+    _logger->log_console(DEBUG, "Agent: disconnect...");
 
     disconnect_agent();
 
@@ -257,11 +243,11 @@ void EnebularAgentInterface::send_msg(const char *msg)
 
     msg_len = strlen(msg);
 
-    debug("send message: [%s] (%d)\n", msg, msg_len);
+    _logger->log_console(DEBUG, "Agent: send message: [%s] (%d)", msg, msg_len);
 
     full_msg = (char *)malloc(msg_len + 1);
     if (!full_msg) {
-        errmsg("oom\n");
+        _logger->log_console(ERROR, "Agent: oom\n");
         return;
     }
     memcpy(full_msg, msg, msg_len);
@@ -272,12 +258,14 @@ void EnebularAgentInterface::send_msg(const char *msg)
 
         cnt = write(_agent_fd, full_msg+write_cnt, msg_len-write_cnt);
         if (cnt < 0) {
-            errmsg("send message write error: %s\n", strerror(errno));
-            break;
+            if (errno != EINTR) {
+                _logger->log_console(ERROR, "Agent: send message write error: %s", strerror(errno));
+                break;
+            }
         } else if (cnt == 0) {
             zero_writes++;
             if (zero_writes > 5) {
-                errmsg("send message: too many zero writes\n");
+                _logger->log_console(ERROR, "Agent: send message: too many zero writes");
                 break;
             }
         } else {

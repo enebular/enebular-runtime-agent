@@ -15,6 +15,7 @@ EnebularAgentMbedCloudConnector::EnebularAgentMbedCloudConnector()
     _mbed_cloud_client = new EnebularAgentMbedCloudClient(this);
     _logger = Logger::get_instance();
     _logger->set_agent_interface(_agent);
+    _logger->set_level(DEBUG);
     _started = false;
     _running = false;
 }
@@ -29,24 +30,23 @@ void EnebularAgentMbedCloudConnector::agent_connection_state_cb()
 {
     bool connected = _agent->is_connected();
 
-    printf("Agent: %s\n", connected ? "connected" : "disconnected");
-    _logger->log(INFO, "Agent: %s\n", connected ? "connected" : "disconnected");
+    _logger->log(INFO, "Agent: %s", connected ? "connected" : "disconnected");
 }
 
 void EnebularAgentMbedCloudConnector::client_connection_state_cb()
 {
     bool connected = _mbed_cloud_client->is_connected();
 
-    printf("Client: %s\n", connected ? "connected" : "disconnected");
+    _logger->log(INFO, "Client: %s", connected ? "connected" : "disconnected");
 
     if (connected) {
         const char *device_id = _mbed_cloud_client->get_device_id();
         const char *name = _mbed_cloud_client->get_endpoint_name();
         if (device_id && strlen(device_id) > 0) {
-            printf("Device ID: %s\n", device_id);
+            _logger->log(INFO, "Device ID: %s", device_id);
         }
         if (name && strlen(name) > 0) {
-            printf("Endpoint name: %s\n", name);
+            _logger->log(INFO, "Endpoint name: %s", name);
         }
     }
 
@@ -57,7 +57,7 @@ void EnebularAgentMbedCloudConnector::client_connection_state_cb()
 
 void EnebularAgentMbedCloudConnector::agent_manager_msg_cb(const char *type, const char *content)
 {
-    printf("Agent-man message: type:%s, content:%s\n", type, content);
+    _logger->log_console(DEBUG, "Agent-man message: type:%s, content:%s", type, content);
 
     if (_agent->is_connected()) {
         _agent->send_message(type, content);
@@ -107,7 +107,7 @@ void EnebularAgentMbedCloudConnector::wait_for_events()
         nfds = epoll_wait(_epoll_fd, events, MAX_EPOLL_EVENT_CNT, 100);
         if (nfds < 0) {
             if (errno != EINTR) {
-                printf("wait failed: %s\n", strerror(errno));
+                _logger->log_console(ERROR, "Wait failed: %s", strerror(errno));
                 break;
             }
         } else if (nfds == 0) {
@@ -141,7 +141,7 @@ void EnebularAgentMbedCloudConnector::kick()
         ret = write(_kick_fd, &val, sizeof(val));
     } while (ret < 0 && (errno == EAGAIN || errno == EINTR));
     if (ret != sizeof(val)) {
-        printf("Failed to write kick\n");
+        _logger->log(ERROR, "Failed to write kick");
     }
 }
 
@@ -152,14 +152,14 @@ void EnebularAgentMbedCloudConnector::register_wait_fd(int fd)
     ev.events = EPOLLIN;
     ev.data.fd = fd;
     if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, fd, &ev) < 0) {
-        printf("Failed to register wait fd\n");
+        _logger->log(ERROR, "Failed to register wait fd");
     }
 }
 
 void EnebularAgentMbedCloudConnector::deregister_wait_fd(int fd)
 {
     if (epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL) < 0) {
-        printf("Failed to deregister wait fd\n");
+        _logger->log(ERROR, "Failed to deregister wait fd");
     }
 }
 
@@ -170,7 +170,7 @@ bool EnebularAgentMbedCloudConnector::startup(void *iface)
     }
 
     if (!init_events()) {
-        printf("Failed to init events\n");
+        _logger->log(ERROR, "Failed to init events");
         return false;
     }
 
@@ -180,7 +180,7 @@ bool EnebularAgentMbedCloudConnector::startup(void *iface)
 
     /* connect to agent */
     if (!_agent->connect()) {
-        printf("Failed to connect to agent\n");
+        _logger->log(ERROR, "Failed to connect to agent");
         return false;
     }
 
@@ -192,11 +192,11 @@ bool EnebularAgentMbedCloudConnector::startup(void *iface)
 
     /* client setup & connect client */
     if (!_mbed_cloud_client->setup()) {
-        printf("Client setup failed\n");
+        _logger->log(ERROR, "Client setup failed");
         return false;
     }
     if (!_mbed_cloud_client->connect(iface)) {
-        printf("Client connect failed\n");
+        _logger->log(ERROR, "Client connect failed");
         return false;
     }
 
@@ -211,7 +211,7 @@ void EnebularAgentMbedCloudConnector::shutdown()
         return;
     }
 
-    printf("Shutting down...\n");
+    _logger->log(INFO, "Shutting down...");
 
     _mbed_cloud_client->disconnect();
     while (_mbed_cloud_client->is_connected()) {

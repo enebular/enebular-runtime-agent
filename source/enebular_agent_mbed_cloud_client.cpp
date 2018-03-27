@@ -46,6 +46,7 @@ void update_progress(uint32_t progress, uint32_t total);
 EnebularAgentMbedCloudClient::EnebularAgentMbedCloudClient(EnebularAgentMbedCloudConnector * connector)
 {
     _connector = connector;
+    _logger = Logger::get_instance();
     _registered = false;
     _registered_state_updated = false;
     pthread_mutex_init(&_lock, NULL);
@@ -179,7 +180,8 @@ void EnebularAgentMbedCloudClient::process_update_auth_update()
 /* Note: called from separate thread */
 void EnebularAgentMbedCloudClient::deploy_flow_download_url_cb(const char *name)
 {
-    printf("deploy_flow_download_url: %s\n", _deploy_flow_download_url_res->get_value_string().c_str());
+    _logger->log_console(DEBUG, "Client: deploy_flow_download_url: %s",
+        _deploy_flow_download_url_res->get_value_string().c_str());
 
     process_deploy_flow_update();
 }
@@ -187,7 +189,8 @@ void EnebularAgentMbedCloudClient::deploy_flow_download_url_cb(const char *name)
 /* Note: called from separate thread */
 void EnebularAgentMbedCloudClient::register_connection_id_cb(const char *name)
 {
-    printf("register_connection_id: %s\n", _register_connection_id_res->get_value_string().c_str());
+    _logger->log_console(DEBUG, "Client: register_connection_id: %s",
+        _register_connection_id_res->get_value_string().c_str());
 
     _register_connection_id_time = time(NULL);
     process_register_update();
@@ -196,7 +199,8 @@ void EnebularAgentMbedCloudClient::register_connection_id_cb(const char *name)
 /* Note: called from separate thread */
 void EnebularAgentMbedCloudClient::register_device_id_cb(const char *name)
 {
-    printf("register_device_id: %s\n", _register_device_id_res->get_value_string().c_str());
+    _logger->log_console(DEBUG, "Client: register_device_id: %s",
+        _register_device_id_res->get_value_string().c_str());
 
     _register_device_id_time = time(NULL);
     process_register_update();
@@ -205,7 +209,8 @@ void EnebularAgentMbedCloudClient::register_device_id_cb(const char *name)
 /* Note: called from separate thread */
 void EnebularAgentMbedCloudClient::register_auth_request_url_cb(const char *name)
 {
-    printf("register_auth_request_url: %s\n", _register_auth_request_url_res->get_value_string().c_str());
+    _logger->log_console(DEBUG, "Client: register_auth_request_url: %s",
+        _register_auth_request_url_res->get_value_string().c_str());
 
     _register_auth_request_url_time = time(NULL);
     process_register_update();
@@ -214,7 +219,8 @@ void EnebularAgentMbedCloudClient::register_auth_request_url_cb(const char *name
 /* Note: called from separate thread */
 void EnebularAgentMbedCloudClient::register_agent_manager_base_url_cb(const char *name)
 {
-    printf("register_agent_manager_base_url: %s\n", _register_agent_manager_base_url_res->get_value_string().c_str());
+    _logger->log_console(DEBUG, "Client: register_agent_manager_base_url: %s",
+        _register_agent_manager_base_url_res->get_value_string().c_str());
 
     _register_agent_manager_base_url_time = time(NULL);
     process_register_update();
@@ -223,7 +229,8 @@ void EnebularAgentMbedCloudClient::register_agent_manager_base_url_cb(const char
 /* Note: called from separate thread */
 void EnebularAgentMbedCloudClient::update_auth_access_token_cb(const char *name)
 {
-    printf("update_auth_access_token: %s\n", _update_auth_access_token_res->get_value_string().c_str());
+    _logger->log_console(DEBUG, "Client: update_auth_access_token: %s",
+        _update_auth_access_token_res->get_value_string().c_str());
 
     _update_auth_access_token_time = time(NULL);
     process_update_auth_update();
@@ -232,7 +239,8 @@ void EnebularAgentMbedCloudClient::update_auth_access_token_cb(const char *name)
 /* Note: called from separate thread */
 void EnebularAgentMbedCloudClient::update_auth_id_token_cb(const char *name)
 {
-    printf("update_auth_id_token: %s\n", _update_auth_id_token_res->get_value_string().c_str());
+    _logger->log_console(DEBUG, "Client: update_auth_id_token: %s",
+        _update_auth_id_token_res->get_value_string().c_str());
 
     _update_auth_id_token_time = time(NULL);
     process_update_auth_update();
@@ -241,7 +249,8 @@ void EnebularAgentMbedCloudClient::update_auth_id_token_cb(const char *name)
 /* Note: called from separate thread */
 void EnebularAgentMbedCloudClient::update_auth_state_cb(const char *name)
 {
-    printf("update_auth_state: %s\n", _update_auth_state_res->get_value_string().c_str());
+    _logger->log_console(DEBUG, "Client: update_auth_state: %s",
+        _update_auth_state_res->get_value_string().c_str());
 
     _update_auth_state_time = time(NULL);
     process_update_auth_update();
@@ -253,27 +262,27 @@ bool EnebularAgentMbedCloudClient::init_fcc()
 
     status = fcc_init();
     if (status != FCC_STATUS_SUCCESS) {
-        printf("Failed to initialize FCC (%d)\n", status);
+        _logger->log(ERROR, "Client: Failed to initialize FCC (%d)", status);
         return false;
     }
 
 #if MBED_CONF_APP_DEVELOPER_MODE == 1
-    printf("Starting developer flow...\n");
+    _logger->log(INFO, "Client: Starting developer flow...");
     status = fcc_developer_flow();
     if (status == FCC_STATUS_KCM_FILE_EXIST_ERROR) {
-        printf("Developer credentials already exist\n");
+        _logger->log(INFO, "Client: Developer credentials already exist");
     } else if (status != FCC_STATUS_SUCCESS) {
-        printf("Failed to load developer credentials\n");
+        _logger->log(INFO, "Client: Failed to load developer credentials");
         return false;
     }
 #endif
 
     status = fcc_verify_device_configured_4mbed_cloud();
     if (status != FCC_STATUS_SUCCESS) {
-        printf("Not configured for mbed cloud\n");
+        _logger->log(INFO, "Client: Not configured for mbed cloud");
         return false;
     } else {
-        printf("Configured for mbed cloud\n");
+        _logger->log(INFO, "Client: Configured for mbed cloud");
     }
 
     return true;
@@ -316,15 +325,11 @@ void EnebularAgentMbedCloudClient::run()
 
 bool EnebularAgentMbedCloudClient::connect(void *iface)
 {
-    printf("Client connecting...\n");
-
     return _cloud_client.setup(iface);
 }
 
 void EnebularAgentMbedCloudClient::disconnect()
 {
-    printf("Client disconnecting...\n");
-
     _cloud_client.close();
 }
 
@@ -418,7 +423,7 @@ void EnebularAgentMbedCloudClient::client_registered()
 /* Note: called from separate thread */
 void EnebularAgentMbedCloudClient::client_registration_updated()
 {
-    printf("Client registration updated\n");
+    _logger->log_console(DEBUG, "Client: Client registration updated");
 }
 
 /* Note: called from separate thread */
@@ -514,8 +519,8 @@ void EnebularAgentMbedCloudClient::client_error(int error_code)
             err = "UNKNOWN";
     }
 
-    printf("Client error occurred: %s (%d)\n", err, error_code);
-    printf("Error details: %s\n", _cloud_client.error_description());
+    _logger->log_console(INFO, "Client: Client error occurred: %s (%d)", err, error_code);
+    _logger->log_console(INFO, "Client: Error details: %s", _cloud_client.error_description());
 }
 
 M2MResource *EnebularAgentMbedCloudClient::add_resource(
