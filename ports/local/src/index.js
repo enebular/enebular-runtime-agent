@@ -56,6 +56,9 @@ async function startLocalServer(messenger: MessengerService): net.Server {
             message.message.message
           )
           break
+        case 'log':
+          log(message.log.level, message.log.message)
+          break
         default:
           info('unsupported client message type: ' + message.type)
           break
@@ -70,21 +73,25 @@ async function startLocalServer(messenger: MessengerService): net.Server {
 
     socket.setEncoding('utf8')
 
-    let message = ''
+    let messages = ''
 
     socket.on('data', data => {
-      message += data
-      if (message.charCodeAt(message.length - 1) === END_OF_MSG_MARKER) {
-        message = message.slice(0, -1)
-        handleClientMessage(message)
-        message = ''
+      messages += data
+      if (messages.charCodeAt(messages.length - 1) === END_OF_MSG_MARKER) {
+        let msgs = messages.split(String.fromCharCode(END_OF_MSG_MARKER))
+        for (let msg of msgs) {
+          if (msg.length > 0) {
+            handleClientMessage(msg)
+          }
+        }
+        messages = ''
       }
     })
 
     socket.on('end', () => {
-      if (message.length > 0) {
-        info('client ended with partial message: ' + message)
-        message = ''
+      if (messages.length > 0) {
+        info('client ended with partial message: ' + messages)
+        messages = ''
       }
     })
 
