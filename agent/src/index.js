@@ -81,6 +81,8 @@ export class EnebularAgent {
 
   _connectionId: ?string
   _deviceId: ?string
+  _authRequestUrl: ?string
+  _agentManagerBaseUrl: ?string
 
   _agentState: AgentState
 
@@ -102,6 +104,9 @@ export class EnebularAgent {
     } = config
 
     this._messengerSevice = messengerSevice
+    this._messengerSevice.on('registrationChange', () =>
+      this._handleMessengerRegistrationChange()
+    )
     this._messengerSevice.on('connect', () => this._handleMessengerConnect())
     this._messengerSevice.on('disconnect', () =>
       this._handleMessengerDisconnect()
@@ -299,32 +304,61 @@ export class EnebularAgent {
     }
   }
 
+  _agentInfoIsComplete(): boolean {
+    return (
+      this._connectionId &&
+      this._deviceId &&
+      this._authRequestUrl &&
+      this._agentManagerBaseUrl
+    )
+  }
+
+  _saveAgentInfo() {
+    if (!this._agentInfoIsComplete()) {
+      return
+    }
+    const data = JSON.stringify({
+      connectionId: this._connectionId,
+      deviceId: this._deviceId,
+      authRequestUrl: this._authRequestUrl,
+      agentManagerBaseUrl: this._agentManagerBaseUrl
+    })
+    fs.writeFileSync(this._configFile, data, 'utf8')
+  }
+
+  _updateAgentInfo() {
+    this._log.debug('Config:')
+    this._log.debug('  connectionId: ' + this._connectionId)
+    this._log.debug('  deviceId: ' + this._deviceId)
+    this._log.debug('  authRequestUrl: ' + this._authRequestUrl)
+    this._log.debug('  agentManagerBaseUrl: ' + this._agentManagerBaseUrl)
+    if (!this._agentInfoIsComplete()) {
+      return
+    }
+    this._deviceAuth.setAuthRequestParameters(
+      this._authRequestUrl,
+      this._connectionId,
+      this._deviceId
+    )
+    this._agentMan.setBaseUrl(this._agentManagerBaseUrl)
+  }
+
   _registerAgentInfo({
     connectionId,
     deviceId,
     authRequestUrl,
     agentManagerBaseUrl
   }: AgentSetting) {
-    this._log.debug('Config:')
-    this._log.debug('  connectionId:', connectionId)
-    this._log.debug('  deviceId:', deviceId)
-    this._log.debug('  authRequestUrl:', authRequestUrl)
-    this._log.debug('  agentManagerBaseUrl:', agentManagerBaseUrl)
     this._connectionId = connectionId
     this._deviceId = deviceId
-    this._deviceAuth.setAuthRequestParameters(
-      authRequestUrl,
-      connectionId,
-      deviceId
-    )
-    this._agentMan.setBaseUrl(agentManagerBaseUrl)
-    const data = JSON.stringify({
-      connectionId,
-      deviceId,
-      authRequestUrl,
-      agentManagerBaseUrl
-    })
-    fs.writeFileSync(this._configFile, data, 'utf8')
+    this._authRequestUrl = authRequestUrl
+    this._agentManagerBaseUrl = agentManagerBaseUrl
+    this._updateAgentInfo()
+  }
+
+  _registerAgentInfoDeviceId(deviceId: string) {
+    this._deviceId = deviceId
+    this._updateAgentInfo()
   }
 
   async _handleChangeState() {
@@ -356,6 +390,16 @@ export class EnebularAgent {
     this._agentMan.setAccessToken('')
     if (this._agentState !== 'unauthenticated') {
       this._changeAgentState('unauthenticated')
+    }
+  }
+
+  async _handleMessengerRegistrationChange() {
+    let msg = 'Messenger registration changed: '
+    msg += this._messengerSevice.registered ? 'registered' : 'unregistered'
+    this._log.debug(msg)
+    if (this._messengerSevice.deviceId !== this._deviceId) {
+      this._registerAgentInfoDeviceId(this._messengerSevice.deviceId)
+      this._saveAgentInfo()
     }
   }
 
@@ -398,6 +442,7 @@ export class EnebularAgent {
             agentManagerBaseUrl,
             authRequestUrl
           })
+          this._saveAgentInfo()
           this._changeAgentState('registered')
         }
         break
@@ -413,9 +458,25 @@ export class EnebularAgent {
 
 export class MessengerService extends EventEmitter {
   _connected: boolean = false
+  _registered: boolean = false
+  _deviceId: string
 
   get connected(): boolean {
     return this._connected
+  }
+
+  get registered(): boolean {
+    return this._registered
+  }
+
+  get deviceId(): boolean {
+    return this._deviceId
+  }
+
+  updateRegistrationState(registered: boolean, deviceId: string) {
+    this._registered = registered
+    this._deviceId = deviceId
+    this.emit('registrationChange')
   }
 
   updateConnectedState(connected: boolean) {

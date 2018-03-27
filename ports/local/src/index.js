@@ -50,6 +50,12 @@ async function startLocalServer(messenger: MessengerService): net.Server {
         case 'disconnect':
           messenger.updateConnectedState(false)
           break
+        case 'registration':
+          messenger.updateRegistrationState(
+            message.registration.registered,
+            message.registration.deviceId
+          );
+          break
         case 'message':
           messenger.sendMessage(
             message.message.messageType,
