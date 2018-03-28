@@ -72,7 +72,7 @@ function isPossibleStateTransition(state: AgentState, nextState: AgentState) {
 export class EnebularAgent extends EventEmitter {
   _configFile: string
 
-  _messengerSevice: MessengerService
+  _connector: ConnectorService
 
   _messageEmitter: EventEmitter
   _nodeRed: NodeREDController
@@ -95,7 +95,7 @@ export class EnebularAgent extends EventEmitter {
   _notifyStatusInterval: number
   _notifyStatusIntervalID: ?number
 
-  constructor(messengerSevice: MessengerService, config: EnebularAgentConfig) {
+  constructor(connector: ConnectorService, config: EnebularAgentConfig) {
     super()
 
     const {
@@ -105,20 +105,11 @@ export class EnebularAgent extends EventEmitter {
       configFile = path.join(os.homedir(), '.enebular-config.json')
     } = config
 
-    this._messengerSevice = messengerSevice
-    this._messengerSevice.on('activeChange', () =>
-      this._handleMessengerActiveChange()
-    )
-    this._messengerSevice.on('registrationChange', () =>
-      this._handleMessengerRegistrationChange()
-    )
-    this._messengerSevice.on('connect', () => this._handleMessengerConnect())
-    this._messengerSevice.on('disconnect', () =>
-      this._handleMessengerDisconnect()
-    )
-    this._messengerSevice.on('message', params =>
-      this._handleMessengerMessage(params)
-    )
+    this._connector = connector
+    connector.on('activeChange', () => this._onConnectorActiveChange())
+    connector.on('registrationChange', () => this._onConnectorRegChange())
+    connector.on('connectionChange', () => this._onConnectorConnectionChange())
+    connector.on('message', params => this._onConnectorMessage(params))
 
     this._initLogging(config)
 
@@ -140,11 +131,9 @@ export class EnebularAgent extends EventEmitter {
 
     this._deviceAuth = new DeviceAuthMediator(this._messageEmitter, this._log)
     this._deviceAuth.on('accessTokenUpdate', accessToken =>
-      this._handleAccessTokenUpdate(accessToken)
+      this._onAccessTokenUpdate(accessToken)
     )
-    this._deviceAuth.on('accessTokenClear', () =>
-      this._handleAccessTokenClear()
-    )
+    this._deviceAuth.on('accessTokenClear', () => this._onAccessTokenClear())
 
     this._configFile = configFile
     this._notifyStatusInterval = MONITOR_INTERVAL_NORMAL
@@ -181,7 +170,7 @@ export class EnebularAgent extends EventEmitter {
     return this._logManager
   }
 
-  _requestMessengerServiceConnect(connect: boolean) {
+  _requestConnectorConnect(connect: boolean) {
     this.emit(connect ? 'connect' : 'disconnect')
   }
 
@@ -300,7 +289,7 @@ export class EnebularAgent extends EventEmitter {
       this._log.info('Agent state change:', this._agentState, '=>', nextState)
       this._agentState = nextState
       try {
-        this._handleChangeState()
+        this._onChangeState()
       } catch (err) {
         this._log.error(err)
       }
@@ -370,13 +359,13 @@ export class EnebularAgent extends EventEmitter {
     this._updateAgentInfo()
   }
 
-  async _handleChangeState() {
+  async _onChangeState() {
     if (this._agentState !== 'authenticated') {
       this._activateMonitoring(false)
     }
     switch (this._agentState) {
       case 'registered':
-        if (this._messengerSevice.connected) {
+        if (this._connector.connected) {
           this._deviceAuth.startAuthAttempt()
         }
         break
@@ -388,56 +377,57 @@ export class EnebularAgent extends EventEmitter {
     }
   }
 
-  _handleAccessTokenUpdate(accessToken: string) {
+  _onAccessTokenUpdate(accessToken: string) {
     this._agentMan.setAccessToken(accessToken)
     if (this._agentState !== 'authenticated') {
       this._changeAgentState('authenticated')
     }
   }
 
-  _handleAccessTokenClear() {
+  _onAccessTokenClear() {
     this._agentMan.setAccessToken('')
     if (this._agentState !== 'unauthenticated') {
       this._changeAgentState('unauthenticated')
     }
   }
 
-  async _handleMessengerActiveChange() {
-    let msg = 'Messenger active state changed: '
-    msg += this._messengerSevice.active ? 'active' : 'inactive'
-    this._log.debug(msg)
-    this._requestMessengerServiceConnect(true)
+  async _onConnectorActiveChange() {
+    this._log.debug(
+      `Connector: ${this._connector.active ? 'active' : 'inactive'}`
+    )
+    this._requestConnectorConnect(true)
   }
 
-  async _handleMessengerRegistrationChange() {
-    let msg = 'Messenger registration changed: '
-    msg += this._messengerSevice.registered ? 'registered' : 'unregistered'
-    this._log.debug(msg)
-    if (this._messengerSevice.deviceId !== this._deviceId) {
-      this._registerAgentInfoDeviceId(this._messengerSevice.deviceId)
+  async _onConnectorRegChange() {
+    this._log.debug(
+      `Connector: ${this._connector.registered ? 'registered' : 'unregistered'}`
+    )
+    if (this._connector.deviceId !== this._deviceId) {
+      this._registerAgentInfoDeviceId(this._connector.deviceId)
       this._saveAgentInfo()
     }
   }
 
-  _handleMessengerConnect() {
-    this._log.debug('Messenger connected')
-    if (
-      this._agentState === 'registered' ||
-      this._agentState === 'unauthenticated'
-    ) {
-      this._deviceAuth.startAuthAttempt()
+  _onConnectorConnectionChange() {
+    this._log.debug(
+      `Connector: ${this._connector.registered ? 'connected' : 'disconnected'}`
+    )
+    if (this._connector.connected) {
+      if (
+        this._agentState === 'registered' ||
+        this._agentState === 'unauthenticated'
+      ) {
+        this._deviceAuth.startAuthAttempt()
+      }
+    } else {
+      this._deviceAuth.endAuthAttempt()
     }
   }
 
-  async _handleMessengerDisconnect() {
-    this._log.debug('Messenger disconnected')
-    this._deviceAuth.endAuthAttempt()
-  }
-
-  async _handleMessengerMessage(params: { messageType: string, message: any }) {
-    this._log.debug('Messenger message:', params.messageType)
+  async _onConnectorMessage(params: { messageType: string, message: any }) {
+    this._log.debug('Connector: message:', params.messageType)
     this._log.debug(
-      'Messenger message: content: ' + JSON.stringify(params.message)
+      'Connector: message content: ' + JSON.stringify(params.message)
     )
     switch (params.messageType) {
       case 'register':
@@ -472,10 +462,10 @@ export class EnebularAgent extends EventEmitter {
   }
 }
 
-export class MessengerService extends EventEmitter {
+export class ConnectorService extends EventEmitter {
   _active: boolean = false
-  _connected: boolean = false
   _registered: boolean = false
+  _connected: boolean = false
   _deviceId: string
 
   get active(): boolean {
@@ -502,18 +492,18 @@ export class MessengerService extends EventEmitter {
     this.emit('activeChange')
   }
 
-  updateConnectedState(connected: boolean) {
-    if (connected === this._connected) {
-      return
-    }
-    this._connected = connected
-    this.emit(this._connected ? 'connect' : 'disconnect')
-  }
-
   updateRegistrationState(registered: boolean, deviceId: string) {
     this._registered = registered
     this._deviceId = deviceId
     this.emit('registrationChange')
+  }
+
+  updateConnectionState(connected: boolean) {
+    if (connected === this._connected) {
+      return
+    }
+    this._connected = connected
+    this.emit('connectionChange')
   }
 
   sendMessage(messageType: string, message: any) {

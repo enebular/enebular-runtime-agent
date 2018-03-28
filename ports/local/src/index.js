@@ -2,7 +2,7 @@
 import net from 'net'
 import fs from 'fs'
 import path from 'path'
-import { EnebularAgent, MessengerService } from 'enebular-runtime-agent'
+import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
 
 const MODULE_NAME = 'local'
 const END_OF_MSG_MARKER = 0x1e // RS (Record Separator)
@@ -44,7 +44,7 @@ function clientSocketSendMessage(message: string) {
   }
 }
 
-async function startLocalServer(messenger: MessengerService): net.Server {
+async function startLocalServer(messenger: ConnectorService): net.Server {
   function handleClientMessage(clientMessage: string) {
     debug(`client message: [${clientMessage}]`)
     let message
@@ -52,10 +52,10 @@ async function startLocalServer(messenger: MessengerService): net.Server {
       message = JSON.parse(clientMessage)
       switch (message.type) {
         case 'connect':
-          messenger.updateConnectedState(true)
+          messenger.updateConnectionState(true)
           break
         case 'disconnect':
-          messenger.updateConnectedState(false)
+          messenger.updateConnectionState(false)
           break
         case 'registration':
           messenger.updateRegistrationState(
@@ -113,7 +113,7 @@ async function startLocalServer(messenger: MessengerService): net.Server {
     socket.on('close', () => {
       info('client disconnected')
       clientSocket = null
-      messenger.updateConnectedState(false)
+      messenger.updateConnectionState(false)
       messenger.updateActiveState(false)
     })
 
@@ -145,7 +145,7 @@ async function startLocalServer(messenger: MessengerService): net.Server {
 }
 
 async function startup() {
-  const messenger = new MessengerService()
+  const messenger = new ConnectorService()
 
   agent = new EnebularAgent(messenger, {
     nodeRedDir:
