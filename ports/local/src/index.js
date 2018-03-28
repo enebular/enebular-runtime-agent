@@ -2,7 +2,11 @@
 import net from 'net'
 import fs from 'fs'
 import path from 'path'
-import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
+import {
+  EnebularAgent,
+  ConnectorService,
+  Activator
+} from 'enebular-runtime-agent'
 
 const MODULE_NAME = 'local'
 const END_OF_MSG_MARKER = 0x1e // RS (Record Separator)
@@ -38,7 +42,7 @@ function attemptSocketRemove() {
   }
 }
 
-function clientSocketSendMessage(message: string) {
+function clientSendMessage(message: string) {
   if (clientSocket) {
     clientSocket.write(message + String.fromCharCode(END_OF_MSG_MARKER))
   }
@@ -121,7 +125,7 @@ async function startLocalServer(messenger: ConnectorService): net.Server {
       info('client socket error: ' + err)
     })
 
-    clientSocketSendMessage('ok');
+    clientSendMessage('ok');
 
     messenger.updateActiveState(true)
   })
@@ -147,18 +151,18 @@ async function startLocalServer(messenger: ConnectorService): net.Server {
 async function startup() {
   const messenger = new ConnectorService()
 
-  agent = new EnebularAgent(messenger, {
+  agent = new EnebularAgent(messenger, null, {
     nodeRedDir:
       process.env.NODE_RED_DIR || path.join(process.cwd(), 'node-red'),
     configFile: path.join(process.cwd(), '.enebular-config.json')
   })
 
   agent.on('connect', () => {
-    clientSocketSendMessage('connect')
+    clientSendMessage('connect')
   })
 
   agent.on('disconnect', () => {
-    clientSocketSendMessage('disconnect')
+    clientSendMessage('disconnect')
   })
 
   await agent.startup()
