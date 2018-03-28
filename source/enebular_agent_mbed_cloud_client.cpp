@@ -47,6 +47,7 @@ EnebularAgentMbedCloudClient::EnebularAgentMbedCloudClient(EnebularAgentMbedClou
 {
     _connector = connector;
     _logger = Logger::get_instance();
+    _connecting = false;
     _registered = false;
     _registered_state_updated = false;
     pthread_mutex_init(&_lock, NULL);
@@ -325,12 +326,30 @@ void EnebularAgentMbedCloudClient::run()
 
 bool EnebularAgentMbedCloudClient::connect(void *iface)
 {
+    if (_connecting) {
+        _logger->log(INFO, "Client: already connecting");
+        return false;
+    }
+    if (_registered) {
+        _logger->log(INFO, "Client: already connected");
+        return false;
+    }
+
+    _connecting = true;
+
     return _cloud_client.setup(iface);
 }
 
 void EnebularAgentMbedCloudClient::disconnect()
 {
+    _connecting = false;
+
     _cloud_client.close();
+}
+
+bool EnebularAgentMbedCloudClient::is_connecting()
+{
+    return _connecting;
 }
 
 bool EnebularAgentMbedCloudClient::is_connected()
@@ -338,12 +357,12 @@ bool EnebularAgentMbedCloudClient::is_connected()
     return _registered;
 }
 
-void EnebularAgentMbedCloudClient::register_connection_state_callback(ClientConnectionStateCB cb)
+void EnebularAgentMbedCloudClient::on_connection_change(ClientConnectionStateCB cb)
 {
     _connection_state_callbacks.push_back(cb);
 }
 
-void EnebularAgentMbedCloudClient::register_agent_manager_msg_callback(AgentManagerMsgCB cb)
+void EnebularAgentMbedCloudClient::on_agent_manager_message(AgentManagerMessageCB cb)
 {
     _agent_man_msg_callbacks.push_back(cb);
 }
@@ -385,7 +404,7 @@ void EnebularAgentMbedCloudClient::notify_agent_man_msgs()
         _agent_man_msgs.pop();
         pthread_mutex_unlock(&_lock);
 
-        vector<AgentManagerMsgCB>::iterator it;
+        vector<AgentManagerMessageCB>::iterator it;
         for (it = _agent_man_msg_callbacks.begin(); it != _agent_man_msg_callbacks.end(); it++) {
             it->call(msg.type.c_str(), msg.content.c_str());
         }
@@ -408,6 +427,8 @@ void EnebularAgentMbedCloudClient::queue_agent_man_msg(const char *type, const c
 
 void EnebularAgentMbedCloudClient::update_registered_state(bool registered)
 {
+    _connecting = false;
+
     _registered = registered;
     _registered_state_updated = true;
 

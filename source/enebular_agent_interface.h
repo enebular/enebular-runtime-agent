@@ -9,7 +9,8 @@
 class EnebularAgentMbedCloudConnector;
 class Logger;
 
-typedef FP0<void> AgentConnectionStateCB;
+typedef FP0<void> AgentConnectionChangeCB;
+typedef FP1<void, bool> ConnectorConnectionRequestCB;
 
 class EnebularAgentInterface {
 
@@ -49,11 +50,24 @@ public:
     bool is_connected();
 
     /**
-     * Register a connection state change callback.
+     * Adds a agent connection state change callback.
+     *
+     * Multiple callbackes can be added.
      *
      * @param cb Callback
      */
-    void register_connection_state_callback(AgentConnectionStateCB cb);
+    void on_agent_connection_change(AgentConnectionChangeCB cb);
+
+    /**
+     * Sets the connector connection request callback.
+     *
+     * Only one callback can be set.
+     *
+     * @param cb Callback
+     */
+    void on_connection_request(ConnectorConnectionRequestCB cb);
+
+    // todo: void on_registration_request()
 
     /**
      * Send an agent-manager message to the agent.
@@ -71,23 +85,19 @@ public:
      */
     void send_log_message(const char *level, const char *prefix, const char *message);
 
-    // handle (connector) connection state change request
-
     /**
      * Notify the agent of the (connector's) connection state.
      *
      * @param connected Connected or not
      */
-    void notify_connector_connection_state(bool connected);
+    void notify_connection(bool connected);
 
-    // handle device reg state change request
-
-    void notify_registration_state(bool registered, const char *device_id);
+    void notify_registration(bool registered, const char *device_id);
 
 private:
 
     EnebularAgentMbedCloudConnector * _connector;
-
+    Logger *_logger;
     int _agent_fd;
     char _client_path[PATH_MAX];
     char *_send_buf;
@@ -95,8 +105,8 @@ private:
     int _recv_cnt;
     bool _waiting_for_connect_ok;
     bool _is_connected;
-    vector<AgentConnectionStateCB> _connection_state_callbacks;
-    Logger *_logger;
+    vector<AgentConnectionChangeCB> _agent_conn_change_cbs;
+    ConnectorConnectionRequestCB _connection_request_cb;
 
     bool connect_agent();
     void disconnect_agent();
@@ -105,6 +115,7 @@ private:
     void handle_recv_msg(const char *msg);
     void send_msg(const char *msg);
     void notify_conntection_state();
+    void notify_connection_request(bool connect);
     void update_connected_state(bool connected);
 
 };

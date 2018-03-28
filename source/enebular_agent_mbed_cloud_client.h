@@ -9,7 +9,7 @@
 class EnebularAgentMbedCloudConnector;
 
 typedef FP0<void> ClientConnectionStateCB;
-typedef FP2<void,const char *,const char *> AgentManagerMsgCB;
+typedef FP2<void,const char *,const char *> AgentManagerMessageCB;
 
 typedef struct _agent_msg {
     string type;
@@ -56,15 +56,17 @@ public:
 
     void disconnect();
 
+    bool is_connecting();
+
     bool is_connected();
 
     const char *get_device_id(void);
 
     const char *get_endpoint_name(void);
 
-    void register_connection_state_callback(ClientConnectionStateCB cb);
+    void on_connection_change(ClientConnectionStateCB cb);
 
-    void register_agent_manager_msg_callback(AgentManagerMsgCB cb);
+    void on_agent_manager_message(AgentManagerMessageCB cb);
 
     // todo: update handler reg
 
@@ -76,9 +78,10 @@ private:
     MbedCloudClient _cloud_client;
     M2MObjectList _object_list;
     vector<ClientConnectionStateCB> _connection_state_callbacks;
-    vector<AgentManagerMsgCB> _agent_man_msg_callbacks;
+    vector<AgentManagerMessageCB> _agent_man_msg_callbacks;
 
     /* the following are thread-shared */
+    bool _connecting;
     bool _registered;
     bool _registered_state_updated;
     queue<agent_msg_t> _agent_man_msgs;

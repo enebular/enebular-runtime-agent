@@ -18,6 +18,7 @@ EnebularAgentMbedCloudConnector::EnebularAgentMbedCloudConnector()
     _logger->set_level(DEBUG);
     _started = false;
     _running = false;
+    _can_connect = false;
 }
 
 EnebularAgentMbedCloudConnector::~EnebularAgentMbedCloudConnector()
@@ -26,14 +27,37 @@ EnebularAgentMbedCloudConnector::~EnebularAgentMbedCloudConnector()
     delete _agent;
 }
 
-void EnebularAgentMbedCloudConnector::agent_connection_state_cb()
+void EnebularAgentMbedCloudConnector::agent_connection_change_cb()
 {
     bool connected = _agent->is_connected();
 
     _logger->log(INFO, "Agent: %s", connected ? "connected" : "disconnected");
 }
 
-void EnebularAgentMbedCloudConnector::client_connection_state_cb()
+void EnebularAgentMbedCloudConnector::connection_request_cb(bool connect)
+{
+    _logger->log(INFO, "Agent: connection request: %s", connect ? "connect" : "disconnect");
+
+    _can_connect = connect;
+
+    if (_can_connect &&
+            !_mbed_cloud_client->is_connected() &&
+            !_mbed_cloud_client->is_connecting()) {
+
+        if (!_mbed_cloud_client->connect(_iface)) {
+            _logger->log(ERROR, "Client connect failed");
+        }
+
+    } else if (!_can_connect &&
+            (_mbed_cloud_client->is_connected() ||
+                _mbed_cloud_client->is_connecting())) {
+
+        _mbed_cloud_client->disconnect();
+
+    }
+}
+
+void EnebularAgentMbedCloudConnector::client_connection_change_cb()
 {
     bool connected = _mbed_cloud_client->is_connected();
 
@@ -48,15 +72,15 @@ void EnebularAgentMbedCloudConnector::client_connection_state_cb()
         if (name && strlen(name) > 0) {
             _logger->log(INFO, "Endpoint name: %s", name);
         }
-        _agent->notify_registration_state(true, device_id);
+        _agent->notify_registration(true, device_id);
     }
 
     if (_agent->is_connected()) {
-        _agent->notify_connector_connection_state(connected);
+        _agent->notify_connection(connected);
     }
 }
 
-void EnebularAgentMbedCloudConnector::agent_manager_msg_cb(const char *type, const char *content)
+void EnebularAgentMbedCloudConnector::agent_manager_message_cb(const char *type, const char *content)
 {
     _logger->log_console(DEBUG, "Agent-man message: type:%s, content:%s", type, content);
 
@@ -175,9 +199,15 @@ bool EnebularAgentMbedCloudConnector::startup(void *iface)
         return false;
     }
 
+    _iface = iface;
+
     /* hook up agent callbacks */
-    AgentConnectionStateCB agent_conn_state_cb(this, &EnebularAgentMbedCloudConnector::agent_connection_state_cb);
-    _agent->register_connection_state_callback(agent_conn_state_cb);
+    _agent->on_agent_connection_change(
+        AgentConnectionChangeCB(this, &EnebularAgentMbedCloudConnector::agent_connection_change_cb)
+    );
+    _agent->on_connection_request(
+        ConnectorConnectionRequestCB(this, &EnebularAgentMbedCloudConnector::connection_request_cb)
+    );
 
     /* connect to agent */
     if (!_agent->connect()) {
@@ -186,20 +216,24 @@ bool EnebularAgentMbedCloudConnector::startup(void *iface)
     }
 
     /* hook up client callbacks */
-    ClientConnectionStateCB client_conn_state_cb(this, &EnebularAgentMbedCloudConnector::client_connection_state_cb);
-    AgentManagerMsgCB agent_man_msg_cb(this, &EnebularAgentMbedCloudConnector::agent_manager_msg_cb);
-    _mbed_cloud_client->register_connection_state_callback(client_conn_state_cb);
-    _mbed_cloud_client->register_agent_manager_msg_callback(agent_man_msg_cb);
+    _mbed_cloud_client->on_connection_change(
+        ClientConnectionStateCB(this, &EnebularAgentMbedCloudConnector::client_connection_change_cb)
+    );
+    _mbed_cloud_client->on_agent_manager_message(
+        AgentManagerMessageCB(this, &EnebularAgentMbedCloudConnector::agent_manager_message_cb)
+    );
 
     /* client setup & connect client */
     if (!_mbed_cloud_client->setup()) {
         _logger->log(ERROR, "Client setup failed");
         return false;
     }
+#if 0
     if (!_mbed_cloud_client->connect(iface)) {
         _logger->log(ERROR, "Client connect failed");
         return false;
     }
+#endif
 
     _started = true;
 
@@ -219,7 +253,7 @@ void EnebularAgentMbedCloudConnector::shutdown()
         usleep(100*1000);
     }
 
-    _agent->notify_connector_connection_state(false);
+    _agent->notify_connection(false);
     _agent->disconnect();
 
     uninit_events();

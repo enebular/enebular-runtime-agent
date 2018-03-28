@@ -74,21 +74,24 @@ public:
 
 private:
 
+    Logger *_logger;
     EnebularAgentMbedCloudClient *_mbed_cloud_client;
     EnebularAgentInterface *_agent;
+    void *_iface;
     bool _started;
+    bool _can_connect;
     volatile bool _running;
     int _epoll_fd;
     int _kick_fd;
-    Logger *_logger;
 
     bool init_events();
     void uninit_events();
     void wait_for_events();
 
-    void agent_connection_state_cb();
-    void client_connection_state_cb();
-    void agent_manager_msg_cb(const char *type, const char *content);
+    void agent_connection_change_cb();
+    void connection_request_cb(bool connect);
+    void client_connection_change_cb();
+    void agent_manager_message_cb(const char *type, const char *content);
 
 };
 

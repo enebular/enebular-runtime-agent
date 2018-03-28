@@ -45,10 +45,15 @@ bool EnebularAgentInterface::connected_check()
 
 void EnebularAgentInterface::notify_conntection_state()
 {
-    vector<AgentConnectionStateCB>::iterator it;
-    for (it = _connection_state_callbacks.begin(); it != _connection_state_callbacks.end(); it++) {
+    vector<AgentConnectionChangeCB>::iterator it;
+    for (it = _agent_conn_change_cbs.begin(); it != _agent_conn_change_cbs.end(); it++) {
         it->call();
     }
+}
+
+void EnebularAgentInterface::notify_connection_request(bool connect)
+{
+    _connection_request_cb.call(connect);
 }
 
 void EnebularAgentInterface::update_connected_state(bool connected)
@@ -63,12 +68,26 @@ void EnebularAgentInterface::handle_recv_msg(const char *msg)
     _logger->log_console(DEBUG, "Agent: received message: [%s]", msg);
 
     if (strcmp(msg, "ok") == 0) {
+
         if (_waiting_for_connect_ok) {
             _waiting_for_connect_ok = false;
             update_connected_state(true);
+        } else {
+            _logger->log_console(INFO, "Agent: received unexpected ok");
         }
+
+    } else if (strcmp(msg, "connect") == 0) {
+
+        notify_connection_request(true);
+
+    } else if (strcmp(msg, "disconnect") == 0) {
+
+        notify_connection_request(false);
+
     } else {
+
         _logger->log_console(INFO, "Agent: unsupported message: [%s]", msg);
+
     }
 }
 
@@ -93,7 +112,12 @@ void EnebularAgentInterface::recv()
     if (_recv_buf[_recv_cnt-1] == END_OF_MSG_MARKER) {
         _recv_cnt--;
         _recv_buf[_recv_cnt] = '\0';
-        handle_recv_msg(_recv_buf);
+        char delim[] = {END_OF_MSG_MARKER, '\0'};
+        char *msg = strtok(_recv_buf, delim);
+        while (msg) {
+            handle_recv_msg(msg);
+            msg = strtok(NULL, delim);
+        }
         _recv_buf = 0;
         return;
     }
@@ -330,7 +354,7 @@ void EnebularAgentInterface::send_log_message(const char *level, const char *pre
     send_msg(_send_buf);
 }
 
-void EnebularAgentInterface::notify_connector_connection_state(bool connected)
+void EnebularAgentInterface::notify_connection(bool connected)
 {
     if (connected) {
         send_msg("{\"type\": \"connect\"}");
@@ -339,7 +363,7 @@ void EnebularAgentInterface::notify_connector_connection_state(bool connected)
     }
 }
 
-void EnebularAgentInterface::notify_registration_state(bool registered, const char *device_id)
+void EnebularAgentInterface::notify_registration(bool registered, const char *device_id)
 {
     snprintf(_send_buf, SEND_BUF_SIZE-1,
         "{"
@@ -356,7 +380,12 @@ void EnebularAgentInterface::notify_registration_state(bool registered, const ch
     send_msg(_send_buf);
 }
 
-void EnebularAgentInterface::register_connection_state_callback(AgentConnectionStateCB cb)
+void EnebularAgentInterface::on_agent_connection_change(AgentConnectionChangeCB cb)
 {
-    _connection_state_callbacks.push_back(cb);
+    _agent_conn_change_cbs.push_back(cb);
+}
+
+void EnebularAgentInterface::on_connection_request(ConnectorConnectionRequestCB cb)
+{
+    _connection_request_cb = cb;
 }
