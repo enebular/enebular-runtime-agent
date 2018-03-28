@@ -47,9 +47,6 @@ export type AgentState =
   | 'authenticated'
   | 'unauthenticated'
 
-/**
- *
- */
 function isPossibleStateTransition(state: AgentState, nextState: AgentState) {
   switch (state) {
     case 'init':
@@ -65,9 +62,6 @@ function isPossibleStateTransition(state: AgentState, nextState: AgentState) {
   }
 }
 
-/**
- *
- */
 export default class EnebularAgent extends EventEmitter {
   _connector: ConnectorService
   _activator: Activator
@@ -88,6 +82,7 @@ export default class EnebularAgent extends EventEmitter {
   _logManager: LogManager
   _log: Logger
 
+  _activating: boolean
   _monitoringActivated: boolean
   _monitoringUpdateID: ?number
   _notifyStatusActivated: boolean
@@ -175,8 +170,12 @@ export default class EnebularAgent extends EventEmitter {
     return this._logManager
   }
 
+  _requestConnectorRegister() {
+    this.emit('connectorRegister')
+  }
+
   _requestConnectorConnect(connect: boolean) {
-    this.emit(connect ? 'connect' : 'disconnect')
+    this.emit(connect ? 'connectorConnect' : 'connectorDisconnect')
   }
 
   async startup() {
@@ -400,16 +399,42 @@ export default class EnebularAgent extends EventEmitter {
     this._log.debug(
       `Connector: ${this._connector.active ? 'active' : 'inactive'}`
     )
-    this._requestConnectorConnect(true)
+    if (this._connector.active) {
+      if (this._activator && !this._agentInfoIsComplete()) {
+        /**
+         * Start registration via activation
+         */
+        this._activating = true
+        this._requestConnectorRegister()
+      } else {
+        /**
+         * Just connect and wait for register message.
+         */
+        this._requestConnectorConnect(true)
+      }
+    }
   }
 
   async _onConnectorRegChange() {
     this._log.debug(
       `Connector: ${this._connector.registered ? 'registered' : 'unregistered'}`
     )
-    if (this._connector.deviceId !== this._deviceId) {
-      this._registerAgentInfoDeviceId(this._connector.deviceId)
-      this._saveAgentInfo()
+    if (this._connector.registered) {
+      if (this._connector.deviceId !== this._deviceId) {
+        this._registerAgentInfoDeviceId(this._connector.deviceId)
+        this._saveAgentInfo()
+      }
+    }
+    if (this._activating) {
+      if (this._connector.registered) {
+        this._log.debug('todo: activate with activator')
+        //  activate with activator
+        //  save reg info
+        this._requestConnectorConnect(true)
+      } else {
+        // todo: register failure handling???
+      }
+      this._activating = false
     }
   }
 
