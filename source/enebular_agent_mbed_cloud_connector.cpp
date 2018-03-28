@@ -18,6 +18,7 @@ EnebularAgentMbedCloudConnector::EnebularAgentMbedCloudConnector()
     _logger->set_level(DEBUG);
     _started = false;
     _running = false;
+    _registering = false;
     _can_connect = false;
 }
 
@@ -32,6 +33,26 @@ void EnebularAgentMbedCloudConnector::agent_connection_change_cb()
     bool connected = _agent->is_connected();
 
     _logger->log(INFO, "Agent: %s", connected ? "connected" : "disconnected");
+}
+
+void EnebularAgentMbedCloudConnector::registration_request_cb()
+{
+    _logger->log(INFO, "Agent: registration request");
+
+    if (_mbed_cloud_client->is_connected()) {
+        const char *device_id = _mbed_cloud_client->get_device_id();
+        if (device_id && strlen(device_id) > 0) {
+            if (_agent->is_connected()) {
+                _agent->notify_registration(true, device_id);
+            }
+        }
+    } else {
+        _registering = true;
+        _logger->log(INFO, "Connecting client in order to register...");
+        if (!_mbed_cloud_client->connect(_iface)) {
+            _logger->log(ERROR, "Client connect failed");
+        }
+    }
 }
 
 void EnebularAgentMbedCloudConnector::connection_request_cb(bool connect)
@@ -72,10 +93,23 @@ void EnebularAgentMbedCloudConnector::client_connection_change_cb()
         if (name && strlen(name) > 0) {
             _logger->log(INFO, "Endpoint name: %s", name);
         }
-        _agent->notify_registration(true, device_id);
     }
 
-    if (_agent->is_connected()) {
+    if (!_agent->is_connected()) {
+        return;
+    }
+
+    if (_registering) {
+        if (connected) {
+            const char *device_id = _mbed_cloud_client->get_device_id();
+            if (device_id && strlen(device_id) > 0) {
+                _registering = false;
+                _agent->notify_registration(true, device_id);
+                _logger->log(INFO, "Disconnecting client after register...");
+                _mbed_cloud_client->disconnect();
+            }
+        }
+    } else {
         _agent->notify_connection(connected);
     }
 }
@@ -204,6 +238,9 @@ bool EnebularAgentMbedCloudConnector::startup(void *iface)
     /* hook up agent callbacks */
     _agent->on_agent_connection_change(
         AgentConnectionChangeCB(this, &EnebularAgentMbedCloudConnector::agent_connection_change_cb)
+    );
+    _agent->on_registration_request(
+        ConnectorRegistrationRequestCB(this, &EnebularAgentMbedCloudConnector::registration_request_cb)
     );
     _agent->on_connection_request(
         ConnectorConnectionRequestCB(this, &EnebularAgentMbedCloudConnector::connection_request_cb)

@@ -79,6 +79,7 @@ private:
     EnebularAgentInterface *_agent;
     void *_iface;
     bool _started;
+    bool _registering;
     bool _can_connect;
     volatile bool _running;
     int _epoll_fd;
@@ -89,6 +90,7 @@ private:
     void wait_for_events();
 
     void agent_connection_change_cb();
+    void registration_request_cb();
     void connection_request_cb(bool connect);
     void client_connection_change_cb();
     void agent_manager_message_cb(const char *type, const char *content);
