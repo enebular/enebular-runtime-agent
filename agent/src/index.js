@@ -69,7 +69,7 @@ function isPossibleStateTransition(state: AgentState, nextState: AgentState) {
 /**
  *
  */
-export class EnebularAgent {
+export class EnebularAgent extends EventEmitter {
   _configFile: string
 
   _messengerSevice: MessengerService
@@ -96,6 +96,8 @@ export class EnebularAgent {
   _notifyStatusIntervalID: ?number
 
   constructor(messengerSevice: MessengerService, config: EnebularAgentConfig) {
+    super()
+
     const {
       nodeRedDir,
       nodeRedCommand = './node_modules/.bin/node-red -s .node-red-config/settings.js',
@@ -104,6 +106,9 @@ export class EnebularAgent {
     } = config
 
     this._messengerSevice = messengerSevice
+    this._messengerSevice.on('activeChange', () =>
+      this._handleMessengerActiveChange()
+    )
     this._messengerSevice.on('registrationChange', () =>
       this._handleMessengerRegistrationChange()
     )
@@ -174,6 +179,10 @@ export class EnebularAgent {
 
   get logManager(): LogManager {
     return this._logManager
+  }
+
+  _requestMessengerServiceConnect(connect: boolean) {
+    this.emit(connect ? 'connect' : 'disconnect')
   }
 
   async startup() {
@@ -393,6 +402,13 @@ export class EnebularAgent {
     }
   }
 
+  async _handleMessengerActiveChange() {
+    let msg = 'Messenger active state changed: '
+    msg += this._messengerSevice.active ? 'active' : 'inactive'
+    this._log.debug(msg)
+    this._requestMessengerServiceConnect(true)
+  }
+
   async _handleMessengerRegistrationChange() {
     let msg = 'Messenger registration changed: '
     msg += this._messengerSevice.registered ? 'registered' : 'unregistered'
@@ -457,9 +473,14 @@ export class EnebularAgent {
 }
 
 export class MessengerService extends EventEmitter {
+  _active: boolean = false
   _connected: boolean = false
   _registered: boolean = false
   _deviceId: string
+
+  get active(): boolean {
+    return this._active
+  }
 
   get connected(): boolean {
     return this._connected
@@ -473,10 +494,12 @@ export class MessengerService extends EventEmitter {
     return this._deviceId
   }
 
-  updateRegistrationState(registered: boolean, deviceId: string) {
-    this._registered = registered
-    this._deviceId = deviceId
-    this.emit('registrationChange')
+  updateActiveState(active: boolean) {
+    if (active === this._active) {
+      return
+    }
+    this._active = active
+    this.emit('activeChange')
   }
 
   updateConnectedState(connected: boolean) {
@@ -485,6 +508,12 @@ export class MessengerService extends EventEmitter {
     }
     this._connected = connected
     this.emit(this._connected ? 'connect' : 'disconnect')
+  }
+
+  updateRegistrationState(registered: boolean, deviceId: string) {
+    this._registered = registered
+    this._deviceId = deviceId
+    this.emit('registrationChange')
   }
 
   sendMessage(messageType: string, message: any) {

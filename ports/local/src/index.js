@@ -11,6 +11,7 @@ const SOCKET_PATH =
 
 let agent: EnebularAgent
 let localServer: net.Server
+let clientSocket: net.Socket
 
 function log(level: string, msg: string, ...args: Array<mixed>) {
   args.push({ module: MODULE_NAME })
@@ -34,6 +35,12 @@ function attemptSocketRemove() {
     fs.unlinkSync(SOCKET_PATH)
   } catch (err) {
     // ignore any errors
+  }
+}
+
+function clientSocketSendMessage(message: string) {
+  if (clientSocket) {
+    clientSocket.write(message + String.fromCharCode(END_OF_MSG_MARKER))
   }
 }
 
@@ -79,6 +86,8 @@ async function startLocalServer(messenger: MessengerService): net.Server {
 
     socket.setEncoding('utf8')
 
+    clientSocket = socket
+
     let messages = ''
 
     socket.on('data', data => {
@@ -103,14 +112,18 @@ async function startLocalServer(messenger: MessengerService): net.Server {
 
     socket.on('close', () => {
       info('client disconnected')
+      clientSocket = null
       messenger.updateConnectedState(false)
+      messenger.updateActiveState(false)
     })
 
     socket.on('error', err => {
       info('client socket error: ' + err)
     })
 
-    socket.write('ok' + String.fromCharCode(END_OF_MSG_MARKER))
+    clientSocketSendMessage('ok');
+
+    messenger.updateActiveState(true)
   })
 
   server.on('listening', () => {
@@ -138,6 +151,14 @@ async function startup() {
     nodeRedDir:
       process.env.NODE_RED_DIR || path.join(process.cwd(), 'node-red'),
     configFile: path.join(process.cwd(), '.enebular-config.json')
+  })
+
+  agent.on('connect', () => {
+    clientSocketSendMessage('connect')
+  })
+
+  agent.on('disconnect', () => {
+    clientSocketSendMessage('disconnect')
   })
 
   await agent.startup()
