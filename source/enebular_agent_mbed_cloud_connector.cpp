@@ -55,12 +55,8 @@ void EnebularAgentMbedCloudConnector::registration_request_cb()
     }
 }
 
-void EnebularAgentMbedCloudConnector::connection_request_cb(bool connect)
+void EnebularAgentMbedCloudConnector::update_connection_state()
 {
-    _logger->log(INFO, "Agent: connection request: %s", connect ? "connect" : "disconnect");
-
-    _can_connect = connect;
-
     if (_can_connect &&
             !_mbed_cloud_client->is_connected() &&
             !_mbed_cloud_client->is_connecting()) {
@@ -76,6 +72,15 @@ void EnebularAgentMbedCloudConnector::connection_request_cb(bool connect)
         _mbed_cloud_client->disconnect();
 
     }
+}
+
+void EnebularAgentMbedCloudConnector::connection_request_cb(bool connect)
+{
+    _logger->log(INFO, "Agent: connection request: %s", connect ? "connect" : "disconnect");
+
+    _can_connect = connect;
+
+    update_connection_state();
 }
 
 void EnebularAgentMbedCloudConnector::client_connection_change_cb()
@@ -95,22 +100,25 @@ void EnebularAgentMbedCloudConnector::client_connection_change_cb()
         }
     }
 
-    if (!_agent->is_connected()) {
-        return;
+    if (_agent->is_connected()) {
+        if (_registering) {
+            if (connected) {
+                const char *device_id = _mbed_cloud_client->get_device_id();
+                if (device_id && strlen(device_id) > 0) {
+                    _registering = false;
+                    _agent->notify_registration(true, device_id);
+                    _logger->log(INFO, "Disconnecting client after register...");
+                    _mbed_cloud_client->disconnect();
+                }
+            }
+        } else {
+            _agent->notify_connection(connected);
+        }
     }
 
-    if (_registering) {
-        if (connected) {
-            const char *device_id = _mbed_cloud_client->get_device_id();
-            if (device_id && strlen(device_id) > 0) {
-                _registering = false;
-                _agent->notify_registration(true, device_id);
-                _logger->log(INFO, "Disconnecting client after register...");
-                _mbed_cloud_client->disconnect();
-            }
-        }
-    } else {
-        _agent->notify_connection(connected);
+    if (connected != _can_connect) {
+        // todo: delay for a while first
+        update_connection_state();
     }
 }
 

@@ -89,6 +89,7 @@ private:
     void uninit_events();
     void wait_for_events();
 
+    void update_connection_state();
     void agent_connection_change_cb();
     void registration_request_cb();
     void connection_request_cb(bool connect);

@@ -127,13 +127,13 @@ void EnebularAgentInterface::recv()
             handle_recv_msg(msg);
             msg = strtok(NULL, delim);
         }
-        _recv_buf = 0;
+        _recv_cnt = 0;
         return;
     }
 
     if (_recv_cnt == RECV_BUF_SIZE) {
         _logger->log_console(DEBUG, "Agent: receive buffer full. clearing.");
-        _recv_buf = 0;
+        _recv_cnt = 0;
     }
 }
 
