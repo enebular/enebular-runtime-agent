@@ -1,7 +1,6 @@
 /* @flow */
 import net from 'net'
 import fs from 'fs'
-import path from 'path'
 import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
 import EnebularActivator from './enebular-activator'
 
@@ -47,7 +46,7 @@ function clientSendMessage(message: string) {
 
 async function startLocalServer(messenger: ConnectorService): net.Server {
   function handleClientMessage(clientMessage: string) {
-    //debug(`client message: [${clientMessage}]`)
+    // debug(`client message: [${clientMessage}]`)
     let message
     try {
       message = JSON.parse(clientMessage)
@@ -62,7 +61,7 @@ async function startLocalServer(messenger: ConnectorService): net.Server {
           messenger.updateRegistrationState(
             message.registration.registered,
             message.registration.deviceId
-          );
+          )
           break
         case 'message':
           messenger.sendMessage(
@@ -122,7 +121,7 @@ async function startLocalServer(messenger: ConnectorService): net.Server {
       info('client socket error: ' + err)
     })
 
-    clientSendMessage('ok');
+    clientSendMessage('ok')
 
     messenger.updateActiveState(true)
   })
@@ -146,12 +145,16 @@ async function startLocalServer(messenger: ConnectorService): net.Server {
 }
 
 async function startup() {
+  let activatorConfigPath =
+    process.env.ACTIVATOR_CONFIG_PATH || '.enebular-activation-config.json'
+  let configPath = process.env.ENEBULAR_CONFIG_PATH || '.enebular-config.json'
+  let nodeRedDir = process.env.NODE_RED_DIR || 'node-red'
+
   const messenger = new ConnectorService()
-  const activator = new EnebularActivator('.enebular-activation-config.json')
+  const activator = new EnebularActivator(activatorConfigPath)
   agent = new EnebularAgent(messenger, activator, {
-    nodeRedDir:
-      process.env.NODE_RED_DIR || path.join(process.cwd(), 'node-red'),
-    configFile: path.join(process.cwd(), '.enebular-config.json')
+    nodeRedDir: nodeRedDir,
+    configFile: configPath
   })
 
   agent.on('connectorRegister', () => {
