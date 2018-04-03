@@ -1,7 +1,8 @@
 /* @flow */
 
 type ActivationInfo = {
-  connectionId: string
+  connectionId: string,
+  deviceId: string
 }
 
 export default class Activator {
@@ -9,7 +10,7 @@ export default class Activator {
     throw new Error('Called an abstract function')
   }
 
-  async activate(deviceId: string): ActivationInfo {
+  async activate(info: ActivationInfo): ActivationInfo {
     throw new Error('Called an abstract function')
   }
 }

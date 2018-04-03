@@ -82,7 +82,7 @@ export default class EnebularAgent extends EventEmitter {
   _logManager: LogManager
   _log: Logger
 
-  _activating: boolean
+  _connectorRegisteringForActivation: boolean
   _monitoringActivated: boolean = false
   _monitoringUpdateID: ?number
   _notifyStatusActivated: boolean = false
@@ -406,7 +406,7 @@ export default class EnebularAgent extends EventEmitter {
       ) {
         this._log.info('Starting registration via activation...')
         this._log.info('Requesting connector registration...')
-        this._activating = true
+        this._connectorRegisteringForActivation = true
         this._requestConnectorRegister()
       } else {
         this._log.info('Connecting connector...')
@@ -420,20 +420,20 @@ export default class EnebularAgent extends EventEmitter {
       `Connector: ${this._connector.registered ? 'registered' : 'unregistered'}`
     )
 
-    if (this._connector.registered) {
-      if (this._connector.deviceId !== this._deviceId) {
-        this._registerAgentInfo({
-          deviceId: this._connector.deviceId
-        })
-        this._saveAgentInfo()
+    if (!this._connectorRegisteringForActivation) {
+      /* Allow the deviceId to be updated anytime when not activating */
+      if (this._connector.registered) {
+        if (this._connector.deviceId !== this._deviceId) {
+          this._registerAgentInfo({
+            deviceId: this._connector.deviceId
+          })
+          this._saveAgentInfo()
+        }
       }
-    }
-
-    if (!this._activating) {
       return
     }
 
-    this._activating = false
+    this._connectorRegisteringForActivation = false
 
     if (!this._connector.registered) {
       this._log.info("Activation halting as connector didn't register")
@@ -442,9 +442,12 @@ export default class EnebularAgent extends EventEmitter {
 
     try {
       this._log.info('Requesting activator activation...')
-      let info = await this._activator.activate(this._connector.deviceId)
+      let info = await this._activator.activate({
+        connectionId: this._connectionId,
+        deviceId: this._connector.deviceId
+      })
       this._registerAgentInfo({
-        connectionId: info.connectionId
+        deviceId: info.deviceId
       })
       this._log.info('Activator activation completed')
       if (this._agentInfoIsComplete()) {

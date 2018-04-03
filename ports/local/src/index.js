@@ -147,7 +147,7 @@ async function startLocalServer(messenger: ConnectorService): net.Server {
 
 async function startup() {
   const messenger = new ConnectorService()
-  const activator = new EnebularActivator()
+  const activator = new EnebularActivator('.enebular-activation-config.json')
   agent = new EnebularAgent(messenger, activator, {
     nodeRedDir:
       process.env.NODE_RED_DIR || path.join(process.cwd(), 'node-red'),
