@@ -47,7 +47,7 @@ function clientSendMessage(message: string) {
 
 async function startLocalServer(messenger: ConnectorService): net.Server {
   function handleClientMessage(clientMessage: string) {
-    debug(`client message: [${clientMessage}]`)
+    //debug(`client message: [${clientMessage}]`)
     let message
     try {
       message = JSON.parse(clientMessage)

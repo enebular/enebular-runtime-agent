@@ -83,9 +83,9 @@ export default class EnebularAgent extends EventEmitter {
   _log: Logger
 
   _activating: boolean
-  _monitoringActivated: boolean
+  _monitoringActivated: boolean = false
   _monitoringUpdateID: ?number
-  _notifyStatusActivated: boolean
+  _notifyStatusActivated: boolean = false
   _notifyStatusInterval: number
   _notifyStatusIntervalID: ?number
 
@@ -266,13 +266,13 @@ export default class EnebularAgent extends EventEmitter {
           agentManagerBaseUrl,
           authRequestUrl
         } = JSON.parse(data)
-        if (connectionId && deviceId && agentManagerBaseUrl && authRequestUrl) {
-          this._registerAgentInfo({
-            connectionId,
-            deviceId,
-            agentManagerBaseUrl,
-            authRequestUrl
-          })
+        this._registerAgentInfo({
+          connectionId,
+          deviceId,
+          agentManagerBaseUrl,
+          authRequestUrl
+        })
+        if (this._agentInfoIsComplete()) {
           this._changeAgentState('registered')
         } else {
           this._changeAgentState('unregistered')
@@ -328,7 +328,24 @@ export default class EnebularAgent extends EventEmitter {
     fs.writeFileSync(this._configFile, data, 'utf8')
   }
 
-  _updateAgentInfo() {
+  _registerAgentInfo({
+    connectionId,
+    deviceId,
+    authRequestUrl,
+    agentManagerBaseUrl
+  }: AgentSetting) {
+    if (connectionId) {
+      this._connectionId = connectionId
+    }
+    if (deviceId) {
+      this._deviceId = deviceId
+    }
+    if (authRequestUrl) {
+      this._authRequestUrl = authRequestUrl
+    }
+    if (agentManagerBaseUrl) {
+      this._agentManagerBaseUrl = agentManagerBaseUrl
+    }
     this._log.debug('Config:')
     this._log.debug('  connectionId: ' + this._connectionId)
     this._log.debug('  deviceId: ' + this._deviceId)
@@ -343,24 +360,6 @@ export default class EnebularAgent extends EventEmitter {
       this._deviceId
     )
     this._agentMan.setBaseUrl(this._agentManagerBaseUrl)
-  }
-
-  _registerAgentInfo({
-    connectionId,
-    deviceId,
-    authRequestUrl,
-    agentManagerBaseUrl
-  }: AgentSetting) {
-    this._connectionId = connectionId
-    this._deviceId = deviceId
-    this._authRequestUrl = authRequestUrl
-    this._agentManagerBaseUrl = agentManagerBaseUrl
-    this._updateAgentInfo()
-  }
-
-  _registerAgentInfoDeviceId(deviceId: string) {
-    this._deviceId = deviceId
-    this._updateAgentInfo()
   }
 
   async _onChangeState() {
@@ -400,16 +399,17 @@ export default class EnebularAgent extends EventEmitter {
       `Connector: ${this._connector.active ? 'active' : 'inactive'}`
     )
     if (this._connector.active) {
-      if (this._activator && !this._agentInfoIsComplete()) {
-        /**
-         * Start registration via activation
-         */
+      if (
+        this._activator &&
+        this._activator.canActivate() &&
+        !this._agentInfoIsComplete()
+      ) {
+        this._log.info('Starting registration via activation...')
+        this._log.info('Requesting connector registration...')
         this._activating = true
         this._requestConnectorRegister()
       } else {
-        /**
-         * Just connect and wait for register message.
-         */
+        this._log.info('Connecting connector...')
         this._requestConnectorConnect(true)
       }
     }
@@ -419,28 +419,49 @@ export default class EnebularAgent extends EventEmitter {
     this._log.debug(
       `Connector: ${this._connector.registered ? 'registered' : 'unregistered'}`
     )
+
     if (this._connector.registered) {
       if (this._connector.deviceId !== this._deviceId) {
-        this._registerAgentInfoDeviceId(this._connector.deviceId)
+        this._registerAgentInfo({
+          deviceId: this._connector.deviceId
+        })
         this._saveAgentInfo()
       }
     }
-    if (this._activating) {
-      if (this._connector.registered) {
-        this._log.debug('todo: activate with activator')
-        //  activate with activator
-        //  save reg info
+
+    if (!this._activating) {
+      return
+    }
+
+    this._activating = false
+
+    if (!this._connector.registered) {
+      this._log.info("Activation halting as connector didn't register")
+      return
+    }
+
+    try {
+      this._log.info('Requesting activator activation...')
+      let info = await this._activator.activate(this._connector.deviceId)
+      this._registerAgentInfo({
+        connectionId: info.connectionId
+      })
+      this._log.info('Activator activation completed')
+      if (this._agentInfoIsComplete()) {
+        this._saveAgentInfo()
+        this._changeAgentState('registered')
         this._requestConnectorConnect(true)
       } else {
-        // todo: register failure handling???
+        this._log.info('Agent info not complete after activation')
       }
-      this._activating = false
+    } catch (err) {
+      this._log.error('Activation with activator failed: ' + err)
     }
   }
 
   _onConnectorConnectionChange() {
     this._log.debug(
-      `Connector: ${this._connector.registered ? 'connected' : 'disconnected'}`
+      `Connector: ${this._connector.connected ? 'connected' : 'disconnected'}`
     )
     if (this._connector.connected) {
       if (
@@ -478,8 +499,10 @@ export default class EnebularAgent extends EventEmitter {
             agentManagerBaseUrl,
             authRequestUrl
           })
-          this._saveAgentInfo()
-          this._changeAgentState('registered')
+          if (this._agentInfoIsComplete()) {
+            this._saveAgentInfo()
+            this._changeAgentState('registered')
+          }
         }
         break
       case 'deploy':
