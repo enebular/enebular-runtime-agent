@@ -5,6 +5,8 @@ import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
 
 const MODULE_NAME = 'local'
 const END_OF_MSG_MARKER = 0x1e // RS (Record Separator)
+
+const { ENEBULAR_CONFIG_PATH, NODE_RED_DIR } = process.env
 const SOCKET_PATH =
   process.env.SOCKET_PATH || '/tmp/enebular-local-agent.socket'
 
@@ -43,27 +45,27 @@ function clientSendMessage(message: string) {
   }
 }
 
-async function startLocalServer(messenger: ConnectorService): net.Server {
+async function startLocalServer(connector: ConnectorService): net.Server {
   function handleClientMessage(clientMessage: string) {
-    // debug(`client message: [${clientMessage}]`)
+    debug(`client message: [${clientMessage}]`)
     let message
     try {
       message = JSON.parse(clientMessage)
       switch (message.type) {
         case 'connect':
-          messenger.updateConnectionState(true)
+          connector.updateConnectionState(true)
           break
         case 'disconnect':
-          messenger.updateConnectionState(false)
+          connector.updateConnectionState(false)
           break
         case 'registration':
-          messenger.updateRegistrationState(
+          connector.updateRegistrationState(
             message.registration.registered,
             message.registration.deviceId
           )
           break
         case 'message':
-          messenger.sendMessage(
+          connector.sendMessage(
             message.message.messageType,
             message.message.message
           )
@@ -112,8 +114,8 @@ async function startLocalServer(messenger: ConnectorService): net.Server {
     socket.on('close', () => {
       info('client disconnected')
       clientSocket = null
-      messenger.updateConnectionState(false)
-      messenger.updateActiveState(false)
+      connector.updateConnectionState(false)
+      connector.updateActiveState(false)
     })
 
     socket.on('error', err => {
@@ -122,7 +124,7 @@ async function startLocalServer(messenger: ConnectorService): net.Server {
 
     clientSendMessage('ok')
 
-    messenger.updateActiveState(true)
+    connector.updateActiveState(true)
   })
 
   server.on('listening', () => {
@@ -144,13 +146,13 @@ async function startLocalServer(messenger: ConnectorService): net.Server {
 }
 
 async function startup() {
-  let configPath = process.env.ENEBULAR_CONFIG_PATH || '.enebular-config.json'
-  let nodeRedDir = process.env.NODE_RED_DIR || 'node-red'
+  const configFile = ENEBULAR_CONFIG_PATH || '.enebular-config.json'
+  const nodeRedDir = NODE_RED_DIR || 'node-red'
 
-  const messenger = new ConnectorService()
-  agent = new EnebularAgent(messenger, {
+  const connector = new ConnectorService()
+  agent = new EnebularAgent(connector, {
     nodeRedDir: nodeRedDir,
-    configFile: configPath
+    configFile: configFile
   })
 
   agent.on('connectorRegister', () => {
@@ -166,9 +168,9 @@ async function startup() {
   })
 
   await agent.startup()
-  info('agent started')
+  info('Agent started')
 
-  localServer = await startLocalServer(messenger)
+  localServer = await startLocalServer(connector)
 }
 
 async function shutdown() {
