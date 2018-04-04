@@ -101,19 +101,18 @@ void EnebularAgentMbedCloudConnector::client_connection_change_cb()
     }
 
     if (_agent->is_connected()) {
-        if (_registering) {
-            if (connected) {
-                const char *device_id = _mbed_cloud_client->get_device_id();
-                if (device_id && strlen(device_id) > 0) {
+        if (connected) {
+            const char *device_id = _mbed_cloud_client->get_device_id();
+            if (device_id && strlen(device_id) > 0) {
+                _agent->notify_registration(true, device_id);
+                if (_registering) {
                     _registering = false;
-                    _agent->notify_registration(true, device_id);
                     _logger->log(INFO, "Disconnecting client after register...");
                     _mbed_cloud_client->disconnect();
                 }
             }
-        } else {
-            _agent->notify_connection(connected);
         }
+        _agent->notify_connection(connected);
     }
 
     if (connected != _can_connect) {
