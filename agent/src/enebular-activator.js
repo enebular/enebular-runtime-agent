@@ -7,8 +7,10 @@ export default class EnebularActivator extends Activator {
   _activateURL: ?string
   _licenseKey: ?string
 
-  constructor(configPath: string) {
+  constructor() {
     super()
+    let configPath =
+      process.env.ACTIVATOR_CONFIG_PATH || '.enebular-activation-config.json'
     this._loadConfig(configPath)
   }
 

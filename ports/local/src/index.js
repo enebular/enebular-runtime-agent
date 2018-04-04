@@ -2,7 +2,6 @@
 import net from 'net'
 import fs from 'fs'
 import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
-import EnebularActivator from './enebular-activator'
 
 const MODULE_NAME = 'local'
 const END_OF_MSG_MARKER = 0x1e // RS (Record Separator)
@@ -145,14 +144,11 @@ async function startLocalServer(messenger: ConnectorService): net.Server {
 }
 
 async function startup() {
-  let activatorConfigPath =
-    process.env.ACTIVATOR_CONFIG_PATH || '.enebular-activation-config.json'
   let configPath = process.env.ENEBULAR_CONFIG_PATH || '.enebular-config.json'
   let nodeRedDir = process.env.NODE_RED_DIR || 'node-red'
 
   const messenger = new ConnectorService()
-  const activator = new EnebularActivator(activatorConfigPath)
-  agent = new EnebularAgent(messenger, activator, {
+  agent = new EnebularAgent(messenger, {
     nodeRedDir: nodeRedDir,
     configFile: configPath
   })
