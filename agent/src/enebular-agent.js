@@ -310,9 +310,6 @@ export default class EnebularAgent extends EventEmitter {
   }
 
   _saveAgentInfo() {
-    if (!this._agentInfoIsComplete()) {
-      return
-    }
     const data = JSON.stringify({
       connectionId: this._connectionId,
       deviceId: this._deviceId,
@@ -431,6 +428,12 @@ export default class EnebularAgent extends EventEmitter {
             deviceId: this._connector.deviceId
           })
           this._saveAgentInfo()
+          if (
+            this._agentInfoIsComplete() &&
+            this._agentState === 'unregistered'
+          ) {
+            this._changeAgentState('registered')
+          }
         }
       }
       return
