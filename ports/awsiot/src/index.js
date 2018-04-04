@@ -1,142 +1,183 @@
 /* @flow */
 import fs from 'fs'
-import path from 'path'
 import awsIot from 'aws-iot-device-sdk'
-import { EnebularAgent, MessengerService } from 'enebular-runtime-agent'
+import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
 
-let _log
+const MODULE_NAME = 'aws-iot'
 
-const moduleName = 'aws-iot'
+const { ENEBULAR_CONFIG_PATH, NODE_RED_DIR, AWSIOT_CONFIG_FILE } = process.env
+
+let agent: EnebularAgent
+let connector: ConnectorService
+let thingName: string
+let thingShadow: awsIot.thingShadow
+let canRegisterThingShadow: boolean = false
+let thingShadowRegistered: boolean = false
+let awsIotConnected: boolean = false
+
+function log(level: string, msg: string, ...args: Array<mixed>) {
+  args.push({ module: MODULE_NAME })
+  agent.log.log(level, msg, ...args)
+}
 
 function debug(msg: string, ...args: Array<mixed>) {
-  args.push({ module: moduleName })
-  _log.debug(msg, ...args)
+  log('debug', msg, ...args)
 }
 
 function info(msg: string, ...args: Array<mixed>) {
-  args.push({ module: moduleName })
-  _log.info(msg, ...args)
+  log('info', msg, ...args)
 }
 
-const { AWSIOT_CONFIG_FILE, NODE_RED_DIR } = process.env
+function error(msg: string, ...args: Array<mixed>) {
+  log('error', msg, ...args)
+}
 
-/**
- *
- */
 export type AWSIoTConfig = {
   thingName: string
 }
 
-function setupDevice(config: AWSIoTConfig, messenger: MessengerService) {
-  const device = awsIot.thingShadow(config)
-
-  function handleConnectionStateUpdate(connected: boolean) {
-    if (!connected) {
-      debug('Ignoring disconnect')
-      return
-    }
-    messenger.updateConnectedState(connected)
+function handleThingShadowRegisterStateChange(registered: boolean) {
+  if (registered === thingShadowRegistered) {
+    return
   }
+  thingShadowRegistered = registered
+  info('Thing shadow ' + (registered ? 'registered' : 'unregistered'))
+  connector.updateConnectionState(registered)
+}
 
-  device.on('connect', async () => {
+function updateThingShadowRegisterState() {
+  let register = awsIotConnected && canRegisterThingShadow
+  if (register === thingShadowRegistered) {
+    return
+  }
+  if (register) {
+    thingShadow.register(
+      thingName,
+      {
+        ignoreDeltas: false,
+        persistentSubscribe: true
+      },
+      err => {
+        handleThingShadowRegisterStateChange(!err)
+      }
+    )
+  } else {
+    thingShadow.unregister(thingName)
+    handleThingShadowRegisterStateChange(false)
+  }
+}
+
+function handleStateMessageChange(messageJSON: string) {
+  try {
+    const { messageType, message } = JSON.parse(messageJSON)
+    debug('Message: ' + messageType)
+    connector.sendMessage(messageType, message)
+  } catch (err) {
+    error('Message parse failed. ' + err)
+  }
+  const newState = { message: messageJSON }
+  let clientToken = thingShadow.update(thingName, {
+    state: { reported: newState }
+  })
+  if (clientToken === null) {
+    error('Shadow update failed')
+  } else {
+    debug(`Shadow update requested (${clientToken})`)
+  }
+}
+
+function setupThingShadow(config: AWSIoTConfig) {
+  const shadow = awsIot.thingShadow(config)
+
+  shadow.on('connect', () => {
     info('Connected to AWS IoT')
-    device.register(config.thingName, {
-      ignoreDeltas: false,
-      persistentSubscribe: true
-    })
-    handleConnectionStateUpdate(true)
+    awsIotConnected = true
+    updateThingShadowRegisterState()
   })
 
-  device.on('offline', () => {
+  shadow.on('offline', () => {
     debug('AWS IoT connection offline')
-    handleConnectionStateUpdate(false)
+    // ignoring disconnect
   })
 
-  device.on('close', () => {
+  shadow.on('close', () => {
     debug('AWS IoT connection closed')
-    device.unregister(config.thingName)
-    handleConnectionStateUpdate(false)
+    // ignoring disconnect
   })
 
-  device.on('reconnect', () => {
+  shadow.on('reconnect', () => {
     debug('Reconnecting to AWS IoT')
-    device.register(config.thingName)
   })
 
-  device.on('error', error => {
+  shadow.on('error', error => {
     debug('AWS IoT connection error: ' + error)
   })
 
-  device.on('timeout', async (thingName, clientToken) => {
+  shadow.on('timeout', async (thingName, clientToken) => {
     debug(`AWS IoT timeout (${clientToken})`)
   })
 
-  device.on('status', async (thingName, stat, clientToken, stateObject) => {
+  shadow.on('status', async (thingName, stat, clientToken, stateObject) => {
     debug(`AWS IoT status: ${stat} (${clientToken})`)
   })
 
-  device.on('message', (topic, payload) => {
+  shadow.on('message', (topic, payload) => {
     debug('AWS IoT message', topic, payload)
   })
 
-  function handleStateMessageChange(messageJSON: string) {
-    try {
-      const { messageType, message } = JSON.parse(messageJSON)
-      debug('Message: ' + messageType)
-      messenger.sendMessage(messageType, message)
-    } catch (err) {
-      _log.error('Message parse failed. ' + err)
-    }
-    const newState = { message: messageJSON }
-    let clientToken = device.update(config.thingName, {
-      state: { reported: newState }
-    })
-    if (clientToken === null) {
-      _log.error('Shadow update failed')
-    } else {
-      debug(`Shadow update requested (${clientToken})`)
-    }
-  }
-
-  device.on('delta', async (thingName, stateObject) => {
+  shadow.on('delta', async (thingName, stateObject) => {
     debug('AWS IoT delta', stateObject)
     handleStateMessageChange(stateObject.state.message)
   })
+
+  return shadow
 }
 
-let agent: EnebularAgent
-let messenger: MessengerService
-
-/**
- *
- */
 async function startup() {
+  const configFile = ENEBULAR_CONFIG_PATH || '.enebular-config.json'
+  const nodeRedDir = NODE_RED_DIR || 'node-red'
+  const awsIoTConfigFile = AWSIOT_CONFIG_FILE || './config.json'
+
+  console.log('AWS IoT config file: ' + awsIoTConfigFile)
+
+  let awsIotConfig
   try {
-    const awsIoTConfigFile =
-      AWSIOT_CONFIG_FILE || path.join(process.cwd(), './config.json')
-    console.log('AWS IoT config file: ' + awsIoTConfigFile)
-    const awsIotConfig = JSON.parse(fs.readFileSync(awsIoTConfigFile, 'utf8'))
-
-    messenger = new MessengerService()
-    agent = new EnebularAgent(messenger, {
-      nodeRedDir: NODE_RED_DIR || path.join(process.cwd(), 'node-red'),
-      configFile: path.join(process.cwd(), '.enebular-config.json')
-    })
-
-    await agent.startup()
-    _log = agent.log
-    info('Agent started')
-
-    setupDevice(awsIotConfig, messenger)
+    awsIotConfig = JSON.parse(fs.readFileSync(awsIoTConfigFile, 'utf8'))
   } catch (err) {
     console.error(err)
     process.exit(1)
   }
+
+  thingName = awsIotConfig.thingName
+  connector = new ConnectorService()
+  agent = new EnebularAgent(connector, {
+    nodeRedDir: nodeRedDir,
+    configFile: configFile
+  })
+
+  thingShadow = setupThingShadow(awsIotConfig)
+
+  agent.on('connectorRegister', () => {
+    connector.updateRegistrationState(true, thingName)
+  })
+
+  agent.on('connectorConnect', () => {
+    canRegisterThingShadow = true
+    updateThingShadowRegisterState()
+  })
+
+  agent.on('connectorDisconnect', () => {
+    canRegisterThingShadow = false
+    updateThingShadowRegisterState()
+  })
+
+  await agent.startup()
+  info('Agent started')
+
+  connector.updateActiveState(true)
+  connector.updateRegistrationState(true, thingName)
 }
 
-/**
- *
- */
 async function shutdown() {
   return agent.shutdown()
 }
