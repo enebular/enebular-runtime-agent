@@ -10,7 +10,7 @@ const SOCKET_PATH =
 
 let agent: EnebularAgent
 let localServer: net.Server
-let clientSocket: net.Socket
+let clientSocket: ?net.Socket
 
 function log(level: string, msg: string, ...args: Array<mixed>) {
   args.push({ module: MODULE_NAME })

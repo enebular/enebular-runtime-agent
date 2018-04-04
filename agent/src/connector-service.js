@@ -19,7 +19,7 @@ export default class ConnectorService extends EventEmitter {
     return this._registered
   }
 
-  get deviceId(): boolean {
+  get deviceId(): string {
     return this._deviceId
   }
 

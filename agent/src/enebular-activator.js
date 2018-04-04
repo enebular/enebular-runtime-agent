@@ -1,7 +1,8 @@
 /* @flow */
 import fetch from 'isomorphic-fetch'
 import fs from 'fs'
-import { Activator } from 'enebular-runtime-agent'
+import Activator from './activator'
+import type { ActivationInfo } from './activator'
 
 export default class EnebularActivator extends Activator {
   _activateURL: ?string
@@ -21,14 +22,14 @@ export default class EnebularActivator extends Activator {
     const data = fs.readFileSync(configPath, 'utf8')
     const { activateURL, licenseKey } = JSON.parse(data)
     if (!activateURL || !licenseKey) {
-      throw new Error('Config file missing info')
+      throw new Error('Enebular activation config file missing info')
     }
     this._activateURL = activateURL
     this._licenseKey = licenseKey
   }
 
   canActivate(): boolean {
-    return this._activateURL && this._licenseKey
+    return !!this._activateURL && !!this._licenseKey
   }
 
   async activate(info: ActivationInfo): ActivationInfo {

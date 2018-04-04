@@ -3,11 +3,11 @@ import fs from 'fs'
 import path from 'path'
 import os from 'os'
 import EventEmitter from 'events'
-import Activator from './activator'
 import ConnectorService from './connector-service'
-import NodeREDController from './node-red-controller'
+import Activator from './activator'
 import DeviceAuthMediator from './device-auth-mediator'
 import AgentManagerMediator from './agent-manager-mediator'
+import NodeREDController from './node-red-controller'
 import LogManager from './log-manager'
 import type { LogManagerConfig } from './log-manager'
 import type { Logger } from 'winston'
@@ -29,10 +29,10 @@ export type EnebularAgentConfig = {
 }
 
 type AgentSetting = {
-  connectionId: string,
-  deviceId: string,
-  authRequestUrl: string,
-  agentManagerBaseUrl: string
+  connectionId?: string,
+  deviceId?: string,
+  authRequestUrl?: string,
+  agentManagerBaseUrl?: string
 }
 
 const MONITOR_INTERVAL_FAST = 30
@@ -257,6 +257,7 @@ export default class EnebularAgent extends EventEmitter {
   }
 
   _loadAgentConfig() {
+    let registered = false
     try {
       if (fs.existsSync(this._configFile)) {
         this._log.info('Reading config file: ' + this._configFile)
@@ -273,20 +274,12 @@ export default class EnebularAgent extends EventEmitter {
           agentManagerBaseUrl,
           authRequestUrl
         })
-        if (this._agentInfoIsComplete()) {
-          this._changeAgentState('registered')
-        } else {
-          this._changeAgentState('unregistered')
-        }
-      } else {
-        this._log.debug('Creating config file:', this._configFile)
-        fs.writeFileSync(this._configFile, '{}', 'utf8')
-        this._changeAgentState('unregistered')
+        registered = this._agentInfoIsComplete()
       }
     } catch (e) {
       this._log.error(e)
-      this._changeAgentState('unregistered')
     }
+    this._changeAgentState(registered ? 'registered' : 'unregistered')
   }
 
   _changeAgentState(nextState: AgentState) {
@@ -300,7 +293,7 @@ export default class EnebularAgent extends EventEmitter {
       }
     } else {
       this._log.error(
-        `Impossible state transition requested : ${
+        `Impossible state transition requested: ${
           this._agentState
         } => ${nextState}`
       )
@@ -309,10 +302,10 @@ export default class EnebularAgent extends EventEmitter {
 
   _agentInfoIsComplete(): boolean {
     return (
-      this._connectionId &&
-      this._deviceId &&
-      this._authRequestUrl &&
-      this._agentManagerBaseUrl
+      !!this._connectionId &&
+      !!this._deviceId &&
+      !!this._authRequestUrl &&
+      !!this._agentManagerBaseUrl
     )
   }
 
@@ -326,7 +319,11 @@ export default class EnebularAgent extends EventEmitter {
       authRequestUrl: this._authRequestUrl,
       agentManagerBaseUrl: this._agentManagerBaseUrl
     })
-    fs.writeFileSync(this._configFile, data, 'utf8')
+    try {
+      fs.writeFileSync(this._configFile, data, 'utf8')
+    } catch (err) {
+      this._log.error(err)
+    }
   }
 
   _registerAgentInfo({
@@ -347,11 +344,16 @@ export default class EnebularAgent extends EventEmitter {
     if (agentManagerBaseUrl) {
       this._agentManagerBaseUrl = agentManagerBaseUrl
     }
+    const formatVal = val => {
+      return val || 'not set'
+    }
     this._log.debug('Config:')
-    this._log.debug('  connectionId: ' + this._connectionId)
-    this._log.debug('  deviceId: ' + this._deviceId)
-    this._log.debug('  authRequestUrl: ' + this._authRequestUrl)
-    this._log.debug('  agentManagerBaseUrl: ' + this._agentManagerBaseUrl)
+    this._log.debug('  connectionId: ' + formatVal(this._connectionId))
+    this._log.debug('  deviceId: ' + formatVal(this._deviceId))
+    this._log.debug('  authRequestUrl: ' + formatVal(this._authRequestUrl))
+    this._log.debug(
+      '  agentManagerBaseUrl: ' + formatVal(this._agentManagerBaseUrl)
+    )
     if (!this._agentInfoIsComplete()) {
       return
     }

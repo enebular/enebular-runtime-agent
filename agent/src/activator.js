@@ -1,8 +1,8 @@
 /* @flow */
 
-type ActivationInfo = {
-  connectionId: string,
-  deviceId: string
+export type ActivationInfo = {
+  connectionId?: string,
+  deviceId?: string
 }
 
 export default class Activator {
