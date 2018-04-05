@@ -93,6 +93,11 @@ public:
     /**
      * Send a log message to the agent.
      *
+     * Note that the message is sent to the agent packaged in JSON, but the
+     * interface currently does not support properly stringifying the message
+     * content. Therefore the message cannot contain any character that will
+     * interfere with JSON formatting.
+     *
      * @param level   Log level
      * @param prefix  Log message prefix
      * @param message Log message

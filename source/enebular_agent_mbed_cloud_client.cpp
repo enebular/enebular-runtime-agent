@@ -30,7 +30,7 @@ void update_progress(uint32_t progress, uint32_t total);
 #endif
 
 void EnebularAgentMbedCloudClientCallback::value_updated(M2MBase *base, M2MBase::BaseType type) {
-    _logger->log_console(INFO, "Client: unexpected client callback");
+    _logger->log_console(INFO, "Client: unexpected client callback: %s", base->uri_path());
 }
 
 EnebularAgentMbedCloudClient::EnebularAgentMbedCloudClient(EnebularAgentMbedCloudConnector * connector)

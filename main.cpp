@@ -55,13 +55,24 @@ static bool init_storage_dir(void)
     return true;
 }
 
-static void sigaction_handler(int sig)
+static void sigaction_handler_halt(int sig)
 {
     if (!connector) {
         return;
     }
 
     connector->halt();
+}
+
+static void sigaction_handler_pipe(int sig)
+{
+    if (!connector) {
+        return;
+    }
+
+    fprintf(stderr, "Terminating due to SIGPIPE...\n");
+
+    exit(1);
 }
 
 static bool init_signals(void)
@@ -71,7 +82,7 @@ static bool init_signals(void)
 
     sigact.sa_flags = 0;
     sigemptyset(&sigact.sa_mask);
-    sigact.sa_handler = sigaction_handler;
+    sigact.sa_handler = sigaction_handler_halt;
 
     ret = sigaction(SIGINT, &sigact, NULL);
     if (ret < 0) {
@@ -79,6 +90,13 @@ static bool init_signals(void)
     }
 
     ret = sigaction(SIGTERM, &sigact, NULL);
+    if (ret < 0) {
+        return false;
+    }
+
+    sigact.sa_handler = sigaction_handler_pipe;
+
+    ret = sigaction(SIGPIPE, &sigact, NULL);
     if (ret < 0) {
         return false;
     }
