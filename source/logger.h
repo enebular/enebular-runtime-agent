@@ -15,12 +15,32 @@ class Logger {
 
 public:
 
+    /**
+     * Get the shared logger instance.
+     *
+     * @return The logger
+     */
     static Logger *get_instance();
 
+    /**
+     * Set the logger's enebular agent interface reference.
+     *
+     * @param agent Enebular agent interface
+     */
     void set_agent_interface(EnebularAgentInterface *agent);
 
+    /**
+     * Set the log level.
+     *
+     * @param level Log level
+     */
     void set_level(LogLevel level);
 
+    /**
+     * Enable/disable logging to the console.
+     *
+     * @param enable Enable/disable
+     */
     void enable_console(bool enable);
 
     /**

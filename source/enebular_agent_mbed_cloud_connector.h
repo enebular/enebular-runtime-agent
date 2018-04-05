@@ -86,6 +86,20 @@ public:
      */
     void halt();
 
+    /**
+     * Set the logger's log level.
+     *
+     * @param level Log level
+     */
+    void set_log_level(LogLevel level);
+
+    /**
+     * Enable/disable the logger's logging to the console.
+     *
+     * @param enable Enable/disable
+     */
+    void enable_log_console(bool enable);
+
 private:
 
     Logger *_logger;

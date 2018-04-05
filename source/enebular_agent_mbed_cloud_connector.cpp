@@ -14,7 +14,6 @@ EnebularAgentMbedCloudConnector::EnebularAgentMbedCloudConnector()
     _mbed_cloud_client = new EnebularAgentMbedCloudClient(this);
     _logger = Logger::get_instance();
     _logger->set_agent_interface(_agent);
-    _logger->set_level(DEBUG);
     _started = false;
     _running = false;
     _registering = false;
@@ -148,6 +147,16 @@ void EnebularAgentMbedCloudConnector::kick()
 void EnebularAgentMbedCloudConnector::halt()
 {
     _running = false;
+}
+
+void EnebularAgentMbedCloudConnector::set_log_level(LogLevel level)
+{
+    _logger->set_level(level);
+}
+
+void EnebularAgentMbedCloudConnector::enable_log_console(bool enable)
+{
+    _logger->enable_console(enable);
 }
 
 bool EnebularAgentMbedCloudConnector::init_wait_events()

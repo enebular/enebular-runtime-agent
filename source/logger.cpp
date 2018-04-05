@@ -23,7 +23,7 @@ Logger* Logger::get_instance()
 Logger::Logger()
 {
     _level = INFO;
-    _console_enabled = true;
+    _console_enabled = false;
     _agent = 0;
     pthread_mutex_init(&_lock, NULL);
 }
