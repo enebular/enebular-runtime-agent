@@ -6,6 +6,12 @@
 #include "mbed-cloud-client/MbedCloudClient.h"
 #include "logger.h"
 
+class EnebularAgentMbedCloudClientCallback: public MbedCloudClientCallback {
+public:
+    void value_updated(M2MBase *base, M2MBase::BaseType type);
+    Logger *_logger;
+};
+
 class EnebularAgentMbedCloudConnector;
 
 typedef FP0<void> ClientConnectionStateCB;
@@ -19,7 +25,6 @@ typedef struct _agent_msg {
 /**
  * Todo:
  *  - Standard device/security objects/resources
- *  - Auto reconnection (registration) needed?
  */
 
 /**
@@ -112,6 +117,7 @@ private:
 
     EnebularAgentMbedCloudConnector * _connector;
     Logger *_logger;
+    EnebularAgentMbedCloudClientCallback *_clientCallback;
 
     MbedCloudClient _cloud_client;
     M2MObjectList _object_list;

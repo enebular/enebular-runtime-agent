@@ -29,11 +29,9 @@ static bool enable_debug_logging;
 
 EnebularAgentMbedCloudConnector *connector;
 
-/**
- * Todo: confirm the details of this.
- */
 static bool init_mbed_trace(void)
 {
+#if MBED_CONF_MBED_TRACE_ENABLE
     if (!mbed_trace_helper_create_mutex()) {
         return false;
     }
@@ -41,7 +39,7 @@ static bool init_mbed_trace(void)
     mbed_trace_init();
     mbed_trace_mutex_wait_function_set(mbed_trace_helper_mutex_wait);
     mbed_trace_mutex_release_function_set(mbed_trace_helper_mutex_release);
-
+#endif
     return true;
 }
 
