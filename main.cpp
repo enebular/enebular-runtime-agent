@@ -66,10 +66,6 @@ static void sigaction_handler_halt(int sig)
 
 static void sigaction_handler_pipe(int sig)
 {
-    if (!connector) {
-        return;
-    }
-
     fprintf(stderr, "Terminating due to SIGPIPE...\n");
 
     exit(1);
