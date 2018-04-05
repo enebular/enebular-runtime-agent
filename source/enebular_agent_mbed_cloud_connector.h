@@ -6,6 +6,17 @@
 #include "enebular_agent_interface.h"
 #include "logger.h"
 
+/**
+ * The enebular agent mbed cloud connector.
+ *
+ * This is the main class responsible for overall control of the connector. It
+ * handles of the overall state of the connector and essentially connects the
+ * Mbed Cloud client and the enebular agent interface.
+ *
+ * It implements a very simple (bare minimium) main loop construct for other
+ * modules to utilize. It currently has no support for timers (delayed/repeating
+ * events).
+ */
 class EnebularAgentMbedCloudConnector {
 
 public:
@@ -23,9 +34,17 @@ public:
     /**
      * Start up the connector.
      *
-     * @param iface A handler to the network interface.
+     * @param iface A handler to the mbed network interface.
      */
     bool startup(void *iface);
+
+    /**
+     * Shut down the connector.
+     *
+     * This is designed to be run after having the connector exit its main loop
+     * with halt().
+     */
+    void shutdown();
 
     /**
      * Register a file descriptor to wait on.
@@ -54,23 +73,18 @@ public:
     void run();
 
     /**
-     * Kick the connector into running its main loop.
+     * Kick the connector into running a pass of its main loop.
      *
      * This can be called from a separate thread.
      */
     void kick();
 
     /**
-     * Stop the running connector.
+     * Have the connector exit from its main loop.
      *
      * This can be called from a separate thread or signal handler etc.
      */
     void halt();
-
-    /**
-     * Shut down the connector.
-     */
-    void shutdown();
 
 private:
 
@@ -85,8 +99,8 @@ private:
     int _epoll_fd;
     int _kick_fd;
 
-    bool init_events();
-    void uninit_events();
+    bool init_wait_events();
+    void uninit_wait_events();
     void wait_for_events();
 
     void update_connection_state();

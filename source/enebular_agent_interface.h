@@ -13,6 +13,11 @@ typedef FP0<void> AgentConnectionChangeCB;
 typedef FP0<void> ConnectorRegistrationRequestCB;
 typedef FP1<void, bool> ConnectorConnectionRequestCB;
 
+/**
+ * The enebular agent interface.
+ *
+ * This class provides a communication interface to the main enebular agent.
+ */
 class EnebularAgentInterface {
 
 public:
@@ -40,7 +45,7 @@ public:
     /**
      * Run the agent interface's main work.
      *
-     * This is designed to be run from the app's main loop and it will not
+     * This is designed to be run from the connector's main loop and it will not
      * block.
      */
     void run();
@@ -51,7 +56,7 @@ public:
     bool is_connected();
 
     /**
-     * Adds a agent connection state change callback.
+     * Adds an agent connection state change callback.
      *
      * Multiple callbackes can be added.
      *
@@ -89,6 +94,7 @@ public:
      * Send a log message to the agent.
      *
      * @param level   Log level
+     * @param prefix  Log message prefix
      * @param message Log message
      */
     void send_log_message(const char *level, const char *prefix, const char *message);

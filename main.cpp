@@ -102,6 +102,8 @@ static bool init(void)
     return true;
 }
 
+// todo: arg handling
+
 int main(int argc, char **argv)
 {
     if (!init()) {

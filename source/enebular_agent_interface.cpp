@@ -10,14 +10,11 @@
 #include "enebular_agent_mbed_cloud_connector.h"
 #include "enebular_agent_interface.h"
 
-#define MODULE_NAME             "enebular-agent"
-
-#define SOC_IFACE_PATH          "/tmp/enebular-local-agent.socket"
-#define CLIENT_IFACE_PATH_BASE  "/tmp/enebular-local-agent-client.socket-"
+#define SERVER_SOCKET_PATH      "/tmp/enebular-local-agent.socket"
+#define CLIENT_SOCKET_PATH_BASE "/tmp/enebular-local-agent-client.socket-"
 
 #define END_OF_MSG_MARKER       (0x1E) // RS (Record Separator)
 
-#define CLIENT_IFACE_PERM       S_IRWXU
 #define CONNECT_RETRIES_MAX     (5)
 #define SEND_BUF_SIZE           (100 * 1024)
 #define RECV_BUF_SIZE           (1024 * 1024)
@@ -155,7 +152,7 @@ bool EnebularAgentInterface::connect_agent()
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
     memset(&path, 0, sizeof(path));
-    snprintf(path, sizeof(path), "%s%d", CLIENT_IFACE_PATH_BASE, getpid());
+    snprintf(path, sizeof(path), "%s%d", CLIENT_SOCKET_PATH_BASE, getpid());
     strcpy(addr.sun_path, path);
 
     unlink(path);
@@ -166,7 +163,7 @@ bool EnebularAgentInterface::connect_agent()
         goto err;
     }
 
-    ret = chmod(addr.sun_path, CLIENT_IFACE_PERM);
+    ret = chmod(addr.sun_path, S_IRWXU);
     if (ret < 0) {
         _logger->log_console(ERROR, "Agent: failed to chmod socket path: %s", strerror(errno));
         goto err;
@@ -176,7 +173,7 @@ bool EnebularAgentInterface::connect_agent()
 
         memset(&addr, 0, sizeof(addr));
         addr.sun_family = AF_UNIX;
-        strcpy(addr.sun_path, SOC_IFACE_PATH);
+        strcpy(addr.sun_path, SERVER_SOCKET_PATH);
         ret = ::connect(fd, (struct sockaddr *)&addr, sizeof(addr));
         if (ret == 0) {
             break;

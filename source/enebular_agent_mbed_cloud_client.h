@@ -18,12 +18,17 @@ typedef struct _agent_msg {
 
 /**
  * Todo:
- *  - All MbedCloudClient callbacks occur on a separate thread, so this must be
- *    handled correctly (transfer back to main thread).
  *  - Standard device/security objects/resources
  *  - Auto reconnection (registration) needed?
  */
 
+/**
+ * The Mbed Cloud client for the connector.
+ *
+ * This provides a communication interface to enebular via Mbed Cloud. It
+ * handles everything related to Mbed Cloud, including the definition of the
+ * objects and resources.
+ */
 class EnebularAgentMbedCloudClient {
 
 public:
@@ -43,29 +48,62 @@ public:
      */
     bool setup();
 
-    // void cleanup();
-
+    /**
+     * Runs the client's main work.
+     *
+     * This is designed to be run from the connector's main loop and it will not
+     * block.
+     */
     void run();
 
     /**
-     * Connect to Mbed Cloud.
+     * Connects to Mbed Cloud.
      * 
      * @param iface A handler to the network interface.
      */
     bool connect(void *iface);
 
+    /**
+     * Disconnects from Mbed Cloud.
+     */
     void disconnect();
 
+    /**
+     * Checks if the client is currently connecting or not.
+     */
     bool is_connecting();
 
+    /**
+     * Checks if the client is currently connected or not.
+     */
     bool is_connected();
 
+    /**
+     * Gets the device ID.
+     */
     const char *get_device_id(void);
 
+    /**
+     * Gets the endpoint name.
+     */
     const char *get_endpoint_name(void);
 
+    /**
+     * Adds a client connection state change callback.
+     *
+     * Multiple callbackes can be added.
+     *
+     * @param cb Callback
+     */
     void on_connection_change(ClientConnectionStateCB cb);
 
+    /**
+     * Adds an agent manager message callback.
+     *
+     * Multiple callbackes can be added.
+     *
+     * @param cb Callback
+     */
     void on_agent_manager_message(AgentManagerMessageCB cb);
 
     // todo: update handler reg
