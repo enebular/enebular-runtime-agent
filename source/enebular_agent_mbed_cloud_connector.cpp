@@ -8,16 +8,16 @@
 
 #define MAX_EPOLL_EVENT_CNT (10)
 
-EnebularAgentMbedCloudConnector::EnebularAgentMbedCloudConnector()
+EnebularAgentMbedCloudConnector::EnebularAgentMbedCloudConnector():
+    _agent(new EnebularAgentInterface(this)),
+    _mbed_cloud_client(new EnebularAgentMbedCloudClient(this)),
+    _logger(Logger::get_instance()),
+    _started(false),
+    _running(false),
+    _registering(false),
+    _can_connect(false)
 {
-    _agent = new EnebularAgentInterface(this);
-    _mbed_cloud_client = new EnebularAgentMbedCloudClient(this);
-    _logger = Logger::get_instance();
     _logger->set_agent_interface(_agent);
-    _started = false;
-    _running = false;
-    _registering = false;
-    _can_connect = false;
 }
 
 EnebularAgentMbedCloudConnector::~EnebularAgentMbedCloudConnector()

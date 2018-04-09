@@ -63,18 +63,18 @@ void update_progress(uint32_t progress, uint32_t total)
 #endif
 
 void EnebularAgentMbedCloudClientCallback::value_updated(M2MBase *base, M2MBase::BaseType type) {
-    _logger->log_console(INFO, "Client: unexpected client callback: %s", base->uri_path());
+    Logger *logger = Logger::get_instance();
+    logger->log_console(INFO, "Client: unexpected client callback: %s", base->uri_path());
 }
 
-EnebularAgentMbedCloudClient::EnebularAgentMbedCloudClient(EnebularAgentMbedCloudConnector * connector)
+EnebularAgentMbedCloudClient::EnebularAgentMbedCloudClient(EnebularAgentMbedCloudConnector * connector):
+    _connector(connector),
+    _clientCallback(new EnebularAgentMbedCloudClientCallback()),
+    _logger(Logger::get_instance()),
+    _connecting(false),
+    _registered(false),
+    _registered_state_updated(false)
 {
-    _clientCallback = new EnebularAgentMbedCloudClientCallback();
-    _clientCallback->_logger = Logger::get_instance();
-    _connector = connector;
-    _logger = Logger::get_instance();
-    _connecting = false;
-    _registered = false;
-    _registered_state_updated = false;
     pthread_mutex_init(&_lock, NULL);
 }
 

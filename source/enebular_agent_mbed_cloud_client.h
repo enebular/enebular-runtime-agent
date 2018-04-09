@@ -9,7 +9,6 @@
 class EnebularAgentMbedCloudClientCallback: public MbedCloudClientCallback {
 public:
     void value_updated(M2MBase *base, M2MBase::BaseType type);
-    Logger *_logger;
 };
 
 class EnebularAgentMbedCloudConnector;

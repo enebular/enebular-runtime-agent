@@ -19,11 +19,12 @@
 #define SEND_BUF_SIZE           (100 * 1024)
 #define RECV_BUF_SIZE           (1024 * 1024)
 
-EnebularAgentInterface::EnebularAgentInterface(EnebularAgentMbedCloudConnector * connector)
+EnebularAgentInterface::EnebularAgentInterface(EnebularAgentMbedCloudConnector * connector):
+    _connector(connector),
+    _logger(Logger::get_instance()),
+    _is_connected(false)
+
 {
-    _connector = connector;
-    _logger = Logger::get_instance();
-    _is_connected = false;
 }
 
 EnebularAgentInterface::~EnebularAgentInterface()
