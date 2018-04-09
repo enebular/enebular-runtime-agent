@@ -103,12 +103,12 @@ static bool init_signals(void)
 static bool init(void)
 {
     if (!init_mbed_trace()) {
-        printf("Failed to initialize mbed trace\n");
+        fprintf(stderr, "Failed to initialize mbed trace\n");
         return false;
     }
 
     if (!init_storage_dir()) {
-        printf("Failed to initialize storage directory\n");
+        fprintf(stderr, "Failed to initialize storage directory\n");
         return false;
     }
 
@@ -191,18 +191,24 @@ int main(int argc, char **argv)
     }
 
     if (!init()) {
-        printf("Base initialization failed\n");
+        fprintf(stderr, "Base initialization failed\n");
         return EXIT_FAILURE;
     }
 
-    connector = new EnebularAgentMbedCloudConnector();
+    try {
+        connector = new EnebularAgentMbedCloudConnector();
+    } catch (...) {
+        fprintf(stderr, "An unexpected runtime error occured\n");
+        return EXIT_FAILURE;
+    }
+
     connector->enable_log_console(enable_log_console);
     if (enable_debug_logging) {
         connector->set_log_level(DEBUG);
     }
 
     if (!connector->startup(network_interface)) {
-        printf("Connector startup failed\n");
+        fprintf(stderr, "Connector startup failed\n");
         return EXIT_FAILURE;
     }
 
