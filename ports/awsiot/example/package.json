@@ -6,6 +6,6 @@
     "start": "AWSIOT_CONFIG_FILE=./config.json NODE_RED_DIR=../../../node-red enebular-awsiot-agent"
   },
   "dependencies": {
-    "enebular-awsiot-agent": "file:.."
+    "enebular-awsiot-agent": "enebular/enebular-awsiot-agent"
   }
 }
