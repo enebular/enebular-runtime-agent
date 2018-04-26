@@ -45,11 +45,6 @@ export default class NodeREDController {
     if (!fs.existsSync(this._dir)) {
       throw new Error(`Given Node RED dir is not found: ${this._dir}`)
     }
-    if (!fs.existsSync(path.join(this._dir, 'package.json'))) {
-      throw new Error(
-        `Given Node RED dir does not have package.json file : ${this._dir}`
-      )
-    }
 
     this._registerHandler(emitter)
 

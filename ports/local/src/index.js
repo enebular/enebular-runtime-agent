@@ -6,7 +6,7 @@ import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
 const MODULE_NAME = 'local'
 const END_OF_MSG_MARKER = 0x1e // RS (Record Separator)
 
-const { ENEBULAR_CONFIG_PATH, NODE_RED_DIR } = process.env
+const { ENEBULAR_CONFIG_PATH, NODE_RED_DIR, NODE_RED_COMMAND } = process.env
 const SOCKET_PATH =
   process.env.SOCKET_PATH || '/tmp/enebular-local-agent.socket'
 
@@ -150,10 +150,14 @@ async function startup() {
   const nodeRedDir = NODE_RED_DIR || 'node-red'
 
   const connector = new ConnectorService()
-  agent = new EnebularAgent(connector, {
+  let agentConfig = {
     nodeRedDir: nodeRedDir,
     configFile: configFile
-  })
+  }
+  if (NODE_RED_COMMAND) {
+    agentConfig['nodeRedCommand'] = NODE_RED_COMMAND
+  }
+  agent = new EnebularAgent(connector, agentConfig)
 
   agent.on('connectorRegister', () => {
     clientSendMessage('register')
