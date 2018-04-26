@@ -9,6 +9,7 @@ import type LogManager from './log-manager'
 
 export type NodeREDConfig = {
   dir: string,
+  dataDir: string,
   command: string,
   killSignal: string
 }
@@ -23,6 +24,7 @@ type NodeRedFlowPackage = {
 
 export default class NodeREDController {
   _dir: string
+  _dataDir: string
   _command: string
   _killSignal: string
   _cproc: ?ChildProcess = null
@@ -39,11 +41,15 @@ export default class NodeREDController {
     config: NodeREDConfig
   ) {
     this._dir = config.dir
+    this._dataDir = config.dataDir
     this._command = config.command
     this._killSignal = config.killSignal
 
     if (!fs.existsSync(this._dir)) {
-      throw new Error(`Given Node RED dir is not found: ${this._dir}`)
+      throw new Error(`The Node-RED directory was not found: ${this._dir}`)
+    }
+    if (!fs.existsSync(this._getDataDir())) {
+      throw new Error(`The Node-RED data directory was not found: ${this._getDataDir()}`)
     }
 
     this._registerHandler(emitter)
@@ -65,6 +71,10 @@ export default class NodeREDController {
   info(msg: string, ...args: Array<mixed>) {
     args.push({ module: moduleName })
     this._log.info(msg, ...args)
+  }
+
+  _getDataDir() {
+    return this._dataDir || path.join(this._dir, '.node-red-config')
   }
 
   _registerHandler(emitter: EventEmitter) {
@@ -127,8 +137,7 @@ export default class NodeREDController {
       updates.push(
         new Promise((resolve, reject) => {
           const flowFilePath = path.join(
-            this._dir,
-            '.node-red-config',
+            this._getDataDir(),
             'flows.json'
           )
           fs.writeFile(
@@ -144,8 +153,7 @@ export default class NodeREDController {
       updates.push(
         new Promise((resolve, reject) => {
           const credFilePath = path.join(
-            this._dir,
-            '.node-red-config',
+            this._getDataDir(),
             'flows_cred.json'
           )
           fs.writeFile(
@@ -160,8 +168,7 @@ export default class NodeREDController {
       updates.push(
         new Promise((resolve, reject) => {
           const packageJSONFilePath = path.join(
-            this._dir,
-            '.node-red-config',
+            this._getDataDir(),
             'enebular-agent-dynamic-deps',
             'package.json'
           )
@@ -190,7 +197,7 @@ export default class NodeREDController {
     return new Promise((resolve, reject) => {
       const cproc = spawn('npm', ['install', 'enebular-agent-dynamic-deps'], {
         stdio: 'inherit',
-        cwd: path.join(this._dir, '.node-red-config')
+        cwd: this._getDataDir()
       })
       cproc.on('error', reject)
       cproc.once('exit', resolve)

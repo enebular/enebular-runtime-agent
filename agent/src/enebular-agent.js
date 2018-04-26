@@ -14,6 +14,7 @@ import type { Logger } from 'winston'
 
 export type EnebularAgentConfig = {
   nodeRedDir: string,
+  nodeRedDataDir: string,
   nodeRedCommand?: string,
   nodeRedKillSignal?: string,
 
@@ -94,6 +95,7 @@ export default class EnebularAgent extends EventEmitter {
 
     const {
       nodeRedDir,
+      nodeRedDataDir,
       nodeRedCommand = './node_modules/.bin/node-red -s .node-red-config/settings.js',
       nodeRedKillSignal = 'SIGINT',
       configFile = path.join(os.homedir(), '.enebular-config.json')
@@ -125,6 +127,7 @@ export default class EnebularAgent extends EventEmitter {
       this._logManager,
       {
         dir: nodeRedDir,
+        dataDir: nodeRedDataDir,
         command: nodeRedCommand,
         killSignal: nodeRedKillSignal
       }
