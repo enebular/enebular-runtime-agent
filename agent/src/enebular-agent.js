@@ -401,20 +401,25 @@ export default class EnebularAgent extends EventEmitter {
     this._log.debug(
       `Connector: ${this._connector.active ? 'active' : 'inactive'}`
     )
-    if (this._connector.active) {
-      if (
-        this._activator &&
-        this._activator.canActivate() &&
-        !this._agentInfoIsComplete()
-      ) {
-        this._log.info('Starting registration via activation...')
-        this._log.info('Requesting connector registration...')
-        this._connectorRegisteringForActivation = true
-        this._requestConnectorRegister()
-      } else {
-        this._log.info('Connecting connector...')
-        this._requestConnectorConnect(true)
+    if (!this._connector.active) {
+      return
+    }
+    let attemptActivate = !this._agentInfoIsComplete() && this._activator
+    if (attemptActivate) {
+      let result = await this._activator.canActivate()
+      if (!result.canActivate) {
+        this._log.info('Activator cannot activate: ' + result.message)
+        attemptActivate = false
       }
+    }
+    if (attemptActivate) {
+      this._log.info('Starting registration via activation...')
+      this._log.info('Requesting connector registration...')
+      this._connectorRegisteringForActivation = true
+      this._requestConnectorRegister()
+    } else {
+      this._log.info('Connecting connector...')
+      this._requestConnectorConnect(true)
     }
   }
 
@@ -451,12 +456,12 @@ export default class EnebularAgent extends EventEmitter {
 
     try {
       this._log.info('Requesting activator activation...')
-      let info = await this._activator.activate({
-        connectionId: this._connectionId,
-        deviceId: this._connector.deviceId
-      })
+      let result = await this._activator.activate(this._connector.deviceId)
       this._registerAgentInfo({
-        deviceId: info.deviceId
+        deviceId: this._connector.deviceId,
+        connectionId: result.connectionId,
+        authRequestUrl: result.authRequestUrl,
+        agentManagerBaseUrl: result.agentManagerBaseUrl
       })
       this._log.info('Activator activation completed')
       if (this._agentInfoIsComplete()) {
