@@ -1,5 +1,5 @@
 
-# Enebular Runtime Agent - Local Port
+# enebular-agent - Local Port
 
 *Read this in other languages: [English](README.md), [日本語](README.ja.md)*
 
@@ -50,4 +50,4 @@ Once that is displayed, the agent is ready to be used with the local proxy appli
 
 ## Further Configuration Options
 
-The agent port can specify various configuration options when it instantiates the agent core. For the AWS IoT port, this can be seen in the `ports/awsiot/src/index.js` source code. For all of the configuration options that the agent core supports, refer to the `agent/src/index.js` source code file.
+Please see the [main readme](../../README.md) for configuration options common to all enebular-agent ports.
