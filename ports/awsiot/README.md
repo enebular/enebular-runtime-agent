@@ -61,4 +61,4 @@ Once that message is displayed, the device can be used with enebular.
 
 ## Further Configuration Options
 
-The enebular-agent port can specify various configuration options when it instantiates the enebular-runtime-agent core. For the AWS IoT port, this can be seen in the `ports/awsiot/src/index.js` source code. For all of the configuration options that the enebular-runtime-agent core supports, refer to the `agent/src/index.js` source code file.
+Please see the [main readme](../../README.md) for configuration options common to all enebular-agent ports.
