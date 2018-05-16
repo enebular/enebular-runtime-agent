@@ -13,7 +13,7 @@ ACTIVATOR=enebular npm run start
 
 ## Configuration
 
-The enebular-activator module requires a configuration file. Its path defaults to `.enebular-activation-config.json`, but a different path can be specifyied with the `ACTIVATOR_CONFIG_PATH` environment variable.
+The enebular-activator module requires a configuration file. Its path defaults to `.enebular-activation-config.json`, but a different path can be specified with the `ACTIVATOR_CONFIG_PATH` environment variable.
 
 The configuration file should contain values for `enebularBaseURL` and `licenseKey`, as the example shows below.
 
