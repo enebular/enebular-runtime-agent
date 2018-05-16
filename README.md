@@ -27,11 +27,11 @@ To communicate with enebular, enebular-agent needs to receive its required devic
 
 Unless you specifically need to use activation, just let enebular handle it automatically. For more information on any supported activator modules, see their specific readme.
 
-enebeular will also automatically update the enebular-agent's authentication information when required to allow it to use features which require authentication (i.e logging and status reporting).
+enebular will also automatically update the enebular-agent's authentication information when required to allow it to use features which require authentication (i.e logging and status reporting).
 
 ### Node-RED Flows
 
-enebular-agent accepts flows deployed from enebular and manages a Node-RED instance to run them. It will also automatically install any published node modules that are depeneded on by the flow being deployed.
+enebular-agent accepts flows deployed from enebular and manages a Node-RED instance to run them. It will also automatically install any published node modules that are depended on by the flow being deployed.
 
 ### Logging
 
