@@ -39,7 +39,7 @@ enebular-agent provides simple reporting on its status to enebular (when authent
 
 ## Structure
 
-enebular-agent is implemented as a collection of Node.js modules. The agent's core runtime functionality is implemented as the `enebular-runtime-agent` module (under the `agent` directory). On top of this, there is a module for each of the supported IoT platform connection types (under the `ports` directory). Each of the ports includes the enebular-runtime-agent core module as a dependency.
+enebular-agent is implemented as a collection of Node.js modules. Its core runtime functionality is implemented as the `enebular-runtime-agent` module (under the `agent` directory). On top of this, there is a module for each of the supported IoT platform connection types (under the `ports` directory). Each of the ports includes the enebular-runtime-agent core module as a dependency.
 
 Node-RED is also installed as a Node.js module.
 
