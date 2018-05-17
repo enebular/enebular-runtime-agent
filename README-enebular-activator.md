@@ -1,6 +1,8 @@
 
 # enebular-agent - Enebular Activator
 
+*Read this in other languages: [English](README-enebular-activator.md), [日本語](README-enebular-activator.ja.md)*
+
 Use the enebular-activator module to support activation with enebular.
 
 ## Usage
