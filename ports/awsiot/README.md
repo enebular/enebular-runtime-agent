@@ -3,7 +3,7 @@
 
 *Read this in other languages: [English](README.md), [日本語](README.ja.md)*
 
-The AWS IoT port allows enebular-agent to be used with a AWS IoT connection.
+The AWS IoT port allows enebular-agent to be used with an AWS IoT connection.
 
 The following describes an example of setting up and running the AWS IoT port. All directories in the example are written with an assumed base of the agent project directory. It is also assumed you have Node.js and npm installed already.
 

@@ -13,12 +13,6 @@ enebular-agent has the following key functionality.
 
 enebular communicates with enebular-agent via a third-party IoT platform connection.
 
-## Structure
-
-enebular-agent is implemented as a collection of Node.js modules. The agent's core runtime functionality is implemented as the `enebular-runtime-agent` module (under the `agent` directory). On top of this, there is a module for each of the supported IoT platform connection types (under the `ports` directory). Each of the ports includes the enebular-runtime-agent core module as a dependency.
-
-Node-RED is also installed as a Node.js module.
-
 ## Features
 
 ### Activation, Registration and Authentication
@@ -37,15 +31,29 @@ enebular-agent accepts flows deployed from enebular and manages a Node-RED insta
 
 Along with its own logging, enebular-agent captures and re-logs any messages that Node-RED logs to its standard output streams (stdout and stderr). This includes any messages from nodes in the flow being run which log to the console, like when the debug node is configured to log to the "debug tab and console". All messages captured from Node-RED are currently re-logged at the 'info' log level.
 
-enebular-agent will periodically send logged messages to enebular (when authenticated). It can also log to its own standard output streams (command-line console), but this is not enabled by default. To have it also log to the console, set the `DEBUG` envinonment variable.
+enebular-agent will periodically send logged messages to enebular (when authenticated). It can also log to its own standard output streams (command-line console), but this is not enabled by default. To have it also log to the console, set the `DEBUG` environment variable.
 
 ### Status Reporting
 
-enebular-agent provides simple reporting on its status to enebular (when authenticated). 
+enebular-agent provides simple reporting on its status to enebular (when authenticated).
+
+## Structure
+
+enebular-agent is implemented as a collection of Node.js modules. The agent's core runtime functionality is implemented as the `enebular-runtime-agent` module (under the `agent` directory). On top of this, there is a module for each of the supported IoT platform connection types (under the `ports` directory). Each of the ports includes the enebular-runtime-agent core module as a dependency.
+
+Node-RED is also installed as a Node.js module.
+
+## Installation
+
+To run enebular-agent you need to install the Node.js modules required by the IoT platform port you want to use and also correctly configure the IoT platform's connection details.
+
+The required modules and connection configuration differs for each IoT platform port. Please see the readme files of each port for details on how to set up and run the enebular-agent.
+
+- [Ports](ports)
 
 ## Configuration
 
-enebular-agent supports a number of configuration options set via envinorment variables that are available no matter what IoT platform port is used. This includes the following.
+enebular-agent supports a number of configuration options set via environment variables that are available no matter what IoT platform port is used. This includes the following.
 
 - `DEBUG` - Have enebular-agent log to the console at the specified log level (i.e. `debug` or `info` etc). Note that if set to `debug` then debug messages will also be sent to enebular (when enebular-agent is authenticated).
 
@@ -60,11 +68,3 @@ enebular-agent supports a number of configuration options set via envinorment va
 - `ACTIVATOR` - The activator module to use.
 
 Each of the ports have additional configuration options. Please see the readme files of each port for details.
-
-## Usage
-
-To run enebular-agent you need to install the required Node.js modules (with npm etc) and correctly configure the required IoT platform connection details. The required modules and connection configuration differs for each IoT platform.
-
-Please see the readme files of each port for details on how to set up and run the enebular-agent.
-
-- [Ports](ports)
