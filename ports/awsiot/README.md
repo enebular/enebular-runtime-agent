@@ -5,11 +5,11 @@
 
 The AWS IoT port allows enebular-agent to be used with an AWS IoT connection.
 
-The following describes an example of setting up and running the AWS IoT port. All directories in the example are written with an assumed base of the agent project directory. It is also assumed you have Node.js and npm installed already.
+The following describes an example of setting up and running the AWS IoT port. All directories in the example are written with an assumed base of the enebular-agent project directory. It is also assumed you have Node.js and npm installed already.
 
 ## Setup
 
-1. Build the core enebular-agent module.
+1. Install the modules of the enebular-agent core.
 
 ```
 cd agent
@@ -23,7 +23,7 @@ cd node-red
 npm install
 ```
 
-3. Install the AWS IoT port's modules and build it.
+3. Install the AWS IoT port's modules.
 
 ```
 cd ports/awsiot
