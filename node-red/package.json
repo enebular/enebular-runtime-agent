@@ -10,6 +10,7 @@
   "license": "MIT",
   "dependencies": {
     "enebular-agent-dynamic-deps": "file:.node-red-config/enebular-agent-dynamic-deps",
+    "moment": "^2.22.0",
     "node-red": "^0.17.5",
     "node-red-contrib-huemagic": "^1.1.7",
     "node-red-contrib-milkcocoa": "0.0.7"
