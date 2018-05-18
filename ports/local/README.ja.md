@@ -14,7 +14,6 @@ Localポートを使用すると、EnebularランタイムエージェントをU
 ```
 cd agent
 npm install
-npm run build
 ```
 
 2. Node-REDのインスタンスをインストールします。
@@ -29,7 +28,6 @@ npm install
 ```
 cd ports/local
 npm install
-npm run build
 ```
 
 ## 実行

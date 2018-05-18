@@ -14,7 +14,6 @@ The following describes an example of setting up and running the local port. All
 ```
 cd agent
 npm install
-npm run build
 ```
 
 2. Install the Node-RED instance.
@@ -29,7 +28,6 @@ npm install
 ```
 cd ports/local
 npm install
-npm run build
 ```
 
 ## Running

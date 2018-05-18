@@ -14,7 +14,6 @@ AWS IoTポートを使用すると、enebular-agentをAWS IoT接続で使用で�
 ```
 cd agent
 npm install
-npm run build
 ```
 
 2. Node-REDのインスタンスをインストールします。
@@ -29,7 +28,6 @@ npm install
 ```
 cd ports/awsiot
 npm install
-npm run build
 ```
 
 4. AWS IoTポートのディレクトリの下に、「example」というAWS IoTポートをラップするだけのモジュールがあります。exampleモジュールのディレクトリに移動し、モジュールをインストールします。exampleモジュールの `package.json`ファイルを確認すると、Node-REDディレクトリを指定する環境変数が設定されていることが分かります。

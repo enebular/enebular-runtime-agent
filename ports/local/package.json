@@ -7,7 +7,7 @@
     "enebular-local-agent": "./bin/enebular-local-agent"
   },
   "scripts": {
-    "prepublish": "npm run build",
+    "prepare": "npm run build",
     "build": "babel src -d lib",
     "start": "node lib/index.js",
     "lint": "eslint src",

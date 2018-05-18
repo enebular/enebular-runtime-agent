@@ -14,7 +14,6 @@ The following describes an example of setting up and running the AWS IoT port. A
 ```
 cd agent
 npm install
-npm run build
 ```
 
 2. Install the Node-RED instance.
@@ -29,7 +28,6 @@ npm install
 ```
 cd ports/awsiot
 npm install
-npm run build
 ```
 
 4. There is an 'example' module under the AWS IoT port's directory that is just a simple wrapper of the actual AWS IoT port module. Go to its directory and install its modules. If you check the example's `package.json` file, you can see that it is setting the environment variable that specifies the Node-RED directory.
