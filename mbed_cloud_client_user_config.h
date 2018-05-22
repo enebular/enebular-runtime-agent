@@ -24,7 +24,7 @@
 #define MBED_CLOUD_CLIENT_TRANSPORT_MODE_TCP
 #define MBED_CLOUD_CLIENT_LIFETIME              3600
 
-#ifdef FREERTOS
+#ifdef __FREERTOS__
     #define SN_COAP_MAX_BLOCKWISE_PAYLOAD_SIZE       512
 #else
     #define MBED_CLOUD_CLIENT_SUPPORT_UPDATE
@@ -32,7 +32,7 @@
 #endif
 
 /* set flag to enable update support in mbed Cloud client */
-#ifndef FREERTOS
+#ifndef __FREERTOS__
     #define MBED_CLOUD_CLIENT_SUPPORT_UPDATE
 #endif
 /* set download buffer size in bytes (min. 1024 bytes) */

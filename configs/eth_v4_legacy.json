@@ -1,8 +1,8 @@
 {
     "macros": [
-        "PAL_USER_DEFINED_CONFIGURATION=\"sotp_fs_config_MbedOS.h\"",
-        "ARM_UC_USE_PAL_BLOCKDEVICE=1",
-        "MBED_CLOUD_CLIENT_UPDATE_STORAGE=ARM_UCP_FLASHIAP_BLOCKDEVICE"
+        "PAL_USER_DEFINED_CONFIGURATION=\"sotp_fs_config_MbedOS_legacy.h\"",
+        "PAL_DEVICE_KEY_DERIVATION_BACKWARD_COMPATIBILITY_CALC=1",
+        "MBED_CLOUD_CLIENT_UPDATE_STORAGE=ARM_UCP_FILESYSTEM"
     ],
     "target_overrides": {
         "*": {
@@ -18,25 +18,17 @@
             "update-client.storage-locations": "1"
         },
         "K64F": {
-            "target.mbed_app_start"            : "0x0000a400",
-            "update-client.bootloader-details" : "0x00007188",
-            "update-client.application-details": "(40*1024)"
-        },
-        "NUCLEO_F429ZI": {
-            "target.mbed_app_start"            : "0x08010400",
-            "update-client.bootloader-details" : "0x080078CC",
-            "update-client.application-details": "(0x08000000+64*1024)"
-        },
-        "UBLOX_EVK_ODIN_W2": {
-            "target.device_has_remove": ["EMAC"],
-            "target.mbed_app_start"            : "0x08010400",
-            "update-client.bootloader-details" : "0x08007300",
-            "update-client.application-details": "(0x08000000+64*1024)"
+            "target.mbed_app_start"            : "0x00020400",
+            "client_app.sotp-section-1-address"    : "(1016*1024)",
+            "client_app.sotp-section-1-size"       : "(   4*1024)",
+            "client_app.sotp-section-2-address"    : "(1020*1024)",
+            "client_app.sotp-section-2-size"       : "(   4*1024)",
+            "update-client.application-details": "(0x00020000)"
         }
     },
     "config": {
         "network-interface": {
-            "help": "Options are ETHERNET, WIFI_ESP8266, WIFI_ODIN",
+            "help": "Options are ETHERNET",
             "value": "ETHERNET"
         },
         "developer-mode": {
