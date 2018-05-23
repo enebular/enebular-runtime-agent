@@ -1,14 +1,14 @@
-# enebular agent - Mbed Cloud Connector
+# enebular-agent - Mbed Cloud Connector
 
 This is an Mbed Cloud client that works together with the main enebular-agent application to provide enebular-agent support for Mbed Cloud on Linux.
 
-This client application implements a "connector service" for the main enebular-agent by connecting to Mbed Cloud and passing on data received through Mbed Cloud resource updates to enebular-agent via a Unix socket.
+This client application implements a "connector service" for the main enebular-agent by connecting to Mbed Cloud and passing on data received through Mbed Cloud resource updates to the enebular-agent via a Unix socket.
 
 This project currently utilizes the build infrastructure from the [Mbed Cloud client example project](https://github.com/ARMmbed/mbed-cloud-client-example).
 
 ## Developer and Factory Modes
 
-By default the project is set up to use developer credentials to connect to Mbed Cloud. If you want to run it with factory created credentials, disable developer mode before building the app by changing the `MBED_CONF_APP_DEVELOPER_MODE` definition in the `define.txt` file to `0`, as shown below.
+As with the Mbed Cloud client example, by default the project is set up to use developer credentials to connect to Mbed Cloud. If you want to run it with factory created credentials, disable developer mode before building the app by changing the `MBED_CONF_APP_DEVELOPER_MODE` definition in the `define.txt` file to `0`, as shown below.
 
 ```
 add_definitions(-DMBED_CONF_APP_DEVELOPER_MODE=0)
