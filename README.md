@@ -17,9 +17,9 @@ enebular communicates with enebular-agent via a third-party IoT platform connect
 
 ### Activation, Registration and Authentication
 
-To communicate with enebular, enebular-agent needs to receive its required device 'registration' information. This can occur in one of two supported ways: 1) enebular automatically sends it to enebular-agent via the IoT platform connection, or 2) enebular-agent receives it in response to it directly requesting 'activation' with enebular. To use activation, an 'activator' module must be selected with the `ACTIVATOR` environment variable.
+To communicate with enebular, enebular-agent needs to receive its required device 'registration' information. This can occur in one of two supported ways: 1) enebular automatically sends it to enebular-agent via the IoT platform connection, or 2) enebular-agent receives it in response to it directly requesting 'activation' with enebular.
 
-Unless you specifically need to use activation, just let enebular handle it automatically. For more information on any supported activator modules, see their specific readme.
+Unless you specifically need to use activation, just let enebular handle it automatically. For more information on using activation, see the [activation readme](README-activation.md).
 
 enebular will also automatically update the enebular-agent's authentication information when required to allow it to use features which require authentication (i.e logging and status reporting).
 
@@ -64,7 +64,5 @@ enebular-agent supports a number of configuration options set via environment va
 - `NODE_RED_COMMAND` - The command to use to start Node-RED.
 
 - `ENEBULAR_CONFIG_PATH` - The path of the enebular-agent's main configuration file.
-
-- `ACTIVATOR` - The activator module to use.
 
 Each of the ports have additional configuration options. Please see the readme files of each port for details.
