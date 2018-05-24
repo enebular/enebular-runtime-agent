@@ -197,7 +197,6 @@ async function shutdown() {
 
 async function exit() {
   await shutdown()
-  console.log('Exiting...')
   process.exit(0)
 }
 
