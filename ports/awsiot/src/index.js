@@ -5,7 +5,13 @@ import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
 
 const MODULE_NAME = 'aws-iot'
 
-const { ENEBULAR_CONFIG_PATH, NODE_RED_DIR, AWSIOT_CONFIG_FILE } = process.env
+const {
+  ENEBULAR_CONFIG_PATH,
+  NODE_RED_DIR,
+  NODE_RED_DATA_DIR,
+  NODE_RED_COMMAND,
+  AWSIOT_CONFIG_FILE
+} = process.env
 
 let agent: EnebularAgent
 let connector: ConnectorService
@@ -150,10 +156,17 @@ async function startup() {
 
   thingName = awsIotConfig.thingName
   connector = new ConnectorService()
-  agent = new EnebularAgent(connector, {
+  let agentConfig = {
     nodeRedDir: nodeRedDir,
     configFile: configFile
-  })
+  }
+  if (NODE_RED_DATA_DIR) {
+    agentConfig['nodeRedDataDir'] = NODE_RED_DATA_DIR
+  }
+  if (NODE_RED_COMMAND) {
+    agentConfig['nodeRedCommand'] = NODE_RED_COMMAND
+  }
+  agent = new EnebularAgent(connector, agentConfig)
 
   thingShadow = setupThingShadow(awsIotConfig)
 
