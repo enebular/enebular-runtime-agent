@@ -1,7 +1,7 @@
 {
   "name": "enebular-awsiot-agent",
-  "version": "2.0.0-alpha",
-  "description": "",
+  "version": "2.1.0",
+  "description": "The AWS IoT port of enebular-agent for enebular",
   "main": "lib/index.js",
   "bin": {
     "enebular-awsiot-agent": "./bin/enebular-awsiot-agent"

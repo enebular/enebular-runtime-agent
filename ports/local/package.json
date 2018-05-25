@@ -1,7 +1,7 @@
 {
   "name": "enebular-local-agent",
-  "version": "1.0.0-alpha",
-  "description": "",
+  "version": "2.1.0",
+  "description": "The 'local' port of enebular-agent for enebular",
   "main": "lib/index.js",
   "bin": {
     "enebular-local-agent": "./bin/enebular-local-agent"
