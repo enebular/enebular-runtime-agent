@@ -9,7 +9,8 @@
 #include "mbed-trace-helper.h"
 #include "enebular_agent_mbed_cloud_connector.h"
 
-#define PROGRAM_NAME "enebular-agent-mbed-cloud-connector"
+#define PROGRAM_NAME    "enebular-agent-mbed-cloud-connector"
+#define PROGRAM_VERSION "1.0.0"
 
 /**
  * Comments from the example:
@@ -127,10 +128,16 @@ static void print_usage(void)
         "\n"
         "Options:\n"
         "    -h --help          Show this help\n"
+        "    -v --version       Show version information\n"
         "    -c --console       Enable logging to the console\n"
         "    -d --debug         Enable debug logging\n"
         "\n"
     );
+}
+
+static void print_version(void)
+{
+    printf(PROGRAM_NAME ", v" PROGRAM_VERSION "\n");
 }
 
 /* returns -1 if program should continue executing, exit val otherwise */
@@ -138,6 +145,7 @@ static int parse_args(int argc, char * const *argv)
 {
     struct option options[] = {
         {"help",            0, NULL, 'h'},
+        {"version",         0, NULL, 'v'},
         {"console",         0, NULL, 'c'},
         {"debug",           0, NULL, 'd'},
         {0, 0, 0, 0}
@@ -146,7 +154,7 @@ static int parse_args(int argc, char * const *argv)
 
     while (1) {
 
-        c = getopt_long(argc, argv, "hcd", options, NULL);
+        c = getopt_long(argc, argv, "hvcd", options, NULL);
         if (c == -1)
             break;
 
@@ -154,6 +162,10 @@ static int parse_args(int argc, char * const *argv)
 
             case 'h':
                 print_usage();
+                return 0;
+
+            case 'v':
+                print_version();
                 return 0;
 
             case 'c':
