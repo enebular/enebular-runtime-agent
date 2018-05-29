@@ -2,9 +2,9 @@
 import fetch from 'isomorphic-fetch'
 import fs from 'fs'
 import Activator from './activator'
-import type { ActivationInfo } from './activator'
 
 export default class EnebularActivator extends Activator {
+  _enabled: boolean = false
   _verifyURL: ?string
   _activateURL: ?string
   _licenseKey: ?string
@@ -28,6 +28,11 @@ export default class EnebularActivator extends Activator {
     this._verifyURL = `${enebularBaseURL}/verify-license`
     this._activateURL = `${enebularBaseURL}/activate-license`
     this._licenseKey = licenseKey
+    this._enabled = true
+  }
+
+  enabled(): boolean {
+    return this._enabled
   }
 
   async canActivate(): ActivatableResult {

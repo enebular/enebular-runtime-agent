@@ -12,6 +12,10 @@ export type ActivationResult = {
 }
 
 export default class Activator {
+  enabled(): boolean {
+    throw new Error('Called an abstract function')
+  }
+
   async canActivate(): ActivatableResult {
     throw new Error('Called an abstract function')
   }
