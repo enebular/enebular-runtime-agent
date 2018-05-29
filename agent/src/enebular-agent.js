@@ -404,22 +404,27 @@ export default class EnebularAgent extends EventEmitter {
     if (!this._connector.active) {
       return
     }
-    let attemptActivate = !this._agentInfoIsComplete() && this._activator
-    if (attemptActivate) {
-      let result = await this._activator.canActivate()
-      if (!result.canActivate) {
-        this._log.info('Activator cannot activate: ' + result.message)
-        attemptActivate = false
-      }
+    if (this._agentInfoIsComplete()) {
+      this._log.info('Registration info present. Connecting connector...')
+      this._requestConnectorConnect(true)
+      return
     }
-    if (attemptActivate) {
+    if (!this._activator || !this._activator.enabled()) {
+      this._log.info(
+        'No activation. Connecting connector to wait for registration...'
+      )
+      this._requestConnectorConnect(true)
+      return
+    }
+    let result = await this._activator.canActivate()
+    if (result.canActivate) {
       this._log.info('Starting registration via activation...')
       this._log.info('Requesting connector registration...')
       this._connectorRegisteringForActivation = true
       this._requestConnectorRegister()
     } else {
-      this._log.info('Connecting connector...')
-      this._requestConnectorConnect(true)
+      this._log.info('Activator cannot activate: ' + result.message)
+      this._log.info('Connector connection not possible')
     }
   }
 
