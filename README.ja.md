@@ -2,10 +2,9 @@
 
 *Read this in other languages: [English](README.md), [日本語](README.ja.md)*
 
-このアプリケーションはMbedcloudのクライアントです。enebular-agentと併せて利用し、MbedCloudを経由したenebularとの通信をサポートします。 ‌
+このアプリケーションはMbed Cloudのクライアントです。enebular-agentと併せて利用し、Mbed Cloudを経由したenebularとの通信をサポートします。
 
-
-この「Connector Service」は、MbedCloudリソース更新のデータをUnixソケット経由でenebular-agentに送信し実装しています。‌
+この「Connector Service」は、Mbed Cloudリソース更新のデータをUnixソケット経由でenebular-agentに送信し実装しています。
 
 このプロジェクトは現在、[mbed-cloud-client-example](https://github.com/ARMmbed/mbed-cloud-client-example)のプロジェクトに含まれているビルドシステムをそのまま採用しています。
 

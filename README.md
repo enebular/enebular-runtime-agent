@@ -22,25 +22,25 @@ As this is a Mbed project, general knowledge of how Mbed projects are constructe
 
 The steps to prepare this project for building are as follows.
 
-- Install the [Mbed CLI tool](https://github.com/ARMmbed/mbed-cli#installing-mbed-cli).
+1. Install the [Mbed CLI tool](https://github.com/ARMmbed/mbed-cli#installing-mbed-cli).
 
-- Get a copy of the project by cloning it with git or by using the mbed command.
+1. Get a copy of the project by cloning it with the `git clone` command or by using the `mbed import` command.
 
-- Move into the project directory (make it your current directory).
+1. Move into the project directory (make it your current directory).
 
-- If you retrieved the project by cloning it with git, you'll need to then use the Mbed CLI tool to add in the referenced libraries with the `mbed deploy` command.
+1. If you retrieved the project by cloning it with git, you'll need to then use the Mbed CLI tool to add in the referenced libraries with the `mbed deploy` command.
 
 If you're using developer mode, set your Mbed Cloud developer connection credentials by doing the following.
 
-- Log into the [Mbed Cloud portal](https://portal.mbedcloud.com/login)
+1. Log into the [Mbed Cloud portal](https://portal.mbedcloud.com/login)
 
-- Go to "Device identity > Certificates"
+1. Go to "Device identity > Certificates"
 
-- Select "Actions > Create a developer certificate"
+1. Select "Actions > Create a developer certificate"
 
-- Download the "Developer C file" which will be named `mbed_cloud_dev_credentials.c`
+1. Download the "Developer C file" which will be named `mbed_cloud_dev_credentials.c`
 
-- Copy that file to the project directory.
+1. Copy that file to the project directory.
 
 The project is now ready to be built. This can be done with the following command.
 
