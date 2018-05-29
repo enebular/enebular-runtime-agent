@@ -17,11 +17,14 @@ enebularは、サードパーティのIoTプラットフォーム接続を介し
 
 ### アクティベーションと登録、認証
 
-enebular-agentがenebularと通信するには、必要となる「登録情報」を取得しないといけません。この登録情報の取得には２つの方法がサポートされています。1) enebularがIoTプラットフォーム接続経由で登録情報を自動的にenebular-agentに送信します。2) enebular-agentがenebularに「アクティベーション」を直接に要求した時のレスポンスとして受信します。
+enebular-agentがenebularと通信するには、「登録情報」を取得する必要があります。この登録情報の取得には２つの方法が用意されています。
 
-アクティベーションを利用する特別な理由がない限り、enebularが自動的に登録情報を送信する方法を使います。アクティベーションの利用方法の詳細情報には、[activationのreadmeファイル](README-activation.ja.md)を参照してください。
+- enebularがIoTプラットフォーム接続経由で登録情報を自動的にenebular-agentに送信する
+- enebular-agentがenebularに「アクティベーション」を直接に要求した時のレスポンスとして受信する
 
-enebularはロギングやステータス通知のように認証が必要となっている機能の利用をenebular-agentに許可を与えるために、enebular-agentの認証情報を必要に応じて更新します。
+基本的に前者を用いてアクティベーションを行います。[activationのreadmeファイル](README-activation.ja.md)に更なる詳細情報が記載されています。
+
+ロギングやステータス通知のように認証が必要となっている機能の利用をenebular-agentに許可を与えるために、enebularはenebular-agentの認証情報を必要に応じて更新します。
 
 ### Node-REDのフロー
 
@@ -29,9 +32,9 @@ enebular-agentはenebularからデプロイされたフローを受信し、そ�
 
 ### ロギング
 
-enebular-agentは自分のロギングの他に、Node-REDが標準出力ストリーム（stdoutとstderr）に出力するメッセージをキャプチャして再ロギングします。debugノードが"debug tab and console"に出力するように設定されている場合など、実行中のフローに含まれているノードからのメッセージも含まれます。現在、Node-REDからキャプチャされたメッセージが全てinfoのログレベルで再ロギングされます。
+enebular-agentはenebular-agent自身のロギングの他に、Node-REDが標準出力ストリーム（stdoutとstderr）に出力するメッセージをキャプチャして再ロギングします。現在、Node-REDからキャプチャされたメッセージが全てinfoのログレベルで再ロギングされます。また、実行中のフローに含まれているノードからのメッセージも含まれます（debugノードで"debug tab and console"の設定がされている場合など）
 
-enebular-agentは認証されている場合に定期的にenebularにログメッセージを送信します。また、標準出力ストリーム（コマンドラインのコンソールなど）にもロギングできますが、デフォルトでは有効になっていません。コンソールにもロギングするには、`DEBUG`環境変数を設定します。
+enebular-agentは認証されている場合に定期的にenebularにログメッセージを送信します。また、標準出力ストリーム（コマンドラインのコンソールなど）にもロギングできますが、デフォルトでは有効になっていません。ロギングするには、`DEBUG`環境変数を設定します。
 
 ### ステータス通知
 
@@ -55,9 +58,9 @@ enebular-agentを実行するには、利用するIoTプラットフォームの
 
 enebular-agentは、環境変数で設定できるIoTプラットフォーム共通の設定オプションをいくつかサポートしています。例として以下のオプションがあります。
 
-- `DEBUG` -  指定したログレベル（`debug`や`info`）でコンソルにロギングします。なお、`debug`に設定すると、enebular-agentが認証されているとしたらデバッグメッセージがenebularにも送信されます。
+- `DEBUG` -  指定したログレベル（`debug`や`info`）でコンソールにロギングします。なお、`debug`に設定し、且つenebular-agentが認証済みであればデバッグメッセージがenebularに送信されます
 
-- `NODE_RED_DIR` - インストール済みのNode-REDのパス
+- `NODE_RED_DIR` - インストール済みのNode-REDのパス
 
 - `NODE_RED_DATA_DIR` - Node-REDのワーキングディレクトリ（userDir）のパス
 
