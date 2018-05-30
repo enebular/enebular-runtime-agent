@@ -9,7 +9,7 @@ Localポートを使用すると、enebular-runtime-agentをUnixソケット経�
 
 ## セットアップ
 
-1. エージェントのコアモジュールをビルドします。
+1. エージェントのコアモジュールをインストールします。
 
 ```
 cd agent
@@ -23,7 +23,7 @@ cd node-red
 npm install
 ```
 
-3. AWS IoTポートのモジュールをインストールしてビルドします。
+3. AWS IoTポートのモジュールをインストールします。
 
 ```
 cd ports/local
@@ -49,4 +49,4 @@ internal: local: server listening on: "/tmp/enebular-local-agent.socket"
 
 ## その他の設定オプション
 
-エージェントのポートは、エージェントのコアを実行する時にさまざまなオプションを指定できます。AWS IoTポートの場合、このオプションの指定を`ports/awsiot/src/index.js`のソースコードで見ることができます。エージェントのコアがサポートするすべてのオプションは、`agent/src/index.js`のソースコードファイルに記載があります。
+IoTプラットフォーム共通の設定オプションについては、[プロジェクトのreadmeファイル](../../README.ja.md)を参照してください。
