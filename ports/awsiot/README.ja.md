@@ -32,7 +32,7 @@ cd ports/awsiot
 npm install
 ```
 
-4 . AWS IoTポートのディレクトリの下に、「example」というAWS IoTポートを「らっぷ」するモジュールがあります。exampleモジュールのディレクトリに移動し、モジュールをインストールします。
+4 . AWS IoTポートのディレクトリに、「example」というAWS IoTポートをラップするモジュールがあります。exampleモジュールのディレクトリに移動し、モジュールをインストールします。
 ※exampleモジュールの `package.json`ファイルには、Node-REDディレクトリを指定する環境変数が設定されています。
 
 ```
