@@ -9,7 +9,7 @@ AWS IoTポートを使用すると、enebular-agentをAWS IoTの接続で使用�
 
 ## セットアップ
 
-1. enebular-agentのコアモジュールをビルドします。
+1. enebular-agentのコアモジュールをインストールします。
 
 ```
 cd agent
@@ -23,7 +23,7 @@ cd node-red
 npm install
 ```
 
-3. AWS IoTポートのモジュールをインストールしてビルドします。
+3. AWS IoTポートのモジュールをインストールします。
 
 ```
 cd ports/awsiot
@@ -62,4 +62,4 @@ internal: aws-iot: Connected to AWS IoT
 
 ## その他の設定オプション
 
-enebular-agentのポートは、enebular-runtime-agentコアを実行する時にさまざまなオプションを指定できます。AWS IoTポートの場合、このオプションの指定を`ports/awsiot/src/index.js`のソースコードで見ることができます。エージェントのコアがサポートするすべてのオプションは、`agent/src/index.js`のソースコードファイルに記載があります。
+IoTプラットフォーム共通の設定オプションについては、[プロジェクトのreadmeファイル](../../README.ja.md)を参照してください。
