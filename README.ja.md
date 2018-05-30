@@ -22,7 +22,7 @@ enebular-agentがenebularと通信するには、「登録情報」を取得す�
 - enebularがIoTプラットフォーム接続経由で登録情報を自動的にenebular-agentに送信する
 - enebular-agentがenebularに「アクティベーション」を直接に要求した時のレスポンスとして受信する
 
-基本的に前者で登録情報を取得します。[activationのreadmeファイル](README-activation.ja.md)に更なる詳細情報が記載されています。
+基本的に前者で登録情報を取得します。また、後者のアクティベーションについては[activationのreadmeファイル](README-activation.ja.md)に更なる詳細情報が記載されています。
 
 ロギングやステータス通知のように認証が必要となっている機能の利用をenebular-agentに許可を与えるために、enebularはenebular-agentの認証情報を必要に応じて更新します。
 
