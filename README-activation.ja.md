@@ -4,6 +4,7 @@
 *Read this in other languages: [English](README-enebular-activator.md), [日本語](README-enebular-activator.ja.md)*
 
 enebular-agentはenebularとのアクティベーションをサポートしています。
+アクティベーションとは、reserve状態になっているライセンスをデバイスと紐づけて有償デバイスにする機能です。
 
 ## 利用方法
 

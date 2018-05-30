@@ -29,9 +29,11 @@ enebular-agent accepts flows deployed from enebular and manages a Node-RED insta
 
 ### Logging
 
+enebular-agent will periodically send logged messages to enebular (when billing device). It can also log to its own standard output streams (command-line console), but this is not enabled by default. To have it also log to the console, set the `DEBUG` environment variable.
+
 Along with its own logging, enebular-agent captures and re-logs any messages that Node-RED logs to its standard output streams (stdout and stderr). This includes any messages from nodes in the flow being run which log to the console, like when the debug node is configured to log to the "debug tab and console". All messages captured from Node-RED are currently re-logged at the 'info' log level.
 
-enebular-agent will periodically send logged messages to enebular (when authenticated). It can also log to its own standard output streams (command-line console), but this is not enabled by default. To have it also log to the console, set the `DEBUG` environment variable.
+
 
 ### Status Reporting
 

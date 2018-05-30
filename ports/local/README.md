@@ -5,25 +5,27 @@
 
 The 'local' port allows enebular-agent to be used in conjunction with another local process via a Unix socket. This other process acts as a proxy to an IoT platform connection, delivering commands to the agent.
 
-The following describes an example of setting up and running the local port. All directories in the example are written with an assumed base of the enebular-agent project directory. It is also assumed you have Node.js and npm installed already.
+The following describes an example of setting up and running the local port. All directories in the example are written with an assumed base of the enebular-agent project directory. It is also assumed you have Node.js(8.9.0) and npm(5.5.1) installed already.
 
 ## Setup
 
-1. Install the modules of the enebular-agent core.
+Please read [enebular-docs](https://docs.enebular.com/) for more info.
+
+1 . Install the modules of the enebular-agent core.
 
 ```
 cd agent
 npm install
 ```
 
-2. Install the Node-RED instance.
+2 . Install the Node-RED instance.
 
 ```
 cd node-red
 npm install
 ```
 
-3. Install the local port's modules.
+3 . Install the local port's modules.
 
 ```
 cd ports/local

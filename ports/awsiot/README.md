@@ -5,41 +5,43 @@
 
 The AWS IoT port allows enebular-agent to be used with an AWS IoT connection.
 
-The following describes an example of setting up and running the AWS IoT port. All directories in the example are written with an assumed base of the enebular-agent project directory. It is also assumed you have Node.js and npm installed already.
+The following describes an example of setting up and running the AWS IoT port. All directories in the example are written with an assumed base of the enebular-agent project directory. It is also assumed you have Node.js(8.9.0) and npm(5.5.1) installed already.
 
 ## Setup
 
-1. Install the modules of the enebular-agent core.
+Please read [enebular-docs](https://docs.enebular.com/) for more info.
+
+1 . Install the modules of the enebular-agent core.
 
 ```
 cd agent
 npm install
 ```
 
-2. Install the Node-RED instance.
+2 . Install the Node-RED instance.
 
 ```
 cd node-red
 npm install
 ```
 
-3. Install the AWS IoT port's modules.
+3 . Install the AWS IoT port's modules.
 
 ```
 cd ports/awsiot
 npm install
 ```
 
-4. There is an 'example' module under the AWS IoT port's directory that is just a simple wrapper of the actual AWS IoT port module. Go to its directory and install its modules. If you check the example's `package.json` file, you can see that it is setting the environment variable that specifies the Node-RED directory.
+4 . There is an 'example' module under the AWS IoT port's directory that is just a simple wrapper of the actual AWS IoT port module. Go to its directory and install its modules. If you check the example's `package.json` file, you can see that it is setting the environment variable that specifies the Node-RED directory.
 
 ```
 cd ports/awsiot/example
 npm install
 ```
 
-5. Obtain the AWS IoT thing cert files to be used with this device (from the AWS console etc) and copy them to the example folder.
+5 . Obtain the AWS IoT thing cert files to be used with this device (from the AWS console etc) and copy them to the example folder.
 
-6. Obtain the AWS IoT thing connection details for the device (from the AWS console etc) and update the example's `config.json` file with those details (including the correct paths of the cert files).
+6 . Obtain the AWS IoT thing connection details for the device (from the AWS console etc) and update the example's `config.json` file with those details (including the correct paths of the cert files).
 
 ## Running
 
