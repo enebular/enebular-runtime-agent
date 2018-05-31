@@ -18,29 +18,29 @@ add_definitions(-DMBED_CONF_APP_DEVELOPER_MODE=0)
 
 ## Building
 
-As this is a Mbed project, general knowledge of how Mbed projects are constructed and built is useful here.
+As this is an Mbed project, the following instructions assume a general knowledge of how Mbed projects are constructed and built.
 
 The steps to prepare this project for building are as follows.
 
 1. Install the [Mbed CLI tool](https://github.com/ARMmbed/mbed-cli#installing-mbed-cli).
 
-1. Get a copy of the project by cloning it with the `git clone` command or by using the `mbed import` command.
+2. Get a copy of the project by cloning it with the `git clone` command or by using the `mbed import` command.
 
-1. Move into the project directory (make it your current directory).
+3. Move into the project directory (make it your current directory).
 
-1. If you retrieved the project by cloning it with git, you'll need to then use the Mbed CLI tool to add in the referenced libraries with the `mbed deploy` command.
+4. If you retrieved the project by cloning it with git, you'll need to then use the Mbed CLI tool to add in the referenced libraries with the `mbed deploy` command.
 
 If you're using developer mode, set your Mbed Cloud developer connection credentials by doing the following.
 
 1. Log into the [Mbed Cloud portal](https://portal.mbedcloud.com/login)
 
-1. Go to "Device identity > Certificates"
+2. Go to "Device identity > Certificates"
 
-1. Select "Actions > Create a developer certificate"
+3. Select "Actions > Create a developer certificate"
 
-1. Download the "Developer C file" which will be named `mbed_cloud_dev_credentials.c`
+4. Download the "Developer C file" which will be named `mbed_cloud_dev_credentials.c`
 
-1. Copy that file to the project directory.
+5. Copy that file to the project directory.
 
 The project is now ready to be built. This can be done with the following command.
 
@@ -57,7 +57,9 @@ Once built, you should end up with an executable binary called `enebular-agent-m
 
 ## Running
 
-As this application communicates with the main enebular-agent, that application must be started first. More specifically, you must run the **'local'** port of the enebular-agent. For information on how to configure and run enebular-agent, refer to its project readme.
+As this application communicates with the main enebular-agent, that application must be started first. More specifically, you must run the 'local' port [1] of the enebular-agent. For information on how to configure and run enebular-agent, refer to its project readme.
+
+[1]: Here a 'port' refers to the individual enebular-agent versions created to allow it to work with external services such as AWS IoT and Mbed Cloud.
 
 Once the the main enebular-agent application is running you can run the `enebular-agent-mbed-cloud-connector.elf` executable. Once it has connected to Mbed Cloud, it is available for use as an agent with enebular.
 
