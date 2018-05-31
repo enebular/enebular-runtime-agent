@@ -9,7 +9,7 @@ AWS IoTポートを使用すると、enebular-agentをAWS IoTの接続で使用�
 
 ## セットアップ
 
-※詳しくは、[enebular-docs](https://docs.enebular.com/)を参照してください。
+※手順5,6の詳細は、[enebular-docs](https://docs.enebular.com/)を参照してください。
 
 1 . enebular-agentのコアモジュールをインストールします。
 

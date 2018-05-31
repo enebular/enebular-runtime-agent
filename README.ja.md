@@ -17,7 +17,7 @@ enebularは、サードパーティのIoTプラットフォーム接続を介し
 
 ### アクティベーションと登録、認証
 
-enebular-agentがenebularと通信するには、「登録情報」を取得する必要があります。この登録情報の取得には２つの方法が用意されています。
+enebular-agentがenebularと通信するには、認証のための登録情報を取得する必要があります。この登録情報の取得には２つの方法が用意されています。
 
 - enebularがIoTプラットフォーム接続経由で登録情報を自動的にenebular-agentに送信する
 - enebular-agentがenebularに「アクティベーション」を直接に要求した時のレスポンスとして受信する
@@ -26,16 +26,18 @@ enebular-agentがenebularと通信するには、「登録情報」を取得す�
 
 ロギングやステータス通知のようにデバイスの有償デバイス化が必要となっている機能の利用をenebular-agentに許可を与えるために、enebularはenebular-agentの認証情報を必要に応じて更新します。
 
+
 ### Node-REDのフロー
 
 enebular-agentはenebularからデプロイされたフローをNode-REDで実行します。また、フローにnpmで公開されているノードが使用されている場合、そのノードを自動的にインストールします。
 
 ### ロギング
 
-enebular-agentは有償デバイスの場合、定期的にenebularにログメッセージを送信します。また、標準出力ストリーム（コマンドラインのコンソールなど）にもロギングできますが、デフォルトでは有効になっていません。ロギングするには、`DEBUG`環境変数を設定します。
+enebular-agentは、定期的にenebularにログメッセージを送信します。また、標準出力ストリーム（コマンドラインのコンソールなど）にもロギングできますが、デフォルトでは有効になっていません。ロギングするには、`DEBUG`環境変数を設定します。
 
-enebular-agentはenebular-agent自身のロギングの他に、Node-REDが標準出力と標準エラー出力（stdoutとstderr）に出力するメッセージをキャプチャしてロギングします。Node-REDが出力するメッセージは全てinfoレベルでロギングされます。また、実行中のフローに含まれているノードからのメッセージもロギングします（debugノードで"debug tab and console"の設定がされている場合など）。
+enebular-agentは、Node-REDが標準出力と標準エラー出力（stdoutとstderr）に出力するメッセージをキャプチャしてロギングします。Node-REDが出力するメッセージは全てinfoレベルでロギングされます。また、実行中のフローに含まれているノードからのメッセージもロギングします（debugノードで"debug tab and console"の設定がされている場合など）。
 
+ログをenebularで確認するには、対象デバイスが有償デバイスになっている必要があります。
 
 ### ステータス通知
 
@@ -55,13 +57,13 @@ enebular-agentを実行するには、利用するIoTプラットフォームの
 
 - [ポート](ports)
 
-※ここでのポートは、enebular-agentをAWSIoTやmbedcloudｍなどの外部サービスと接続するのに使うコネクタを指します。
+※ここでのポートとは、enebular-agentをAWSIoTやMbedCloudなどの外部サービスと連携するために個別に準備されたenebular-agentのバージョンのことを指します。
 
 ## 設定方法
 
 enebular-agentは、環境変数で設定できるIoTプラットフォーム共通の設定オプションをいくつかサポートしています。例として以下のオプションがあります。
 
-- `DEBUG` -  指定したログレベル（`debug`や`info`）でコンソールにロギングします。なお、`debug`に設定し、且つenebular-agentが有償デバイスであればデバッグメッセージがenebularに送信されます
+- `DEBUG` -  指定したログレベル（`debug`や`info`）でコンソールにロギングします。なお、`debug`に設定すればデバッグメッセージがenebularに送信されます
 
 - `NODE_RED_DIR` - インストール済みのNode-REDのパス
 

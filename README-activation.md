@@ -4,6 +4,7 @@
 *Read this in other languages: [English](README-enebular-activator.md), [日本語](README-enebular-activator.ja.md)*
 
 enebular-agent supports activation with enebular.
+Activation is a function to associate a license in reservation state with a device and make it a paid device.
 
 ## Usage
 
