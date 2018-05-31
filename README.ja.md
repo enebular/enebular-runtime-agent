@@ -18,29 +18,29 @@ add_definitions(-DMBED_CONF_APP_DEVELOPER_MODE=0)
 
 ## ビルド方法
 
-このプロジェクトはMbed向けのものであるため、Mbedプロジェクトの構築方法やビルド方法の一般知識があることが望ましいです。
+このプロジェクトはMbed向けのものであるため、Mbedプロジェクトの構築方法やビルド方法の一般的な知識を持っていることを前提としています。
 
 ビルドするための準備の手順は以下の通りです。
 
-1. [Mbed CLIツール](https://github.com/ARMmbed/mbed-cli#installing-mbed-cli)をインストールします
+1 . [Mbed CLIツール](https://github.com/ARMmbed/mbed-cli#installing-mbed-cli)をインストールします
 
-1. `git clone`コマンドまたは`mbed import`コマンドを利用してプロジェクトを取得します
+2 . `git clone`コマンドまたは`mbed import`コマンドを利用してプロジェクトを取得します
 
-1. プロジェクトのディレクトリに移動します
+3 . プロジェクトのディレクトリに移動します
 
-1. プロジェクトをgit cloneコマンドで取得した場合、Mbed CLIツールの`mbed deploy`コマンドを利用して依存するライブラリを追加する必要があります
+4 . プロジェクトをgit cloneコマンドで取得した場合、Mbed CLIツールの`mbed deploy`コマンドを利用して依存するライブラリを追加する必要があります
 
 デベロッパーモードを利用する場合、Mbed Cloudのクレデンシャル情報を以下の手順で設定します。
 
-1. [Mbed Cloud portal](https://portal.mbedcloud.com/login)にログインします
+5 . [Mbed Cloud portal](https://portal.mbedcloud.com/login)にログインします
 
-1. "Device identity > Certificates"に移動します
+6 . "Device identity > Certificates"に移動します
 
-1. "Actions > Create a developer certificate"を選択します
+7 . "Actions > Create a developer certificate"を選択します
 
-1. "Developer C file"をダウンロードします。ファイル名は`mbed_cloud_dev_credentials.c`になります
+8 . "Developer C file"をダウンロードします。ファイル名は`mbed_cloud_dev_credentials.c`になります
 
-1. ダウンロードしたファイルをプロジェクトのディレクトリにコピーします
+9 . ダウンロードしたファイルをプロジェクトのディレクトリにコピーします
 
 これでプロジェクトをビルドするための準備は完了です！次のコマンドでビルドすることが出来ます。
 
@@ -57,9 +57,10 @@ python pal-platform/pal-platform.py fullbuild --target x86_x64_NativeLinux_mbedt
 
 ## 実行方法
 
-このアプリケーションはenebular-agentと通信するため、enebular-agentを先に起動させないといけません。具体的には、enebular-agentの **local** ポートを実行する必要があります。enebular-agentの設定や実行方法の詳細情報については、プロジェクトのreadmeファイルを参照してください。
+このアプリケーションはenebular-agentと通信するため、enebular-agentを先に起動させないといけません。具体的には、enebular-agentのlocalポート(※)を実行する必要があります。enebular-agentの設定や実行方法の詳細情報については、プロジェクトのreadmeファイルを参照してください。
+(※) ここでのポートとは、enebular-agentをAWS IoTやMbed Cloudなどの外部サービスと連携するために個別に準備されたenebular-agentのエディションのことを指します。
 
-enebular-agentが実行状態になってから、`enebular-agent-mbed-cloud-connector.elf`という名前の実行ファイルを実行します。Mbed Cloudへの接続が確立するとenebularのagentとして利用することが出来ます。
+enebular-agentが実行状態になってから、`enebular-agent-mbed-cloud-connector.elf`という名前の実行ファイルを実行します。Mbed Cloudへの接続が確立するとenebularのエージェントとして利用することが出来ます。
 
 デフォルトではログメッセージはコンソールに出力されませんが、`-c`オプションを指定することによって出力することが出来ます。サポートされているオプションの情報は下記のように`-h`オプションを指定して表示することが出来ます。
 
