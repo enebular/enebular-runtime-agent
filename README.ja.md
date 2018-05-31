@@ -57,7 +57,7 @@ enebular-agentを実行するには、利用するIoTプラットフォームの
 
 - [ポート](ports)
 
-(※) ここでのポートとは、enebular-agentをAWS IoTやMbed Cloudなどの外部サービスと連携するために個別に準備されたenebular-agentのバージョンのことを指します
+(※) ここでのポートとは、enebular-agentをAWS IoTやMbed Cloudなどの外部サービスと連携するために個別に準備されたenebular-agentのエディションのことを指します。
 
 ## 設定方法
 
