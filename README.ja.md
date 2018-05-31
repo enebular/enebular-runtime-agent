@@ -58,7 +58,7 @@ python pal-platform/pal-platform.py fullbuild --target x86_x64_NativeLinux_mbedt
 ## 実行方法
 
 このアプリケーションはenebular-agentと通信するため、enebular-agentを先に起動させないといけません。具体的には、enebular-agentのlocalポート(※)を実行する必要があります。enebular-agentの設定や実行方法の詳細情報については、プロジェクトのreadmeファイルを参照してください。  
-(※) ここでのポートは、enebular-agentをAWSIoTやMbedCloudなどの外部サービスと連携するために準備された接続先を示します。
+(※) ここでのポートとは、enebular-agentをAWSIoTやMbedCloudなどの外部サービスと連携するために個別に準備されたenebular-agentのバージョンのことを指します。
 
 enebular-agentが実行状態になってから、`enebular-agent-mbed-cloud-connector.elf`という名前の実行ファイルを実行します。Mbed Cloudへの接続が確立するとenebularのエージェントとして利用することが出来ます。
 
