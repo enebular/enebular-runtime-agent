@@ -59,7 +59,7 @@ Once built, you should end up with an executable binary called `enebular-agent-m
 
 As this application communicates with the main enebular-agent, that application must be started first. More specifically, you must run the 'local' port [1] of the enebular-agent. For information on how to configure and run enebular-agent, refer to its project readme.
 
-[1]: Here a 'port' refers to the individual enebular-agent versions created to allow it to work with external services such as AWS IoT and Mbed Cloud.
+[1]: Here a 'port' refers to the individual enebular-agent editions created to allow it to work with external services such as AWS IoT and Mbed Cloud.
 
 Once the the main enebular-agent application is running you can run the `enebular-agent-mbed-cloud-connector.elf` executable. Once it has connected to Mbed Cloud, it is available for use as an agent with enebular.
 
