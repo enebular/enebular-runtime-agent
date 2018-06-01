@@ -1,6 +1,5 @@
 ### https://raw.github.com/github/gitignore/master/Node.gitignore
 
-/**/lib
 lib-cov
 *.seed
 *.log
@@ -14,13 +13,11 @@ pids
 logs
 results
 
+lib/
+
 npm-debug.log
 node_modules
 
 .env
 .DS_Store
-
-/**/*.key
-/**/*.pem
-/**/*.crt
-
+.enebular-config.json

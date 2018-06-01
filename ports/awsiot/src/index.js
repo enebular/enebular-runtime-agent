@@ -1,132 +1,217 @@
 /* @flow */
-import fs from 'fs';
-import path from 'path';
-import awsIot from 'aws-iot-device-sdk';
-import debug from 'debug';
-import EnebularAgent from 'enebular-runtime-agent';
+import fs from 'fs'
+import awsIot from 'aws-iot-device-sdk'
+import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
 
+const MODULE_NAME = 'aws-iot'
 
-/**
- *
- */
-const log = debug('enebular-awsiot-agent');
+const {
+  ENEBULAR_CONFIG_PATH,
+  NODE_RED_DIR,
+  NODE_RED_DATA_DIR,
+  NODE_RED_COMMAND,
+  AWSIOT_CONFIG_FILE
+} = process.env
 
-const { AWSIOT_CONFIG_FILE, NODE_RED_DIR } = process.env;
+let agent: EnebularAgent
+let connector: ConnectorService
+let thingName: string
+let thingShadow: awsIot.thingShadow
+let canRegisterThingShadow: boolean = false
+let thingShadowRegistered: boolean = false
+let awsIotConnected: boolean = false
 
-/**
- *
- */
-function isThingShadowSynced(metadata, property) {
-  const desiredTimestamp = (metadata.desired && metadata.desired[property] || {}).timestamp;
-  const reportedTimestamp = (metadata.reported && metadata.reported[property] || {}).timestamp;
-  return reportedTimestamp >= desiredTimestamp;
+function log(level: string, msg: string, ...args: Array<mixed>) {
+  args.push({ module: MODULE_NAME })
+  agent.log.log(level, msg, ...args)
 }
 
-/**
- *
- */
+function debug(msg: string, ...args: Array<mixed>) {
+  log('debug', msg, ...args)
+}
+
+function info(msg: string, ...args: Array<mixed>) {
+  log('info', msg, ...args)
+}
+
+function error(msg: string, ...args: Array<mixed>) {
+  log('error', msg, ...args)
+}
+
 export type AWSIoTConfig = {
-  thingName: string,
-};
-
-function setupDevice(config: AWSIoTConfig, agent: EnebularAgent) {
-  const device = awsIot.thingShadow(config);
-
-  device.on('connect', async () => {
-    log('>> connected to AWS IoT');
-    device.register(config.thingName, { ignoreDeltas: false, persistentSubscribe: true });
-    setTimeout(() => device.get(config.thingName), 2000);
-  });
-
-  device.on('close', () => {
-    log('>> AWS IoT connection closed');
-    device.unregister(config.thingName);
-  });
-
-  device.on('reconnect', () => {
-    log('>> reconnect to AWS IoT');
-    device.register(config.thingName);
-  });
-
-  device.on('error', (error) => {
-    log('## error', error);
-  });
-
-  device.on('offline', () => {
-    log('>> offline : no AWS IoT connection established');
-  });
-
-  device.on('message', (topic, payload) => {
-    log('>> message', topic, payload);
-  });
-
-  function handleStatusChange(messageJSON: string) {
-    try {
-      const { messageType, message } = JSON.parse(messageJSON);
-      agent.handleDeviceMasterMessage(messageType, message);
-    } catch (err) {
-      log('!!! Error parsing message property in status. Invalid JSON format !!!');
-    }
-    const newState = { message: messageJSON };
-    device.update(config.thingName, { state: { reported: newState } });
-  }
-
-  device.once('status', async (thingName, stat, clientToken, stateObject) => {
-    log('>> status', stateObject);
-    const state = stateObject.state;
-    const metadata = stateObject.metadata;
-    if (state.desired.message && !isThingShadowSynced(metadata, 'message')) {
-      handleStatusChange(state.desired.message);
-    }
-  });
-
-  device.on('delta', async (thingName, stateObject) => {
-    log('>> delta', stateObject);
-    const state = stateObject.state;
-    const metadata = stateObject.metadata;
-    if (state && state.message && !isThingShadowSynced(metadata, 'message')) {
-      handleStatusChange(state.message);
-    }
-  });
+  thingName: string
 }
 
+function handleThingShadowRegisterStateChange(registered: boolean) {
+  if (registered === thingShadowRegistered) {
+    return
+  }
+  thingShadowRegistered = registered
+  info('Thing shadow ' + (registered ? 'registered' : 'unregistered'))
+  connector.updateConnectionState(registered)
+}
 
-let agent: EnebularAgent;
+function updateThingShadowRegisterState() {
+  let register = awsIotConnected && canRegisterThingShadow
+  if (register === thingShadowRegistered) {
+    return
+  }
+  if (register) {
+    thingShadow.register(
+      thingName,
+      {
+        ignoreDeltas: false,
+        persistentSubscribe: true
+      },
+      err => {
+        handleThingShadowRegisterStateChange(!err)
+      }
+    )
+  } else {
+    thingShadow.unregister(thingName)
+    handleThingShadowRegisterStateChange(false)
+  }
+}
 
-/**
- *
- */
-async function startup() {
+function handleStateMessageChange(messageJSON: string) {
   try {
-    agent = new EnebularAgent({
-      nodeRedDir: NODE_RED_DIR || path.join(process.cwd(), 'node-red'),
-      configFile: path.join(process.cwd(), '.enebular-config.json'),
-    });
-
-    const awsIoTConfigFile = AWSIOT_CONFIG_FILE || path.join(process.cwd(), './config.json');
-    log('AWS IoT config file =', awsIoTConfigFile);
-    const awsIotConfig = JSON.parse(fs.readFileSync(awsIoTConfigFile, 'utf8'));
-    setupDevice(awsIotConfig, agent);
-
-    await agent.startup();
-    log('### enebular agent started up ####');
-    return agent;
-
+    const { messageType, message } = JSON.parse(messageJSON)
+    debug('Message: ' + messageType)
+    connector.sendMessage(messageType, message)
   } catch (err) {
-    console.error(err);
-    process.exit(1);
+    error('Message parse failed. ' + err)
+  }
+  const newState = { message: messageJSON }
+  let clientToken = thingShadow.update(thingName, {
+    state: { reported: newState }
+  })
+  if (clientToken === null) {
+    error('Shadow update failed')
+  } else {
+    debug(`Shadow update requested (${clientToken})`)
   }
 }
 
-/**
- *
- */
-async function shutdown() { 
-  return agent.shutdown();
+function setupThingShadow(config: AWSIoTConfig) {
+  const shadow = awsIot.thingShadow(config)
+
+  shadow.on('connect', () => {
+    info('Connected to AWS IoT')
+    awsIotConnected = true
+    updateThingShadowRegisterState()
+  })
+
+  shadow.on('offline', () => {
+    debug('AWS IoT connection offline')
+    // ignoring disconnect
+  })
+
+  shadow.on('close', () => {
+    debug('AWS IoT connection closed')
+    // ignoring disconnect
+  })
+
+  shadow.on('reconnect', () => {
+    debug('Reconnecting to AWS IoT')
+  })
+
+  shadow.on('error', error => {
+    debug('AWS IoT connection error: ' + error)
+  })
+
+  shadow.on('timeout', async (thingName, clientToken) => {
+    debug(`AWS IoT timeout (${clientToken})`)
+  })
+
+  shadow.on('status', async (thingName, stat, clientToken, stateObject) => {
+    debug(`AWS IoT status: ${stat} (${clientToken})`)
+  })
+
+  shadow.on('message', (topic, payload) => {
+    debug('AWS IoT message', topic, payload)
+  })
+
+  shadow.on('delta', async (thingName, stateObject) => {
+    debug('AWS IoT delta', stateObject)
+    handleStateMessageChange(stateObject.state.message)
+  })
+
+  return shadow
+}
+
+async function startup() {
+  const configFile = ENEBULAR_CONFIG_PATH || '.enebular-config.json'
+  const nodeRedDir = NODE_RED_DIR || 'node-red'
+  const awsIoTConfigFile = AWSIOT_CONFIG_FILE || './config.json'
+
+  console.log('AWS IoT config file: ' + awsIoTConfigFile)
+
+  let awsIotConfig
+  try {
+    awsIotConfig = JSON.parse(fs.readFileSync(awsIoTConfigFile, 'utf8'))
+  } catch (err) {
+    console.error(err)
+    process.exit(1)
+  }
+
+  thingName = awsIotConfig.thingName
+  connector = new ConnectorService()
+  let agentConfig = {
+    nodeRedDir: nodeRedDir,
+    configFile: configFile
+  }
+  if (NODE_RED_DATA_DIR) {
+    agentConfig['nodeRedDataDir'] = NODE_RED_DATA_DIR
+  }
+  if (NODE_RED_COMMAND) {
+    agentConfig['nodeRedCommand'] = NODE_RED_COMMAND
+  }
+  agent = new EnebularAgent(connector, agentConfig)
+
+  thingShadow = setupThingShadow(awsIotConfig)
+
+  agent.on('connectorRegister', () => {
+    connector.updateRegistrationState(true, thingName)
+  })
+
+  agent.on('connectorConnect', () => {
+    canRegisterThingShadow = true
+    updateThingShadowRegisterState()
+  })
+
+  agent.on('connectorDisconnect', () => {
+    canRegisterThingShadow = false
+    updateThingShadowRegisterState()
+  })
+
+  await agent.startup()
+  info('Agent started')
+
+  connector.updateActiveState(true)
+  connector.updateRegistrationState(true, thingName)
+}
+
+async function shutdown() {
+  return agent.shutdown()
+}
+
+async function exit() {
+  await shutdown()
+  process.exit(0)
 }
 
 if (require.main === module) {
-  startup();
+  startup()
+  process.on('SIGINT', () => {
+    exit()
+  })
+  process.on('SIGTERM', () => {
+    exit()
+  })
+  process.on('uncaughtException', err => {
+    console.error(`Uncaught exception: ${err.stack}`)
+    process.exit(1)
+  })
 }
 
-export { startup, shutdown };
+export { startup, shutdown }
