@@ -54,7 +54,7 @@ The required modules and connection configuration differs for each IoT platform 
 
 - [Ports](ports)
 
-[1]: Here a 'port' refers to the individual enebular-agent versions created to allow it to work with external services such as AWS IoT and Mbed Cloud.
+[1]: Here a 'port' refers to the individual enebular-agent editions created to allow it to work with external services such as AWS IoT and Mbed Cloud.
 
 ## Configuration
 
