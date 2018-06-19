@@ -26,7 +26,10 @@ export type EnebularAgentConfig = {
   logfilePath?: string,
   enableEnebularLog?: boolean,
   enebularLogCachePath?: string,
-  enebularLogMaxCacheSize?: number
+  enebularLogMaxCacheSize?: number,
+  monitorIntervalFast?: number,
+  monitorIntervalFastPeriod?: number,
+  monitorIntervalNormal?: number
 }
 
 type AgentSetting = {
@@ -86,6 +89,9 @@ export default class EnebularAgent extends EventEmitter {
   _connectorRegisteringForActivation: boolean
   _monitoringActivated: boolean = false
   _monitoringUpdateID: ?number
+  _monitorIntervalFast: ?number
+  _monitorIntervalFastPeroid: ?number
+  _monitorIntervalNormal: ?number
   _notifyStatusActivated: boolean = false
   _notifyStatusInterval: number
   _notifyStatusIntervalID: ?number
@@ -98,9 +104,15 @@ export default class EnebularAgent extends EventEmitter {
       nodeRedDataDir,
       nodeRedCommand = './node_modules/.bin/node-red -s .node-red-config/settings.js',
       nodeRedKillSignal = 'SIGINT',
-      configFile = path.join(os.homedir(), '.enebular-config.json')
+      configFile = path.join(os.homedir(), '.enebular-config.json'),
+      monitorIntervalFast = MONITOR_INTERVAL_FAST,
+      monitorIntervalFastPeriod = MONITOR_INTERVAL_FAST_PERIOD,
+      monitorIntervalNormal = MONITOR_INTERVAL_NORMAL
     } = config
 
+    this._monitorIntervalFast = monitorIntervalFast
+    this._monitorIntervalFastPeroid = monitorIntervalFastPeriod
+    this._monitorIntervalNormal = monitorIntervalNormal
     this._connector = connector
     connector.on('activeChange', () => this._onConnectorActiveChange())
     connector.on('registrationChange', () => this._onConnectorRegChange())
@@ -221,10 +233,10 @@ export default class EnebularAgent extends EventEmitter {
       this._monitoringUpdateID = null
     }
     if (this._monitoringActivated) {
-      this._setMonitoringInterval(MONITOR_INTERVAL_FAST)
+      this._setMonitoringInterval(this._monitorIntervalFast)
       this._monitoringUpdateID = setTimeout(() => {
-        this._setMonitoringInterval(MONITOR_INTERVAL_NORMAL)
-      }, MONITOR_INTERVAL_FAST_PERIOD * 1000)
+        this._setMonitoringInterval(this._monitorIntervalNormal)
+      }, this._monitorIntervalFastPeroid * 1000)
     }
   }
 
