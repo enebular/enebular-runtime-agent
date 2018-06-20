@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken'
 
 import EnebularAgent from '../../src/enebular-agent'
 import ConnectorService from '../../src/connector-service'
-import DummyEnebularServer from './dummy-enebular-server'
+import DummyEnebularServer from './dummy-server'
 import Utils from './utils'
 
 export async function givenAgentConnectedToConnector(t: test, agentConfig: EnebularAgentConfig) {
@@ -48,7 +48,8 @@ export async function givenAgentAuthenticated(t: test,
 
   // An existing registered config
   const configFile = Utils.getDummyEnebularConfig({}, port)
-  const {agent, connector} = await givenAgentConnectedToConnector(t, Object.assign({configFile: configFile}, agentConfig));
+  const {agent, connector} = await givenAgentConnectedToConnector(t,
+      Object.assign({configFile: configFile}, agentConfig));
   return await new Promise(async (resolve, reject) => {
     setTimeout(async () => {
       fs.unlink(configFile, (err) => {});
@@ -60,8 +61,9 @@ export async function givenAgentAuthenticated(t: test,
 }
 
 export async function givenAgentUnauthenticated(t: test,
-    server: DummyEnebularServer, agentConfig: EnebularAgentConfig) {
+    server: DummyEnebularServer, agentConfig: EnebularAgentConfig, port: number) {
   // An existing registered config
-  const configFile = Utils.getDummyEnebularConfig({})
-  return await givenAgentConnectedToConnector(t, Object.assign({configFile: configFile}, agentConfig));
+  const configFile = Utils.getDummyEnebularConfig({}, port)
+  return await givenAgentConnectedToConnector(t,
+      Object.assign({configFile: configFile}, agentConfig));
 }

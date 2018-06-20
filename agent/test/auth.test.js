@@ -6,7 +6,7 @@ import EnebularAgent from '../src/enebular-agent'
 import ConnectorService from '../src/connector-service'
 import NodeRedAdminApi from './helpers/node-red-admin-api'
 import Utils from './helpers/utils'
-import DummyServer from './helpers/dummy-enebular-server'
+import DummyServer from './helpers/dummy-server'
 import {
   givenAgentConnectedToConnector,
   givenAgentAuthenticated,
@@ -48,12 +48,12 @@ test.afterEach.always('cleanup', async t => {
 test.serial('Auth.1.Auth request can be triggered by updateAuth message', async t => {
   let authRequestReceived = false
 
-  const ret = await givenAgentAuthenticated(t, server, {}, 3002)
+  const ret = await givenAgentUnauthenticated(t, server, {}, 3002)
   agent = ret.agent
   connector = ret.connector
 
   server.on('authRequest', () => {
-    console.log("authRequest received.");
+    // console.log("authRequest received.");
     authRequestReceived = true
   })
   connector.sendMessage('updateAuth', {
@@ -67,6 +67,14 @@ test.serial('Auth.1.Auth request can be triggered by updateAuth message', async 
       resolve()
     }, 500)
   })
+});
+
+test.serial('Auth.2.Agent can be authenticated', async t => {
+  const ret = await givenAgentAuthenticated(t, server, {}, 3002)
+  agent = ret.agent
+  connector = ret.connector
+
+  t.is(agent._agentState, 'authenticated')
 });
 
 

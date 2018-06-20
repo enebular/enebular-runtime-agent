@@ -7,7 +7,7 @@ import EnebularAgent from '../src/enebular-agent'
 import ConnectorService from '../src/connector-service'
 import NodeRedAdminApi from './helpers/node-red-admin-api'
 import Utils from './helpers/utils'
-import DummyServer from './helpers/dummy-enebular-server'
+import DummyServer from './helpers/dummy-server'
 import {
   givenAgentConnectedToConnector,
   givenAgentAuthenticated
