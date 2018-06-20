@@ -16,6 +16,14 @@ export default class DummyServer extends EventEmitter {
     const bodyParser = require('body-parser');
     const server = this
     app.use(bodyParser.json());
+    app.post('/api/v1/activate-license', (req, res) => {
+      server.emit("activateLicense", req.body)
+      res.sendStatus(200)
+    })
+    app.post('/api/v1/verify-license', (req, res) => {
+      server.emit("verifyLicense", req.body)
+      res.sendStatus(200)
+    })
     app.post('/api/v1/token/device', (req, res) => {
       server.emit("authRequest", req.body)
       // console.log("auth request", req.body);
