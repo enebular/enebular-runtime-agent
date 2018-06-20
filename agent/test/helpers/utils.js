@@ -5,12 +5,13 @@ export default class Utils {
     return Math.random().toString(36).substr(2, 10);
   }
 
-  static getDummyEnebularConfig(config) {
+  static getDummyEnebularConfig(config, port) {
+    let _port = port || 3001
     const _config = {
       connectionId: "dummy_connectionId",
       deviceId: "dummy_deviceId",
-      authRequestUrl: "http://dummy.authRequestUrl",
-      agentManagerBaseUrl: "http://dummy.agentManagerBaseUrl"
+      authRequestUrl: "http://127.0.0.1:" + _port + "/api/v1/token/device",
+      agentManagerBaseUrl: "http://127.0.0.1:" + _port + "/api/v1"
     } 
 
     const data = JSON.stringify(Object.assign(_config, config))

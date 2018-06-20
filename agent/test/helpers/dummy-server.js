@@ -4,11 +4,11 @@ import EventEmitter from 'events'
 /**
  *
  */
-export default class Server extends EventEmitter {
+export default class DummyServer extends EventEmitter {
   async start(port = process.env.PORT) {
     const app = express()
     const bodyParser = require('body-parser');
-    let server = this
+    const server = this
     app.use(bodyParser.json());
     app.post('/api/v1/token/device', (req, res) => {
       server.emit("authRequest", req.body)
@@ -25,8 +25,8 @@ export default class Server extends EventEmitter {
       res.sendStatus(200)
     })
     return new Promise(resolve => {
-      app.listen(port, () => {
-        resolve(app)
+      const http = app.listen(port, () => {
+        resolve(http)
       })
     })
   }

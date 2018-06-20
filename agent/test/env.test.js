@@ -28,16 +28,20 @@ test.serial('Env.1.Agent starts if node-red path is valid', async t => {
   let api: NodeRedAdminApi
   let agentConfig = {}
   agentConfig['nodeRedDir'] = "../node-red"
-  agentConfig['nodeRedCommand'] = "./node_modules/.bin/node-red -p 1990"
+  agentConfig['nodeRedCommand'] = "./node_modules/.bin/node-red -p 30001"
 
   connector = new ConnectorService()
 	t.notThrows(() => { agent = new EnebularAgent(connector, agentConfig); }, Error);
   await agent.startup();
 
-  api = new NodeRedAdminApi("http://127.0.0.1:1990");
-  const settings = await api.getSettings();
-  t.truthy(settings.version)
-  await agent.shutdown();
+  return new Promise(async (resolve, reject) => {
+    setTimeout(async () => {
+      api = new NodeRedAdminApi("http://127.0.0.1:30001");
+      const settings = await api.getSettings();
+      t.truthy(settings.version)
+      resolve();
+    }, 500)
+  })
 });
 
 test.serial('Env.2.Agent fails to start if node-red path is invalid', t => {
@@ -86,16 +90,20 @@ test.serial('Env.5.Agent takes nodeRedCommand to launch node-red', async t => {
   let api: NodeRedAdminApi
   let agentConfig = {}
   agentConfig['nodeRedDir'] = "../node-red"
-  agentConfig['nodeRedCommand'] = "./node_modules/.bin/node-red -p 1980"
+  agentConfig['nodeRedCommand'] = "./node_modules/.bin/node-red -p 30000"
 
   connector = new ConnectorService()
 	t.notThrows(() => { agent = new EnebularAgent(connector, agentConfig); }, Error);
   await agent.startup();
 
-  console.log("http request");
-  api = new NodeRedAdminApi("http://127.0.0.1:1980");
-  const settings = await api.getSettings();
-  t.truthy(settings.version)
+  return new Promise(async (resolve, reject) => {
+    setTimeout(async () => {
+      api = new NodeRedAdminApi("http://127.0.0.1:30000");
+      const settings = await api.getSettings();
+      t.truthy(settings.version)
+      resolve();
+    }, 500)
+  })
 });
 
 test.serial('Env.6.Agent fails to start if command to launch node-red is invalid', async t => {
@@ -157,8 +165,8 @@ test.serial('Env.8.Agent accepts all supported config items', async t => {
       t.is(agent._agentState, 'registered')
       t.is(agent._connectionId, 'dummy_connectionId')
       t.is(agent._deviceId, 'dummy_deviceId')
-      t.is(agent._authRequestUrl, 'http://dummy.authRequestUrl')
-      t.is(agent._agentManagerBaseUrl, 'http://dummy.agentManagerBaseUrl')
+      t.is(agent._authRequestUrl, 'http://127.0.0.1:3001/api/v1/token/device')
+      t.is(agent._agentManagerBaseUrl, 'http://127.0.0.1:3001/api/v1')
       resolve();
     }, 500)
   })

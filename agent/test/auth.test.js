@@ -1,11 +1,12 @@
 import test from 'ava';
 import fs from 'fs'
+import {Server} from 'net'
 
 import EnebularAgent from '../src/enebular-agent'
 import ConnectorService from '../src/connector-service'
 import NodeRedAdminApi from './helpers/node-red-admin-api'
 import Utils from './helpers/utils'
-import DummyEnebularServer from './helpers/dummy-enebular-server'
+import DummyServer from './helpers/dummy-enebular-server'
 import {
   givenAgentConnectedToConnector,
   givenAgentAuthenticated,
@@ -14,12 +15,17 @@ import {
 
 let agent: EnebularAgent
 let connector: ConnectorService
-let server: DummyEnebularServer
+let server: DummyServer
+let http: Server
 
 test.before(async t => {
   process.env.DEBUG = "debug";
-  server = new DummyEnebularServer()
-  await server.start(3001)
+  server = new DummyServer()
+  http = await server.start(3002)
+});
+
+test.after(t => {
+  http.close()
 });
 
 test.afterEach.always('cleanup listenser', t => {
@@ -41,14 +47,20 @@ test.afterEach.always('cleanup', async t => {
 
 test.serial('Auth.1.Auth request can be triggered by updateAuth message', async t => {
   let authRequestReceived = false
+
+  const ret = await givenAgentAuthenticated(t, server, {}, 3002)
+  agent = ret.agent
+  connector = ret.connector
+
   server.on('authRequest', () => {
     console.log("authRequest received.");
     authRequestReceived = true
   })
-
-  await givenAgentUnauthenticated(t, server)
-
-  // connector.sendMessage('register', config)
+  connector.sendMessage('updateAuth', {
+    idToken: '-', 
+    accessToken: '-',
+    state: '-'
+  })
   return new Promise(async (resolve, reject) => {
     setTimeout(() => {
       t.true(authRequestReceived)

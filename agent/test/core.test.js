@@ -1,12 +1,13 @@
 import test from 'ava';
 import fs from 'fs'
 import jwt from 'jsonwebtoken'
+import {Server} from 'net'
 
 import EnebularAgent from '../src/enebular-agent'
 import ConnectorService from '../src/connector-service'
 import NodeRedAdminApi from './helpers/node-red-admin-api'
 import Utils from './helpers/utils'
-import DummyEnebularServer from './helpers/dummy-enebular-server'
+import DummyServer from './helpers/dummy-enebular-server'
 import {
   givenAgentConnectedToConnector,
   givenAgentAuthenticated
@@ -14,12 +15,17 @@ import {
 
 let agent: EnebularAgent
 let connector: ConnectorService
-let server: DummyEnebularServer
+let server: DummyServer
+let http: Server
 
 test.before(async t => {
   process.env.DEBUG = "debug";
-  server = new DummyEnebularServer()
-  await server.start(3001)
+  server = new DummyServer()
+  http = await server.start(3001)
+});
+
+test.after(t => {
+  http.close()
 });
 
 test.afterEach.always('cleanup listenser', t => {
@@ -128,9 +134,7 @@ test.serial('Core.4.Agent attempts to authenticate when status become registered
   })
 
   // An existing registered config
-  const configFile = Utils.getDummyEnebularConfig({
-    authRequestUrl: "http://127.0.0.1:3001/api/v1/token/device"
-  })
+  const configFile = Utils.getDummyEnebularConfig({})
   const ret = await givenAgentConnectedToConnector(t, {configFile: configFile})
   agent = ret.agent
   connector = ret.connector
@@ -149,7 +153,9 @@ test.serial('Core.5.Agent reports status when status changed to authenticated', 
     notifyStatusReceived = true
   })
 
-  await givenAgentAuthenticated(t, server)
+  const ret = await givenAgentAuthenticated(t, server)
+  agent = ret.agent
+  connector = ret.connector
   t.true(notifyStatusReceived)
 });
 
@@ -182,10 +188,12 @@ test.serial('Core.7.Agent receives status notification periodically - fast', asy
     notifyStatusReceived++
   })
 
-  await givenAgentAuthenticated(t, server, { 
+  const ret = await givenAgentAuthenticated(t, server, { 
     monitorIntervalFast: 1,
     monitorIntervalFastPeriod: 5
   })
+  agent = ret.agent
+  connector = ret.connector
 
   return new Promise(async (resolve, reject) => {
     setTimeout(() => {
@@ -202,11 +210,13 @@ test.serial('Core.8.Agent receives status notification periodically - normal', a
     notifyStatusReceived++
   })
 
-  await givenAgentAuthenticated(t, server, { 
+  const ret = await givenAgentAuthenticated(t, server, { 
     monitorIntervalFast: 1,
     monitorIntervalFastPeriod: 2,
     monitorIntervalNormal: 3,
   })
+  agent = ret.agent
+  connector = ret.connector
 
   return new Promise(async (resolve, reject) => {
     setTimeout(() => {

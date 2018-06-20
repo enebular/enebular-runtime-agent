@@ -32,10 +32,10 @@ export async function givenAgentConnectedToConnector(t: test, agentConfig: Enebu
 }
 
 export async function givenAgentAuthenticated(t: test,
-    server: DummyEnebularServer, agentConfig: EnebularAgentConfig) {
+    server: DummyEnebularServer, agentConfig: EnebularAgentConfig, port: number) {
   let authRequestReceived = false
-  server.on('authRequest', (req) => {
-    console.log("authRequest received.", req);
+  const authCallback = (req) => {
+    // console.log("authRequest received.", req);
     let token = jwt.sign({ nonce: req.nonce }, 'dummy');
     authRequestReceived = true
     connector.sendMessage('updateAuth', {
@@ -43,18 +43,17 @@ export async function givenAgentAuthenticated(t: test,
       accessToken: "dummy_access_token",
       state: req.state
     })
-  })
+  }
+  server.on('authRequest', authCallback)
 
   // An existing registered config
-  const configFile = Utils.getDummyEnebularConfig({
-    authRequestUrl: "http://127.0.0.1:3001/api/v1/token/device",
-    agentManagerBaseUrl: "http://127.0.0.1:3001/api/v1"
-  })
+  const configFile = Utils.getDummyEnebularConfig({}, port)
   const {agent, connector} = await givenAgentConnectedToConnector(t, Object.assign({configFile: configFile}, agentConfig));
   return await new Promise(async (resolve, reject) => {
     setTimeout(async () => {
       fs.unlink(configFile, (err) => {});
       t.true(authRequestReceived)
+      server.removeListener('authRequest', authCallback)
       resolve({agent: agent, connector: connector})
     }, 500)
   })
@@ -63,9 +62,6 @@ export async function givenAgentAuthenticated(t: test,
 export async function givenAgentUnauthenticated(t: test,
     server: DummyEnebularServer, agentConfig: EnebularAgentConfig) {
   // An existing registered config
-  const configFile = Utils.getDummyEnebularConfig({
-    authRequestUrl: "http://127.0.0.1:3001/api/v1/token/device",
-    agentManagerBaseUrl: "http://127.0.0.1:3001/api/v1"
-  })
+  const configFile = Utils.getDummyEnebularConfig({})
   return await givenAgentConnectedToConnector(t, Object.assign({configFile: configFile}, agentConfig));
 }
