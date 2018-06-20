@@ -227,6 +227,53 @@ test.serial('Core.8.Agent receives status notification periodically - normal', a
   })
 });
 
+test.serial('Core.9.Agent stops sending status notification when it is unauthenticated', async t => {
+  let authRequestReceived = false
+  let notifyStatusReceived = 0 
+  server.on('notifyStatus', (req) => {
+    notifyStatusReceived++
+  })
+
+  const ret = await givenAgentAuthenticated(t, server, { 
+    monitorIntervalFast: 1,
+  })
+  agent = ret.agent
+  connector = ret.connector
+
+  // callback to process unauthentication.
+  const authCallback = (req) => {
+    authRequestReceived = true
+    // unauthenticate the agent by clearing accessToken
+    let token = jwt.sign({ nonce: req.nonce }, 'dummy');
+    connector.sendMessage('updateAuth', {
+      idToken: token,
+      accessToken: "-",
+      state: req.state
+    })
+  }
+  server.on('authRequest', authCallback)
+
+  return new Promise(async (resolve, reject) => {
+    setTimeout(() => {
+      // trigger auth request
+      connector.sendMessage('updateAuth', {
+        idToken: '-', 
+        accessToken: '-',
+        state: '-'
+      })
+    }, 1000 * 3)
+
+    setTimeout(() => {
+      // within 6 seconds, we should only receive 4(fast period) 
+      t.is(notifyStatusReceived, 4)
+      server.removeListener('authRequest', authCallback)
+      t.true(authRequestReceived)
+      t.is(agent._agentState, 'unauthenticated')
+      resolve()
+    }, 1000 * 6)
+  })
+});
+
 
 
 

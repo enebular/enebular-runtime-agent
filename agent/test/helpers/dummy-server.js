@@ -5,6 +5,12 @@ import EventEmitter from 'events'
  *
  */
 export default class DummyServer extends EventEmitter {
+  _authRspError: bool = false
+
+  setAuthRspError(error) {
+    this._authRspError = error
+  }
+
   async start(port = process.env.PORT) {
     const app = express()
     const bodyParser = require('body-parser');
@@ -13,7 +19,7 @@ export default class DummyServer extends EventEmitter {
     app.post('/api/v1/token/device', (req, res) => {
       server.emit("authRequest", req.body)
       // console.log("auth request", req.body);
-      res.sendStatus(200)
+      res.sendStatus(this._authRspError ? 400 : 200)
     })
     app.post('/api/v1/record-logs', (req, res) => {
       server.emit("recordLogs", req.body)
