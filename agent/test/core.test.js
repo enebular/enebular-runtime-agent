@@ -13,6 +13,9 @@ import {
   givenAgentAuthenticated
 } from './helpers/agent-helper'
 
+const DummyServerPort = 3005
+const NodeRedPort = 4005
+
 let agent: EnebularAgent
 let connector: ConnectorService
 let server: DummyServer
@@ -21,7 +24,7 @@ let http: Server
 test.before(async t => {
   process.env.DEBUG = "debug";
   server = new DummyServer()
-  http = await server.start(3001)
+  http = await server.start(DummyServerPort)
 });
 
 test.after(t => {
@@ -51,7 +54,7 @@ test.serial('Core.1.No activator config presents, agent connects to connector', 
   connector = new ConnectorService()
   let agentConfig = {}
   agentConfig['nodeRedDir'] = "../node-red"
-  agentConfig['nodeRedCommand'] = "./node_modules/.bin/node-red -p 1990"
+  agentConfig['nodeRedCommand'] = "./node_modules/.bin/node-red -p " + NodeRedPort
   agentConfig['configFile'] = configFile
 
   agent = new EnebularAgent(connector, agentConfig);
@@ -75,7 +78,8 @@ test.serial('Core.1.No activator config presents, agent connects to connector', 
 
 test.serial('Core.2.Agent correctly handle register message', async t => {
   const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
-  const ret = await givenAgentConnectedToConnector(t, {configFile: configFile})
+  const ret = await givenAgentConnectedToConnector(t,
+      Utils.addNodeRedPort({configFile: configFile}, NodeRedPort))
   agent = ret.agent
   connector = ret.connector
   const config = {
@@ -106,13 +110,14 @@ test.serial('Core.3.Agent attempts to authenticate when received register messag
   })
 
   const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
-  const ret = await givenAgentConnectedToConnector(t, {configFile: configFile})
+  const ret = await givenAgentConnectedToConnector(t,
+      Utils.addNodeRedPort({configFile: configFile}, NodeRedPort))
   agent = ret.agent
   connector = ret.connector
   const config = {
     connectionId: "dummy_connectionId",
     deviceId: "dummy_deviceId",
-    authRequestUrl: "http://127.0.0.1:3001/api/v1/token/device",
+    authRequestUrl: "http://127.0.0.1:" + DummyServerPort + "/api/v1/token/device",
     agentManagerBaseUrl: "http://dummy.agentManagerBaseUrl"
   }
   // Send register message from connector.
@@ -134,8 +139,9 @@ test.serial('Core.4.Agent attempts to authenticate when status become registered
   })
 
   // An existing registered config
-  const configFile = Utils.getDummyEnebularConfig({})
-  const ret = await givenAgentConnectedToConnector(t, {configFile: configFile})
+  const configFile = Utils.getDummyEnebularConfig({}, DummyServerPort)
+  const ret = await givenAgentConnectedToConnector(t,
+      Utils.addNodeRedPort({configFile: configFile}, NodeRedPort))
   agent = ret.agent
   connector = ret.connector
   return new Promise((resolve, reject) => {
@@ -153,7 +159,8 @@ test.serial('Core.5.Agent reports status when status changed to authenticated', 
     notifyStatusReceived = true
   })
 
-  const ret = await givenAgentAuthenticated(t, server)
+  const ret = await givenAgentAuthenticated(t, server,
+      Utils.addNodeRedPort({}, NodeRedPort), DummyServerPort)
   agent = ret.agent
   connector = ret.connector
   t.true(notifyStatusReceived)
@@ -166,7 +173,8 @@ test.serial('Core.6.Agent enables sending log when status changed to authenticat
     recordLogsReceived = true
   })
 
-  const ret = await givenAgentAuthenticated(t, server)
+  const ret = await givenAgentAuthenticated(t, server,
+      Utils.addNodeRedPort({}, NodeRedPort), DummyServerPort)
   agent = ret.agent
   connector = ret.connector
 
@@ -188,10 +196,10 @@ test.serial('Core.7.Agent receives status notification periodically - fast', asy
     notifyStatusReceived++
   })
 
-  const ret = await givenAgentAuthenticated(t, server, { 
+  const ret = await givenAgentAuthenticated(t, server, Utils.addNodeRedPort({ 
     monitorIntervalFast: 1,
     monitorIntervalFastPeriod: 5
-  })
+  }, NodeRedPort), DummyServerPort) 
   agent = ret.agent
   connector = ret.connector
 
@@ -210,11 +218,11 @@ test.serial('Core.8.Agent receives status notification periodically - normal', a
     notifyStatusReceived++
   })
 
-  const ret = await givenAgentAuthenticated(t, server, { 
+  const ret = await givenAgentAuthenticated(t, server, Utils.addNodeRedPort({ 
     monitorIntervalFast: 1,
     monitorIntervalFastPeriod: 2,
     monitorIntervalNormal: 3,
-  })
+  }, NodeRedPort), DummyServerPort) 
   agent = ret.agent
   connector = ret.connector
 
@@ -234,9 +242,9 @@ test.serial('Core.9.Agent stops sending status notification when it is unauthent
     notifyStatusReceived++
   })
 
-  const ret = await givenAgentAuthenticated(t, server, { 
+  const ret = await givenAgentAuthenticated(t, server, Utils.addNodeRedPort({ 
     monitorIntervalFast: 1,
-  })
+  }, NodeRedPort), DummyServerPort) 
   agent = ret.agent
   connector = ret.connector
 

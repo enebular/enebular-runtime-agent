@@ -37,9 +37,14 @@ test.serial('Env.1.Agent starts if node-red path is valid', async t => {
   return new Promise(async (resolve, reject) => {
     setTimeout(async () => {
       api = new NodeRedAdminApi("http://127.0.0.1:30001");
-      const settings = await api.getSettings();
-      t.truthy(settings.version)
-      resolve();
+      const settings = await api.getSettings()
+      if (!settings) {
+        reject(new Error("api return error"))
+      }
+      else {
+        t.truthy(settings)
+        resolve();
+      }
     }, 500)
   })
 });
@@ -99,9 +104,14 @@ test.serial('Env.5.Agent takes nodeRedCommand to launch node-red', async t => {
   return new Promise(async (resolve, reject) => {
     setTimeout(async () => {
       api = new NodeRedAdminApi("http://127.0.0.1:30000");
-      const settings = await api.getSettings();
-      t.truthy(settings.version)
-      resolve();
+      const settings = await api.getSettings()
+      if (!settings) {
+        reject(new Error("api return error"))
+      }
+      else {
+        t.truthy(settings)
+        resolve();
+      }
     }, 500)
   })
 });

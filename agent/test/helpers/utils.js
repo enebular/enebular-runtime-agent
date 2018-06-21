@@ -63,4 +63,8 @@ export default class Utils {
     }
     return configFileName
   }
+
+  static addNodeRedPort(config, port) {
+    return Object.assign({nodeRedCommand: "./node_modules/.bin/node-red -p " + port}, config)
+  }
 }

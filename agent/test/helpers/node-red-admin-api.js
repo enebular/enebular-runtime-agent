@@ -13,17 +13,22 @@ export default class NodeRedAdminApi {
 
   /* @private */
   async _get(method) {
-    const res = await fetch(`${this._baseUrl}/${method}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
+    try {
+      const res = await fetch(`${this._baseUrl}/${method}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      if (res.status >= 400) {
+        const ret = await res.json()
+        throw new Error(ret.message || res.statusText)
       }
-    })
-    if (res.status >= 400) {
-      const ret = await res.json()
-      throw new Error(ret.message || res.statusText)
+      return res.json()
     }
-    return res.json()
+    catch(err) {
+      console.log("error:", err.message);
+    }
   }
 
   async getFlow() {

@@ -14,6 +14,9 @@ import {
   givenAgentUnauthenticated
 } from './helpers/agent-helper'
 
+const DummyServerPort = 3002
+const NodeRedPort = 4002
+
 let agent: EnebularAgent
 let connector: ConnectorService
 let server: DummyServer
@@ -22,7 +25,7 @@ let http: Server
 test.before(async t => {
   process.env.DEBUG = "debug";
   server = new DummyServer()
-  http = await server.start(3002)
+  http = await server.start(DummyServerPort)
 });
 
 test.after(t => {
@@ -49,7 +52,8 @@ test.afterEach.always('cleanup', async t => {
 test.serial('Auth.1.Auth request can be triggered by updateAuth message', async t => {
   let authRequestReceived = false
 
-  const ret = await givenAgentUnauthenticated(t, server, {}, 3002)
+  const ret = await givenAgentUnauthenticated(t, server, 
+      Utils.addNodeRedPort({}, NodeRedPort), DummyServerPort)
   agent = ret.agent
   connector = ret.connector
 
@@ -71,7 +75,8 @@ test.serial('Auth.1.Auth request can be triggered by updateAuth message', async 
 });
 
 test.serial('Auth.2.Agent can be authenticated', async t => {
-  const ret = await givenAgentAuthenticated(t, server, {}, 3002)
+  const ret = await givenAgentAuthenticated(t, server,
+      Utils.addNodeRedPort({}, NodeRedPort), DummyServerPort)
   agent = ret.agent
   connector = ret.connector
 
@@ -83,7 +88,8 @@ test.serial('Auth.3.Agent handles auth request failure(http)', async t => {
   const configFile = Utils.getDummyEnebularConfig({
       authRequestUrl: "http://invalidate-url:3222/api/v1/token/device",
   })
-  const ret = await givenAgentConnectedToConnector(t, {configFile: configFile});
+  const ret = await givenAgentConnectedToConnector(t,
+      Utils.addNodeRedPort({configFile: configFile}, NodeRedPort))
   agent = ret.agent
   connector = ret.connector
   return await new Promise(async (resolve, reject) => {
@@ -108,8 +114,9 @@ test.serial('Auth.4.Agent handles updateAuth message with invalid token', async 
   }
   server.on('authRequest', authCallback)
 
-  const configFile = Utils.getDummyEnebularConfig({}, 3002)
-  const ret = await givenAgentConnectedToConnector(t, {configFile: configFile});
+  const configFile = Utils.getDummyEnebularConfig({}, DummyServerPort)
+  const ret = await givenAgentConnectedToConnector(t,
+      Utils.addNodeRedPort({configFile: configFile}, NodeRedPort))
   agent = ret.agent
   connector = ret.connector
 
@@ -137,8 +144,9 @@ test.serial('Auth.5.Agent handles updateAuth message with invalid state', async 
   }
   server.on('authRequest', authCallback)
 
-  const configFile = Utils.getDummyEnebularConfig({}, 3002)
-  const ret = await givenAgentConnectedToConnector(t, {configFile: configFile});
+  const configFile = Utils.getDummyEnebularConfig({}, DummyServerPort)
+  const ret = await givenAgentConnectedToConnector(t,
+      Utils.addNodeRedPort({configFile: configFile}, NodeRedPort))
   agent = ret.agent
   connector = ret.connector
 
@@ -156,7 +164,8 @@ test.serial('Auth.5.Agent handles updateAuth message with invalid state', async 
 test.serial('Auth.6.Agent handles updateAuth message to unauthenticate itself', async t => {
   let authRequestReceived = false
 
-  const ret = await givenAgentAuthenticated(t, server, {}, 3002)
+  const ret = await givenAgentAuthenticated(t, server,
+      Utils.addNodeRedPort({}, NodeRedPort), DummyServerPort)
   agent = ret.agent
   connector = ret.connector
 
@@ -191,8 +200,9 @@ test.serial('Auth.6.Agent handles updateAuth message to unauthenticate itself', 
 test.serial('Auth.7.Agent retries authentication if fail(auth request)', async t => {
   let authRequestReceived = 0
 
-  const configFile = Utils.getDummyEnebularConfig({connectionId: "return_bad_request"}, 3002)
-  const ret = await givenAgentConnectedToConnector(t, {configFile: configFile})
+  const configFile = Utils.getDummyEnebularConfig({connectionId: "return_bad_request"}, DummyServerPort)
+  const ret = await givenAgentConnectedToConnector(t,
+      Utils.addNodeRedPort({configFile: configFile}, NodeRedPort))
   agent = ret.agent
   connector = ret.connector
 
@@ -212,7 +222,8 @@ test.serial('Auth.7.Agent retries authentication if fail(auth request)', async t
 test.serial('Auth.8.Agent retries authentication if fail(no updateAuth message)', async t => {
   let authRequestReceived = 0
 
-  const ret = await givenAgentUnauthenticated(t, server, {}, 3002)
+  const ret = await givenAgentUnauthenticated(t, server,
+      Utils.addNodeRedPort({}, NodeRedPort), DummyServerPort)
   agent = ret.agent
   connector = ret.connector
 
