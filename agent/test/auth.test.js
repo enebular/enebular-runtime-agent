@@ -190,9 +190,9 @@ test.serial('Auth.6.Agent handles updateAuth message to unauthenticate itself', 
 
 test.serial('Auth.7.Agent retries authentication if fail(auth request)', async t => {
   let authRequestReceived = 0
-  server.setAuthRspError(true)
 
-  const ret = await givenAgentUnauthenticated(t, server, {}, 3002)
+  const configFile = Utils.getDummyEnebularConfig({connectionId: "return_bad_request"}, 3002)
+  const ret = await givenAgentConnectedToConnector(t, {configFile: configFile})
   agent = ret.agent
   connector = ret.connector
 
@@ -203,7 +203,6 @@ test.serial('Auth.7.Agent retries authentication if fail(auth request)', async t
 
   return new Promise(async (resolve, reject) => {
     setTimeout(() => {
-      server.setAuthRspError(false)
       t.is(authRequestReceived, 2)
       resolve()
     }, 26 * 1000)

@@ -5,29 +5,29 @@ import EventEmitter from 'events'
  *
  */
 export default class DummyServer extends EventEmitter {
-  _authRspError: bool = false
-
-  setAuthRspError(error) {
-    this._authRspError = error
-  }
-
   async start(port = process.env.PORT) {
     const app = express()
     const bodyParser = require('body-parser');
     const server = this
     app.use(bodyParser.json());
     app.post('/api/v1/activate-license', (req, res) => {
+      console.log("activate license", req.body);
       server.emit("activateLicense", req.body)
-      res.sendStatus(200)
+      res.send({
+        connectionId: "dummy_connectionId",
+        authRequestUrl: "http://127.0.0.1:3001/api/v1/token/device",
+        agentManagerBaseUrl: "http://127.0.0.1:3001/api/v1"
+      })
     })
     app.post('/api/v1/verify-license', (req, res) => {
+      // console.log("verify license", req.body);
       server.emit("verifyLicense", req.body)
-      res.sendStatus(200)
+      res.send({canActivate: req.body.licenseKey === "invalid_key" ? false: true})
     })
     app.post('/api/v1/token/device', (req, res) => {
       server.emit("authRequest", req.body)
-      // console.log("auth request", req.body);
-      res.sendStatus(this._authRspError ? 400 : 200)
+      console.log("auth request", req.body);
+      res.sendStatus(req.body.connectionId === "return_bad_request" ? 400 : 200)
     })
     app.post('/api/v1/record-logs', (req, res) => {
       server.emit("recordLogs", req.body)

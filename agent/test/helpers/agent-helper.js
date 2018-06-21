@@ -7,6 +7,20 @@ import ConnectorService from '../../src/connector-service'
 import DummyEnebularServer from './dummy-server'
 import Utils from './utils'
 
+export async function givenAgentStarted(t: test, agentConfig: EnebularAgentConfig) {
+  let connector = new ConnectorService()
+  let _agentConfig = {}
+  _agentConfig['nodeRedDir'] = "../node-red"
+  _agentConfig['nodeRedCommand'] = "./node_modules/.bin/node-red -p 1990"
+
+  agentConfig = Object.assign(_agentConfig, agentConfig)
+  let agent = new EnebularAgent(connector, agentConfig);
+
+  await agent.startup();
+  connector.updateActiveState(true)
+  return {agent: agent, connector: connector}
+}
+
 export async function givenAgentConnectedToConnector(t: test, agentConfig: EnebularAgentConfig) {
   let connector = new ConnectorService()
   let _agentConfig = {}

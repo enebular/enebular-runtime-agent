@@ -34,4 +34,33 @@ export default class Utils {
     return configFileName
   }
 
+  static getDummyEnebularActivationConfig(config, port) {
+    let _port = port || 3001
+    const _config = {
+      enebularBaseURL: "http://127.0.0.1:" + _port + "/api/v1",
+      licenseKey: "220dde76-e03f-4789-bc9f-c8e512faee27"
+    } 
+    const data = JSON.stringify(Object.assign(_config, config))
+    let configFileName = '/tmp/.enebular-activation-config-' + Utils.randomString() + '.json';
+    try {
+      fs.writeFileSync(configFileName, data, 'utf8')
+    } catch (err) {
+      console.log(err)
+    }
+    return configFileName
+  }
+
+  static getDummyEnebularActivationConfigInvalidKey(port) {
+    return Utils.getDummyEnebularActivationConfig({licenseKey: 'invalid_key'}, port)
+  }
+
+  static getBrokenActivationConfig() {
+    let configFileName = '/tmp/.enebular-activation-config-' + Utils.randomString() + '.json';
+    try {
+      fs.writeFileSync(configFileName, "{dsd,dsd,c[}", 'utf8')
+    } catch (err) {
+      console.log(err)
+    }
+    return configFileName
+  }
 }
