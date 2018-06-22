@@ -26,18 +26,13 @@ let http: Server
 let tmpNodeRedDataDir: string
 
 test.before(async t => {
-  process.env.DEBUG = "debug";
+  process.env.DEBUG = "info";
   server = new DummyServer()
   http = await server.start(DummyServerPort)
 });
 
 test.after(t => {
   http.close()
-});
-
-test.afterEach.always('cleanup listenser', t => {
-  server.removeAllListeners('verifyLicense')
-  server.removeAllListeners('activateLicense')
 });
 
 test.afterEach.always('cleanup', async t => {
@@ -50,7 +45,7 @@ test.afterEach.always('cleanup', async t => {
     agent = null
   }
   if (tmpNodeRedDataDir) {
-    // fs.removeSync(tmpNodeRedDataDir)
+    fs.removeSync(tmpNodeRedDataDir)
     tmpNodeRedDataDir = null
   }
 });

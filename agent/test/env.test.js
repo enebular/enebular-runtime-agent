@@ -10,7 +10,7 @@ let agent: EnebularAgent
 let connector: ConnectorService
 
 test.before(t => {
-  process.env.DEBUG = "debug";
+  process.env.DEBUG = "info";
 });
 
 test.afterEach.always('cleanup', async t => {

@@ -23,7 +23,7 @@ let server: DummyServer
 let http: Server
 
 test.before(async t => {
-  process.env.DEBUG = "debug";
+  process.env.DEBUG = "info";
   server = new DummyServer()
   http = await server.start(DummyServerPort)
 });
@@ -206,7 +206,7 @@ test.serial('Auth.7.Agent retries authentication if fail(auth request)', async t
   agent = ret.agent
   connector = ret.connector
 
- const authCallback = (req) => {
+  const authCallback = (req) => {
     authRequestReceived++
   }
   server.on('authRequest', authCallback)

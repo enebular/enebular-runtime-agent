@@ -8,10 +8,16 @@ import EventEmitter from 'events'
  *
  */
 export default class DummyServer extends EventEmitter {
+  _logReturnBadRequest: bool
+  setLogReturnBadRequest(bad) {
+    this._logReturnBadRequest = bad
+  }
+
   async start(port = process.env.PORT) {
     const app = express()
     const bodyParser = require('body-parser');
     const server = this
+    app.use(bodyParser.urlencoded({ extended: true }));
     app.use(bodyParser.json());
     app.post('/api/v1/activate-license', (req, res) => {
       console.log("activate license", req.body);
@@ -34,7 +40,7 @@ export default class DummyServer extends EventEmitter {
     })
     app.post('/api/v1/record-logs', (req, res) => {
       server.emit("recordLogs", req.body)
-      res.sendStatus(200)
+      res.sendStatus(this._logReturnBadRequest ? 400: 200)
     })
     app.post('/api/v1/notify-status', (req, res) => {
       server.emit("notifyStatus", req.body)

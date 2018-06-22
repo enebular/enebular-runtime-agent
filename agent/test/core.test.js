@@ -22,7 +22,7 @@ let server: DummyServer
 let http: Server
 
 test.before(async t => {
-  process.env.DEBUG = "debug";
+  process.env.DEBUG = "info";
   server = new DummyServer()
   http = await server.start(DummyServerPort)
 });
