@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken'
 import EnebularAgent from '../../src/enebular-agent'
 import ConnectorService from '../../src/connector-service'
 import DummyEnebularServer from './dummy-server'
+import NodeRedAdminApi from './node-red-admin-api'
 import Utils from './utils'
 
 export async function givenAgentStarted(t: test, agentConfig: EnebularAgentConfig) {
@@ -81,3 +82,35 @@ export async function givenAgentUnauthenticated(t: test,
   return await givenAgentConnectedToConnector(t,
       Object.assign({configFile: configFile}, agentConfig));
 }
+
+export function nodeRedIsAlive(port, timeout) {
+  return new Promise((resolve, reject) => {
+    setTimeout(async () => {
+      const api = new NodeRedAdminApi("http://127.0.0.1:" + port);
+      const settings = await api.getSettings()
+      if (settings) {
+        resolve()
+      }
+      else {
+        reject(new Error("Node RED server is dead."))
+      }
+    }, timeout || 500)
+  })
+}
+
+export function nodeRedIsDead(port, timeout) {
+  return new Promise((resolve, reject) => {
+    setTimeout(async () => {
+      const api = new NodeRedAdminApi("http://127.0.0.1:" + port);
+      const settings = await api.getSettings()
+      if (!settings) {
+        resolve()
+      }
+      else {
+        reject(new Error("Node RED server is alive."))
+      }
+    }, 500)
+  })
+}
+
+

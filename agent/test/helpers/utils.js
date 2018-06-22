@@ -1,4 +1,5 @@
 import fs from 'fs'
+import path from 'path'
 
 export default class Utils {
   static randomString(method) {
@@ -66,5 +67,21 @@ export default class Utils {
 
   static addNodeRedPort(config, port) {
     return Object.assign({nodeRedCommand: "./node_modules/.bin/node-red -p " + port}, config)
+  }
+
+  static async rsync(dst, src) {
+    let Rsync = require('rsync');
+    let rsync = new Rsync()
+      .shell('ssh')
+      .flags('ar')
+      .source(src)
+      .destination(dst);
+
+    // Execute the command
+    await new Promise((resolve, reject) => {
+      rsync.execute(function(error, code, cmd) {
+          resolve();
+      });
+    });
   }
 }

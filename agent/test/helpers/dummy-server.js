@@ -1,3 +1,6 @@
+import fs from 'fs'
+import path from 'path'
+
 import express from 'express'
 import EventEmitter from 'events'
 
@@ -33,10 +36,20 @@ export default class DummyServer extends EventEmitter {
       server.emit("recordLogs", req.body)
       res.sendStatus(200)
     })
-
     app.post('/api/v1/notify-status', (req, res) => {
       server.emit("notifyStatus", req.body)
       res.sendStatus(200)
+    })
+    app.get('/download', (req, res) => {
+      console.log("download", req.query);
+      const flowName = req.query.flow
+      const json = fs.readFileSync(path.join(__dirname, "..", "data", flowName), 'utf8')
+      const flow = JSON.parse(json)
+      res.send({
+        flows: flow,
+        creds: [],
+        packages: req.query.dependencies ? {"node-red-node-pi-gpiod": "0.0.10"} : {}
+      })
     })
     return new Promise(resolve => {
       const http = app.listen(port, () => {
