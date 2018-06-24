@@ -224,7 +224,7 @@ test.serial('NodeRedController.6.Agent handles deploy dependencies correctly', a
           t.fail("dependencies failed to install")
         }
         resolve()
-    }, 3000)
+    }, 5000)
   })
 });
 
