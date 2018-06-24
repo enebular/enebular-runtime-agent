@@ -5,6 +5,9 @@ import EnebularAgent from '../src/enebular-agent'
 import ConnectorService from '../src/connector-service'
 import NodeRedAdminApi from './helpers/node-red-admin-api'
 import Utils from './helpers/utils'
+import {
+  nodeRedIsAlive
+} from './helpers/agent-helper'
 
 let agent: EnebularAgent
 let connector: ConnectorService
@@ -33,19 +36,10 @@ test.serial('Env.1.Agent starts if node-red path is valid', async t => {
   connector = new ConnectorService()
 	t.notThrows(() => { agent = new EnebularAgent(connector, agentConfig); }, Error);
   await agent.startup();
+  connector.updateActiveState(true)
 
-  return new Promise(async (resolve, reject) => {
-    setTimeout(async () => {
-      api = new NodeRedAdminApi("http://127.0.0.1:30001");
-      const settings = await api.getSettings()
-      if (!settings) {
-        reject(new Error("api return error"))
-      }
-      else {
-        t.truthy(settings)
-        resolve();
-      }
-    }, 500)
+  await nodeRedIsAlive(30001, 3000).catch((err) => {
+    t.fail()
   })
 });
 
@@ -100,19 +94,10 @@ test.serial('Env.5.Agent takes nodeRedCommand to launch node-red', async t => {
   connector = new ConnectorService()
 	t.notThrows(() => { agent = new EnebularAgent(connector, agentConfig); }, Error);
   await agent.startup();
+  connector.updateActiveState(true)
 
-  return new Promise(async (resolve, reject) => {
-    setTimeout(async () => {
-      api = new NodeRedAdminApi("http://127.0.0.1:30000");
-      const settings = await api.getSettings()
-      if (!settings) {
-        reject(new Error("api return error"))
-      }
-      else {
-        t.truthy(settings)
-        resolve();
-      }
-    }, 500)
+  await nodeRedIsAlive(30000, 3000).catch((err) => {
+    t.fail()
   })
 });
 

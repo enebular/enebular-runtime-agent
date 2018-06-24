@@ -81,7 +81,7 @@ test.serial('NodeRedController.1.Agent starts/shutdowns node-red correctly', asy
   agent = ret.agent
   connector = ret.connector
 
-  await nodeRedIsAlive(NodeRedPort).catch((err) => {
+  await nodeRedIsAlive(NodeRedPort, 2000).catch((err) => {
     t.fail()
   })
 

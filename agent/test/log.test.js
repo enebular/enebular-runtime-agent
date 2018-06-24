@@ -55,12 +55,14 @@ test.afterEach.always('cleanup', async t => {
 test.serial('Log.1.Log cache size is within max cache size', async t => {
   let totalSize = 0
   let maxSize = 1 * 1024 * 1024
+  let tmpLogCacheDir = '/tmp/enebular-log-cache-' + Utils.randomString();
   server.setLogReturnBadRequest(true)
   const ret = await givenAgentAuthenticated(t, server,
       Utils.addNodeRedPort({
           // set interval size larger than cache size so that cache size can be used.
           enebularLogMaxSizePerInterval: 100 * 1024 * 1024,
-          enebularLogMaxCacheSize: maxSize
+          enebularLogMaxCacheSize: maxSize,
+          enebularLogCachePath: tmpLogCacheDir
       }, NodeRedPort), DummyServerPort)
   agent = ret.agent
   connector = ret.connector
@@ -82,7 +84,7 @@ test.serial('Log.1.Log cache size is within max cache size', async t => {
   })
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      fs.removeSync("/tmp/enebular-log-cache")
+      fs.removeSync(tmpLogCacheDir)
       resolve()
       t.true(totalSize < maxSize)
     }, 6000)
@@ -90,16 +92,18 @@ test.serial('Log.1.Log cache size is within max cache size', async t => {
 });
 
 test.serial('Log.2.Log is sent to server periodically', async t => {
+  let tmpLogCacheDir = '/tmp/enebular-log-cache-' + Utils.randomString();
   let recordLogsReceived = 0
   const logCallback = (req) => {
     recordLogsReceived++
   }
   server.on('recordLogs', logCallback)
 
-  let interval = 2
+  let interval = 3
   const ret = await givenAgentAuthenticated(t, server,
       Utils.addNodeRedPort({
           monitorIntervalFast: interval,
+          enebularLogCachePath: tmpLogCacheDir
       }, NodeRedPort), DummyServerPort)
   agent = ret.agent
   connector = ret.connector
@@ -113,16 +117,17 @@ test.serial('Log.2.Log is sent to server periodically', async t => {
 
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      fs.removeSync("/tmp/enebular-log-cache")
+      fs.removeSync(tmpLogCacheDir)
       server.removeListener('recordLogs', logCallback)
       clearInterval(intervalObj)
       t.is(recordLogsReceived, 3)
       resolve()
-    }, 7000)
+    }, 11000)
   })
 });
 
-// this doesn't work with other tests running at the same time, as the console message is the output
+// this doesn't work with other tests running at the same time, as the console message from other tests
+// is taken into the account as well.
 // test.serial('Log.3.Log level is handled correctly', async t => {
   // let recordLogsReceived = 0
   // const logCallback = (req) => {
