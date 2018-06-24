@@ -4,6 +4,9 @@ import path from 'path'
 import express from 'express'
 import EventEmitter from 'events'
 
+import multer from 'multer'
+
+let upload = multer()
 /**
  *
  */
@@ -38,8 +41,9 @@ export default class DummyServer extends EventEmitter {
       console.log("auth request", req.body);
       res.sendStatus(req.body.connectionId === "return_bad_request" ? 400 : 200)
     })
-    app.post('/api/v1/record-logs', (req, res) => {
-      server.emit("recordLogs", req.body)
+    app.post('/api/v1/record-logs', upload.single('events'), (req, res) => {
+      // console.log("log:", req.file);
+      server.emit("recordLogs", req.file)
       res.sendStatus(this._logReturnBadRequest ? 400: 200)
     })
     app.post('/api/v1/notify-status', (req, res) => {

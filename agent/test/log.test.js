@@ -126,80 +126,80 @@ test.serial('Log.2.Log is sent to server periodically', async t => {
   })
 });
 
-// this doesn't work with other tests running at the same time, as the console message from other tests
-// is taken into the account as well.
-// test.serial('Log.3.Log level is handled correctly', async t => {
-  // let recordLogsReceived = 0
-  // const logCallback = (req) => {
-    // recordLogsReceived++
-  // }
-  // server.on('recordLogs', logCallback)
+test.serial('Log.3.Log level is handled correctly', async t => {
+  let tmpLogCacheDir = '/tmp/enebular-log-cache-' + Utils.randomString();
+  const logCallback = (file) => {
+    const log = file.buffer.toString()
+    // console.log("log:", log)
+    t.false(log.indexOf("\"level\":\"info\"") === -1)
+    t.true(log.indexOf("\"level\":\"debug\"") === -1)
+  }
+  server.on('recordLogs', logCallback)
 
-  // let interval = 2
-  // const ret = await givenAgentAuthenticated(t, server,
-      // Utils.addNodeRedPort({
-          // monitorIntervalFast: interval,
-          // logLevel: "info"
-      // }, NodeRedPort), DummyServerPort)
-  // agent = ret.agent
-  // connector = ret.connector
+  let interval = 2
+  const ret = await givenAgentAuthenticated(t, server,
+      Utils.addNodeRedPort({
+          monitorIntervalFast: interval,
+          enebularLogCachePath: tmpLogCacheDir,
+          logLevel: "info"
+      }, NodeRedPort), DummyServerPort)
+  agent = ret.agent
+  connector = ret.connector
 
-  // t.is(agent._logManager._enebularTransport._sendInterval, interval)
+  t.is(agent._logManager._enebularTransport._sendInterval, interval)
 
-  // const data = fs.readFileSync(path.join(__dirname, "data", "file.1k"), 'utf8')
-  // const intervalObj = setInterval(() => {
-    // agent.log.debug(data)
-  // }, 500)
+  const data = fs.readFileSync(path.join(__dirname, "data", "file.1k"), 'utf8')
+  const intervalObj = setInterval(() => {
+    agent.log.debug(data)
+  }, 500)
 
-  // return new Promise((resolve, reject) => {
-    // setTimeout(() => {
-      // fs.removeSync("/tmp/enebular-log-cache")
-      // server.removeListener('recordLogs', logCallback)
-      // clearInterval(intervalObj)
-      // // We should only have the first log as the rest of the debug log is ignored.
-      // t.is(recordLogsReceived, 1)
-      // resolve()
-    // }, 5000)
-  // })
-// });
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      fs.removeSync(tmpLogCacheDir)
+      server.removeListener('recordLogs', logCallback)
+      clearInterval(intervalObj)
+      resolve()
+    }, 5000)
+  })
+});
 
-test.serial.todo('TODO:Log.4.Size of each log is within max size per interval')
-// test.serial.('Log.4.Size of each log is within max size per interval', async t => {
-  // let recordLogsReceived = 0
-  // const logCallback = (req) => {
-    // // TODO: check size of the log
-    // console.log("body:", req)
-    // recordLogsReceived++
-  // }
-  // server.on('recordLogs', logCallback)
+// TODO: the max size per interval maybe exceed as it stops caching after reaching the limit.
+test.serial.skip('Log.4.Size of each log is within max size per interval', async t => {
+  let tmpLogCacheDir = '/tmp/enebular-log-cache-' + Utils.randomString();
+  const logCallback = (file) => {
+    // TODO: check size of the log
+    console.log("size.........:", file.size)
+    t.true(file.size < 5 * 1024)
+  }
+  server.on('recordLogs', logCallback)
 
-  // const ret = await givenAgentAuthenticated(t, server,
-      // Utils.addNodeRedPort({
-          // // set interval size larger than cache size so that cache size can be used.
-          // enebularLogMaxSizePerInterval: 5 * 1024,
-          // monitorIntervalFast: 2,
-          // logLevel: "debug",
-      // }, NodeRedPort), DummyServerPort)
-  // agent = ret.agent
-  // connector = ret.connector
+  const ret = await givenAgentAuthenticated(t, server,
+      Utils.addNodeRedPort({
+          // set interval size larger than cache size so that cache size can be used.
+          enebularLogMaxSizePerInterval: 5 * 1024,
+          enableConsoleLog: false,
+          monitorIntervalFast: 2,
+          logLevel: "debug",
+      }, NodeRedPort), DummyServerPort)
+  agent = ret.agent
+  connector = ret.connector
 
-  // t.is(agent._logManager._enebularTransport._maxSizePerInterval, 5 * 1024)
+  t.is(agent._logManager._enebularTransport._maxSizePerInterval, 5 * 1024)
 
-  // const data = fs.readFileSync(path.join(__dirname, "data", "file.1k"), 'utf8')
-  // const intervalObj = setInterval(() => {
-    // agent.log.info(data)
-  // }, 10)
+  const data = fs.readFileSync(path.join(__dirname, "data", "file.1k"), 'utf8')
+  const intervalObj = setInterval(() => {
+    agent.log.info(data)
+  }, 10)
 
-  // return new Promise((resolve, reject) => {
-    // setTimeout(() => {
-      // fs.removeSync("/tmp/enebular-log-cache")
-      // server.removeListener('recordLogs', logCallback)
-      // t.is(recordLogsReceived, 3)
-      // clearInterval(intervalObj)
-      // resolve()
-    // }, 7000)
-  // })
-// });
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      fs.removeSync(tmpLogCacheDir)
+      server.removeListener('recordLogs', logCallback)
+      clearInterval(intervalObj)
+      resolve()
+    }, 7000)
+  })
+});
 
 
 
