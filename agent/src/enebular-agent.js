@@ -166,7 +166,8 @@ export default class EnebularAgent extends EventEmitter {
     logConfig['enableEnebular'] = config.enableEnebularLog
     logConfig['enebularCachePath'] = config.enebularLogCachePath
     logConfig['enebularMaxCacheSize'] = config.enebularLogMaxCacheSize
-    logConfig['enebularMaxSizePerInterval'] = config.enebularLogMaxSizePerInterval
+    logConfig['enebularMaxSizePerInterval'] =
+      config.enebularLogMaxSizePerInterval
     logConfig['enebularSendInterval'] = config.enebularLogSendInterval
 
     if (process.env.DEBUG) {

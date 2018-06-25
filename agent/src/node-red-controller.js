@@ -49,7 +49,9 @@ export default class NodeREDController {
       throw new Error(`The Node-RED directory was not found: ${this._dir}`)
     }
     if (!fs.existsSync(this._getDataDir())) {
-      throw new Error(`The Node-RED data directory was not found: ${this._getDataDir()}`)
+      throw new Error(
+        `The Node-RED data directory was not found: ${this._getDataDir()}`
+      )
     }
 
     this._registerHandler(emitter)
@@ -136,10 +138,7 @@ export default class NodeREDController {
       const flows = flowPackage.flow || flowPackage.flows
       updates.push(
         new Promise((resolve, reject) => {
-          const flowFilePath = path.join(
-            this._getDataDir(),
-            'flows.json'
-          )
+          const flowFilePath = path.join(this._getDataDir(), 'flows.json')
           fs.writeFile(
             flowFilePath,
             JSON.stringify(flows),
@@ -152,10 +151,7 @@ export default class NodeREDController {
       const creds = flowPackage.cred || flowPackage.creds
       updates.push(
         new Promise((resolve, reject) => {
-          const credFilePath = path.join(
-            this._getDataDir(),
-            'flows_cred.json'
-          )
+          const credFilePath = path.join(this._getDataDir(), 'flows_cred.json')
           fs.writeFile(
             credFilePath,
             JSON.stringify(creds),

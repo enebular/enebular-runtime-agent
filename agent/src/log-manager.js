@@ -13,7 +13,7 @@ export type LogManagerConfig = {
   enableEnebular?: boolean,
   enebularCachePath?: string,
   enebularMaxCacheSize?: number,
-  enebularMaxSizePerInterval?: number,
+  enebularMaxSizePerInterval?: number
 }
 
 export default class LogManager {
@@ -87,7 +87,7 @@ export default class LogManager {
         cachePath: enebularCachePath,
         maxCacheSize: enebularMaxCacheSize,
         maxSizePerInterval: enebularMaxSizePerInterval,
-        sendInterval: enebularSendInterval 
+        sendInterval: enebularSendInterval
       })
       this.addTransport(this._enebularTransport)
     }
