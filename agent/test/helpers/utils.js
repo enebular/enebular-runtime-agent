@@ -1,4 +1,5 @@
 import fs from 'fs'
+import DummyServerConfig from './dummy-server-config'
 
 export default class Utils {
   static randomString() {
@@ -27,8 +28,9 @@ export default class Utils {
     const _config = {
       connectionId: 'dummy_connectionId',
       deviceId: 'dummy_deviceId',
-      authRequestUrl: 'http://127.0.0.1:' + _port + '/api/v1/token/device',
-      agentManagerBaseUrl: 'http://127.0.0.1:' + _port + '/api/v1'
+      authRequestUrl:
+        'http://127.0.0.1:' + _port + DummyServerConfig.authenticationURL,
+      agentManagerBaseUrl: 'http://127.0.0.1:' + _port + '/agent-manager'
     }
 
     const data = JSON.stringify(Object.assign(_config, config))
@@ -48,7 +50,7 @@ export default class Utils {
   static createDummyEnebularActivationConfig(config, dummyServerPort) {
     let _port = dummyServerPort || 3001
     const _config = {
-      enebularBaseURL: 'http://127.0.0.1:' + _port + '/api/v1',
+      enebularBaseURL: 'http://127.0.0.1:' + _port + '/enebular',
       licenseKey: '220dde76-e03f-4789-bc9f-c8e512faee27'
     }
     const data = JSON.stringify(Object.assign(_config, config))
@@ -109,9 +111,7 @@ export default class Utils {
     }
 
     let remain = runningTime - _monitorIntervalFastPeriod
-    let requestsInNormalPeriod = Math.floor(
-      remain / _monitorIntervalNormal
-    )
+    let requestsInNormalPeriod = Math.floor(remain / _monitorIntervalNormal)
 
     return requestsInFastPeriod + requestsInNormalPeriod
   }

@@ -4,6 +4,7 @@ import path from 'path'
 import express from 'express'
 import EventEmitter from 'events'
 import multer from 'multer'
+import DummyServerConfig from './dummy-server-config'
 
 let upload = multer()
 
@@ -19,37 +20,42 @@ export default class DummyServer extends EventEmitter {
     const server = this
     app.use(bodyParser.urlencoded({ extended: true }))
     app.use(bodyParser.json())
-    app.post('/api/v1/activate-license', (req, res) => {
+    app.post(DummyServerConfig.activateLicenseURL, (req, res) => {
       console.log('activate license', req.body)
       server.emit('activateLicense', req.body)
       res.send({
         connectionId: 'dummy_connectionId',
-        authRequestUrl: 'http://127.0.0.1:3001/api/v1/token/device',
-        agentManagerBaseUrl: 'http://127.0.0.1:3001/api/v1'
+        authRequestUrl:
+          'http://127.0.0.1:' + port + DummyServerConfig.authenticationURL,
+        agentManagerBaseUrl: 'http://127.0.0.1:' + port + '/agent-manager'
       })
     })
-    app.post('/api/v1/verify-license', (req, res) => {
+    app.post(DummyServerConfig.verifyLicenseURL, (req, res) => {
       // console.log("verify license", req.body);
       server.emit('verifyLicense', req.body)
       res.send({
         canActivate: req.body.licenseKey !== 'invalid_key'
       })
     })
-    app.post('/api/v1/token/device', (req, res) => {
+    app.post(DummyServerConfig.authenticationURL, (req, res) => {
       server.emit('authRequest', req.body)
       console.log('auth request', req.body)
       res.sendStatus(req.body.connectionId === 'return_bad_request' ? 400 : 200)
     })
-    app.post('/api/v1/record-logs', upload.single('events'), (req, res) => {
-      // console.log("log:", req.file);
-      server.emit('recordLogs', req.file)
-      res.sendStatus(this._logReturnBadRequest ? 400 : 200)
-    })
-    app.post('/api/v1/notify-status', (req, res) => {
+    app.post(
+      DummyServerConfig.recordLogsURL,
+      upload.single('events'),
+      (req, res) => {
+        // console.log("log:", req.file);
+        server.emit('recordLogs', req.file)
+        res.sendStatus(this._logReturnBadRequest ? 400 : 200)
+      }
+    )
+    app.post(DummyServerConfig.notifyStatusURL, (req, res) => {
       server.emit('notifyStatus', req.body)
       res.sendStatus(200)
     })
-    app.get('/download', (req, res) => {
+    app.get('/test/download-flow', (req, res) => {
       console.log('download', req.query)
       const flowName = req.query.flow
       const json = fs.readFileSync(

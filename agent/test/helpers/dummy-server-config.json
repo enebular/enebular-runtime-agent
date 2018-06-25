@@ -1,0 +1,9 @@
+{
+  "authenticationURL": "/enebular/token/device",
+  "activateLicenseURL": "/enebular/activate-license",
+  "verifyLicenseURL": "/enebular/verify-license",
+  "notifyStatusURL": "/agent-manager/notify-status",
+  "recordLogsURL": "/agent-manager/record-logs"
+}
+
+

@@ -97,7 +97,7 @@ test.serial(
     agent = ret.agent
     connector = ret.connector
 
-    await nodeRedIsAlive(NodeRedPort, 2000).catch(err => {
+    await nodeRedIsAlive(NodeRedPort, 3000).catch(err => {
       console.log(err)
       t.fail()
     })
@@ -155,7 +155,7 @@ test.serial(
           t.deepEqual(expectedFlow, flow)
           resolve()
         }
-      }, 3000)
+      }, 5000)
     })
   }
 )
@@ -174,7 +174,7 @@ test.serial(
     const url =
       'http://127.0.0.1:' +
       DummyServerPort +
-      '/download?flow=' +
+      '/test/download-flow?flow=' +
       expectedFlowName
     connector.sendMessage('deploy', {
       downloadUrl: url
@@ -193,7 +193,7 @@ test.serial(
           t.deepEqual(expectedFlow, flow)
           resolve()
         }
-      }, 3000)
+      }, 5000)
     })
   }
 )
@@ -212,7 +212,7 @@ test.serial(
     const url =
       'http://127.0.0.1:' +
       DummyServerPort +
-      '/download?flow=' +
+      '/test/download-flow?flow=' +
       expectedFlowName
     connector.sendMessage('update-flow', {
       downloadUrl: url
@@ -231,7 +231,7 @@ test.serial(
           t.deepEqual(expectedFlow, flow)
           resolve()
         }
-      }, 3000)
+      }, 5000)
     })
   }
 )
@@ -247,7 +247,7 @@ test.serial(
     })
 
     connector.sendMessage('start')
-    await nodeRedIsAlive(NodeRedPort, 3000).catch(err => {
+    await nodeRedIsAlive(NodeRedPort, 5000).catch(err => {
       t.fail(err)
     })
     t.pass()
@@ -264,7 +264,7 @@ test.serial(
     const url =
       'http://127.0.0.1:' +
       DummyServerPort +
-      '/download?dependencies=on&flow=' +
+      '/test/download-flow?dependencies=on&flow=' +
       expectedFlowName
     connector.sendMessage('deploy', {
       downloadUrl: url

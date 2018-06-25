@@ -8,6 +8,7 @@ import EnebularAgent from '../src/enebular-agent'
 import ConnectorService from '../src/connector-service'
 import Utils from './helpers/utils'
 import DummyServer from './helpers/dummy-server'
+import DummyServerConfig from './helpers/dummy-server-config'
 import {
   givenAgentConnectedToConnector,
   givenAgentAuthenticated
@@ -130,7 +131,9 @@ test.serial(
       connectionId: 'dummy_connectionId',
       deviceId: 'dummy_deviceId',
       authRequestUrl:
-        'http://127.0.0.1:' + DummyServerPort + '/api/v1/token/device',
+        'http://127.0.0.1:' +
+        DummyServerPort +
+        DummyServerConfig.authenticationURL,
       agentManagerBaseUrl: 'http://dummy.agentManagerBaseUrl'
     }
     // Send register message from connector.

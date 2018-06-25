@@ -113,7 +113,7 @@ export function nodeRedIsAlive(port, timeout, checkDead) {
       if (checkDead ? !settings : settings) {
         resolve()
       } else {
-        reject(new Error('Node RED server is ', checkDead ? "dead" : "alive"))
+        reject(new Error('Node RED server is ', checkDead ? 'dead' : 'alive'))
       }
     }, timeout || 500)
   })

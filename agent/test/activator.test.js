@@ -6,6 +6,7 @@ import EnebularAgent from '../src/enebular-agent'
 import ConnectorService from '../src/connector-service'
 import Utils from './helpers/utils'
 import DummyServer from './helpers/dummy-server'
+import DummyServerConfig from './helpers/dummy-server-config'
 import {
   givenAgentConnectedToConnector,
   givenAgentStarted
@@ -227,8 +228,16 @@ test.serial('Activator.6: License is valid.', async t => {
       t.is(agent._agentState, 'registered')
       t.is(agent._connectionId, 'dummy_connectionId')
       t.is(agent._deviceId, 'dummy_deviceId')
-      t.is(agent._authRequestUrl, 'http://127.0.0.1:3001/api/v1/token/device')
-      t.is(agent._agentManagerBaseUrl, 'http://127.0.0.1:3001/api/v1')
+      t.is(
+        agent._authRequestUrl,
+        'http://127.0.0.1:' +
+          DummyServerPort +
+          DummyServerConfig.authenticationURL
+      )
+      t.is(
+        agent._agentManagerBaseUrl,
+        'http://127.0.0.1:' + DummyServerPort + '/agent-manager'
+      )
       resolve()
     }, 500)
   })

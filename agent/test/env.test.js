@@ -6,6 +6,10 @@ import EnebularAgent from '../src/enebular-agent'
 import ConnectorService from '../src/connector-service'
 import Utils from './helpers/utils'
 import { nodeRedIsAlive } from './helpers/agent-helper'
+import DummyServerConfig from './helpers/dummy-server-config'
+
+const DummyServerPort = 3001
+// const NodeRedPort = 4001
 
 let agent: EnebularAgent
 let connector: ConnectorService
@@ -187,8 +191,16 @@ test.serial('Env.8: Agent accepts all supported config items', async t => {
       t.is(agent._agentState, 'registered')
       t.is(agent._connectionId, 'dummy_connectionId')
       t.is(agent._deviceId, 'dummy_deviceId')
-      t.is(agent._authRequestUrl, 'http://127.0.0.1:3001/api/v1/token/device')
-      t.is(agent._agentManagerBaseUrl, 'http://127.0.0.1:3001/api/v1')
+      t.is(
+        agent._authRequestUrl,
+        'http://127.0.0.1:' +
+          DummyServerPort +
+          DummyServerConfig.authenticationURL
+      )
+      t.is(
+        agent._agentManagerBaseUrl,
+        'http://127.0.0.1:' + DummyServerPort + '/agent-manager'
+      )
       resolve()
     }, 500)
   })
