@@ -73,7 +73,7 @@ export async function givenAgentAuthenticated(
   server.on('authRequest', authCallback)
 
   // An existing registered config
-  const configFile = Utils.getDummyEnebularConfig({}, port)
+  const configFile = Utils.createDummyEnebularConfig({}, port)
   const { agent, connector } = await givenAgentConnectedToConnector(
     t,
     Object.assign({ configFile: configFile }, agentConfig)
@@ -97,37 +97,28 @@ export async function givenAgentUnauthenticated(
   port: number
 ) {
   // An existing registered config
-  const configFile = Utils.getDummyEnebularConfig({}, port)
+  const configFile = Utils.createDummyEnebularConfig({}, port)
   return givenAgentConnectedToConnector(
     t,
     Object.assign({ configFile: configFile }, agentConfig)
   )
 }
 
-export function nodeRedIsAlive(port, timeout) {
+export function nodeRedIsAlive(port, timeout, checkDead) {
   return new Promise((resolve, reject) => {
     setTimeout(async () => {
       const api = new NodeRedAdminApi('http://127.0.0.1:' + port)
       const settings = await api.getSettings()
-      if (settings) {
+
+      if (checkDead ? !settings : settings) {
         resolve()
       } else {
-        reject(new Error('Node RED server is dead.'))
+        reject(new Error('Node RED server is ', checkDead ? "dead" : "alive"))
       }
     }, timeout || 500)
   })
 }
 
 export function nodeRedIsDead(port, timeout) {
-  return new Promise((resolve, reject) => {
-    setTimeout(async () => {
-      const api = new NodeRedAdminApi('http://127.0.0.1:' + port)
-      const settings = await api.getSettings()
-      if (!settings) {
-        resolve()
-      } else {
-        reject(new Error('Node RED server is alive.'))
-      }
-    }, 500)
-  })
+  return nodeRedIsAlive(port, timeout, true)
 }

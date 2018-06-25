@@ -1,16 +1,12 @@
 /* @flow */
 import fs from 'fs'
 import path from 'path'
-
 import express from 'express'
 import EventEmitter from 'events'
-
 import multer from 'multer'
 
 let upload = multer()
-/**
- *
- */
+
 export default class DummyServer extends EventEmitter {
   _logReturnBadRequest: boolean
   setLogReturnBadRequest(bad) {

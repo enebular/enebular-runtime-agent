@@ -40,6 +40,7 @@ test.afterEach.always('cleanup', async t => {
     console.log('cleanup: agent')
     await agent.shutdown().catch(error => {
       // ignore the error, we don't care this
+      // set to null to avoid 'unused' lint error
       error = null
     })
     agent = null
@@ -58,7 +59,7 @@ async function givenAgentRunningWithTestNodeRedSettings(t: test) {
   )
   await Utils.rsync(
     tmpNodeRedDataDir + '/test-settings.js',
-    path.join(__dirname, 'data', 'test-settings')
+    path.join(__dirname, 'data', 'node-red-test-settings')
   )
 
   const ret = await givenAgentUnauthenticated(
@@ -88,10 +89,10 @@ async function givenAgentRunningWithTestNodeRedSettings(t: test) {
 test.serial(
   'NodeRedController.1.Agent starts/shutdowns node-red correctly',
   async t => {
-    const configFile = Utils.getDummyEnebularConfig({}, DummyServerPort)
+    const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
     const ret = await givenAgentConnectedToConnector(
       t,
-      Utils.addNodeRedPort({ configFile: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
     agent = ret.agent
     connector = ret.connector

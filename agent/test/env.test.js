@@ -19,13 +19,14 @@ test.afterEach.always('cleanup', async t => {
     console.log('cleanup: agent')
     await agent.shutdown().catch(error => {
       // ignore the error, we don't care this
+      // set to null to avoid 'unused' lint error
       error = null
     })
     agent = null
   }
 })
 
-test.serial('Env.1.Agent starts if node-red path is valid', async t => {
+test.serial('Env.1: Agent starts if node-red path is valid', async t => {
   let agentConfig = {}
   agentConfig['nodeRedDir'] = '../node-red'
   agentConfig['nodeRedCommand'] = './node_modules/.bin/node-red -p 30001'
@@ -43,7 +44,7 @@ test.serial('Env.1.Agent starts if node-red path is valid', async t => {
   })
 })
 
-test.serial('Env.2.Agent fails to start if node-red path is invalid', t => {
+test.serial('Env.2: Agent fails to start if node-red path is invalid', t => {
   connector = new ConnectorService()
   let agentConfig = {}
   agentConfig['nodeRedDir'] = '../node-red-invalid'
@@ -55,7 +56,7 @@ test.serial('Env.2.Agent fails to start if node-red path is invalid', t => {
 })
 
 test.serial(
-  'Env.3.Agent fails to start if node-red data path is invalid',
+  'Env.3: Agent fails to start if node-red data path is invalid',
   t => {
     connector = new ConnectorService()
     let agentConfig = {}
@@ -69,7 +70,7 @@ test.serial(
   }
 )
 
-test.serial('Env.4.Agent starts if config file path is invalid', t => {
+test.serial('Env.4: Agent starts if config file path is invalid', t => {
   connector = new ConnectorService()
   let agentConfig = {}
   agentConfig['nodeRedDir'] = '../node-red'
@@ -94,7 +95,7 @@ test.serial('Env.4.Agent starts if config file path is invalid', t => {
   })
 })
 
-test.serial('Env.5.Agent takes nodeRedCommand to launch node-red', async t => {
+test.serial('Env.5: Agent takes nodeRedCommand to launch node-red', async t => {
   let agentConfig = {}
   agentConfig['nodeRedDir'] = '../node-red'
   agentConfig['nodeRedCommand'] = './node_modules/.bin/node-red -p 30000'
@@ -113,7 +114,7 @@ test.serial('Env.5.Agent takes nodeRedCommand to launch node-red', async t => {
 })
 
 test.serial(
-  'Env.6.Agent fails to start if command to launch node-red is invalid',
+  'Env.6: Agent fails to start if command to launch node-red is invalid',
   async t => {
     connector = new ConnectorService()
     let agentConfig = {}
@@ -136,7 +137,7 @@ test.serial(
   }
 )
 
-test.serial('Env.7.Agent starts normally with no config file', async t => {
+test.serial('Env.7: Agent starts normally with no config file', async t => {
   let configFileName = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
 
   connector = new ConnectorService()
@@ -163,11 +164,11 @@ test.serial('Env.7.Agent starts normally with no config file', async t => {
   })
 })
 
-test.serial('Env.8.Agent accepts all supported config items', async t => {
+test.serial('Env.8: Agent accepts all supported config items', async t => {
   connector = new ConnectorService()
   let agentConfig = {}
   agentConfig['nodeRedDir'] = '../node-red'
-  agentConfig['configFile'] = Utils.getDummyEnebularConfig({})
+  agentConfig['configFile'] = Utils.createDummyEnebularConfig({})
   agentConfig['nodeRedCommand'] = './node_modules/.bin/node-red -p 1990'
 
   t.notThrows(() => {
@@ -193,11 +194,11 @@ test.serial('Env.8.Agent accepts all supported config items', async t => {
   })
 })
 
-test.serial('Env.9.Agent handles an invalid config file', async t => {
+test.serial('Env.9: Agent handles an invalid config file', async t => {
   connector = new ConnectorService()
   let agentConfig = {}
   agentConfig['nodeRedDir'] = '../node-red'
-  agentConfig['configFile'] = Utils.getBrokenEnebularConfig()
+  agentConfig['configFile'] = Utils.createBrokenEnebularConfig()
   agentConfig['nodeRedCommand'] = './node_modules/.bin/node-red -p 1990'
 
   t.notThrows(() => {

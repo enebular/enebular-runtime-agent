@@ -17,7 +17,7 @@ let server: DummyServer
 let http: Server
 
 test.before(async t => {
-  process.env.DEBUG = 'info'
+  // process.env.DEBUG = 'info'
   server = new DummyServer()
   http = await server.start(DummyServerPort)
 })
@@ -28,7 +28,7 @@ test.after(t => {
 
 test.beforeEach('cleanup log cache', t => {})
 
-test.afterEach.always('cleanup listenser', t => {
+test.afterEach.always('cleanup listener', t => {
   server.removeAllListeners('recordLogs')
 })
 
@@ -37,6 +37,7 @@ test.afterEach.always('cleanup', async t => {
     console.log('cleanup: agent')
     await agent.shutdown().catch(error => {
       // ignore the error, we don't care this
+      // set to null to avoid 'unused' lint error
       error = null
     })
     agent = null
@@ -53,7 +54,7 @@ test.serial('Log.1.Log cache size is within max cache size', async t => {
   const ret = await givenAgentAuthenticated(
     t,
     server,
-    Utils.addNodeRedPort(
+    Utils.addNodeRedPortToConfig(
       {
         // set interval size larger than cache size so that cache size can be used.
         enebularLogMaxSizePerInterval: 100 * 1024 * 1024,
@@ -72,7 +73,7 @@ test.serial('Log.1.Log cache size is within max cache size', async t => {
     100 * 1024 * 1024
   )
 
-  const data = fs.readFileSync(path.join(__dirname, 'data', 'file.1k'), 'utf8')
+  const data = fs.readFileSync(path.join(__dirname, 'data', 'text.1k'), 'utf8')
   for (let i = 0; i < 2048; i++) {
     agent.log.info(data)
   }
@@ -107,7 +108,7 @@ test.serial('Log.2.Log is sent to server periodically', async t => {
   const ret = await givenAgentAuthenticated(
     t,
     server,
-    Utils.addNodeRedPort(
+    Utils.addNodeRedPortToConfig(
       {
         monitorIntervalFast: interval,
         enebularLogCachePath: tmpLogCacheDir
@@ -120,7 +121,7 @@ test.serial('Log.2.Log is sent to server periodically', async t => {
 
   t.is(agent._logManager._enebularTransport._sendInterval, interval)
 
-  const data = fs.readFileSync(path.join(__dirname, 'data', 'file.1k'), 'utf8')
+  const data = fs.readFileSync(path.join(__dirname, 'data', 'text.1k'), 'utf8')
   const intervalObj = setInterval(() => {
     agent.log.info(data)
   }, 500)
@@ -150,7 +151,7 @@ test.serial('Log.3.Log level is handled correctly', async t => {
   const ret = await givenAgentAuthenticated(
     t,
     server,
-    Utils.addNodeRedPort(
+    Utils.addNodeRedPortToConfig(
       {
         monitorIntervalFast: interval,
         enebularLogCachePath: tmpLogCacheDir,
@@ -164,7 +165,7 @@ test.serial('Log.3.Log level is handled correctly', async t => {
 
   t.is(agent._logManager._enebularTransport._sendInterval, interval)
 
-  const data = fs.readFileSync(path.join(__dirname, 'data', 'file.1k'), 'utf8')
+  const data = fs.readFileSync(path.join(__dirname, 'data', 'text.1k'), 'utf8')
   const intervalObj = setInterval(() => {
     agent.log.debug(data)
   }, 500)
@@ -194,13 +195,12 @@ test.serial.skip(
     const ret = await givenAgentAuthenticated(
       t,
       server,
-      Utils.addNodeRedPort(
+      Utils.addNodeRedPortToConfig(
         {
           // set interval size larger than cache size so that cache size can be used.
           enebularLogMaxSizePerInterval: 5 * 1024,
           enableConsoleLog: false,
-          monitorIntervalFast: 2,
-          logLevel: 'debug'
+          monitorIntervalFast: 2
         },
         NodeRedPort
       ),
@@ -211,7 +211,7 @@ test.serial.skip(
     t.is(agent._logManager._enebularTransport._maxSizePerInterval, 5 * 1024)
 
     const data = fs.readFileSync(
-      path.join(__dirname, 'data', 'file.1k'),
+      path.join(__dirname, 'data', 'text.1k'),
       'utf8'
     )
     const intervalObj = setInterval(() => {

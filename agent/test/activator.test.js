@@ -29,7 +29,7 @@ test.after(t => {
   http.close()
 })
 
-test.afterEach.always('cleanup listenser', t => {
+test.afterEach.always('cleanup listener', t => {
   server.removeAllListeners('verifyLicense')
   server.removeAllListeners('activateLicense')
 })
@@ -39,6 +39,7 @@ test.afterEach.always('cleanup', async t => {
     console.log('cleanup: agent')
     await agent.shutdown().catch(error => {
       // ignore the error, we don't care this
+      // set to null to avoid 'unused' lint error
       error = null
     })
     agent = null
@@ -46,12 +47,12 @@ test.afterEach.always('cleanup', async t => {
 })
 
 test.serial(
-  'Activator.1.No enebular activator config, activator shall not be enabled',
+  'Activator.1: No enebular activator config, activator shall not be enabled',
   async t => {
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
     const ret = await givenAgentConnectedToConnector(
       t,
-      Utils.addNodeRedPort({ configFile: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
     agent = ret.agent
     connector = ret.connector
@@ -61,9 +62,9 @@ test.serial(
 )
 
 test.serial(
-  'Activator.2.Activation config is invalid, agent stops.',
+  'Activator.2: Activation config is invalid, agent stops.',
   async t => {
-    process.env.ACTIVATOR_CONFIG_PATH = Utils.getBrokenActivationConfig()
+    process.env.ACTIVATOR_CONFIG_PATH = Utils.createBrokenEnebularActivationConfig()
 
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
     connector = new ConnectorService()
@@ -80,9 +81,9 @@ test.serial(
 )
 
 test.serial(
-  'Activator.3.Activation config is valid, try to verify license.',
+  'Activator.3: Activation config is valid, try to verify license.',
   async t => {
-    process.env.ACTIVATOR_CONFIG_PATH = Utils.getDummyEnebularActivationConfig(
+    process.env.ACTIVATOR_CONFIG_PATH = Utils.createDummyEnebularActivationConfig(
       {},
       DummyServerPort
     )
@@ -95,7 +96,7 @@ test.serial(
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
     const ret = await givenAgentStarted(
       t,
-      Utils.addNodeRedPort({ configFile: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
     agent = ret.agent
     connector = ret.connector
@@ -111,9 +112,9 @@ test.serial(
 )
 
 test.serial(
-  'Activator.4.Activation config is valid, agent has been registered, no verify license request.',
+  'Activator.4: Activation config is valid, agent has been registered, no verify license request.',
   async t => {
-    process.env.ACTIVATOR_CONFIG_PATH = Utils.getDummyEnebularActivationConfig(
+    process.env.ACTIVATOR_CONFIG_PATH = Utils.createDummyEnebularActivationConfig(
       {},
       DummyServerPort
     )
@@ -123,10 +124,10 @@ test.serial(
     }
     server.on('verifyLicense', verifyCallback)
 
-    const configFile = Utils.getDummyEnebularConfig({}, DummyServerPort)
+    const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
     const ret = await givenAgentConnectedToConnector(
       t,
-      Utils.addNodeRedPort({ configFile: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
     agent = ret.agent
     connector = ret.connector
@@ -142,9 +143,9 @@ test.serial(
 )
 
 test.serial(
-  'Activator.5.License is invalid, no activate license request, agent stays in unregistered.',
+  'Activator.5: License is invalid, no activate license request, agent stays in unregistered.',
   async t => {
-    process.env.ACTIVATOR_CONFIG_PATH = Utils.getDummyEnebularActivationConfigInvalidKey(
+    process.env.ACTIVATOR_CONFIG_PATH = Utils.createDummyEnebularActivationConfigInvalidKey(
       DummyServerPort
     )
     let verifyLicenseReceived = false
@@ -162,7 +163,7 @@ test.serial(
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
     const ret = await givenAgentStarted(
       t,
-      Utils.addNodeRedPort({ configFile: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
     agent = ret.agent
     connector = ret.connector
@@ -180,8 +181,8 @@ test.serial(
   }
 )
 
-test.serial('Activator.6.License is valid.', async t => {
-  process.env.ACTIVATOR_CONFIG_PATH = Utils.getDummyEnebularActivationConfig(
+test.serial('Activator.6: License is valid.', async t => {
+  process.env.ACTIVATOR_CONFIG_PATH = Utils.createDummyEnebularActivationConfig(
     {},
     DummyServerPort
   )
@@ -202,7 +203,7 @@ test.serial('Activator.6.License is valid.', async t => {
   const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
   const ret = await givenAgentStarted(
     t,
-    Utils.addNodeRedPort({ configFile: configFile }, NodeRedPort)
+    Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
   )
   agent = ret.agent
   connector = ret.connector
