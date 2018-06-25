@@ -7,7 +7,7 @@ import { Server } from 'net'
 import EnebularAgent from '../src/enebular-agent'
 import Utils from './helpers/utils'
 import DummyServer from './helpers/dummy-server'
-import { givenAgentAuthenticated } from './helpers/agent-helper'
+import { createAuthenticatedAgent } from './helpers/agent-helper'
 
 const DummyServerPort = 3006
 const NodeRedPort = 4006
@@ -51,7 +51,7 @@ test.serial('Log.1.Log cache size is within max cache size', async t => {
   let maxSize = 1 * 1024 * 1024
   let tmpLogCacheDir = '/tmp/enebular-log-cache-' + Utils.randomString()
   server.setLogReturnBadRequest(true)
-  const ret = await givenAgentAuthenticated(
+  const ret = await createAuthenticatedAgent(
     t,
     server,
     Utils.addNodeRedPortToConfig(
@@ -105,7 +105,7 @@ test.serial('Log.2.Log is sent to server periodically', async t => {
   server.on('recordLogs', logCallback)
 
   let interval = 3
-  const ret = await givenAgentAuthenticated(
+  const ret = await createAuthenticatedAgent(
     t,
     server,
     Utils.addNodeRedPortToConfig(
@@ -148,7 +148,7 @@ test.serial('Log.3.Log level is handled correctly', async t => {
   server.on('recordLogs', logCallback)
 
   let interval = 2
-  const ret = await givenAgentAuthenticated(
+  const ret = await createAuthenticatedAgent(
     t,
     server,
     Utils.addNodeRedPortToConfig(
@@ -192,7 +192,7 @@ test.serial.skip(
     }
     server.on('recordLogs', logCallback)
 
-    const ret = await givenAgentAuthenticated(
+    const ret = await createAuthenticatedAgent(
       t,
       server,
       Utils.addNodeRedPortToConfig(

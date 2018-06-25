@@ -10,8 +10,8 @@ import Utils from './helpers/utils'
 import DummyServer from './helpers/dummy-server'
 import DummyServerConfig from './helpers/dummy-server-config'
 import {
-  givenAgentConnectedToConnector,
-  givenAgentAuthenticated
+  createConnectedAgent,
+  createAuthenticatedAgent
 } from './helpers/agent-helper'
 
 const DummyServerPort = 3005
@@ -81,7 +81,7 @@ test.serial(
 
 test.serial('Core.2: Agent correctly handle register message', async t => {
   const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
-  const ret = await givenAgentConnectedToConnector(
+  const ret = await createConnectedAgent(
     t,
     Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
   )
@@ -118,7 +118,7 @@ test.serial(
     })
 
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
-    const ret = await givenAgentConnectedToConnector(
+    const ret = await createConnectedAgent(
       t,
       Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
@@ -157,7 +157,7 @@ test.serial(
 
     // An existing registered config
     const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
-    const ret = await givenAgentConnectedToConnector(
+    const ret = await createConnectedAgent(
       t,
       Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
@@ -182,7 +182,7 @@ test.serial(
       notifyStatusReceived = true
     })
 
-    const ret = await givenAgentAuthenticated(
+    const ret = await createAuthenticatedAgent(
       t,
       server,
       Utils.addNodeRedPortToConfig({}, NodeRedPort),
@@ -202,7 +202,7 @@ test.serial(
       recordLogsReceived = true
     })
 
-    const ret = await givenAgentAuthenticated(
+    const ret = await createAuthenticatedAgent(
       t,
       server,
       Utils.addNodeRedPortToConfig({}, NodeRedPort),
@@ -231,7 +231,7 @@ test.serial(
       notifyStatusReceived++
     })
 
-    const ret = await givenAgentAuthenticated(
+    const ret = await createAuthenticatedAgent(
       t,
       server,
       Utils.addNodeRedPortToConfig(
@@ -266,7 +266,7 @@ test.serial(
       notifyStatusReceived++
     })
 
-    const ret = await givenAgentAuthenticated(
+    const ret = await createAuthenticatedAgent(
       t,
       server,
       Utils.addNodeRedPortToConfig(
@@ -303,7 +303,7 @@ test.serial(
       notifyStatusReceived++
     })
 
-    const ret = await givenAgentAuthenticated(
+    const ret = await createAuthenticatedAgent(
       t,
       server,
       Utils.addNodeRedPortToConfig(

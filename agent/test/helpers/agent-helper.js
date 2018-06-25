@@ -9,7 +9,7 @@ import DummyEnebularServer from './dummy-server'
 import NodeRedAdminApi from './node-red-admin-api'
 import Utils from './utils'
 
-export async function givenAgentStarted(
+export async function createStartedAgent(
   t: test,
   agentConfig: EnebularAgentConfig
 ) {
@@ -26,7 +26,7 @@ export async function givenAgentStarted(
   return { agent: agent, connector: connector }
 }
 
-export async function givenAgentConnectedToConnector(
+export async function createConnectedAgent(
   t: test,
   agentConfig: EnebularAgentConfig
 ) {
@@ -53,7 +53,7 @@ export async function givenAgentConnectedToConnector(
   })
 }
 
-export async function givenAgentAuthenticated(
+export async function createAuthenticatedAgent(
   t: test,
   server: DummyEnebularServer,
   agentConfig: EnebularAgentConfig,
@@ -74,7 +74,7 @@ export async function givenAgentAuthenticated(
 
   // An existing registered config
   const configFile = Utils.createDummyEnebularConfig({}, port)
-  const { agent, connector } = await givenAgentConnectedToConnector(
+  const { agent, connector } = await createConnectedAgent(
     t,
     Object.assign({ configFile: configFile }, agentConfig)
   )
@@ -90,7 +90,7 @@ export async function givenAgentAuthenticated(
   })
 }
 
-export async function givenAgentUnauthenticated(
+export async function createUnauthenticatedAgent(
   t: test,
   server: DummyEnebularServer,
   agentConfig: EnebularAgentConfig,
@@ -98,7 +98,7 @@ export async function givenAgentUnauthenticated(
 ) {
   // An existing registered config
   const configFile = Utils.createDummyEnebularConfig({}, port)
-  return givenAgentConnectedToConnector(
+  return createConnectedAgent(
     t,
     Object.assign({ configFile: configFile }, agentConfig)
   )
@@ -109,7 +109,7 @@ export function nodeRedIsAlive(port, timeout) {
     setTimeout(async () => {
       const api = new NodeRedAdminApi('http://127.0.0.1:' + port)
       const settings = await api.getSettings()
-      resolve(settings ? true : false)
+      resolve(!!settings)
     }, timeout || 500)
   })
 }

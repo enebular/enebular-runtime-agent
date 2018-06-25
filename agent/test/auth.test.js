@@ -9,9 +9,9 @@ import ConnectorService from '../src/connector-service'
 import Utils from './helpers/utils'
 import DummyServer from './helpers/dummy-server'
 import {
-  givenAgentConnectedToConnector,
-  givenAgentAuthenticated,
-  givenAgentUnauthenticated
+  createConnectedAgent,
+  createAuthenticatedAgent,
+  createUnauthenticatedAgent
 } from './helpers/agent-helper'
 
 const DummyServerPort = 3002
@@ -55,7 +55,7 @@ test.serial(
   async t => {
     let authRequestReceived = false
 
-    const ret = await givenAgentUnauthenticated(
+    const ret = await createUnauthenticatedAgent(
       t,
       server,
       Utils.addNodeRedPortToConfig({}, NodeRedPort),
@@ -82,7 +82,7 @@ test.serial(
 )
 
 test.serial('Auth.2: Agent can be authenticated', async t => {
-  const ret = await givenAgentAuthenticated(
+  const ret = await createAuthenticatedAgent(
     t,
     server,
     Utils.addNodeRedPortToConfig({}, NodeRedPort),
@@ -98,7 +98,7 @@ test.serial('Auth.3: Agent handles auth request failure(http)', async t => {
   const configFile = Utils.createDummyEnebularConfig({
     authRequestUrl: 'http://invalidate-url:3222/api/v1/token/device'
   })
-  const ret = await givenAgentConnectedToConnector(
+  const ret = await createConnectedAgent(
     t,
     Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
   )
@@ -130,7 +130,7 @@ test.serial(
     server.on('authRequest', authCallback)
 
     const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
-    const ret = await givenAgentConnectedToConnector(
+    const ret = await createConnectedAgent(
       t,
       Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
@@ -167,7 +167,7 @@ test.serial(
     server.on('authRequest', authCallback)
 
     const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
-    const ret = await givenAgentConnectedToConnector(
+    const ret = await createConnectedAgent(
       t,
       Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
@@ -193,7 +193,7 @@ test.serial(
   async t => {
     let authRequestReceived = false
 
-    const ret = await givenAgentAuthenticated(
+    const ret = await createAuthenticatedAgent(
       t,
       server,
       Utils.addNodeRedPortToConfig({}, NodeRedPort),
@@ -239,7 +239,7 @@ test.serial(
       { connectionId: 'return_bad_request' },
       DummyServerPort
     )
-    const ret = await givenAgentConnectedToConnector(
+    const ret = await createConnectedAgent(
       t,
       Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
@@ -264,7 +264,7 @@ test.serial(
   async t => {
     let authRequestReceived = 0
 
-    const ret = await givenAgentUnauthenticated(
+    const ret = await createUnauthenticatedAgent(
       t,
       server,
       Utils.addNodeRedPortToConfig({}, NodeRedPort),

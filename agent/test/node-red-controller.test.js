@@ -10,8 +10,8 @@ import NodeRedAdminApi from './helpers/node-red-admin-api'
 import Utils from './helpers/utils'
 import DummyServer from './helpers/dummy-server'
 import {
-  givenAgentUnauthenticated,
-  givenAgentConnectedToConnector,
+  createUnauthenticatedAgent,
+  createConnectedAgent,
   nodeRedIsAlive
 } from './helpers/agent-helper'
 
@@ -61,7 +61,7 @@ async function givenAgentRunningWithTestNodeRedSettings(t: test) {
     path.join(__dirname, 'data', 'node-red-test-settings')
   )
 
-  const ret = await givenAgentUnauthenticated(
+  const ret = await createUnauthenticatedAgent(
     t,
     server,
     {
@@ -86,7 +86,7 @@ test.serial(
   'NodeRedController.1.Agent starts/shutdowns node-red correctly',
   async t => {
     const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
-    const ret = await givenAgentConnectedToConnector(
+    const ret = await createConnectedAgent(
       t,
       Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
@@ -110,7 +110,7 @@ test.serial(
     let flowFileName = '/tmp/.enebular-flow-' + Utils.randomString() + '.json'
     fs.writeFileSync(flowFileName, data)
 
-    const ret = await givenAgentConnectedToConnector(t, {
+    const ret = await createConnectedAgent(t, {
       nodeRedCommand:
         './node_modules/.bin/node-red -p ' + NodeRedPort + ' ' + flowFileName
     })

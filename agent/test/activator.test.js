@@ -8,8 +8,8 @@ import Utils from './helpers/utils'
 import DummyServer from './helpers/dummy-server'
 import DummyServerConfig from './helpers/dummy-server-config'
 import {
-  givenAgentConnectedToConnector,
-  givenAgentStarted
+  createConnectedAgent,
+  createStartedAgent
 } from './helpers/agent-helper'
 
 const DummyServerPort = 3003
@@ -50,7 +50,7 @@ test.serial(
   'Activator.1: No enebular activator config, activator shall not be enabled',
   async t => {
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
-    const ret = await givenAgentConnectedToConnector(
+    const ret = await createConnectedAgent(
       t,
       Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
@@ -93,7 +93,7 @@ test.serial(
     server.on('verifyLicense', verifyCallback)
 
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
-    const ret = await givenAgentStarted(
+    const ret = await createStartedAgent(
       t,
       Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
@@ -123,7 +123,7 @@ test.serial(
     server.on('verifyLicense', verifyCallback)
 
     const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
-    const ret = await givenAgentConnectedToConnector(
+    const ret = await createConnectedAgent(
       t,
       Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
@@ -158,7 +158,7 @@ test.serial(
     server.on('activateLicense', activateCallback)
 
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
-    const ret = await givenAgentStarted(
+    const ret = await createStartedAgent(
       t,
       Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
@@ -197,7 +197,7 @@ test.serial('Activator.6: License is valid.', async t => {
   server.on('activateLicense', activateCallback)
 
   const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
-  const ret = await givenAgentStarted(
+  const ret = await createStartedAgent(
     t,
     Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
   )
