@@ -104,21 +104,12 @@ export async function givenAgentUnauthenticated(
   )
 }
 
-export function nodeRedIsAlive(port, timeout, checkDead) {
+export function nodeRedIsAlive(port, timeout) {
   return new Promise((resolve, reject) => {
     setTimeout(async () => {
       const api = new NodeRedAdminApi('http://127.0.0.1:' + port)
       const settings = await api.getSettings()
-
-      if (checkDead ? !settings : settings) {
-        resolve()
-      } else {
-        reject(new Error('Node RED server is ', checkDead ? 'dead' : 'alive'))
-      }
+      resolve(settings ? true : false)
     }, timeout || 500)
   })
-}
-
-export function nodeRedIsDead(port, timeout) {
-  return nodeRedIsAlive(port, timeout, true)
 }

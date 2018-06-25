@@ -16,7 +16,6 @@ const DummyServerPort = 3003
 const NodeRedPort = 4003
 
 let agent: EnebularAgent
-let connector: ConnectorService
 let server: DummyServer
 let http: Server
 
@@ -56,7 +55,6 @@ test.serial(
       Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
     agent = ret.agent
-    connector = ret.connector
 
     t.false(agent._activator._enabled)
   }
@@ -68,7 +66,7 @@ test.serial(
     process.env.ACTIVATOR_CONFIG_PATH = Utils.createBrokenEnebularActivationConfig()
 
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
-    connector = new ConnectorService()
+    const connector = new ConnectorService()
     let agentConfig = {}
     agentConfig['nodeRedDir'] = '../node-red'
     agentConfig['nodeRedCommand'] =
@@ -100,7 +98,6 @@ test.serial(
       Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
     agent = ret.agent
-    connector = ret.connector
 
     return new Promise(async (resolve, reject) => {
       setTimeout(() => {
@@ -131,7 +128,6 @@ test.serial(
       Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
     agent = ret.agent
-    connector = ret.connector
 
     return new Promise(async (resolve, reject) => {
       setTimeout(() => {
@@ -167,7 +163,6 @@ test.serial(
       Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
     agent = ret.agent
-    connector = ret.connector
 
     return new Promise(async (resolve, reject) => {
       setTimeout(() => {
@@ -207,14 +202,13 @@ test.serial('Activator.6: License is valid.', async t => {
     Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
   )
   agent = ret.agent
-  connector = ret.connector
 
   agent.on('connectorRegister', () => {
-    connector.updateRegistrationState(true, 'dummy_deviceId')
+    ret.connector.updateRegistrationState(true, 'dummy_deviceId')
   })
 
   agent.on('connectorConnect', () => {
-    connector.updateConnectionState(true)
+    ret.connector.updateConnectionState(true)
     connectorConnectReceived = true
   })
 

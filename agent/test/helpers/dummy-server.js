@@ -55,7 +55,7 @@ export default class DummyServer extends EventEmitter {
       server.emit('notifyStatus', req.body)
       res.sendStatus(200)
     })
-    app.get('/test/download-flow', (req, res) => {
+    app.get(DummyServerConfig.downloadFlowURL, (req, res) => {
       console.log('download', req.query)
       const flowName = req.query.flow
       const json = fs.readFileSync(

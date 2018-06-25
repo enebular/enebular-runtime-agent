@@ -18,7 +18,6 @@ const DummyServerPort = 3005
 const NodeRedPort = 4005
 
 let agent: EnebularAgent
-let connector: ConnectorService
 let server: DummyServer
 let http: Server
 
@@ -54,8 +53,7 @@ test.serial(
   'Core.1: No activator config present, agent connects to connector',
   t => {
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
-
-    connector = new ConnectorService()
+    const connector = new ConnectorService()
     let agentConfig = {}
     agentConfig['nodeRedDir'] = '../node-red'
     agentConfig['nodeRedCommand'] =
@@ -88,14 +86,13 @@ test.serial('Core.2: Agent correctly handle register message', async t => {
     Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
   )
   agent = ret.agent
-  connector = ret.connector
   const config = {
     connectionId: 'dummy_connectionId',
     deviceId: 'dummy_deviceId',
     authRequestUrl: 'http://dummy.authRequestUrl',
     agentManagerBaseUrl: 'http://dummy.agentManagerBaseUrl'
   }
-  connector.sendMessage('register', config)
+  ret.connector.sendMessage('register', config)
   return new Promise(async (resolve, reject) => {
     setTimeout(() => {
       let configFromFile = require(configFile)
@@ -126,7 +123,6 @@ test.serial(
       Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
     agent = ret.agent
-    connector = ret.connector
     const config = {
       connectionId: 'dummy_connectionId',
       deviceId: 'dummy_deviceId',
@@ -137,7 +133,7 @@ test.serial(
       agentManagerBaseUrl: 'http://dummy.agentManagerBaseUrl'
     }
     // Send register message from connector.
-    connector.sendMessage('register', config)
+    ret.connector.sendMessage('register', config)
     return new Promise(async (resolve, reject) => {
       setTimeout(() => {
         fs.unlink(configFile, err => {
@@ -166,7 +162,6 @@ test.serial(
       Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
     agent = ret.agent
-    connector = ret.connector
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         fs.unlink(configFile, err => {
@@ -194,7 +189,6 @@ test.serial(
       DummyServerPort
     )
     agent = ret.agent
-    connector = ret.connector
     t.true(notifyStatusReceived)
   }
 )
@@ -215,7 +209,6 @@ test.serial(
       DummyServerPort
     )
     agent = ret.agent
-    connector = ret.connector
 
     // shut down agent should trigger records-log request
     await agent.shutdown()
@@ -251,7 +244,6 @@ test.serial(
       DummyServerPort
     )
     agent = ret.agent
-    connector = ret.connector
 
     let runningTime = 8
     return new Promise(async (resolve, reject) => {
@@ -288,7 +280,6 @@ test.serial(
       DummyServerPort
     )
     agent = ret.agent
-    connector = ret.connector
 
     let runningTime = 10
     return new Promise(async (resolve, reject) => {
@@ -324,14 +315,13 @@ test.serial(
       DummyServerPort
     )
     agent = ret.agent
-    connector = ret.connector
 
     // callback to process unauthentication.
     const authCallback = req => {
       authRequestReceived = true
       // unauthenticate the agent by clearing accessToken
       let token = jwt.sign({ nonce: req.nonce }, 'dummy')
-      connector.sendMessage('updateAuth', {
+      ret.connector.sendMessage('updateAuth', {
         idToken: token,
         accessToken: '-',
         state: req.state
@@ -342,7 +332,7 @@ test.serial(
     return new Promise(async (resolve, reject) => {
       setTimeout(() => {
         // trigger auth request
-        connector.sendMessage('updateAuth', {
+        ret.connector.sendMessage('updateAuth', {
           idToken: '-',
           accessToken: '-',
           state: '-'

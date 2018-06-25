@@ -62,13 +62,12 @@ test.serial(
       DummyServerPort
     )
     agent = ret.agent
-    connector = ret.connector
 
     server.on('authRequest', () => {
       // console.log("authRequest received.");
       authRequestReceived = true
     })
-    connector.sendMessage('updateAuth', {
+    ret.connector.sendMessage('updateAuth', {
       idToken: '-',
       accessToken: '-',
       state: '-'
@@ -90,7 +89,6 @@ test.serial('Auth.2: Agent can be authenticated', async t => {
     DummyServerPort
   )
   agent = ret.agent
-  connector = ret.connector
 
   t.is(agent._agentState, 'authenticated')
   t.is(agent._agentMan._accessToken, 'dummy_access_token')
@@ -105,7 +103,6 @@ test.serial('Auth.3: Agent handles auth request failure(http)', async t => {
     Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
   )
   agent = ret.agent
-  connector = ret.connector
   return new Promise(async (resolve, reject) => {
     setTimeout(async () => {
       fs.unlink(configFile, err => {
@@ -203,13 +200,12 @@ test.serial(
       DummyServerPort
     )
     agent = ret.agent
-    connector = ret.connector
 
     const authCallback = req => {
       authRequestReceived = true
       // unauthenticate the agent by clearing accessToken
       let token = jwt.sign({ nonce: req.nonce }, 'dummy')
-      connector.sendMessage('updateAuth', {
+      ret.connector.sendMessage('updateAuth', {
         idToken: token,
         accessToken: '-',
         state: req.state
@@ -218,7 +214,7 @@ test.serial(
     server.on('authRequest', authCallback)
 
     // trigger auth request
-    connector.sendMessage('updateAuth', {
+    ret.connector.sendMessage('updateAuth', {
       idToken: '-',
       accessToken: '-',
       state: '-'
@@ -248,7 +244,6 @@ test.serial(
       Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
     agent = ret.agent
-    connector = ret.connector
 
     const authCallback = req => {
       authRequestReceived++
@@ -276,7 +271,6 @@ test.serial(
       DummyServerPort
     )
     agent = ret.agent
-    connector = ret.connector
 
     const authCallback = req => {
       authRequestReceived++

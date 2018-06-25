@@ -12,7 +12,6 @@ import DummyServer from './helpers/dummy-server'
 import {
   givenAgentUnauthenticated,
   givenAgentConnectedToConnector,
-  nodeRedIsDead,
   nodeRedIsAlive
 } from './helpers/agent-helper'
 
@@ -80,10 +79,7 @@ async function givenAgentRunningWithTestNodeRedSettings(t: test) {
   connector = ret.connector
 
   // console.log("user directory: ", agent._nodeRed._getDataDir())
-  await nodeRedIsAlive(NodeRedPort).catch(err => {
-    console.log(err)
-    t.fail()
-  })
+  t.true(await nodeRedIsAlive(NodeRedPort))
 }
 
 test.serial(
@@ -95,19 +91,10 @@ test.serial(
       Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
     )
     agent = ret.agent
-    connector = ret.connector
 
-    await nodeRedIsAlive(NodeRedPort, 3000).catch(err => {
-      console.log(err)
-      t.fail()
-    })
-
+    t.true(await nodeRedIsAlive(NodeRedPort, 3000))
     await agent.shutdown()
-    await nodeRedIsDead(NodeRedPort, 1).catch(err => {
-      console.log(err)
-      t.fail()
-    })
-    t.pass()
+    t.false(await nodeRedIsAlive(NodeRedPort, 1))
   }
 )
 
@@ -128,12 +115,8 @@ test.serial(
         './node_modules/.bin/node-red -p ' + NodeRedPort + ' ' + flowFileName
     })
     agent = ret.agent
-    connector = ret.connector
 
-    await nodeRedIsAlive(NodeRedPort).catch(err => {
-      console.log(err)
-      t.fail()
-    })
+    t.true(await nodeRedIsAlive(NodeRedPort))
     // update the flow
     const expectedFlowJson = fs.readFileSync(
       path.join(__dirname, 'data', 'flow2.json'),
@@ -141,7 +124,7 @@ test.serial(
     )
     fs.writeFileSync(flowFileName, expectedFlowJson)
 
-    connector.sendMessage('restart')
+    ret.connector.sendMessage('restart')
     return new Promise((resolve, reject) => {
       setTimeout(async () => {
         const flow = await api.getFlow()
@@ -242,15 +225,9 @@ test.serial(
     await givenAgentRunningWithTestNodeRedSettings(t, server)
 
     connector.sendMessage('shutdown')
-    await nodeRedIsDead(NodeRedPort).catch(err => {
-      t.fail(err)
-    })
-
+    t.false(await nodeRedIsAlive(NodeRedPort))
     connector.sendMessage('start')
-    await nodeRedIsAlive(NodeRedPort, 5000).catch(err => {
-      t.fail(err)
-    })
-    t.pass()
+    t.true(await nodeRedIsAlive(NodeRedPort, 5000))
   }
 )
 
