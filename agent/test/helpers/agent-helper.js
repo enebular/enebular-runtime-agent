@@ -1,4 +1,5 @@
-import test from 'ava';
+/* @flow */
+import test from 'ava'
 import fs from 'fs'
 import jwt from 'jsonwebtoken'
 
@@ -8,54 +9,64 @@ import DummyEnebularServer from './dummy-server'
 import NodeRedAdminApi from './node-red-admin-api'
 import Utils from './utils'
 
-export async function givenAgentStarted(t: test, agentConfig: EnebularAgentConfig) {
+export async function givenAgentStarted(
+  t: test,
+  agentConfig: EnebularAgentConfig
+) {
   let connector = new ConnectorService()
   let _agentConfig = {}
-  _agentConfig['nodeRedDir'] = "../node-red"
-  _agentConfig['nodeRedCommand'] = "./node_modules/.bin/node-red -p 1990"
+  _agentConfig['nodeRedDir'] = '../node-red'
+  _agentConfig['nodeRedCommand'] = './node_modules/.bin/node-red -p 1990'
 
   agentConfig = Object.assign(_agentConfig, agentConfig)
-  let agent = new EnebularAgent(connector, agentConfig);
+  let agent = new EnebularAgent(connector, agentConfig)
 
-  await agent.startup();
+  await agent.startup()
   connector.updateActiveState(true)
-  return {agent: agent, connector: connector}
+  return { agent: agent, connector: connector }
 }
 
-export async function givenAgentConnectedToConnector(t: test, agentConfig: EnebularAgentConfig) {
+export async function givenAgentConnectedToConnector(
+  t: test,
+  agentConfig: EnebularAgentConfig
+) {
   let connector = new ConnectorService()
   let _agentConfig = {}
-  _agentConfig['nodeRedDir'] = "../node-red"
-  _agentConfig['nodeRedCommand'] = "./node_modules/.bin/node-red -p 1990"
+  _agentConfig['nodeRedDir'] = '../node-red'
+  _agentConfig['nodeRedCommand'] = './node_modules/.bin/node-red -p 1990'
 
   agentConfig = Object.assign(_agentConfig, agentConfig)
-  let agent = new EnebularAgent(connector, agentConfig);
+  let agent = new EnebularAgent(connector, agentConfig)
 
-  return await new Promise(async (resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     agent.on('connectorConnect', async () => {
       connector.updateConnectionState(true)
-      resolve({agent: agent, connector: connector});
+      resolve({ agent: agent, connector: connector })
     })
 
-    await agent.startup();
+    await agent.startup()
     connector.updateActiveState(true)
-    connector.updateRegistrationState(true, "dummy_deviceId");
+    connector.updateRegistrationState(true, 'dummy_deviceId')
     setTimeout(async () => {
       reject(new Error('no connect request.'))
     }, 1000)
   })
 }
 
-export async function givenAgentAuthenticated(t: test,
-    server: DummyEnebularServer, agentConfig: EnebularAgentConfig, port: number) {
+export async function givenAgentAuthenticated(
+  t: test,
+  server: DummyEnebularServer,
+  agentConfig: EnebularAgentConfig,
+  port: number
+) {
   let authRequestReceived = false
-  const authCallback = (req) => {
+  const authCallback = req => {
     // console.log("authRequest received.", req);
-    let token = jwt.sign({ nonce: req.nonce }, 'dummy');
+    let token = jwt.sign({ nonce: req.nonce }, 'dummy')
     authRequestReceived = true
     connector.sendMessage('updateAuth', {
-      idToken: token, 
-      accessToken: "dummy_access_token",
+      idToken: token,
+      accessToken: 'dummy_access_token',
       state: req.state
     })
   }
@@ -63,36 +74,45 @@ export async function givenAgentAuthenticated(t: test,
 
   // An existing registered config
   const configFile = Utils.getDummyEnebularConfig({}, port)
-  const {agent, connector} = await givenAgentConnectedToConnector(t,
-      Object.assign({configFile: configFile}, agentConfig));
-  return await new Promise(async (resolve, reject) => {
+  const { agent, connector } = await givenAgentConnectedToConnector(
+    t,
+    Object.assign({ configFile: configFile }, agentConfig)
+  )
+  return new Promise(async (resolve, reject) => {
     setTimeout(async () => {
-      fs.unlink(configFile, (err) => {});
+      fs.unlink(configFile, err => {
+        err = null
+      })
       t.true(authRequestReceived)
       server.removeListener('authRequest', authCallback)
-      resolve({agent: agent, connector: connector})
+      resolve({ agent: agent, connector: connector })
     }, 500)
   })
 }
 
-export async function givenAgentUnauthenticated(t: test,
-    server: DummyEnebularServer, agentConfig: EnebularAgentConfig, port: number) {
+export async function givenAgentUnauthenticated(
+  t: test,
+  server: DummyEnebularServer,
+  agentConfig: EnebularAgentConfig,
+  port: number
+) {
   // An existing registered config
   const configFile = Utils.getDummyEnebularConfig({}, port)
-  return await givenAgentConnectedToConnector(t,
-      Object.assign({configFile: configFile}, agentConfig));
+  return givenAgentConnectedToConnector(
+    t,
+    Object.assign({ configFile: configFile }, agentConfig)
+  )
 }
 
 export function nodeRedIsAlive(port, timeout) {
   return new Promise((resolve, reject) => {
     setTimeout(async () => {
-      const api = new NodeRedAdminApi("http://127.0.0.1:" + port);
+      const api = new NodeRedAdminApi('http://127.0.0.1:' + port)
       const settings = await api.getSettings()
       if (settings) {
         resolve()
-      }
-      else {
-        reject(new Error("Node RED server is dead."))
+      } else {
+        reject(new Error('Node RED server is dead.'))
       }
     }, timeout || 500)
   })
@@ -101,16 +121,13 @@ export function nodeRedIsAlive(port, timeout) {
 export function nodeRedIsDead(port, timeout) {
   return new Promise((resolve, reject) => {
     setTimeout(async () => {
-      const api = new NodeRedAdminApi("http://127.0.0.1:" + port);
+      const api = new NodeRedAdminApi('http://127.0.0.1:' + port)
       const settings = await api.getSettings()
       if (!settings) {
         resolve()
-      }
-      else {
-        reject(new Error("Node RED server is alive."))
+      } else {
+        reject(new Error('Node RED server is alive.'))
       }
     }, 500)
   })
 }
-
-

@@ -1,3 +1,4 @@
+/* @flow */
 import fetch from 'isomorphic-fetch'
 
 /**
@@ -17,7 +18,7 @@ export default class NodeRedAdminApi {
       const res = await fetch(`${this._baseUrl}/${method}`, {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         }
       })
       if (res.status >= 400) {
@@ -25,9 +26,8 @@ export default class NodeRedAdminApi {
         throw new Error(ret.message || res.statusText)
       }
       return res.json()
-    }
-    catch(err) {
-      console.log("error:", err.message);
+    } catch (err) {
+      console.log('error:', err.message)
     }
   }
 
