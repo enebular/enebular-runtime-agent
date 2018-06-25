@@ -90,7 +90,7 @@ export default class EnebularAgent extends EventEmitter {
   _monitoringActivated: boolean = false
   _monitoringUpdateID: ?number
   _monitorIntervalFast: ?number
-  _monitorIntervalFastPeroid: ?number
+  _monitorIntervalFastPeriod: ?number
   _monitorIntervalNormal: ?number
   _notifyStatusActivated: boolean = false
   _notifyStatusInterval: number
@@ -111,7 +111,7 @@ export default class EnebularAgent extends EventEmitter {
     } = config
 
     this._monitorIntervalFast = monitorIntervalFast
-    this._monitorIntervalFastPeroid = monitorIntervalFastPeriod
+    this._monitorIntervalFastPeriod = monitorIntervalFastPeriod
     this._monitorIntervalNormal = monitorIntervalNormal
     this._connector = connector
     connector.on('activeChange', () => this._onConnectorActiveChange())
@@ -240,7 +240,7 @@ export default class EnebularAgent extends EventEmitter {
       this._setMonitoringInterval(this._monitorIntervalFast)
       this._monitoringUpdateID = setTimeout(() => {
         this._setMonitoringInterval(this._monitorIntervalNormal)
-      }, this._monitorIntervalFastPeroid * 1000)
+      }, this._monitorIntervalFastPeriod * 1000)
     }
   }
 
