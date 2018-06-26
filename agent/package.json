@@ -11,7 +11,8 @@
     "build:flow": "flow-copy-source -v src lib",
     "flow": "flow",
     "lint": "eslint src",
-    "test": "ava"
+    "test": "ava",
+    "test:serial": "ava --serial"
   },
   "devDependencies": {
     "ava": "^0.25.0",
