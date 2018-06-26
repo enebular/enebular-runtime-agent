@@ -42,6 +42,29 @@ export type AWSIoTConfig = {
   thingName: string
 }
 
+async function endThingShadow() {
+  return new Promise((resolve, reject) => {
+    thingShadow.end(false, () => {
+      resolve()
+    })
+  })
+}
+
+function updateThingShadow(state) {
+  let clientToken = thingShadow.update(thingName, {
+    state: state
+  })
+  if (clientToken === null) {
+    error('Shadow update failed')
+  } else {
+    debug(`Shadow update requested (${clientToken})`)
+  }
+}
+
+function updateThingShadowConnectedState(connected: boolean) {
+  updateThingShadow({ reported: { connected: connected } })
+}
+
 function handleThingShadowRegisterStateChange(registered: boolean) {
   if (registered === thingShadowRegistered) {
     return
@@ -64,10 +87,14 @@ function updateThingShadowRegisterState() {
         persistentSubscribe: true
       },
       err => {
+        if (!err) {
+          updateThingShadowConnectedState(true)
+        }
         handleThingShadowRegisterStateChange(!err)
       }
     )
   } else {
+    updateThingShadowConnectedState(false)
     thingShadow.unregister(thingName)
     handleThingShadowRegisterStateChange(false)
   }
@@ -82,14 +109,7 @@ function handleStateMessageChange(messageJSON: string) {
     error('Message parse failed. ' + err)
   }
   const newState = { message: messageJSON }
-  let clientToken = thingShadow.update(thingName, {
-    state: { reported: newState }
-  })
-  if (clientToken === null) {
-    error('Shadow update failed')
-  } else {
-    debug(`Shadow update requested (${clientToken})`)
-  }
+  updateThingShadow({ reported: newState })
 }
 
 function setupThingShadow(config: AWSIoTConfig) {
@@ -192,7 +212,12 @@ async function startup() {
 }
 
 async function shutdown() {
-  return agent.shutdown()
+  await agent.shutdown()
+  if (awsIotConnected) {
+    canRegisterThingShadow = false
+    updateThingShadowRegisterState()
+    await endThingShadow()
+  }
 }
 
 async function exit() {
