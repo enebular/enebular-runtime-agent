@@ -46,7 +46,7 @@ test.afterEach.always('cleanup', async t => {
   server.setLogReturnBadRequest(false)
 })
 
-test.serial('Log.1.Log cache size is within max cache size', async t => {
+test.serial('Log.1: Log cache size is within max cache size', async t => {
   let totalSize = 0
   let maxSize = 1 * 1024 * 1024
   let tmpLogCacheDir = '/tmp/enebular-log-cache-' + Utils.randomString()
@@ -96,7 +96,7 @@ test.serial('Log.1.Log cache size is within max cache size', async t => {
   })
 })
 
-test.serial('Log.2.Log is sent to server periodically', async t => {
+test.serial('Log.2: Log is sent to server periodically', async t => {
   let tmpLogCacheDir = '/tmp/enebular-log-cache-' + Utils.randomString()
   let recordLogsReceived = 0
   const logCallback = req => {
@@ -137,7 +137,7 @@ test.serial('Log.2.Log is sent to server periodically', async t => {
   })
 })
 
-test.serial('Log.3.Log level is handled correctly', async t => {
+test.serial('Log.3: Log level is handled correctly', async t => {
   let tmpLogCacheDir = '/tmp/enebular-log-cache-' + Utils.randomString()
   const logCallback = file => {
     const log = file.buffer.toString()
@@ -182,7 +182,7 @@ test.serial('Log.3.Log level is handled correctly', async t => {
 
 // TODO: the max size per interval maybe exceed as it stops caching after reaching the limit.
 test.serial.skip(
-  'Log.4.Size of each log is within max size per interval',
+  'Log.4: Size of each log is within max size per interval',
   async t => {
     let tmpLogCacheDir = '/tmp/enebular-log-cache-' + Utils.randomString()
     const logCallback = file => {

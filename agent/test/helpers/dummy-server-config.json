@@ -4,7 +4,8 @@
   "verifyLicenseURL": "/enebular/verify-license",
   "notifyStatusURL": "/agent-manager/notify-status",
   "recordLogsURL": "/agent-manager/record-logs",
-  "downloadFlowURL": "/test/download-flow"
+  "downloadFlowURL": "/test/download-flow",
+  "credsURL": "/test/creds"
 }
 
 

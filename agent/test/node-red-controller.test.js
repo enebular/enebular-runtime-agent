@@ -50,7 +50,10 @@ test.afterEach.always('cleanup', async t => {
   }
 })
 
-async function givenAgentRunningWithTestNodeRedSettings(t: test) {
+async function createAgentRunningWithTestNodeRedSettings(
+  t: test,
+  withCredentialSecret: boolean
+) {
   tmpNodeRedDataDir = '/tmp/.node-red-config-' + Utils.randomString()
   await Utils.rsync(
     tmpNodeRedDataDir + '/',
@@ -58,7 +61,13 @@ async function givenAgentRunningWithTestNodeRedSettings(t: test) {
   )
   await Utils.rsync(
     tmpNodeRedDataDir + '/test-settings.js',
-    path.join(__dirname, 'data', 'node-red-test-settings')
+    path.join(
+      __dirname,
+      'data',
+      withCredentialSecret
+        ? 'node-red-test-settings-with-credential-secret'
+        : 'node-red-test-settings'
+    )
   )
 
   const ret = await createUnauthenticatedAgent(
@@ -83,7 +92,7 @@ async function givenAgentRunningWithTestNodeRedSettings(t: test) {
 }
 
 test.serial(
-  'NodeRedController.1.Agent starts/shutdowns node-red correctly',
+  'NodeRedController.1: Agent starts/shutdowns node-red correctly',
   async t => {
     const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
     const ret = await createConnectedAgent(
@@ -99,7 +108,7 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedController.2.Agent restarts node-red correctly',
+  'NodeRedController.2: Agent restarts node-red correctly',
   async t => {
     const api = new NodeRedAdminApi('http://127.0.0.1:' + NodeRedPort)
 
@@ -144,9 +153,9 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedController.3.Agent handles deploy message correctly',
+  'NodeRedController.3: Agent handles deploy message correctly',
   async t => {
-    await givenAgentRunningWithTestNodeRedSettings(t, server)
+    await createAgentRunningWithTestNodeRedSettings(t)
 
     // update the flow
     const expectedFlowName = 'flow1.json'
@@ -182,9 +191,9 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedController.4.Agent handles update-flow message correctly',
+  'NodeRedController.4: Agent handles update-flow message correctly',
   async t => {
-    await givenAgentRunningWithTestNodeRedSettings(t, server)
+    await createAgentRunningWithTestNodeRedSettings(t)
 
     // update the flow
     const expectedFlowName = 'flow2.json'
@@ -220,9 +229,9 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedController.5.Agent handles shutdown/start message correctly',
+  'NodeRedController.5: Agent handles shutdown/start message correctly',
   async t => {
-    await givenAgentRunningWithTestNodeRedSettings(t, server)
+    await createAgentRunningWithTestNodeRedSettings(t)
 
     connector.sendMessage('shutdown')
     t.false(await nodeRedIsAlive(NodeRedPort))
@@ -232,9 +241,9 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedController.6.Agent handles deploy dependencies correctly',
+  'NodeRedController.6: Agent handles deploy dependencies correctly',
   async t => {
-    await givenAgentRunningWithTestNodeRedSettings(t, server)
+    await createAgentRunningWithTestNodeRedSettings(t)
 
     // update the flow
     const expectedFlowName = 'flow1.json'
@@ -263,6 +272,101 @@ test.serial(
   }
 )
 
-test.serial.todo(
-  'TODO: NodeRedController.7.Agent handles deploy creds correctly'
+test.serial(
+  'NodeRedController.7: Agent accepts flow credentials correctly if secret is specified',
+  async t => {
+    await createAgentRunningWithTestNodeRedSettings(t, true)
+
+    let credsCheckReceived = false
+    const credsCheckCallback = (login, password) => {
+      t.is(login, 'username')
+      t.is(password, 'abcdef')
+      credsCheckReceived = true
+    }
+    server.on('credsCheck', credsCheckCallback)
+
+    // update the flow
+    const expectedFlowName = 'flow_encrypted_creds.json'
+    const url =
+      'http://127.0.0.1:' +
+      DummyServerPort +
+      '/test/download-flow?flow=' +
+      expectedFlowName
+    connector.sendMessage('deploy', {
+      downloadUrl: url
+    })
+    return new Promise((resolve, reject) => {
+      setTimeout(async () => {
+        t.true(credsCheckReceived)
+        server.removeListener('credsCheck', credsCheckCallback)
+        resolve()
+      }, 4000)
+    })
+  }
+)
+
+test.serial(
+  'NodeRedController.8: Agent fails to recover flow credentials without secret',
+  async t => {
+    await createAgentRunningWithTestNodeRedSettings(t)
+
+    let credsCheckReceived = false
+    const credsCheckCallback = (login, password) => {
+      t.is(login, '')
+      t.is(password, '')
+      credsCheckReceived = true
+    }
+    server.on('credsCheck', credsCheckCallback)
+
+    // update the flow
+    const expectedFlowName = 'flow_encrypted_creds.json'
+    const url =
+      'http://127.0.0.1:' +
+      DummyServerPort +
+      '/test/download-flow?flow=' +
+      expectedFlowName
+    connector.sendMessage('deploy', {
+      downloadUrl: url
+    })
+    return new Promise((resolve, reject) => {
+      setTimeout(async () => {
+        t.true(credsCheckReceived)
+        server.removeListener('credsCheck', credsCheckCallback)
+        resolve()
+      }, 4000)
+    })
+  }
+)
+
+test.serial(
+  'NodeRedController.9: Agent accepts clear text flow credentials correctly',
+  async t => {
+    await createAgentRunningWithTestNodeRedSettings(t)
+
+    let credsCheckReceived = false
+    const credsCheckCallback = (login, password) => {
+      t.is(login, 'username')
+      t.is(password, 'abcdef')
+      credsCheckReceived = true
+    }
+    server.on('credsCheck', credsCheckCallback)
+
+    // update the flow
+    const expectedFlowName = 'flow_clear_text_creds.json'
+    const url =
+      'http://127.0.0.1:' +
+      DummyServerPort +
+      '/test/download-flow?flow=' +
+      expectedFlowName
+    connector.sendMessage('deploy', {
+      downloadUrl: url
+    })
+    return new Promise((resolve, reject) => {
+      setTimeout(async () => {
+        t.true(credsCheckReceived)
+        server.removeListener('credsCheck', credsCheckCallback)
+        resolve()
+      }, 4000)
+    })
+  }
 )
