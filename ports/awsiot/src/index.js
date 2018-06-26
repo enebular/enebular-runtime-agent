@@ -113,6 +113,10 @@ function handleStateMessageChange(messageJSON: string) {
 }
 
 function setupThingShadow(config: AWSIoTConfig) {
+  config['will'] = {
+    topic: `enebular/things/${config.thingName}/shadow/update`,
+    payload:  '{ "state" : { "reported" : { "connected" : "false" }}}'
+  }
   const shadow = awsIot.thingShadow(config)
 
   shadow.on('connect', () => {
