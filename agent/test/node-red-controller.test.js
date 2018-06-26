@@ -273,7 +273,41 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedController.7: Agent accepts flow credentials correctly if secret is specified',
+  'NodeRedController.7: Agent handles deploy credentials correctly',
+  async t => {
+    await createAgentRunningWithTestNodeRedSettings(t)
+
+    // update the flow
+    const expectedFlowName = 'flow_clear_text_creds.json'
+    const url =
+      'http://127.0.0.1:' +
+      DummyServerPort +
+      '/test/download-flow?flow=' +
+      expectedFlowName
+    connector.sendMessage('deploy', {
+      downloadUrl: url
+    })
+    return new Promise((resolve, reject) => {
+      setTimeout(async () => {
+        const flowCredsPath = path.join(
+          __dirname,
+          'data',
+          'creds_of_' + expectedFlowName
+        )
+
+        const expectedCredJson = fs.readFileSync(flowCredsPath, 'utf8')
+        const expectedCred = JSON.parse(expectedCredJson)
+        const credJson = fs.readFileSync(tmpNodeRedDataDir + "/flows_cred.json", 'utf8')
+        const cred = JSON.parse(credJson)
+        t.deepEqual(cred, expectedCred)
+        resolve()
+      }, 4000)
+    })
+  }
+)
+
+test.serial.skip(
+  'NodeRedController.8: Agent accepts flow credentials correctly if secret is specified',
   async t => {
     await createAgentRunningWithTestNodeRedSettings(t, true)
 
@@ -305,8 +339,8 @@ test.serial(
   }
 )
 
-test.serial(
-  'NodeRedController.8: Agent fails to recover flow credentials without secret',
+test.serial.skip(
+  'NodeRedController.9: Agent fails to recover flow credentials without secret',
   async t => {
     await createAgentRunningWithTestNodeRedSettings(t)
 
@@ -338,8 +372,8 @@ test.serial(
   }
 )
 
-test.serial(
-  'NodeRedController.9: Agent accepts clear text flow credentials correctly',
+test.serial.skip(
+  'NodeRedController.10: Agent accepts clear text flow credentials correctly',
   async t => {
     await createAgentRunningWithTestNodeRedSettings(t)
 
