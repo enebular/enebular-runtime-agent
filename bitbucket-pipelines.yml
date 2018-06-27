@@ -1,0 +1,15 @@
+image: node:8.10.0
+
+pipelines:
+  default: 
+    - step:
+        caches:
+        - node
+        script:
+        - echo "hello enebular-agent-runtime"
+        - node -v
+        - npm -v
+        - npm config set -g production false
+        - cd node-red && npm i
+        - cd ../agent && npm i
+        - npm run test:serial
