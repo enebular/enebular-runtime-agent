@@ -50,10 +50,20 @@ async function endThingShadow() {
   })
 }
 
+function createThingShadowReportedStateRoot(state) {
+  return { state: { reported: state } }
+}
+
+function createThingShadowReportedState(state) {
+  return createThingShadowReportedStateRoot({ enebular: state })
+}
+
+function createThingShadowReportedStatusConnectedState(connected) {
+  return createThingShadowReportedState({ status: { connected: connected } })
+}
+
 function updateThingShadow(state) {
-  let clientToken = thingShadow.update(thingName, {
-    state: state
-  })
+  let clientToken = thingShadow.update(thingName, state)
   if (clientToken === null) {
     error('Shadow update failed')
   } else {
@@ -61,8 +71,12 @@ function updateThingShadow(state) {
   }
 }
 
-function updateThingShadowConnectedState(connected: boolean) {
-  updateThingShadow({ reported: { connected: connected } })
+function updateThingShadowReportedRoot(reportedState) {
+  updateThingShadow(createThingShadowReportedStateRoot(reportedState))
+}
+
+function updateThingShadowReportedStatusConnectedState(connected: boolean) {
+  updateThingShadow(createThingShadowReportedStatusConnectedState(connected))
 }
 
 function handleThingShadowRegisterStateChange(registered: boolean) {
@@ -88,13 +102,13 @@ function updateThingShadowRegisterState() {
       },
       err => {
         if (!err) {
-          updateThingShadowConnectedState(true)
+          updateThingShadowReportedStatusConnectedState(true)
         }
         handleThingShadowRegisterStateChange(!err)
       }
     )
   } else {
-    updateThingShadowConnectedState(false)
+    updateThingShadowReportedStatusConnectedState(false)
     thingShadow.unregister(thingName)
     handleThingShadowRegisterStateChange(false)
   }
@@ -108,14 +122,14 @@ function handleStateMessageChange(messageJSON: string) {
   } catch (err) {
     error('Message parse failed. ' + err)
   }
-  const newState = { message: messageJSON }
-  updateThingShadow({ reported: newState })
+  updateThingShadowReportedRoot({ message: messageJSON })
 }
 
 function setupThingShadow(config: AWSIoTConfig) {
+  let willPayload = createThingShadowReportedStatusConnectedState(false)
   config['will'] = {
     topic: `enebular/things/${config.thingName}/shadow/update`,
-    payload:  '{ "state" : { "reported" : { "connected" : "false" }}}'
+    payload: JSON.stringify(willPayload)
   }
   const shadow = awsIot.thingShadow(config)
 
