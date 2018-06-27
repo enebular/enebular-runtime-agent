@@ -56,6 +56,7 @@ export default class DeviceAuthMediator extends EventEmitter {
         this.debug('ID token:', payload)
         if (
           state === `req-${this._seq}` &&
+          payload &&
           payload.nonce &&
           payload.nonce === this._nonce
         ) {

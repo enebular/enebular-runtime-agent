@@ -12,7 +12,8 @@ export type LogManagerConfig = {
   filePath?: string,
   enableEnebular?: boolean,
   enebularCachePath?: string,
-  enebularMaxCacheSize?: number
+  enebularMaxCacheSize?: number,
+  enebularMaxSizePerInterval?: number
 }
 
 export default class LogManager {
@@ -28,7 +29,9 @@ export default class LogManager {
       filePath = '/var/log/enebular/enebular.log',
       enableEnebular = true,
       enebularCachePath = '/tmp/enebular-log-cache',
-      enebularMaxCacheSize = 2 * 1024 * 1024
+      enebularMaxCacheSize = 2 * 1024 * 1024,
+      enebularMaxSizePerInterval = 10 * 1024,
+      enebularSendInterval = 30
     } = config
 
     this._transports = {}
@@ -83,7 +86,8 @@ export default class LogManager {
         handleExceptions: true,
         cachePath: enebularCachePath,
         maxCacheSize: enebularMaxCacheSize,
-        maxSizePerInterval: 10 * 1024
+        maxSizePerInterval: enebularMaxSizePerInterval,
+        sendInterval: enebularSendInterval
       })
       this.addTransport(this._enebularTransport)
     }
