@@ -20,6 +20,7 @@ let thingShadow: awsIot.thingShadow
 let canRegisterThingShadow: boolean = false
 let thingShadowRegistered: boolean = false
 let awsIotConnected: boolean = false
+let operationResultHandlers = {}
 
 function log(level: string, msg: string, ...args: Array<mixed>) {
   args.push({ module: MODULE_NAME })
@@ -42,6 +43,13 @@ export type AWSIoTConfig = {
   thingName: string
 }
 
+function handleOperationResult(token, timeout, stat) {
+  if (operationResultHandlers.hasOwnProperty(token)) {
+    operationResultHandlers[token](timeout, stat)
+    delete operationResultHandlers[token]
+  }
+}
+
 async function endThingShadow() {
   return new Promise((resolve, reject) => {
     thingShadow.end(false, () => {
@@ -58,16 +66,23 @@ function createThingShadowReportedState(state) {
   return createThingShadowReportedStateRoot({ enebular: state })
 }
 
-function createThingShadowReportedStatusConnectedState(connected) {
-  return createThingShadowReportedState({ status: { connected: connected } })
+function createThingShadowReportedAwsIotConnectedState(connected) {
+  return createThingShadowReportedState({
+    awsiot: { connected: connected }
+  })
 }
 
 function updateThingShadow(state) {
-  let clientToken = thingShadow.update(thingName, state)
-  if (clientToken === null) {
-    error('Shadow update failed')
+  let token = thingShadow.update(thingName, state)
+  if (token === null) {
+    error('Shadow update request failed')
   } else {
-    debug(`Shadow update requested (${clientToken})`)
+    debug(`Shadow update requested (${token})`)
+    operationResultHandlers[token] = (timeout, stat) => {
+      if (timeout || stat !== 'accepted') {
+        error('Shadow update failed')
+      }
+    }
   }
 }
 
@@ -75,8 +90,13 @@ function updateThingShadowReportedRoot(reportedState) {
   updateThingShadow(createThingShadowReportedStateRoot(reportedState))
 }
 
-function updateThingShadowReportedStatusConnectedState(connected: boolean) {
-  updateThingShadow(createThingShadowReportedStatusConnectedState(connected))
+function updateThingShadowReportedAwsIotConnectedState(connected: boolean) {
+  debug(
+    `Updating shadow AWS IoT connection state to: ${
+      connected ? 'connected' : 'disconnected'
+    }`
+  )
+  updateThingShadow(createThingShadowReportedAwsIotConnectedState(connected))
 }
 
 function handleThingShadowRegisterStateChange(registered: boolean) {
@@ -101,14 +121,14 @@ function updateThingShadowRegisterState() {
         persistentSubscribe: true
       },
       err => {
-        if (!err) {
-          updateThingShadowReportedStatusConnectedState(true)
-        }
         handleThingShadowRegisterStateChange(!err)
+        if (!err) {
+          updateThingShadowReportedAwsIotConnectedState(true)
+        }
       }
     )
   } else {
-    updateThingShadowReportedStatusConnectedState(false)
+    updateThingShadowReportedAwsIotConnectedState(false)
     thingShadow.unregister(thingName)
     handleThingShadowRegisterStateChange(false)
   }
@@ -126,7 +146,11 @@ function handleStateMessageChange(messageJSON: string) {
 }
 
 function setupThingShadow(config: AWSIoTConfig) {
-  let willPayload = createThingShadowReportedStatusConnectedState(false)
+  /**
+   * Add a MQTT Last Will and Testament (LWT) so that the connection state in
+   * the shadow can be updated if the agent abruptly disconnects.
+   */
+  let willPayload = createThingShadowReportedAwsIotConnectedState(false)
   config['will'] = {
     topic: `enebular/things/${config.thingName}/shadow/update`,
     payload: JSON.stringify(willPayload)
@@ -135,8 +159,30 @@ function setupThingShadow(config: AWSIoTConfig) {
 
   shadow.on('connect', () => {
     info('Connected to AWS IoT')
+    let thingShadowAlreadyRegistered = thingShadowRegistered
+
     awsIotConnected = true
     updateThingShadowRegisterState()
+
+    /**
+     * If this 'connect' has occured while the agent is already up and running,
+     * then it signals that the agent has been disconnected from AWS IoT for a
+     * while and the LWT may have been executed resulting in the shadow now
+     * reporting a disconnected status.
+     *
+     * It therefore needs to be updated, and we do that by first 'getting' the
+     * shadow (to make sure we have the latest version) and then updating it.
+     */
+    if (thingShadowAlreadyRegistered) {
+      let token = thingShadow.get(thingName)
+      operationResultHandlers[token] = (timeout, stat) => {
+        if (!timeout && stat === 'accepted') {
+          updateThingShadowReportedAwsIotConnectedState(true)
+        } else {
+          error('Failed to get latest shadow version')
+        }
+      }
+    }
   })
 
   shadow.on('offline', () => {
@@ -158,11 +204,13 @@ function setupThingShadow(config: AWSIoTConfig) {
   })
 
   shadow.on('timeout', async (thingName, clientToken) => {
-    debug(`AWS IoT timeout (${clientToken})`)
+    debug(`AWS IoT operation timeout (${clientToken})`)
+    handleOperationResult(clientToken, true)
   })
 
   shadow.on('status', async (thingName, stat, clientToken, stateObject) => {
-    debug(`AWS IoT status: ${stat} (${clientToken})`)
+    debug(`AWS IoT operation status: ${stat} (${clientToken})`)
+    handleOperationResult(clientToken, false, stat)
   })
 
   shadow.on('message', (topic, payload) => {
