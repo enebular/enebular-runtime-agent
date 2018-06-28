@@ -30,9 +30,7 @@ test.afterEach.always('cleanup', async t => {
 })
 
 test.serial('Env.1: Agent starts if node-red path is valid', async t => {
-  let agentConfig = {}
-  agentConfig['nodeRedDir'] = '../node-red'
-  agentConfig['nodeRedCommand'] = './node_modules/.bin/node-red -p 30001'
+  let agentConfig = Utils.createDefaultAgentConfig(30001)
 
   const connector = new ConnectorService()
   t.notThrows(() => {
@@ -46,7 +44,8 @@ test.serial('Env.1: Agent starts if node-red path is valid', async t => {
 
 test.serial('Env.2: Agent fails to start if node-red path is invalid', t => {
   const connector = new ConnectorService()
-  let agentConfig = {}
+  let agentConfig = Utils.createDefaultAgentConfig(1990)
+
   agentConfig['nodeRedDir'] = '../node-red-invalid'
   agentConfig['configFile'] = '.enebular-config.json'
 
@@ -59,8 +58,7 @@ test.serial(
   'Env.3: Agent fails to start if node-red data path is invalid',
   t => {
     const connector = new ConnectorService()
-    let agentConfig = {}
-    agentConfig['nodeRedDir'] = '../node-red'
+    let agentConfig = Utils.createDefaultAgentConfig(1990)
     agentConfig['nodeRedDataDir'] = '../node-red-data-invalid'
     agentConfig['configFile'] = '.enebular-config.json'
 
@@ -72,10 +70,8 @@ test.serial(
 
 test.serial('Env.4: Agent starts if config file path is invalid', t => {
   const connector = new ConnectorService()
-  let agentConfig = {}
-  agentConfig['nodeRedDir'] = '../node-red'
+  let agentConfig = Utils.createDefaultAgentConfig(1990)
   agentConfig['configFile'] = '/tmp/invalid-path/file'
-  agentConfig['nodeRedCommand'] = './node_modules/.bin/node-red -p 1990'
 
   t.notThrows(() => {
     agent = new EnebularAgent(connector, agentConfig)
@@ -96,9 +92,7 @@ test.serial('Env.4: Agent starts if config file path is invalid', t => {
 })
 
 test.serial('Env.5: Agent takes nodeRedCommand to launch node-red', async t => {
-  let agentConfig = {}
-  agentConfig['nodeRedDir'] = '../node-red'
-  agentConfig['nodeRedCommand'] = './node_modules/.bin/node-red -p 30000'
+  let agentConfig = Utils.createDefaultAgentConfig(30000)
 
   const connector = new ConnectorService()
   t.notThrows(() => {
@@ -114,8 +108,7 @@ test.serial(
   'Env.6: Agent fails to start if command to launch node-red is invalid',
   async t => {
     const connector = new ConnectorService()
-    let agentConfig = {}
-    agentConfig['nodeRedDir'] = '../node-red'
+    let agentConfig = Utils.createDefaultAgentConfig(1990)
     agentConfig['nodeRedCommand'] = './node_modules/.bin/node-red-invalid'
 
     t.notThrows(() => {
@@ -138,10 +131,8 @@ test.serial('Env.7: Agent starts normally with no config file', async t => {
   let configFileName = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
 
   const connector = new ConnectorService()
-  let agentConfig = {}
-  agentConfig['nodeRedDir'] = '../node-red'
+  let agentConfig = Utils.createDefaultAgentConfig(1990)
   agentConfig['configFile'] = configFileName
-  agentConfig['nodeRedCommand'] = './node_modules/.bin/node-red -p 1990'
 
   t.notThrows(() => {
     agent = new EnebularAgent(connector, agentConfig)
@@ -163,10 +154,8 @@ test.serial('Env.7: Agent starts normally with no config file', async t => {
 
 test.serial('Env.8: Agent accepts all supported config items', async t => {
   const connector = new ConnectorService()
-  let agentConfig = {}
-  agentConfig['nodeRedDir'] = '../node-red'
+  let agentConfig = Utils.createDefaultAgentConfig(1990)
   agentConfig['configFile'] = Utils.createDummyEnebularConfig({})
-  agentConfig['nodeRedCommand'] = './node_modules/.bin/node-red -p 1990'
 
   t.notThrows(() => {
     agent = new EnebularAgent(connector, agentConfig)
@@ -201,10 +190,8 @@ test.serial('Env.8: Agent accepts all supported config items', async t => {
 
 test.serial('Env.9: Agent handles an invalid config file', async t => {
   const connector = new ConnectorService()
-  let agentConfig = {}
-  agentConfig['nodeRedDir'] = '../node-red'
+  let agentConfig = Utils.createDefaultAgentConfig(1990)
   agentConfig['configFile'] = Utils.createBrokenEnebularConfig()
-  agentConfig['nodeRedCommand'] = './node_modules/.bin/node-red -p 1990'
 
   t.notThrows(() => {
     agent = new EnebularAgent(connector, agentConfig)

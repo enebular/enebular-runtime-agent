@@ -54,10 +54,7 @@ test.serial(
   t => {
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
     const connector = new ConnectorService()
-    let agentConfig = {}
-    agentConfig['nodeRedDir'] = '../node-red'
-    agentConfig['nodeRedCommand'] =
-      './node_modules/.bin/node-red -p ' + NodeRedPort
+    let agentConfig = Utils.createDefaultAgentConfig(NodeRedPort)
     agentConfig['configFile'] = configFile
 
     agent = new EnebularAgent(connector, agentConfig)

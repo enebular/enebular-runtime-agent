@@ -96,4 +96,13 @@ export default class Utils {
 
     return requestsInFastPeriod + requestsInNormalPeriod
   }
+
+  static createDefaultAgentConfig(nodeRedPort) {
+    let agentConfig = {}
+    agentConfig['nodeRedDir'] = '../node-red'
+    agentConfig['nodeRedDataDir'] = '../node-red/.node-red-config'
+    agentConfig['nodeRedCommand'] =
+      './node_modules/.bin/node-red -p ' + nodeRedPort
+    return agentConfig
+  }
 }

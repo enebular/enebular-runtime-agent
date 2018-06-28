@@ -14,11 +14,8 @@ export async function createStartedAgent(
   agentConfig: EnebularAgentConfig
 ) {
   let connector = new ConnectorService()
-  let _agentConfig = {}
-  _agentConfig['nodeRedDir'] = '../node-red'
-  _agentConfig['nodeRedCommand'] = './node_modules/.bin/node-red -p 1990'
 
-  agentConfig = Object.assign(_agentConfig, agentConfig)
+  agentConfig = Object.assign(Utils.createDefaultAgentConfig(1990), agentConfig)
   let agent = new EnebularAgent(connector, agentConfig)
 
   await agent.startup()
@@ -31,11 +28,7 @@ export async function createConnectedAgent(
   agentConfig: EnebularAgentConfig
 ) {
   let connector = new ConnectorService()
-  let _agentConfig = {}
-  _agentConfig['nodeRedDir'] = '../node-red'
-  _agentConfig['nodeRedCommand'] = './node_modules/.bin/node-red -p 1990'
-
-  agentConfig = Object.assign(_agentConfig, agentConfig)
+  agentConfig = Object.assign(Utils.createDefaultAgentConfig(1990), agentConfig)
   let agent = new EnebularAgent(connector, agentConfig)
 
   return new Promise(async (resolve, reject) => {
