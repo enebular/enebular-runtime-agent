@@ -89,7 +89,7 @@ async function createAgentRunningWithTestNodeRedSettings(
   connector = ret.connector
 
   // console.log("user directory: ", agent._nodeRed._getDataDir())
-  t.true(await nodeRedIsAlive(NodeRedPort))
+  t.true(await nodeRedIsAlive(NodeRedPort, 3000))
 }
 
 test.serial(
@@ -126,7 +126,7 @@ test.serial(
     })
     agent = ret.agent
 
-    t.true(await nodeRedIsAlive(NodeRedPort))
+    t.true(await nodeRedIsAlive(NodeRedPort, 3000))
     // update the flow
     const expectedFlowJson = fs.readFileSync(
       path.join(__dirname, 'data', 'flow2.json'),
