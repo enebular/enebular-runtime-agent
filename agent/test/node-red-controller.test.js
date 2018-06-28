@@ -55,19 +55,20 @@ async function createAgentRunningWithTestNodeRedSettings(
   withCredentialSecret: boolean
 ) {
   tmpNodeRedDataDir = '/tmp/.node-red-config-' + Utils.randomString()
-  await Utils.rsync(
-    tmpNodeRedDataDir + '/',
-    path.join(__dirname, '..', '..', 'node-red', '.node-red-config') + '/'
+  fs.ensureDirSync(tmpNodeRedDataDir)
+  fs.copySync(
+    path.join(__dirname, '..', '..', 'node-red', '.node-red-config'),
+    tmpNodeRedDataDir
   )
-  await Utils.rsync(
-    tmpNodeRedDataDir + '/test-settings.js',
+  fs.copySync(
     path.join(
       __dirname,
       'data',
       withCredentialSecret
         ? 'node-red-test-settings-with-credential-secret'
         : 'node-red-test-settings'
-    )
+    ),
+    tmpNodeRedDataDir + '/test-settings.js'
   )
 
   const ret = await createUnauthenticatedAgent(
@@ -88,7 +89,7 @@ async function createAgentRunningWithTestNodeRedSettings(
   connector = ret.connector
 
   // console.log("user directory: ", agent._nodeRed._getDataDir())
-  t.true(await nodeRedIsAlive(NodeRedPort))
+  t.true(await nodeRedIsAlive(NodeRedPort, 3000))
 }
 
 test.serial(
@@ -125,7 +126,7 @@ test.serial(
     })
     agent = ret.agent
 
-    t.true(await nodeRedIsAlive(NodeRedPort))
+    t.true(await nodeRedIsAlive(NodeRedPort, 3000))
     // update the flow
     const expectedFlowJson = fs.readFileSync(
       path.join(__dirname, 'data', 'flow2.json'),
@@ -297,7 +298,10 @@ test.serial(
 
         const expectedCredJson = fs.readFileSync(flowCredsPath, 'utf8')
         const expectedCred = JSON.parse(expectedCredJson)
-        const credJson = fs.readFileSync(tmpNodeRedDataDir + "/flows_cred.json", 'utf8')
+        const credJson = fs.readFileSync(
+          tmpNodeRedDataDir + '/flows_cred.json',
+          'utf8'
+        )
         const cred = JSON.parse(credJson)
         t.deepEqual(cred, expectedCred)
         resolve()
