@@ -1,7 +1,6 @@
 /* @flow */
-import fs from 'fs'
+import fs from 'fs-extra'
 import path from 'path'
-import os from 'os'
 import EventEmitter from 'events'
 import ConnectorService from './connector-service'
 import Activator from './activator'
@@ -9,6 +8,7 @@ import DeviceAuthMediator from './device-auth-mediator'
 import AgentManagerMediator from './agent-manager-mediator'
 import NodeREDController from './node-red-controller'
 import LogManager from './log-manager'
+import Constants from './constants'
 import type { LogManagerConfig } from './log-manager'
 import type { Logger } from 'winston'
 
@@ -100,11 +100,11 @@ export default class EnebularAgent extends EventEmitter {
     super()
 
     const {
-      nodeRedDir,
-      nodeRedDataDir,
-      nodeRedCommand = './node_modules/.bin/node-red -s .node-red-config/settings.js',
+      nodeRedDir = Constants.NODE_RED_DIR,
+      nodeRedDataDir = Constants.NODE_RED_DATA_DIR,
+      nodeRedCommand = Constants.NODE_RED_COMMAND,
       nodeRedKillSignal = 'SIGINT',
-      configFile = path.join(os.homedir(), '.enebular-config.json'),
+      configFile = Constants.ENEBULAR_CONFIG_PATH,
       monitorIntervalFast = MONITOR_INTERVAL_FAST,
       monitorIntervalFastPeriod = MONITOR_INTERVAL_FAST_PERIOD,
       monitorIntervalNormal = MONITOR_INTERVAL_NORMAL
@@ -119,6 +119,8 @@ export default class EnebularAgent extends EventEmitter {
     connector.on('connectionChange', () => this._onConnectorConnectionChange())
     connector.on('message', params => this._onConnectorMessage(params))
 
+    fs.ensureDirSync(Constants.ENEBULAR_AGENT_HOME)
+
     const activatorName = 'enebular'
     const activatorPath = path.join(__dirname, `${activatorName}-activator.js`)
     if (fs.existsSync(activatorPath)) {
@@ -127,6 +129,10 @@ export default class EnebularAgent extends EventEmitter {
     }
 
     this._initLogging(config)
+
+    this._log.info('Node-RED dir: ' + nodeRedDir)
+    this._log.info('Node-RED data dir: ' + nodeRedDataDir)
+    this._log.info('Node-RED command: ' + nodeRedCommand)
 
     this._agentMan = new AgentManagerMediator(this._log)
     this._logManager.setEnebularAgentManager(this._agentMan)

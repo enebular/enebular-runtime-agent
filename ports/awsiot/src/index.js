@@ -1,20 +1,18 @@
 /* @flow */
 import fs from 'fs'
 import awsIot from 'aws-iot-device-sdk'
-import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
+import {
+  EnebularAgent,
+  ConnectorService,
+  EnebularCommander,
+  Constants
+} from 'enebular-runtime-agent'
 
 const MODULE_NAME = 'aws-iot'
 
-const {
-  ENEBULAR_CONFIG_PATH,
-  NODE_RED_DIR,
-  NODE_RED_DATA_DIR,
-  NODE_RED_COMMAND,
-  AWSIOT_CONFIG_FILE
-} = process.env
-
 let agent: EnebularAgent
 let connector: ConnectorService
+let commander: EnebularCommander
 let thingName: string
 let thingShadow: awsIot.thingShadow
 let canRegisterThingShadow: boolean = false
@@ -139,16 +137,14 @@ function setupThingShadow(config: AWSIoTConfig) {
   return shadow
 }
 
-async function startup() {
-  const configFile = ENEBULAR_CONFIG_PATH || '.enebular-config.json'
-  const nodeRedDir = NODE_RED_DIR || 'node-red'
-  const awsIoTConfigFile = AWSIOT_CONFIG_FILE || './config.json'
-
-  console.log('AWS IoT config file: ' + awsIoTConfigFile)
+async function _startup() {
+  console.log('AWS IoT config file: ' + Constants.AWSIOT_CONFIG_FILE)
 
   let awsIotConfig
   try {
-    awsIotConfig = JSON.parse(fs.readFileSync(awsIoTConfigFile, 'utf8'))
+    awsIotConfig = JSON.parse(
+      fs.readFileSync(Constants.AWSIOT_CONFIG_FILE, 'utf8')
+    )
   } catch (err) {
     console.error(err)
     process.exit(1)
@@ -156,17 +152,7 @@ async function startup() {
 
   thingName = awsIotConfig.thingName
   connector = new ConnectorService()
-  let agentConfig = {
-    nodeRedDir: nodeRedDir,
-    configFile: configFile
-  }
-  if (NODE_RED_DATA_DIR) {
-    agentConfig['nodeRedDataDir'] = NODE_RED_DATA_DIR
-  }
-  if (NODE_RED_COMMAND) {
-    agentConfig['nodeRedCommand'] = NODE_RED_COMMAND
-  }
-  agent = new EnebularAgent(connector, agentConfig)
+  agent = new EnebularAgent(connector, {})
 
   thingShadow = setupThingShadow(awsIotConfig)
 
@@ -191,8 +177,23 @@ async function startup() {
   connector.updateRegistrationState(true, thingName)
 }
 
-async function shutdown() {
+async function startup() {
+  const _commander = new EnebularCommander()
+  if (!_commander.processCommands()) {
+    // start agent only if there is no command
+    return _startup()
+  }
+  commander = _commander
+}
+
+async function _shutdown() {
   return agent.shutdown()
+}
+
+async function shutdown() {
+  if (!commander) {
+    return _shutdown()
+  }
 }
 
 async function exit() {

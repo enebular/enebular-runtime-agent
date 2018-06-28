@@ -76,7 +76,7 @@ export default class NodeREDController {
   }
 
   _getDataDir() {
-    return this._dataDir || path.join(this._dir, '.node-red-config')
+    return this._dataDir
   }
 
   _registerHandler(emitter: EventEmitter) {
