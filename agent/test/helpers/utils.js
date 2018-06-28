@@ -75,25 +75,6 @@ export default class Utils {
     )
   }
 
-  static async rsync(dst, src) {
-    let Rsync = require('rsync')
-    let rsync = new Rsync()
-      .shell('ssh')
-      .flags('ar')
-      .source(src)
-      .destination(dst)
-
-    // Execute the command
-    await new Promise((resolve, reject) => {
-      rsync.execute(function(error, code, cmd) {
-        if (error) {
-          reject(error)
-        }
-        resolve()
-      })
-    })
-  }
-
   static calcExpectedNumberOfRequestsByInterval(agent, runningTime) {
     const {
       _monitorIntervalFast,
