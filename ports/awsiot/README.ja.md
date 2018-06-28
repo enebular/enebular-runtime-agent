@@ -44,6 +44,13 @@ npm install
 
 6 . このデバイスで使用するAWS IoT Thingの接続情報をAWSのコンソールなどから取得します。証明書ファイルの正しいパスを含めて、この接続情報でexampleモジュールの `config.json`ファイルを更新します。
 
+7 . エージェントがAWS IoTから突然に切断した場合をenebularが検知できるように、AWS IoTで以下のルールを追加します。このステップはオプションです。
+
+- Rule query statement: `SELECT * FROM 'enebular/things/+/shadow/update'`
+- Action:
+  - Type: Republish messages to an AWS IoT topic (AWS IOT REPUBLISH)
+  - Topic: `$$aws/things/${topic(3)}/shadow/update`
+
 ## 実行
 
 上記のセットアップが完了したら、exampleモジュールのディレクトリから`npm run start`コマンドでenebular-agentが起動できます。
