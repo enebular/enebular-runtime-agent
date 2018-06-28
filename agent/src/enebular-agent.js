@@ -204,7 +204,28 @@ export default class EnebularAgent extends EventEmitter {
     this.emit(connect ? 'connectorConnect' : 'connectorDisconnect')
   }
 
+  _createPIDFile() {
+    try {
+      fs.writeFileSync(
+        Constants.ENEBULAR_AGENT_PID_FILE,
+        process.pid.toString(),
+        'utf8'
+      )
+    } catch (err) {
+      this._log.error(err)
+    }
+  }
+
+  _removePIDFile() {
+    try {
+      fs.unlinkSync(Constants.ENEBULAR_AGENT_PID_FILE)
+    } catch (err) {
+      this._log.error(err)
+    }
+  }
+
   async startup() {
+    this._createPIDFile()
     this._loadAgentConfig()
     return this._nodeRed.startService()
   }
@@ -217,6 +238,7 @@ export default class EnebularAgent extends EventEmitter {
     await this._nodeRed.shutdownService()
     await this._logManager.shutdown()
     this._activateMonitoring(false)
+    this._removePIDFile()
   }
 
   _activateMonitoring(active: boolean) {

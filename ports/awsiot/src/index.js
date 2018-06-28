@@ -178,12 +178,11 @@ async function _startup() {
 }
 
 async function startup() {
-  const _commander = new EnebularCommander()
-  if (!_commander.processCommands()) {
+  commander = new EnebularCommander()
+  if (!commander.processCommand()) {
     // start agent only if there is no command
     return _startup()
   }
-  commander = _commander
 }
 
 async function _shutdown() {
@@ -191,7 +190,7 @@ async function _shutdown() {
 }
 
 async function shutdown() {
-  if (!commander) {
+  if (!commander.argumentsHasCommand()) {
     return _shutdown()
   }
 }
