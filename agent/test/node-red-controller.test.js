@@ -268,7 +268,7 @@ test.serial(
           t.fail('dependencies failed to install')
         }
         resolve()
-      }, 5000)
+      }, 8000)
     })
   }
 )
