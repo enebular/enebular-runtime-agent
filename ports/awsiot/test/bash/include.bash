@@ -1,4 +1,5 @@
 function fail {
+  cat /tmp/test.log
   echo -e "######## \033[31m  ✘ $1\033[0m"
   exit 1
 }
