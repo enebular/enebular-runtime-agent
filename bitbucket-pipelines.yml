@@ -13,5 +13,5 @@ pipelines:
         - (cd node-red && npm i)
         - (cd agent && npm i)
         - (cd agent && npm run test:serial)
-        - (cd port/awsiot && npm i)
-        - (cd port/awsiot && npm run test)
+        - (cd ports/awsiot && npm i)
+        - (cd ports/awsiot && npm run test)

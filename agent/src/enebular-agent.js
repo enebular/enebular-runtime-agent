@@ -114,7 +114,11 @@ export default class EnebularAgent extends EventEmitter {
     connector.on('connectionChange', () => this._onConnectorConnectionChange())
     connector.on('message', params => this._onConnectorMessage(params))
 
-    fs.ensureDirSync(Constants.ENEBULAR_AGENT_HOME)
+    try {
+      fs.ensureDirSync(Constants.ENEBULAR_AGENT_HOME)
+    } catch (err) {
+      this._log.error(err)
+    }
 
     const activatorName = 'enebular'
     const activatorPath = path.join(__dirname, `${activatorName}-activator.js`)
