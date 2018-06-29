@@ -58,9 +58,21 @@ function createConstants(agentFilePaths: Object) {
       p.resolve(agentFilePaths.NODE_RED_DIR, './node_modules/.bin/node-red') +
       ' -s ' +
       p.resolve(agentFilePaths.NODE_RED_DATA_DIR, 'settings.js'),
+    NODE_RED_KILL_SIGNAL: 'SIGINT',
+    MONITOR_INTERVAL_FAST: 30,
+    MONITOR_INTERVAL_NORMAL: 60 * 5,
+    /* the +1 is to allow the last fast interval to trigger first */
+    MONITOR_INTERVAL_FAST_PERIOD: 60 * 3 + 1,
     ENEBULAR_AGENT_PROGRAM: program
   }
 
+  // allow overide of constants via environnement
+  let items = Object.keys(constants)
+  items.forEach(function(key) {
+    if (process.env[key]) {
+      constants[key] = process.env[key]
+    }
+  })
   return Object.assign(constants, agentFilePaths)
 }
 

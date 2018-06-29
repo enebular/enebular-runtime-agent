@@ -152,7 +152,7 @@ async function _startup() {
 
   thingName = awsIotConfig.thingName
   connector = new ConnectorService()
-  agent = new EnebularAgent(connector, {})
+  agent = new EnebularAgent(connector, commander.getCommandLineAgentConfig())
 
   thingShadow = setupThingShadow(awsIotConfig)
 

@@ -1,7 +1,11 @@
 /* @flow */
 import net from 'net'
 import fs from 'fs'
-import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
+import {
+  EnebularAgent,
+  ConnectorService,
+  EnebularCommander
+} from 'enebular-runtime-agent'
 
 const MODULE_NAME = 'local'
 const END_OF_MSG_MARKER = 0x1e // RS (Record Separator)
@@ -10,6 +14,7 @@ const SOCKET_PATH =
   process.env.SOCKET_PATH || '/tmp/enebular-local-agent.socket'
 
 let agent: EnebularAgent
+let commander: EnebularCommander
 let localServer: net.Server
 let clientSocket: ?net.Socket
 
@@ -144,9 +149,9 @@ async function startLocalServer(connector: ConnectorService): net.Server {
   return server
 }
 
-async function startup() {
+async function _startup() {
   const connector = new ConnectorService()
-  agent = new EnebularAgent(connector, {})
+  agent = new EnebularAgent(connector, commander.getCommandLineAgentConfig())
 
   agent.on('connectorRegister', () => {
     clientSendMessage('register')
@@ -166,10 +171,24 @@ async function startup() {
   localServer = await startLocalServer(connector)
 }
 
-async function shutdown() {
+async function startup() {
+  commander = new EnebularCommander()
+  if (!commander.processCommand()) {
+    // start agent only if there is no command
+    return _startup()
+  }
+}
+
+async function _shutdown() {
   await localServer.close()
   attemptSocketRemove()
   return agent.shutdown()
+}
+
+async function shutdown() {
+  if (!commander.argumentsHasCommand()) {
+    return _shutdown()
+  }
 }
 
 async function exit() {

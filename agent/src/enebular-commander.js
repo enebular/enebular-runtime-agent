@@ -18,7 +18,6 @@ const systemdTemplate =
   'User=%USER%\n' +
   'Environment=PATH=%NODE_PATH%:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin\n' +
   'Environment=ENEBULAR_AGENT_HOME=%HOME_PATH%\n' +
-  'Environment=DEBUG="debug"\n' +
   '%APPEND_ENV%' +
   'PIDFile=%HOME_PATH%/enebular-agent.pid\n' +
   '\n' +
@@ -44,6 +43,13 @@ export default class EnebularCommander {
         '-p --startup-register-home-path <home path>',
         'define home path when generating startup script'
       )
+      .option(
+        '--enebular-config-file <config file path>',
+        'define enebular config file path'
+      )
+      .option('--node-red-dir <path>', 'define Node-RED installation path')
+      .option('--node-red-data-dir <path>', 'define Node-RED data path')
+      .option('--node-red-command <command>', 'define Node-RED startup command')
       .option('--enable-syslog', 'enable syslog at info level')
 
     commander
@@ -179,8 +185,7 @@ export default class EnebularCommander {
     try {
       process.kill(pid, 0)
       return true
-    }
-    catch (err) {
+    } catch (err) {
       return false
     }
   }
@@ -190,9 +195,9 @@ export default class EnebularCommander {
       let timeout
       const timer = setInterval(() => {
         if (this._processIsDead(pid) === false) {
-          console.log('pid=%d process killed', pid);
-          clearTimeout(timeout);
-          clearInterval(timer);
+          // console.log('pid=%d process killed', pid)
+          clearTimeout(timeout)
+          clearInterval(timer)
           resolve()
         }
       }, 100)
@@ -207,15 +212,14 @@ export default class EnebularCommander {
     try {
       process.kill(pid, 'SIGINT')
       await this._checkProcess(pid)
-    }
-    catch (err) {
+    } catch (err) {
       console.error('%s pid can not be killed', pid, err.stack, err.message)
     }
   }
 
   killDaemon() {
     if (!fs.existsSync(Constants.ENEBULAR_AGENT_PID_FILE)) {
-      console.error('Can\'t find enebular agent pid file')
+      console.error("Can't find enebular agent pid file")
       return
     }
 
@@ -241,5 +245,22 @@ export default class EnebularCommander {
   processCommand() {
     commander.parse(process.argv)
     return this.argumentsHasCommand()
+  }
+
+  getCommandLineAgentConfig() {
+    let agentConfig = {}
+    if (commander.enebularConfigFile) {
+      agentConfig['configFile'] = commander.enebularConfigFile
+    }
+    if (commander.nodeRedDir) {
+      agentConfig['nodeRedDir'] = commander.nodeRedDir
+    }
+    if (commander.nodeRedDataDir) {
+      agentConfig['nodeRedDataDir'] = commander.nodeRedDataDir
+    }
+    if (commander.nodeRedCommand) {
+      agentConfig['nodeRedCommand'] = commander.nodeRedCommand
+    }
+    return agentConfig
   }
 }

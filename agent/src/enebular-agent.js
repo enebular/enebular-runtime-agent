@@ -39,11 +39,6 @@ type AgentSetting = {
   agentManagerBaseUrl?: string
 }
 
-const MONITOR_INTERVAL_FAST = 30
-const MONITOR_INTERVAL_NORMAL = 60 * 5
-/* the +1 is to allow the last fast interval to trigger first */
-const MONITOR_INTERVAL_FAST_PERIOD = 60 * 3 + 1
-
 export type AgentState =
   | 'init'
   | 'registered'
@@ -103,11 +98,11 @@ export default class EnebularAgent extends EventEmitter {
       nodeRedDir = Constants.NODE_RED_DIR,
       nodeRedDataDir = Constants.NODE_RED_DATA_DIR,
       nodeRedCommand = Constants.NODE_RED_COMMAND,
-      nodeRedKillSignal = 'SIGINT',
+      nodeRedKillSignal = Constants.NODE_RED_KILL_SIGNAL,
       configFile = Constants.ENEBULAR_CONFIG_PATH,
-      monitorIntervalFast = MONITOR_INTERVAL_FAST,
-      monitorIntervalFastPeriod = MONITOR_INTERVAL_FAST_PERIOD,
-      monitorIntervalNormal = MONITOR_INTERVAL_NORMAL
+      monitorIntervalFast = Constants.MONITOR_INTERVAL_FAST,
+      monitorIntervalFastPeriod = Constants.MONITOR_INTERVAL_FAST_PERIOD,
+      monitorIntervalNormal = Constants.MONITOR_INTERVAL_NORMAL
     } = config
 
     this._monitorIntervalFast = monitorIntervalFast
@@ -158,7 +153,7 @@ export default class EnebularAgent extends EventEmitter {
     this._deviceAuth.on('accessTokenClear', () => this._onAccessTokenClear())
 
     this._configFile = configFile
-    this._notifyStatusInterval = MONITOR_INTERVAL_NORMAL
+    this._notifyStatusInterval = monitorIntervalNormal
     this._notifyStatusActivated = false
     this._agentState = 'init'
   }
