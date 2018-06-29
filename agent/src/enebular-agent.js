@@ -128,6 +128,7 @@ export default class EnebularAgent extends EventEmitter {
     this._log.info('Node-RED dir: ' + nodeRedDir)
     this._log.info('Node-RED data dir: ' + nodeRedDataDir)
     this._log.info('Node-RED command: ' + nodeRedCommand)
+    this._log.info('Enebular config file: ' + configFile)
 
     this._agentMan = new AgentManagerMediator(this._log)
     this._logManager.setEnebularAgentManager(this._agentMan)
