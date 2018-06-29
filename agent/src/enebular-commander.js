@@ -77,8 +77,8 @@ export default class EnebularCommander {
   }
 
   startupRegister() {
-    let user = commander.user || process.env.USER
-    let serviceName = commander.serviceName || 'enebular-agent-' + user
+    let user = commander.startupUser || process.env.USER
+    let serviceName = commander.startupServiceName || 'enebular-agent-' + user
 
     console.log('user:', user)
     console.log('service name:', serviceName)
@@ -145,11 +145,16 @@ export default class EnebularCommander {
   }
 
   startupUnregister() {
-    let user = commander.user || process.env.USER
-    let serviceName = commander.serviceName || 'enebular-agent-' + user
+    let user = commander.startupUser || process.env.USER
+    let serviceName = commander.startupServiceName || 'enebular-agent-' + user
 
     console.log('user:', user)
     console.log('service name:', serviceName)
+
+    if (!fs.existsSync('/etc/systemd/system/' + serviceName + '.service')) {
+      console.error('No startup service has been registered.')
+      return
+    }
 
     if (process.getuid() !== 0) {
       this.requireRootUser()
@@ -170,7 +175,56 @@ export default class EnebularCommander {
     })
   }
 
+  _processIsDead(pid: number) {
+    try {
+      process.kill(pid, 0)
+      return true
+    }
+    catch (err) {
+      return false
+    }
+  }
+
+  _checkProcess(pid: number) {
+    return new Promise((resolve, reject) => {
+      let timeout
+      const timer = setInterval(() => {
+        if (this._processIsDead(pid) === false) {
+          console.log('pid=%d process killed', pid);
+          clearTimeout(timeout);
+          clearInterval(timer);
+          resolve()
+        }
+      }, 100)
+      timeout = setTimeout(() => {
+        clearInterval(timer)
+        reject(new Error('timeout to kill process.'))
+      }, 1000)
+    })
+  }
+
+  async _killProcess(pid: number) {
+    try {
+      process.kill(pid, 'SIGINT')
+      await this._checkProcess(pid)
+    }
+    catch (err) {
+      console.error('%s pid can not be killed', pid, err.stack, err.message)
+    }
+  }
+
   killDaemon() {
+    if (!fs.existsSync(Constants.ENEBULAR_AGENT_PID_FILE)) {
+      console.error('Can\'t find enebular agent pid file')
+      return
+    }
+
+    try {
+      const pid = fs.readFileSync(Constants.ENEBULAR_AGENT_PID_FILE)
+      this._killProcess(parseInt(pid))
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   argumentsHasCommand() {
