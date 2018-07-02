@@ -4,7 +4,7 @@ import fs from 'fs'
 import {
   EnebularAgent,
   ConnectorService,
-  EnebularCommander
+  Config
 } from 'enebular-runtime-agent'
 
 const MODULE_NAME = 'local'
@@ -14,7 +14,6 @@ const SOCKET_PATH =
   process.env.SOCKET_PATH || '/tmp/enebular-local-agent.socket'
 
 let agent: EnebularAgent
-let commander: EnebularCommander
 let localServer: net.Server
 let clientSocket: ?net.Socket
 
@@ -149,9 +148,11 @@ async function startLocalServer(connector: ConnectorService): net.Server {
   return server
 }
 
-async function _startup() {
+async function startup() {
+  if (Config.ENEBULAR_AGENT_COMMAND_MODE) return
+
   const connector = new ConnectorService()
-  agent = new EnebularAgent(connector, commander.getCommandLineAgentConfig())
+  agent = new EnebularAgent(connector, {})
 
   agent.on('connectorRegister', () => {
     clientSendMessage('register')
@@ -171,24 +172,12 @@ async function _startup() {
   localServer = await startLocalServer(connector)
 }
 
-async function startup() {
-  commander = new EnebularCommander()
-  if (!commander.processCommand()) {
-    // start agent only if there is no command
-    return _startup()
-  }
-}
+async function shutdown() {
+  if (Config.ENEBULAR_AGENT_COMMAND_MODE) return
 
-async function _shutdown() {
   await localServer.close()
   attemptSocketRemove()
   return agent.shutdown()
-}
-
-async function shutdown() {
-  if (!commander.argumentsHasCommand()) {
-    return _shutdown()
-  }
 }
 
 async function exit() {

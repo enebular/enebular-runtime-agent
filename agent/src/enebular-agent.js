@@ -8,7 +8,7 @@ import DeviceAuthMediator from './device-auth-mediator'
 import AgentManagerMediator from './agent-manager-mediator'
 import NodeREDController from './node-red-controller'
 import LogManager from './log-manager'
-import Constants from './constants'
+import Config from './config'
 import type { LogManagerConfig } from './log-manager'
 import type { Logger } from 'winston'
 
@@ -95,14 +95,14 @@ export default class EnebularAgent extends EventEmitter {
     super()
 
     const {
-      nodeRedDir = Constants.NODE_RED_DIR,
-      nodeRedDataDir = Constants.NODE_RED_DATA_DIR,
-      nodeRedCommand = Constants.NODE_RED_COMMAND,
-      nodeRedKillSignal = Constants.NODE_RED_KILL_SIGNAL,
-      configFile = Constants.ENEBULAR_CONFIG_PATH,
-      monitorIntervalFast = Constants.MONITOR_INTERVAL_FAST,
-      monitorIntervalFastPeriod = Constants.MONITOR_INTERVAL_FAST_PERIOD,
-      monitorIntervalNormal = Constants.MONITOR_INTERVAL_NORMAL
+      nodeRedDir = Config.NODE_RED_DIR,
+      nodeRedDataDir = Config.NODE_RED_DATA_DIR,
+      nodeRedCommand = Config.NODE_RED_COMMAND,
+      nodeRedKillSignal = Config.NODE_RED_KILL_SIGNAL,
+      configFile = Config.ENEBULAR_CONFIG_PATH,
+      monitorIntervalFast = Config.MONITOR_INTERVAL_FAST,
+      monitorIntervalFastPeriod = Config.MONITOR_INTERVAL_FAST_PERIOD,
+      monitorIntervalNormal = Config.MONITOR_INTERVAL_NORMAL
     } = config
 
     this._monitorIntervalFast = monitorIntervalFast
@@ -115,7 +115,7 @@ export default class EnebularAgent extends EventEmitter {
     connector.on('message', params => this._onConnectorMessage(params))
 
     try {
-      fs.ensureDirSync(Constants.ENEBULAR_AGENT_HOME)
+      fs.ensureDirSync(Config.ENEBULAR_AGENT_HOME)
     } catch (err) {
       this._log.error(err)
     }
@@ -207,7 +207,7 @@ export default class EnebularAgent extends EventEmitter {
   _createPIDFile() {
     try {
       fs.writeFileSync(
-        Constants.ENEBULAR_AGENT_PID_FILE,
+        Config.ENEBULAR_AGENT_PID_FILE,
         process.pid.toString(),
         'utf8'
       )
@@ -218,7 +218,7 @@ export default class EnebularAgent extends EventEmitter {
 
   _removePIDFile() {
     try {
-      fs.unlinkSync(Constants.ENEBULAR_AGENT_PID_FILE)
+      fs.unlinkSync(Config.ENEBULAR_AGENT_PID_FILE)
     } catch (err) {
       this._log.error(err)
     }

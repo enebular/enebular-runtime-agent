@@ -1,7 +1,6 @@
 /* @flow */
 import EnebularAgent from './enebular-agent'
 import ConnectorService from './connector-service'
-import EnebularCommander from './enebular-commander'
-import Constants from './constants'
+import Config from './config'
 
-export { EnebularAgent, ConnectorService, EnebularCommander, Constants }
+export { EnebularAgent, ConnectorService, Config }

@@ -1,5 +1,8 @@
 /* @flow */
 import p from 'path'
+import CommandLine from './command-line'
+
+let commandLine: CommandLine = new CommandLine()
 
 function getDefaultAgentHome() {
   let path: string
@@ -20,6 +23,11 @@ function getDefaultAgentHome() {
 function createAgentPaths(agentHome: string) {
   if (!agentHome) {
     agentHome = getDefaultAgentHome()
+    if (commandLine.getOption('startupRegisterHomePath'))
+      agentHome = p.resolve(
+        commandLine.getOption('startupRegisterHomePath'),
+        '.enebular-agent'
+      )
   }
 
   // this is based on the source code structrue: ports/xxxxx/bin/enebular-xxx-agent
@@ -48,7 +56,7 @@ function createAgentPaths(agentHome: string) {
   return agentFilePaths
 }
 
-function createConstants(agentFilePaths: Object) {
+function createConfig(agentFilePaths: Object) {
   // program name
   const pathComponents = agentFilePaths.ENEBULAR_AGENT_BIN_PATH.split('/')
   const program = pathComponents[pathComponents.length - 1]
@@ -63,7 +71,8 @@ function createConstants(agentFilePaths: Object) {
     MONITOR_INTERVAL_NORMAL: 60 * 5,
     /* the +1 is to allow the last fast interval to trigger first */
     MONITOR_INTERVAL_FAST_PERIOD: 60 * 3 + 1,
-    ENEBULAR_AGENT_PROGRAM: program
+    ENEBULAR_AGENT_PROGRAM: program,
+    ENEBULAR_AGENT_COMMAND_MODE: commandLine.hasEnebularCommand()
   }
 
   // allow overide of constants via environnement
@@ -73,9 +82,21 @@ function createConstants(agentFilePaths: Object) {
       constants[key] = process.env[key]
     }
   })
-  return Object.assign(constants, agentFilePaths)
+
+  // combine constants and paths
+  let config = Object.assign(constants, agentFilePaths)
+
+  // allow overide of config via command line
+  const cmdOptions = commandLine.getAgentOptions()
+  items = Object.keys(config)
+  items.forEach(function(key) {
+    if (cmdOptions[key]) {
+      config[key] = cmdOptions[key]
+    }
+  })
+  return config
 }
 
-export default createConstants(
+export default createConfig(
   createAgentPaths(process.env.OVERIDE_ENEBULAR_AGENT_HOME)
 )

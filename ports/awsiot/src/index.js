@@ -1,18 +1,12 @@
 /* @flow */
 import fs from 'fs'
 import awsIot from 'aws-iot-device-sdk'
-import {
-  EnebularAgent,
-  ConnectorService,
-  EnebularCommander,
-  Constants
-} from 'enebular-runtime-agent'
+import { EnebularAgent, ConnectorService, Config } from 'enebular-runtime-agent'
 
 const MODULE_NAME = 'aws-iot'
 
 let agent: EnebularAgent
 let connector: ConnectorService
-let commander: EnebularCommander
 let thingName: string
 let thingShadow: awsIot.thingShadow
 let canRegisterThingShadow: boolean = false
@@ -137,13 +131,15 @@ function setupThingShadow(config: AWSIoTConfig) {
   return shadow
 }
 
-async function _startup() {
-  console.log('AWS IoT config file: ' + Constants.AWSIOT_CONFIG_FILE)
+async function startup() {
+  if (Config.ENEBULAR_AGENT_COMMAND_MODE) return
+
+  console.log('AWS IoT config file: ' + Config.AWSIOT_CONFIG_FILE)
 
   let awsIotConfig
   try {
     awsIotConfig = JSON.parse(
-      fs.readFileSync(Constants.AWSIOT_CONFIG_FILE, 'utf8')
+      fs.readFileSync(Config.AWSIOT_CONFIG_FILE, 'utf8')
     )
   } catch (err) {
     console.error(err)
@@ -152,7 +148,7 @@ async function _startup() {
 
   thingName = awsIotConfig.thingName
   connector = new ConnectorService()
-  agent = new EnebularAgent(connector, commander.getCommandLineAgentConfig())
+  agent = new EnebularAgent(connector, {})
 
   thingShadow = setupThingShadow(awsIotConfig)
 
@@ -177,22 +173,8 @@ async function _startup() {
   connector.updateRegistrationState(true, thingName)
 }
 
-async function startup() {
-  commander = new EnebularCommander()
-  if (!commander.processCommand()) {
-    // start agent only if there is no command
-    return _startup()
-  }
-}
-
-async function _shutdown() {
-  return agent.shutdown()
-}
-
 async function shutdown() {
-  if (!commander.argumentsHasCommand()) {
-    return _shutdown()
-  }
+  if (!Config.ENEBULAR_AGENT_COMMAND_MODE) return agent.shutdown()
 }
 
 async function exit() {

@@ -5,7 +5,7 @@ import pkg from '../package.json'
 import fs from 'fs'
 import { execSync } from 'child_process'
 
-import Constants from './constants'
+import Config from './config'
 
 const systemdTemplate =
   '[Unit]\n' +
@@ -18,6 +18,7 @@ const systemdTemplate =
   'User=%USER%\n' +
   'Environment=PATH=%NODE_PATH%:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin\n' +
   'Environment=ENEBULAR_AGENT_HOME=%HOME_PATH%\n' +
+  'Environment=DEBUG="debug"\n' +
   '%APPEND_ENV%' +
   'PIDFile=%HOME_PATH%/enebular-agent.pid\n' +
   '\n' +
@@ -27,7 +28,7 @@ const systemdTemplate =
   '[Install]\n' +
   'WantedBy=multi-user.target network-online.target\n'
 
-export default class EnebularCommander {
+export default class CommandLine {
   constructor() {
     commander
       .version(pkg.version, '-v, --version')
@@ -56,20 +57,28 @@ export default class EnebularCommander {
       .command('startup-register')
       .description('setup boot script for enebular agent')
       .action(() => {
-        this.startupRegister()
+        setTimeout(() => {
+          this.startupRegister()
+        }, 100) // delay to allow constants to be created first
       })
     commander
       .command('startup-unregister')
       .description('remove boot script for enebular agent')
       .action(() => {
-        this.startupUnregister()
+        setTimeout(() => {
+          this.startupUnregister()
+        }, 100) // delay to allow constants to be created first
       })
     commander
       .command('kill')
       .description('kill daemon')
       .action(() => {
-        this.killDaemon()
+        setTimeout(() => {
+          this.killDaemon()
+        }, 100) // delay to allow constants to be created first
       })
+
+    commander.parse(process.argv)
   }
 
   requireRootUser() {
@@ -78,8 +87,8 @@ export default class EnebularCommander {
   }
 
   appendEnvironment(src: string, key: string) {
-    console.log('\t' + key + ':' + Constants[key])
-    return src + 'Environment=' + key + '="' + Constants[key] + '"\n'
+    console.log('\t' + key + ':' + Config[key])
+    return src + 'Environment=' + key + '=' + Config[key] + '\n'
   }
 
   startupRegister() {
@@ -97,8 +106,7 @@ export default class EnebularCommander {
     appendEnvs = this.appendEnvironment(appendEnvs, 'ENEBULAR_CONFIG_PATH')
     appendEnvs = this.appendEnvironment(appendEnvs, 'NODE_RED_DIR')
     appendEnvs = this.appendEnvironment(appendEnvs, 'NODE_RED_DATA_DIR')
-    appendEnvs = this.appendEnvironment(appendEnvs, 'NODE_RED_COMMAND')
-    if (Constants.ENEBULAR_AGENT_PROGRAM === 'enebular-awsiot-agent') {
+    if (Config.ENEBULAR_AGENT_PROGRAM === 'enebular-awsiot-agent') {
       appendEnvs = this.appendEnvironment(appendEnvs, 'AWSIOT_CONFIG_FILE')
     }
 
@@ -111,12 +119,7 @@ export default class EnebularCommander {
       .replace(/%STOP_AGENT%/g, process.mainModule.filename + ' kill')
       .replace(/%NODE_PATH%/g, path.dirname(process.execPath))
       .replace(/%USER%/g, user)
-      .replace(
-        /%HOME_PATH%/g,
-        commander.startupRegisterHomePath
-          ? path.resolve(commander.startupRegisterHomePath, '.enebular-agent')
-          : Constants.ENEBULAR_AGENT_HOME
-      )
+      .replace(/%HOME_PATH%/g, Config.ENEBULAR_AGENT_HOME)
 
     try {
       fs.writeFileSync(destination, template)
@@ -128,7 +131,7 @@ export default class EnebularCommander {
     let commands = ['systemctl enable ' + serviceName]
 
     try {
-      fs.readFileSync(Constants.ENEBULAR_AGENT_PID_FILE).toString()
+      fs.readFileSync(Config.ENEBULAR_AGENT_PID_FILE).toString()
     } catch (e) {
       commands = [
         'systemctl enable ' + serviceName,
@@ -218,20 +221,20 @@ export default class EnebularCommander {
   }
 
   killDaemon() {
-    if (!fs.existsSync(Constants.ENEBULAR_AGENT_PID_FILE)) {
+    if (!fs.existsSync(Config.ENEBULAR_AGENT_PID_FILE)) {
       console.error("Can't find enebular agent pid file")
       return
     }
 
     try {
-      const pid = fs.readFileSync(Constants.ENEBULAR_AGENT_PID_FILE)
+      const pid = fs.readFileSync(Config.ENEBULAR_AGENT_PID_FILE)
       this._killProcess(parseInt(pid))
     } catch (err) {
       console.error(err)
     }
   }
 
-  argumentsHasCommand() {
+  hasEnebularCommand() {
     if (
       process.argv.indexOf('startup-register') > -1 ||
       process.argv.indexOf('startup-unregister') > -1 ||
@@ -242,25 +245,24 @@ export default class EnebularCommander {
     return false
   }
 
-  processCommand() {
-    commander.parse(process.argv)
-    return this.argumentsHasCommand()
+  getOption(key: string) {
+    return commander[key]
   }
 
-  getCommandLineAgentConfig() {
-    let agentConfig = {}
+  getAgentOptions() {
+    let options = []
     if (commander.enebularConfigFile) {
-      agentConfig['configFile'] = commander.enebularConfigFile
+      options['ENEBULAR_CONFIG_PATH'] = commander.enebularConfigFile
     }
     if (commander.nodeRedDir) {
-      agentConfig['nodeRedDir'] = commander.nodeRedDir
+      options['NODE_RED_DIR'] = commander.nodeRedDir
     }
     if (commander.nodeRedDataDir) {
-      agentConfig['nodeRedDataDir'] = commander.nodeRedDataDir
+      options['NODE_RED_DATA_DIR'] = commander.nodeRedDataDir
     }
     if (commander.nodeRedCommand) {
-      agentConfig['nodeRedCommand'] = commander.nodeRedCommand
+      options['NODE_RED_COMMAND'] = commander.nodeRedCommand
     }
-    return agentConfig
+    return options
   }
 }
