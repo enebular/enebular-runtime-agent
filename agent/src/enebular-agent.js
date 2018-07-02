@@ -168,6 +168,7 @@ export default class EnebularAgent extends EventEmitter {
     logConfig['level'] = config.logLevel
     logConfig['enableConsole'] = config.enableConsoleLog
     logConfig['enableFile'] = config.enableFileLog
+    logConfig['enableSyslog'] = config.enableSysLog
     logConfig['filePath'] = config.logfilePath
     logConfig['enableEnebular'] = config.enableEnebularLog
     logConfig['enebularCachePath'] = config.enebularLogCachePath
@@ -184,7 +185,8 @@ export default class EnebularAgent extends EventEmitter {
     this._log = this._logManager.addLogger('internal', [
       'console',
       'enebular',
-      'file'
+      'file',
+      'syslog'
     ])
   }
 

@@ -61,7 +61,8 @@ export default class NodeREDController {
     this._nodeRedLog = logManager.addLogger('service.node-red', [
       'console',
       'enebular',
-      'file'
+      'file',
+      'syslog'
     ])
   }
 

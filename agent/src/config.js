@@ -72,7 +72,8 @@ function createConfig(agentFilePaths: Object) {
     /* the +1 is to allow the last fast interval to trigger first */
     MONITOR_INTERVAL_FAST_PERIOD: 60 * 3 + 1,
     ENEBULAR_AGENT_PROGRAM: program,
-    ENEBULAR_AGENT_COMMAND_MODE: commandLine.hasEnebularCommand()
+    ENEBULAR_AGENT_COMMAND_MODE: commandLine.hasEnebularCommand(),
+    ENABLE_SYSLOG: false
   }
 
   // allow overide of constants via environnement

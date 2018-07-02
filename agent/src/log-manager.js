@@ -1,6 +1,8 @@
 /* @flow */
 
 import winston from 'winston'
+import { Syslog } from 'winston-syslog'
+import Config from './config'
 import { Enebular } from './winston-enebular'
 import type { WinstonEnebularConfig } from './winston-enebular'
 import type AgentManagerMediator from './agent-manager-mediator'
@@ -26,6 +28,7 @@ export default class LogManager {
       level = 'info',
       enableConsole = false,
       enableFile = false,
+      enableSysLog = Config.ENABLE_SYSLOG,
       filePath = '/var/log/enebular/enebular.log',
       enableEnebular = true,
       enebularCachePath = '/tmp/enebular-log-cache',
@@ -75,6 +78,18 @@ export default class LogManager {
           filename: filePath,
           handleExceptions: true,
           json: false
+        })
+      )
+    }
+
+    if (enableSysLog) {
+      this.addTransport(
+        new Syslog({
+          name: 'syslog',
+          level: level,
+          app_name: 'enebular-agent',
+          protocol: 'unix',
+          path: '/dev/log'
         })
       )
     }

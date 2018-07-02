@@ -18,7 +18,6 @@ const systemdTemplate =
   'User=%USER%\n' +
   'Environment=PATH=%NODE_PATH%:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin\n' +
   'Environment=ENEBULAR_AGENT_HOME=%HOME_PATH%\n' +
-  'Environment=DEBUG="debug"\n' +
   '%APPEND_ENV%' +
   'PIDFile=%HOME_PATH%/enebular-agent.pid\n' +
   '\n' +
@@ -262,6 +261,9 @@ export default class CommandLine {
     }
     if (commander.nodeRedCommand) {
       options['NODE_RED_COMMAND'] = commander.nodeRedCommand
+    }
+    if (commander.enableSyslog) {
+      options['ENABLE_SYSLOG'] = commander.enableSyslog
     }
     return options
   }
