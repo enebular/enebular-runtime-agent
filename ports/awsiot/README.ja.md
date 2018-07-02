@@ -44,7 +44,7 @@ npm install
 
 6 . このデバイスで使用するAWS IoT Thingの接続情報をAWSのコンソールなどから取得します。証明書ファイルの正しいパスを含めて、この接続情報でexampleモジュールの `config.json`ファイルを更新します。
 
-7 . エージェントがAWS IoTから突然に切断した場合をenebularが検知できるように、AWS IoTで以下のルールを追加します。このステップはオプションです。
+7 . エージェントがAWS IoTから突然に切断した場合をenebularが検知できるように、AWS IoTで以下のルールを追加します。このステップはオプションです。
 
 - Rule query statement: `SELECT * FROM 'enebular/things/+/shadow/update'`
 - Action:
