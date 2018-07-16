@@ -32,29 +32,29 @@ export default class CommandLine {
     commander
       .version(pkg.version, '-v, --version')
       .option(
-        '-u --startup-user <username>',
-        'define user when generating startup script'
-      )
-      .option(
-        '-s --startup-service-name <name>',
-        'define service name when generating startup script'
-      )
-      .option(
-        '-p --startup-register-home-path <home path>',
-        'define home path when generating startup script'
-      )
-      .option(
         '--enebular-config-file <config file path>',
-        'define enebular config file path'
+        'Enebular config file path'
       )
-      .option('--node-red-dir <path>', 'define Node-RED installation path')
-      .option('--node-red-data-dir <path>', 'define Node-RED data path')
-      .option('--node-red-command <command>', 'define Node-RED startup command')
-      .option('--enable-syslog', 'enable syslog at info level')
+      .option('--node-red-dir <path>', 'Node-RED installation path')
+      .option('--node-red-data-dir <path>', 'Node-RED data path')
+      .option('--node-red-command <command>', 'Node-RED startup command')
+      .option('--enable-syslog', 'Enable syslog at info level')
 
     commander
       .command('startup-register')
-      .description('setup boot script for enebular agent')
+      .description('Setup boot script for enebular agent')
+      .option(
+        '-u --startup-user <username>',
+        'User when generating startup script'
+      )
+      .option(
+        '-s --startup-service-name <name>',
+        'Service name when generating startup script'
+      )
+      .option(
+        '-p --startup-register-home-path <home path>',
+        'Home path when generating startup script'
+      )
       .action(() => {
         setTimeout(() => {
           this.startupRegister()
@@ -62,7 +62,15 @@ export default class CommandLine {
       })
     commander
       .command('startup-unregister')
-      .description('remove boot script for enebular agent')
+      .description('Remove boot script for enebular agent')
+      .option(
+        '-u --startup-user <username>',
+        'User when generating startup script'
+      )
+      .option(
+        '-s --startup-service-name <name>',
+        'Service name when generating startup script'
+      )
       .action(() => {
         setTimeout(() => {
           this.startupUnregister()
@@ -70,7 +78,7 @@ export default class CommandLine {
       })
     commander
       .command('kill')
-      .description('kill daemon')
+      .description('kill the agent process')
       .action(() => {
         setTimeout(() => {
           this.killDaemon()
@@ -132,12 +140,10 @@ export default class CommandLine {
     try {
       fs.readFileSync(Config.ENEBULAR_AGENT_PID_FILE).toString()
     } catch (e) {
-      commands = [
-        'systemctl enable ' + serviceName,
-        'systemctl start ' + serviceName,
-        'systemctl daemon-reload',
-        'systemctl status ' + serviceName
-      ]
+      // if the daemon is not running start it.
+      commands.push('systemctl start ' + serviceName)
+      commands.push('systemctl daemon-reload')
+      commands.push('systemctl status ' + serviceName)
     }
 
     commands.forEach(item => {
@@ -183,7 +189,7 @@ export default class CommandLine {
     })
   }
 
-  _processIsDead(pid: number) {
+  _processIsAlive(pid: number) {
     try {
       process.kill(pid, 0)
       return true
@@ -192,11 +198,11 @@ export default class CommandLine {
     }
   }
 
-  _checkProcess(pid: number) {
+  _waitForProcessToDie(pid: number) {
     return new Promise((resolve, reject) => {
       let timeout
       const timer = setInterval(() => {
-        if (this._processIsDead(pid) === false) {
+        if (this._processIsAlive(pid) === false) {
           // console.log('pid=%d process killed', pid)
           clearTimeout(timeout)
           clearInterval(timer)
@@ -212,8 +218,8 @@ export default class CommandLine {
 
   async _killProcess(pid: number) {
     try {
-      process.kill(pid, 'SIGINT')
-      await this._checkProcess(pid)
+      process.kill(pid, 'SIGTERM')
+      await this._waitForProcessToDie(pid)
     } catch (err) {
       console.error('%s pid can not be killed', pid, err.stack, err.message)
     }
