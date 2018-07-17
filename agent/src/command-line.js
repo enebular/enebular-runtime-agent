@@ -1,33 +1,15 @@
 /* @flow */
-import path from 'path'
 import commander from 'commander'
 import pkg from '../package.json'
-import fs from 'fs'
-import { execSync } from 'child_process'
+import ProcessUtil from './process-util'
+import Startup from './startup'
 
 import Config from './config'
 
-const systemdTemplate =
-  '[Unit]\n' +
-  'Description=Enebular agent\n' +
-  'Documentation=https://docs.enebular.com/\n' +
-  'After=network.target network-online.target\n' +
-  'Wants=network-online.target\n' +
-  '\n' +
-  '[Service]\n' +
-  'User=%USER%\n' +
-  'Environment=PATH=%NODE_PATH%:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin\n' +
-  'Environment=ENEBULAR_AGENT_HOME=%HOME_PATH%\n' +
-  '%APPEND_ENV%' +
-  'PIDFile=%HOME_PATH%/enebular-agent.pid\n' +
-  '\n' +
-  'ExecStart=%START_AGENT%\n' +
-  'ExecStop=%STOP_AGENT%\n' +
-  '\n' +
-  '[Install]\n' +
-  'WantedBy=multi-user.target network-online.target\n'
-
 export default class CommandLine {
+  _subCommand: string
+  _subCommandOptions: Object
+
   constructor() {
     commander
       .version(pkg.version, '-v, --version')
@@ -51,14 +33,9 @@ export default class CommandLine {
         '-s --startup-service-name <name>',
         'Service name when generating startup script'
       )
-      .option(
-        '-p --startup-register-home-path <home path>',
-        'Home path when generating startup script'
-      )
-      .action(() => {
-        setTimeout(() => {
-          this.startupRegister()
-        }, 100) // delay to allow constants to be created first
+      .action(options => {
+        this._subCommand = 'startup-register'
+        this._subCommandOptions = options
       })
     commander
       .command('startup-unregister')
@@ -71,187 +48,52 @@ export default class CommandLine {
         '-s --startup-service-name <name>',
         'Service name when generating startup script'
       )
-      .action(() => {
-        setTimeout(() => {
-          this.startupUnregister()
-        }, 100) // delay to allow constants to be created first
+      .action(options => {
+        this._subCommand = 'startup-unregister'
+        this._subCommandOptions = options
       })
     commander
       .command('kill')
       .description('kill the agent process')
-      .action(() => {
-        setTimeout(() => {
-          this.killDaemon()
-        }, 100) // delay to allow constants to be created first
+      .action(options => {
+        this._subCommand = 'kill'
+        this._subCommandOptions = options
       })
 
     commander.parse(process.argv)
   }
 
-  requireRootUser() {
-    console.log('You have to run this with root permission.')
-    process.exit(1)
-  }
+  processSubCommand(config: Config) {
+    const ret = !!this._subCommand
 
-  appendEnvironment(src: string, key: string) {
-    console.log('\t' + key + ':' + Config[key])
-    return src + 'Environment=' + key + '=' + Config[key] + '\n'
-  }
+    if (ret) {
+      switch (this._subCommand) {
+        case 'startup-register':
+        case 'startup-unregister':
+          const user = this._subCommandOptions.startupUser || process.env.USER
+          const serviceName =
+            this._subCommandOptions.startupServiceName ||
+            'enebular-agent-' + user
+          console.log('user:', user)
+          console.log('service name:', serviceName)
 
-  startupRegister() {
-    let user = commander.startupUser || process.env.USER
-    let serviceName = commander.startupServiceName || 'enebular-agent-' + user
-
-    console.log('user:', user)
-    console.log('service name:', serviceName)
-
-    if (process.getuid() !== 0) {
-      this.requireRootUser()
-    }
-
-    let appendEnvs = ''
-    appendEnvs = this.appendEnvironment(appendEnvs, 'ENEBULAR_CONFIG_PATH')
-    appendEnvs = this.appendEnvironment(appendEnvs, 'NODE_RED_DIR')
-    appendEnvs = this.appendEnvironment(appendEnvs, 'NODE_RED_DATA_DIR')
-    if (Config.ENEBULAR_AGENT_PROGRAM === 'enebular-awsiot-agent') {
-      appendEnvs = this.appendEnvironment(appendEnvs, 'AWSIOT_CONFIG_FILE')
-    }
-
-    let template = systemdTemplate
-    let destination = '/etc/systemd/system/' + serviceName + '.service'
-    let startAgentCommand = process.mainModule.filename
-    template = template
-      .replace(/%APPEND_ENV%/g, appendEnvs)
-      .replace(/%START_AGENT%/g, startAgentCommand)
-      .replace(/%STOP_AGENT%/g, process.mainModule.filename + ' kill')
-      .replace(/%NODE_PATH%/g, path.dirname(process.execPath))
-      .replace(/%USER%/g, user)
-      .replace(/%HOME_PATH%/g, Config.ENEBULAR_AGENT_HOME)
-
-    try {
-      fs.writeFileSync(destination, template)
-    } catch (e) {
-      console.error('Failure when trying to write startup script')
-      console.error(e.message || e)
-    }
-
-    let commands = ['systemctl enable ' + serviceName]
-
-    try {
-      fs.readFileSync(Config.ENEBULAR_AGENT_PID_FILE).toString()
-    } catch (e) {
-      // if the daemon is not running start it.
-      commands.push('systemctl start ' + serviceName)
-      commands.push('systemctl daemon-reload')
-      commands.push('systemctl status ' + serviceName)
-    }
-
-    commands.forEach(item => {
-      console.log('Executing ' + item + '...')
-      execSync(item, (err, stdout, stderr) => {
-        console.log(stdout)
-        console.log(stderr)
-        if (err) {
-          console.error(err)
-        }
-      })
-    })
-  }
-
-  startupUnregister() {
-    let user = commander.startupUser || process.env.USER
-    let serviceName = commander.startupServiceName || 'enebular-agent-' + user
-
-    console.log('user:', user)
-    console.log('service name:', serviceName)
-
-    if (!fs.existsSync('/etc/systemd/system/' + serviceName + '.service')) {
-      console.error('No startup service has been registered.')
-      return
-    }
-
-    if (process.getuid() !== 0) {
-      this.requireRootUser()
-    }
-
-    let commands = [
-      'systemctl stop ' + serviceName,
-      'systemctl disable ' + serviceName,
-      'rm /etc/systemd/system/' + serviceName + '.service'
-    ]
-
-    execSync(commands.join('&& '), (err, stdout, stderr) => {
-      console.log(stdout)
-      console.log(stderr)
-      if (err) {
-        console.error(err)
+          const func =
+            this._subCommand === 'startup-register'
+              ? Startup.startupRegister
+              : Startup.startupUnregister
+          func(user, serviceName, config)
+          break
+        case 'kill':
+          ProcessUtil.killProcessByPIDFile(
+            config.get('ENEBULAR_AGENT_PID_FILE')
+          )
+          break
+        default:
+          console.log(this._subCommand + ' is not supported.')
+          return false
       }
-    })
-  }
-
-  _processIsAlive(pid: number) {
-    try {
-      process.kill(pid, 0)
-      return true
-    } catch (err) {
-      return false
     }
-  }
-
-  _waitForProcessToDie(pid: number) {
-    return new Promise((resolve, reject) => {
-      let timeout
-      const timer = setInterval(() => {
-        if (this._processIsAlive(pid) === false) {
-          // console.log('pid=%d process killed', pid)
-          clearTimeout(timeout)
-          clearInterval(timer)
-          resolve()
-        }
-      }, 100)
-      timeout = setTimeout(() => {
-        clearInterval(timer)
-        reject(new Error('timeout to kill process.'))
-      }, 1000)
-    })
-  }
-
-  async _killProcess(pid: number) {
-    try {
-      process.kill(pid, 'SIGTERM')
-      await this._waitForProcessToDie(pid)
-    } catch (err) {
-      console.error('%s pid can not be killed', pid, err.stack, err.message)
-    }
-  }
-
-  killDaemon() {
-    if (!fs.existsSync(Config.ENEBULAR_AGENT_PID_FILE)) {
-      console.error("Can't find enebular agent pid file")
-      return
-    }
-
-    try {
-      const pid = fs.readFileSync(Config.ENEBULAR_AGENT_PID_FILE)
-      this._killProcess(parseInt(pid))
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  hasEnebularCommand() {
-    if (
-      process.argv.indexOf('startup-register') > -1 ||
-      process.argv.indexOf('startup-unregister') > -1 ||
-      process.argv.indexOf('kill') > -1
-    ) {
-      return true
-    }
-    return false
-  }
-
-  getOption(key: string) {
-    return commander[key]
+    return ret
   }
 
   getAgentOptions() {

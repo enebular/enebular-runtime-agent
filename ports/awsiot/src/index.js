@@ -1,7 +1,7 @@
 /* @flow */
 import fs from 'fs'
 import awsIot from 'aws-iot-device-sdk'
-import { EnebularAgent, ConnectorService, Config } from 'enebular-runtime-agent'
+import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
 
 const MODULE_NAME = 'aws-iot'
 
@@ -217,15 +217,13 @@ function setupThingShadow(config: AWSIoTConfig) {
   return shadow
 }
 
-async function startup() {
-  if (Config.ENEBULAR_AGENT_COMMAND_MODE) return
-
-  console.log('AWS IoT config file: ' + Config.AWSIOT_CONFIG_FILE)
+function onConnectorInit(config: Config) {
+  console.log('AWS IoT config file: ' + config.get('AWSIOT_CONFIG_FILE'))
 
   let awsIotConfig
   try {
     awsIotConfig = JSON.parse(
-      fs.readFileSync(Config.AWSIOT_CONFIG_FILE, 'utf8')
+      fs.readFileSync(config.get('AWSIOT_CONFIG_FILE'), 'utf8')
     )
   } catch (err) {
     console.error(err)
@@ -233,9 +231,6 @@ async function startup() {
   }
 
   thingName = awsIotConfig.thingName
-  connector = new ConnectorService()
-  agent = new EnebularAgent(connector, {})
-
   thingShadow = setupThingShadow(awsIotConfig)
 
   agent.on('connectorRegister', () => {
@@ -252,16 +247,20 @@ async function startup() {
     updateThingShadowRegisterState()
   })
 
-  await agent.startup()
-  info('Agent started')
-
   connector.updateActiveState(true)
   connector.updateRegistrationState(true, thingName)
+
+  info('Agent & Connector started')
+}
+
+async function startup() {
+  connector = new ConnectorService(onConnectorInit)
+  agent = new EnebularAgent(connector)
+
+  await agent.startup({})
 }
 
 async function shutdown() {
-  if (Config.ENEBULAR_AGENT_COMMAND_MODE) return
-
   await agent.shutdown()
   if (awsIotConnected) {
     canRegisterThingShadow = false

@@ -8,6 +8,7 @@ import DeviceAuthMediator from './device-auth-mediator'
 import AgentManagerMediator from './agent-manager-mediator'
 import NodeREDController from './node-red-controller'
 import LogManager from './log-manager'
+import CommandLine from './command-line'
 import Config from './config'
 import type { LogManagerConfig } from './log-manager'
 import type { Logger } from 'winston'
@@ -65,6 +66,8 @@ export default class EnebularAgent extends EventEmitter {
   _connector: ConnectorService
   _activator: Activator
   _configFile: string
+  _config: Config
+  _commandLine: CommandLine
 
   _messageEmitter: EventEmitter
   _nodeRed: NodeREDController
@@ -91,34 +94,43 @@ export default class EnebularAgent extends EventEmitter {
   _notifyStatusInterval: number
   _notifyStatusIntervalID: ?number
 
-  constructor(connector: ConnectorService, config: EnebularAgentConfig) {
+  constructor(connector: ConnectorService) {
     super()
 
+    this._config = new Config()
+    this._config.importEnvironmentVariables()
+
+    this._commandLine = new CommandLine()
+    this._config.importVariables(this._commandLine.getAgentOptions())
+
+    this._connector = connector
+
+    this._connector.on('activeChange', () => this._onConnectorActiveChange())
+    this._connector.on('registrationChange', () => this._onConnectorRegChange())
+    this._connector.on('connectionChange', () =>
+      this._onConnectorConnectionChange()
+    )
+    this._connector.on('message', params => this._onConnectorMessage(params))
+  }
+
+  _init(config: EnebularAgentConfig) {
     const {
-      nodeRedDir = Config.NODE_RED_DIR,
-      nodeRedDataDir = Config.NODE_RED_DATA_DIR,
-      nodeRedCommand = Config.NODE_RED_COMMAND,
-      nodeRedKillSignal = Config.NODE_RED_KILL_SIGNAL,
-      configFile = Config.ENEBULAR_CONFIG_PATH,
-      monitorIntervalFast = Config.MONITOR_INTERVAL_FAST,
-      monitorIntervalFastPeriod = Config.MONITOR_INTERVAL_FAST_PERIOD,
-      monitorIntervalNormal = Config.MONITOR_INTERVAL_NORMAL
+      nodeRedDir = this._config.get('NODE_RED_DIR'),
+      nodeRedDataDir = this._config.get('NODE_RED_DATA_DIR'),
+      nodeRedCommand = this._config.get('NODE_RED_COMMAND') ||
+        './node_modules/.bin/node-red -s .node-red-config/settings.js',
+      nodeRedKillSignal = this._config.get('NODE_RED_KILL_SIGNAL'),
+      configFile = this._config.get('ENEBULAR_CONFIG_PATH'),
+      monitorIntervalFast = this._config.get('MONITOR_INTERVAL_FAST'),
+      monitorIntervalFastPeriod = this._config.get(
+        'MONITOR_INTERVAL_FAST_PERIOD'
+      ),
+      monitorIntervalNormal = this._config.get('MONITOR_INTERVAL_NORMAL')
     } = config
 
     this._monitorIntervalFast = monitorIntervalFast
     this._monitorIntervalFastPeriod = monitorIntervalFastPeriod
     this._monitorIntervalNormal = monitorIntervalNormal
-    this._connector = connector
-    connector.on('activeChange', () => this._onConnectorActiveChange())
-    connector.on('registrationChange', () => this._onConnectorRegChange())
-    connector.on('connectionChange', () => this._onConnectorConnectionChange())
-    connector.on('message', params => this._onConnectorMessage(params))
-
-    try {
-      fs.ensureDirSync(Config.ENEBULAR_AGENT_HOME)
-    } catch (err) {
-      this._log.error(err)
-    }
 
     const activatorName = 'enebular'
     const activatorPath = path.join(__dirname, `${activatorName}-activator.js`)
@@ -209,7 +221,7 @@ export default class EnebularAgent extends EventEmitter {
   _createPIDFile() {
     try {
       fs.writeFileSync(
-        Config.ENEBULAR_AGENT_PID_FILE,
+        this._config.get('ENEBULAR_AGENT_PID_FILE'),
         process.pid.toString(),
         'utf8'
       )
@@ -220,13 +232,21 @@ export default class EnebularAgent extends EventEmitter {
 
   _removePIDFile() {
     try {
-      fs.unlinkSync(Config.ENEBULAR_AGENT_PID_FILE)
+      fs.unlinkSync(this._config.get('ENEBULAR_AGENT_PID_FILE'))
     } catch (err) {
       this._log.error(err)
     }
   }
 
-  async startup() {
+  async startup(config: EnebularAgentConfig) {
+    if (this._commandLine.processSubCommand(this._config)) {
+      // User input sub command, skip agent initialization.
+      return
+    }
+
+    this._init(config)
+    this._connector._initFunc(this._config)
+
     this._createPIDFile()
     this._loadAgentConfig()
     return this._nodeRed.startService()
