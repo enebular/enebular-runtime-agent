@@ -1,11 +1,7 @@
 /* @flow */
 import net from 'net'
 import fs from 'fs'
-import {
-  EnebularAgent,
-  ConnectorService,
-  Config
-} from 'enebular-runtime-agent'
+import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
 
 const MODULE_NAME = 'local'
 const END_OF_MSG_MARKER = 0x1e // RS (Record Separator)
@@ -149,32 +145,27 @@ async function startLocalServer(connector: ConnectorService): net.Server {
 }
 
 async function startup() {
-  if (Config.ENEBULAR_AGENT_COMMAND_MODE) return
+  const connector = new ConnectorService(async () => {
+    agent.on('connectorRegister', () => {
+      clientSendMessage('register')
+    })
 
-  const connector = new ConnectorService()
-  agent = new EnebularAgent(connector, {})
+    agent.on('connectorConnect', () => {
+      clientSendMessage('connect')
+    })
 
-  agent.on('connectorRegister', () => {
-    clientSendMessage('register')
+    agent.on('connectorDisconnect', () => {
+      clientSendMessage('disconnect')
+    })
+
+    localServer = await startLocalServer(connector)
   })
+  agent = new EnebularAgent(connector)
 
-  agent.on('connectorConnect', () => {
-    clientSendMessage('connect')
-  })
-
-  agent.on('connectorDisconnect', () => {
-    clientSendMessage('disconnect')
-  })
-
-  await agent.startup()
-  info('Agent started')
-
-  localServer = await startLocalServer(connector)
+  await agent.startup({})
 }
 
 async function shutdown() {
-  if (Config.ENEBULAR_AGENT_COMMAND_MODE) return
-
   await localServer.close()
   attemptSocketRemove()
   return agent.shutdown()
