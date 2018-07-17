@@ -218,22 +218,29 @@ function setupThingShadow(config: AWSIoTConfig) {
   return shadow
 }
 
-function onConnectorRegisterConfig(config: Config) {
+function onConnectorRegisterConfig() {
   const defaultAWSIoTConfigPath = path.resolve(
     process.argv[1],
     '../../config.json'
   )
 
-  config.addVariable('AWSIOT_CONFIG_FILE', defaultAWSIoTConfigPath, true)
+  agent.config.addVariable('AWSIOT_CONFIG_FILE', defaultAWSIoTConfigPath, true)
+
+  agent.commandLine.addConfigOption(
+    '--aws-iot-config-file <path>',
+    'AWSIoT config file path',
+    'AWSIOT_CONFIG_FILE',
+    'awsIotConfigFile'
+  )
 }
 
-function onConnectorInit(config: Config) {
-  console.log('AWS IoT config file: ' + config.get('AWSIOT_CONFIG_FILE'))
+function onConnectorInit() {
+  console.log('AWS IoT config file: ' + agent.config.get('AWSIOT_CONFIG_FILE'))
 
   let awsIotConfig
   try {
     awsIotConfig = JSON.parse(
-      fs.readFileSync(config.get('AWSIOT_CONFIG_FILE'), 'utf8')
+      fs.readFileSync(agent.config.get('AWSIOT_CONFIG_FILE'), 'utf8')
     )
   } catch (err) {
     console.error(err)

@@ -101,16 +101,6 @@ export default class EnebularAgent extends EventEmitter {
     this._config = new Config()
     this._commandLine = new CommandLine()
 
-    if (this._connector._registerConfig) {
-      this._connector._registerConfig(this._config)
-    }
-    if (this._connector._registerCommandLineOptions) {
-      this._connector._registerCommandLineOptions()
-    }
-
-    this._config.importEnvironmentVariables()
-    this._config.importVariables(this._commandLine.getAgentOptions())
-
     this._connector.on('activeChange', () => this._onConnectorActiveChange())
     this._connector.on('registrationChange', () => this._onConnectorRegChange())
     this._connector.on('connectionChange', () =>
@@ -186,7 +176,8 @@ export default class EnebularAgent extends EventEmitter {
     logConfig['level'] = config.logLevel
     logConfig['enableConsole'] = config.enableConsoleLog
     logConfig['enableFile'] = config.enableFileLog
-    logConfig['enableSyslog'] = config.enableSysLog
+    logConfig['enableSyslog'] =
+      config.enableSysLog || this._config.get('ENABLE_SYSLOG')
     logConfig['filePath'] = config.logfilePath
     logConfig['enableEnebular'] = config.enableEnebularLog
     logConfig['enebularCachePath'] = config.enebularLogCachePath
@@ -214,6 +205,14 @@ export default class EnebularAgent extends EventEmitter {
 
   get logManager(): LogManager {
     return this._logManager
+  }
+
+  get config(): Config {
+    return this._config
+  }
+
+  get commandLine(): CommandLine {
+    return this._commandLine
   }
 
   _requestConnectorRegister() {
@@ -245,9 +244,16 @@ export default class EnebularAgent extends EventEmitter {
   }
 
   async startup(config: EnebularAgentConfig) {
-    if (this._commandLine.processSubCommand(this._config)) {
+    if (this._connector._registerConfig) {
+      this._connector._registerConfig()
+    }
+    this._config.importEnvironmentVariables()
+    this._commandLine.parse()
+    this._config.importVariables(this._commandLine.getConfigOptions())
+
+    if (this._commandLine.hasSubCommand()) {
       // User input sub command, skip agent initialization.
-      return
+      return this._commandLine.processSubCommand(this._config)
     }
 
     this._init(config)

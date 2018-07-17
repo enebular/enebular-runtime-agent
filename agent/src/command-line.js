@@ -9,18 +9,41 @@ import Config from './config'
 export default class CommandLine {
   _subCommand: string
   _subCommandOptions: Object
+  _configOptionMap: Object = {}
 
   constructor() {
-    commander
-      .version(pkg.version, '-v, --version')
-      .option(
-        '--enebular-config-file <config file path>',
-        'Enebular config file path'
-      )
-      .option('--node-red-dir <path>', 'Node-RED installation path')
-      .option('--node-red-data-dir <path>', 'Node-RED data path')
-      .option('--node-red-command <command>', 'Node-RED startup command')
-      .option('--enable-syslog', 'Enable syslog at info level')
+    commander.version(pkg.version, '-v, --version')
+
+    this.addConfigOption(
+      '--enebular-config-file <path>',
+      'Enebular config file path',
+      'ENEBULAR_CONFIG_PATH',
+      'enebularConfigFile'
+    )
+    this.addConfigOption(
+      '--node-red-dir <path>',
+      'Node-RED installation path',
+      'NODE_RED_DIR',
+      'nodeRedDir'
+    )
+    this.addConfigOption(
+      '--node-red-data-dir <path>',
+      'Node-RED data path',
+      'NODE_RED_DATA_DIR',
+      'nodeRedDataDir'
+    )
+    this.addConfigOption(
+      '--node-red-command <command>',
+      'Node-RED startup command',
+      'NODE_RED_COMMAND',
+      'nodeRedCommand'
+    )
+    this.addConfigOption(
+      '--enable-syslog',
+      'Enable syslog at info level',
+      'ENABLE_SYSLOG',
+      'enableSyslog'
+    )
 
     commander
       .command('startup-register')
@@ -59,60 +82,61 @@ export default class CommandLine {
         this._subCommand = 'kill'
         this._subCommandOptions = options
       })
+  }
 
+  parse() {
     commander.parse(process.argv)
   }
 
-  processSubCommand(config: Config) {
-    const ret = !!this._subCommand
-
-    if (ret) {
-      switch (this._subCommand) {
-        case 'startup-register':
-        case 'startup-unregister':
-          const user = this._subCommandOptions.startupUser || process.env.USER
-          const serviceName =
-            this._subCommandOptions.startupServiceName ||
-            'enebular-agent-' + user
-          console.log('user:', user)
-          console.log('service name:', serviceName)
-
-          const func =
-            this._subCommand === 'startup-register'
-              ? Startup.startupRegister
-              : Startup.startupUnregister
-          func(user, serviceName, config)
-          break
-        case 'kill':
-          ProcessUtil.killProcessByPIDFile(
-            config.get('ENEBULAR_AGENT_PID_FILE')
-          )
-          break
-        default:
-          console.log(this._subCommand + ' is not supported.')
-          return false
-      }
-    }
-    return ret
+  hasSubCommand() {
+    return !!this._subCommand
   }
 
-  getAgentOptions() {
+  processSubCommand(config: Config) {
+    switch (this._subCommand) {
+      case 'startup-register':
+      case 'startup-unregister':
+        const user = this._subCommandOptions.startupUser || process.env.USER
+        const serviceName =
+          this._subCommandOptions.startupServiceName || 'enebular-agent-' + user
+        console.log('user:', user)
+        console.log('service name:', serviceName)
+
+        const func =
+          this._subCommand === 'startup-register'
+            ? Startup.startupRegister
+            : Startup.startupUnregister
+        return func(user, serviceName, config)
+      case 'kill':
+        return ProcessUtil.killProcessByPIDFile(
+          config.get('ENEBULAR_AGENT_PID_FILE')
+        )
+      default:
+        console.log(this._subCommand + ' is not supported.')
+        return false
+    }
+  }
+
+  addConfigOption(
+    option: string,
+    description: string,
+    configName: string,
+    optionName: string
+  ) {
+    commander.option(option, description)
+    this._configOptionMap[configName] = optionName
+  }
+
+  getConfigOptions() {
     let options = []
-    if (commander.enebularConfigFile) {
-      options['ENEBULAR_CONFIG_PATH'] = commander.enebularConfigFile
-    }
-    if (commander.nodeRedDir) {
-      options['NODE_RED_DIR'] = commander.nodeRedDir
-    }
-    if (commander.nodeRedDataDir) {
-      options['NODE_RED_DATA_DIR'] = commander.nodeRedDataDir
-    }
-    if (commander.nodeRedCommand) {
-      options['NODE_RED_COMMAND'] = commander.nodeRedCommand
-    }
-    if (commander.enableSyslog) {
-      options['ENABLE_SYSLOG'] = commander.enableSyslog
-    }
+    const myself = this
+    const configItems = Object.keys(this._configOptionMap)
+    configItems.forEach(function(configName) {
+      const optionName = myself._configOptionMap[configName]
+      if (commander[optionName]) {
+        options[configName] = commander[optionName]
+      }
+    })
     return options
   }
 }

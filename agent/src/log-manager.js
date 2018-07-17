@@ -2,7 +2,6 @@
 
 import winston from 'winston'
 import { Syslog } from 'winston-syslog'
-import Config from './config'
 import { Enebular } from './winston-enebular'
 import type { WinstonEnebularConfig } from './winston-enebular'
 import type AgentManagerMediator from './agent-manager-mediator'
@@ -28,7 +27,7 @@ export default class LogManager {
       level = 'info',
       enableConsole = false,
       enableFile = false,
-      enableSysLog = Config.ENABLE_SYSLOG,
+      enableSysLog = false,
       filePath = '/var/log/enebular/enebular.log',
       enableEnebular = true,
       enebularCachePath = '/tmp/enebular-log-cache',

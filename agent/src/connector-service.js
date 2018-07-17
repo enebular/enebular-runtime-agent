@@ -1,8 +1,8 @@
 /* @flow */
 import EventEmitter from 'events'
 
-export type ConnectorInit = (config: Config) => void
-export type ConnectorRegisterConfig = (config: Config) => void
+export type ConnectorInit = () => void
+export type ConnectorRegisterConfig = () => void
 
 export default class ConnectorService extends EventEmitter {
   _active: boolean = false

@@ -24,9 +24,21 @@ const systemdTemplate =
   'WantedBy=multi-user.target network-online.target\n'
 
 export default class Startup {
-  static requireRootUser() {
+  static requireRootUser(user: string) {
+    console.log(
+      'To register/unregister the Startup Script, copy/paste the following command:'
+    )
+    console.log(
+      'sudo env PATH=$PATH:' +
+        path.dirname(process.execPath) +
+        ' ' +
+        process.argv[1] +
+        ' ' +
+        process.argv[2] +
+        ' -u ' +
+        user
+    )
     console.log('You have to run this with root permission.')
-    process.exit(1)
   }
 
   static appendEnvironment(src: string, key: string, value: string) {
@@ -34,9 +46,18 @@ export default class Startup {
     return src + 'Environment=' + key + '=' + value + '\n'
   }
 
-  static startupRegister(user: string, serviceName: string, config: Config) {
+  static getServiceFilePath(serviceName: string) {
+    return '/etc/systemd/system/' + serviceName + '.service'
+  }
+
+  static startupRegister(
+    user: string,
+    serviceName: string,
+    config: Config
+  ): boolean {
     if (process.getuid() !== 0) {
-      Startup.requireRootUser()
+      Startup.requireRootUser(user)
+      return false
     }
 
     let appendEnvs = ''
@@ -51,7 +72,7 @@ export default class Startup {
     })
 
     let template = systemdTemplate
-    let destination = '/etc/systemd/system/' + serviceName + '.service'
+    let destination = Startup.getServiceFilePath(serviceName)
     let startAgentCommand = process.mainModule.filename + ' --enable-syslog'
     template = template
       .replace(/%APPEND_ENV%/g, appendEnvs)
@@ -89,22 +110,28 @@ export default class Startup {
         }
       })
     })
+    return true
   }
 
-  static startupUnregister(user: string, serviceName: string, config: Config) {
-    if (!fs.existsSync('/etc/systemd/system/' + serviceName + '.service')) {
+  static startupUnregister(
+    user: string,
+    serviceName: string,
+    config: Config
+  ): boolean {
+    if (!fs.existsSync(Startup.getServiceFilePath(serviceName))) {
       console.error('No startup service has been registered.')
       return
     }
 
     if (process.getuid() !== 0) {
-      Startup.requireRootUser()
+      Startup.requireRootUser(user)
+      return false
     }
 
     let commands = [
       'systemctl stop ' + serviceName,
       'systemctl disable ' + serviceName,
-      'rm /etc/systemd/system/' + serviceName + '.service'
+      'rm ' + Startup.getServiceFilePath(serviceName)
     ]
 
     execSync(commands.join('&& '), (err, stdout, stderr) => {
@@ -114,5 +141,6 @@ export default class Startup {
         console.error(err)
       }
     })
+    return true
   }
 }
