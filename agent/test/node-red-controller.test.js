@@ -89,7 +89,7 @@ async function createAgentRunningWithTestNodeRedSettings(
   connector = ret.connector
 
   // console.log("user directory: ", agent._nodeRed._getDataDir())
-  t.true(await nodeRedIsAlive(NodeRedPort, 3000))
+  t.true(await nodeRedIsAlive(NodeRedPort, 5000))
 }
 
 test.serial(
