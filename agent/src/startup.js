@@ -40,7 +40,6 @@ export default class Startup {
     }
 
     let appendEnvs = ''
-
     const exposedVariables = config.getExposedVariables()
     const items = Object.keys(exposedVariables)
     items.forEach(function(key) {
@@ -50,12 +49,6 @@ export default class Startup {
         exposedVariables[key]
       )
     })
-    // appendEnvs = Startup.appendEnvironment(appendEnvs, 'ENEBULAR_CONFIG_PATH')
-    // appendEnvs = Startup.appendEnvironment(appendEnvs, 'NODE_RED_DIR')
-    // appendEnvs = Startup.appendEnvironment(appendEnvs, 'NODE_RED_DATA_DIR')
-    // if (config.get('ENEBULAR_AGENT_PROGRAM') === 'enebular-awsiot-agent') {
-    // appendEnvs = Startup.appendEnvironment(appendEnvs, 'AWSIOT_CONFIG_FILE')
-    // }
 
     let template = systemdTemplate
     let destination = '/etc/systemd/system/' + serviceName + '.service'

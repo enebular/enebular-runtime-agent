@@ -1,5 +1,6 @@
 /* @flow */
 import fs from 'fs'
+import path from 'path'
 import awsIot from 'aws-iot-device-sdk'
 import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
 
@@ -217,6 +218,15 @@ function setupThingShadow(config: AWSIoTConfig) {
   return shadow
 }
 
+function onConnectorRegisterConfig(config: Config) {
+  const defaultAWSIoTConfigPath = path.resolve(
+    process.argv[1],
+    '../../config.json'
+  )
+
+  config.addVariable('AWSIOT_CONFIG_FILE', defaultAWSIoTConfigPath, true)
+}
+
 function onConnectorInit(config: Config) {
   console.log('AWS IoT config file: ' + config.get('AWSIOT_CONFIG_FILE'))
 
@@ -254,7 +264,7 @@ function onConnectorInit(config: Config) {
 }
 
 async function startup() {
-  connector = new ConnectorService(onConnectorInit)
+  connector = new ConnectorService(onConnectorInit, onConnectorRegisterConfig)
   agent = new EnebularAgent(connector)
 
   await agent.startup({})

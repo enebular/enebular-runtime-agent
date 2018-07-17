@@ -32,60 +32,58 @@ test.afterEach.always('cleanup', async t => {
 test.serial('Env.1: Agent starts if node-red path is valid', async t => {
   let agentConfig = Utils.createDefaultAgentConfig(30001)
 
-  const connector = new ConnectorService()
-  t.notThrows(() => {
-    agent = new EnebularAgent(connector, agentConfig)
+  const connector = new ConnectorService(() => {
+    connector.updateActiveState(true)
+  })
+  agent = new EnebularAgent(connector)
+  t.notThrows(async () => {
+    await agent.startup(agentConfig)
   }, Error)
-  await agent.startup()
-  connector.updateActiveState(true)
-
   t.true(await nodeRedIsAlive(30001, 3000))
 })
 
-test.serial('Env.2: Agent fails to start if node-red path is invalid', t => {
+test.serial('Env.2: Agent fails to start if node-red path is invalid', async t => {
   const connector = new ConnectorService()
   let agentConfig = Utils.createDefaultAgentConfig(1990)
 
   agentConfig['nodeRedDir'] = '../node-red-invalid'
   agentConfig['configFile'] = '.enebular-config.json'
 
-  t.throws(() => {
-    agent = new EnebularAgent(connector, agentConfig)
-  }, Error)
+  agent = new EnebularAgent(connector)
+  await t.throws(agent.startup(agentConfig), Error)
 })
 
 test.serial(
   'Env.3: Agent fails to start if node-red data path is invalid',
-  t => {
+  async t => {
     const connector = new ConnectorService()
     let agentConfig = Utils.createDefaultAgentConfig(1990)
     agentConfig['nodeRedDataDir'] = '../node-red-data-invalid'
     agentConfig['configFile'] = '.enebular-config.json'
 
-    t.throws(() => {
-      agent = new EnebularAgent(connector, agentConfig)
-    }, Error)
+    agent = new EnebularAgent(connector)
+    await t.throws(agent.startup(agentConfig), Error)
   }
 )
 
-test.serial('Env.4: Agent starts if config file path is invalid', t => {
-  const connector = new ConnectorService()
+test.serial('Env.4: Agent starts if config file path is invalid', async t => {
+  const connector = new ConnectorService(() => {
+    connector.updateActiveState(true)
+    connector.updateRegistrationState(true, 'dummy')
+  })
   let agentConfig = Utils.createDefaultAgentConfig(1990)
   agentConfig['configFile'] = '/tmp/invalid-path/file'
 
-  t.notThrows(() => {
-    agent = new EnebularAgent(connector, agentConfig)
-  }, Error)
-
+  agent = new EnebularAgent(connector)
   return new Promise(async (resolve, reject) => {
     agent.on('connectorConnect', async () => {
+      t.pass()
       resolve()
     })
 
-    await agent.startup()
-    connector.updateActiveState(true)
-    connector.updateRegistrationState(true, 'dummy')
+    await agent.startup(agentConfig)
     setTimeout(async () => {
+      t.fail()
       reject(new Error('no connect request.'))
     }, 1000)
   })
@@ -94,12 +92,12 @@ test.serial('Env.4: Agent starts if config file path is invalid', t => {
 test.serial('Env.5: Agent takes nodeRedCommand to launch node-red', async t => {
   let agentConfig = Utils.createDefaultAgentConfig(30000)
 
-  const connector = new ConnectorService()
-  t.notThrows(() => {
-    agent = new EnebularAgent(connector, agentConfig)
-  }, Error)
-  await agent.startup()
-  connector.updateActiveState(true)
+  const connector = new ConnectorService(() => {
+    connector.updateActiveState(true)
+  })
+
+  agent = new EnebularAgent(connector)
+  await t.notThrows(agent.startup(agentConfig), Error)
 
   t.true(await nodeRedIsAlive(30000, 3000))
 })
@@ -111,11 +109,9 @@ test.serial(
     let agentConfig = Utils.createDefaultAgentConfig(1990)
     agentConfig['nodeRedCommand'] = './node_modules/.bin/node-red-invalid'
 
-    t.notThrows(() => {
-      agent = new EnebularAgent(connector, agentConfig)
-    }, Error)
-    await agent
-      .startup()
+    agent = new EnebularAgent(connector)
+    await t.notThrows(agent
+      .startup(agentConfig)
       .then(function(error) {
         console.log(error)
         t.fail()
@@ -123,7 +119,7 @@ test.serial(
       .catch(function(error) {
         console.log(error)
         t.pass()
-      })
+      }), Error)
   }
 )
 
@@ -134,12 +130,10 @@ test.serial('Env.7: Agent starts normally with no config file', async t => {
   let agentConfig = Utils.createDefaultAgentConfig(1990)
   agentConfig['configFile'] = configFileName
 
-  t.notThrows(() => {
-    agent = new EnebularAgent(connector, agentConfig)
-  }, Error)
+  agent = new EnebularAgent(connector)
 
   return new Promise(async (resolve, reject) => {
-    await agent.startup()
+    await t.notThrows(agent.startup(agentConfig), Error)
     connector.updateActiveState(true)
     setTimeout(() => {
       fs.unlink(agentConfig['configFile'], err => {
@@ -157,12 +151,10 @@ test.serial('Env.8: Agent accepts all supported config items', async t => {
   let agentConfig = Utils.createDefaultAgentConfig(1990)
   agentConfig['configFile'] = Utils.createDummyEnebularConfig({})
 
-  t.notThrows(() => {
-    agent = new EnebularAgent(connector, agentConfig)
-  }, Error)
+  agent = new EnebularAgent(connector)
 
   return new Promise(async (resolve, reject) => {
-    await agent.startup()
+    await t.notThrows(agent.startup(agentConfig), Error)
     connector.updateActiveState(true)
     setTimeout(() => {
       fs.unlink(agentConfig['configFile'], err => {
@@ -193,12 +185,10 @@ test.serial('Env.9: Agent handles an invalid config file', async t => {
   let agentConfig = Utils.createDefaultAgentConfig(1990)
   agentConfig['configFile'] = Utils.createBrokenEnebularConfig()
 
-  t.notThrows(() => {
-    agent = new EnebularAgent(connector, agentConfig)
-  }, Error)
+  agent = new EnebularAgent(connector)
 
   return new Promise(async (resolve, reject) => {
-    await agent.startup()
+    await t.notThrows(agent.startup(agentConfig), Error)
     connector.updateActiveState(true)
     setTimeout(() => {
       fs.unlink(agentConfig['configFile'], err => {

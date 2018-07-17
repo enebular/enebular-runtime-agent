@@ -96,14 +96,20 @@ export default class EnebularAgent extends EventEmitter {
 
   constructor(connector: ConnectorService) {
     super()
+    this._connector = connector
 
     this._config = new Config()
-    this._config.importEnvironmentVariables()
-
     this._commandLine = new CommandLine()
-    this._config.importVariables(this._commandLine.getAgentOptions())
 
-    this._connector = connector
+    if (this._connector._registerConfig) {
+      this._connector._registerConfig(this._config)
+    }
+    if (this._connector._registerCommandLineOptions) {
+      this._connector._registerCommandLineOptions()
+    }
+
+    this._config.importEnvironmentVariables()
+    this._config.importVariables(this._commandLine.getAgentOptions())
 
     this._connector.on('activeChange', () => this._onConnectorActiveChange())
     this._connector.on('registrationChange', () => this._onConnectorRegChange())
@@ -245,10 +251,12 @@ export default class EnebularAgent extends EventEmitter {
     }
 
     this._init(config)
-    this._connector._initFunc(this._config)
-
     this._createPIDFile()
     this._loadAgentConfig()
+
+    if (this._connector._init) {
+      this._connector._init(this._config)
+    }
     return this._nodeRed.startService()
   }
 

@@ -1,18 +1,21 @@
 /* @flow */
 import EventEmitter from 'events'
 
-export type ConnectorInitFunc = (config: Config) => any
+export type ConnectorInit = (config: Config) => void
+export type ConnectorRegisterConfig = (config: Config) => void
 
 export default class ConnectorService extends EventEmitter {
   _active: boolean = false
   _registered: boolean = false
   _connected: boolean = false
   _deviceId: string
-  _initFunc: ConnectorInitFunc
+  _init: ConnectorInit
+  _registerConfig: ConnectorRegisterConfig
 
-  constructor(initFunc: ConnectorInitFunc) {
+  constructor(init: ConnectorInit, registerConfig: ConnectorRegisterConfig) {
     super()
-    this._initFunc = initFunc
+    this._init = init
+    this._registerConfig = registerConfig
   }
 
   get active(): boolean {

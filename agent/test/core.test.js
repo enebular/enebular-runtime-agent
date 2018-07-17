@@ -53,11 +53,14 @@ test.serial(
   'Core.1: No activator config present, agent connects to connector',
   t => {
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
-    const connector = new ConnectorService()
+    const connector = new ConnectorService(() => {
+      connector.updateActiveState(true)
+      connector.updateRegistrationState(true, 'dummy_deviceId')
+    })
     let agentConfig = Utils.createDefaultAgentConfig(NodeRedPort)
     agentConfig['configFile'] = configFile
 
-    agent = new EnebularAgent(connector, agentConfig)
+    agent = new EnebularAgent(connector)
 
     return new Promise(async (resolve, reject) => {
       agent.on('connectorConnect', async () => {
@@ -65,9 +68,7 @@ test.serial(
         resolve()
       })
 
-      await agent.startup()
-      connector.updateActiveState(true)
-      connector.updateRegistrationState(true, 'dummy_deviceId')
+      await agent.startup(agentConfig)
       setTimeout(async () => {
         t.fail()
         reject(new Error('no connect request.'))

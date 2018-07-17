@@ -4,6 +4,7 @@ import p from 'path'
 export default class Config {
   _config: Object
   _exposeVariablesName: Array<string> = [
+    'DEBUG',
     'ENEBULAR_CONFIG_PATH',
     'NODE_RED_DIR',
     'NODE_RED_DATA_DIR',
@@ -30,7 +31,6 @@ export default class Config {
         '../../node-red/',
         '.node-red-config'
       ),
-      AWSIOT_CONFIG_FILE: p.resolve(defaultBasePath, 'config.json'),
       NODE_RED_KILL_SIGNAL: 'SIGINT',
       MONITOR_INTERVAL_FAST: 30,
       MONITOR_INTERVAL_NORMAL: 60 * 5,
@@ -54,6 +54,13 @@ export default class Config {
       }
     })
     return variables
+  }
+
+  addVariable(name: string, value: string, expose: boolean) {
+    this._config[name] = value
+    if (expose) {
+      this._exposeVariablesName.push(name)
+    }
   }
 
   importVariables(variables: Object) {

@@ -11,7 +11,7 @@ export default class ProcessUtil {
     }
   }
 
-  _waitForProcessToDie(pid: number) {
+  static _waitForProcessToDie(pid: number) {
     return new Promise((resolve, reject) => {
       let timeout
       const timer = setInterval(() => {

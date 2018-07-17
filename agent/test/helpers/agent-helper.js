@@ -13,13 +13,13 @@ export async function createStartedAgent(
   t: test,
   agentConfig: EnebularAgentConfig
 ) {
-  let connector = new ConnectorService()
+  let connector = new ConnectorService(() => {
+    connector.updateActiveState(true)
+  })
+  let agent = new EnebularAgent(connector)
 
   agentConfig = Object.assign(Utils.createDefaultAgentConfig(1990), agentConfig)
-  let agent = new EnebularAgent(connector, agentConfig)
-
-  await agent.startup()
-  connector.updateActiveState(true)
+  await agent.startup(agentConfig)
   return { agent: agent, connector: connector }
 }
 
@@ -27,9 +27,12 @@ export async function createConnectedAgent(
   t: test,
   agentConfig: EnebularAgentConfig
 ) {
-  let connector = new ConnectorService()
+  let connector = new ConnectorService(() => {
+    connector.updateActiveState(true)
+    connector.updateRegistrationState(true, 'dummy_deviceId')
+  })
   agentConfig = Object.assign(Utils.createDefaultAgentConfig(1990), agentConfig)
-  let agent = new EnebularAgent(connector, agentConfig)
+  let agent = new EnebularAgent(connector)
 
   return new Promise(async (resolve, reject) => {
     agent.on('connectorConnect', async () => {
@@ -37,9 +40,7 @@ export async function createConnectedAgent(
       resolve({ agent: agent, connector: connector })
     })
 
-    await agent.startup()
-    connector.updateActiveState(true)
-    connector.updateRegistrationState(true, 'dummy_deviceId')
+    await agent.startup(agentConfig)
     setTimeout(async () => {
       reject(new Error('no connect request.'))
     }, 1000)

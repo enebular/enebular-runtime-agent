@@ -70,9 +70,8 @@ test.serial(
     let agentConfig = Utils.createDefaultAgentConfig(NodeRedPort)
     agentConfig['configFile'] = configFile
 
-    t.throws(() => {
-      agent = new EnebularAgent(connector, agentConfig)
-    }, Error)
+    agent = new EnebularAgent(connector)
+    await t.throws( agent.startup(agentConfig) , Error)
   }
 )
 
@@ -194,21 +193,25 @@ test.serial('Activator.6: License is valid.', async t => {
   server.on('activateLicense', activateCallback)
 
   const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
-  const ret = await createStartedAgent(
-    t,
-    Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
-  )
-  agent = ret.agent
+
+  const connector = new ConnectorService(() => {
+    connector.updateActiveState(true)
+  })
+  agent = new EnebularAgent(connector)
 
   agent.on('connectorRegister', () => {
-    ret.connector.updateRegistrationState(true, 'dummy_deviceId')
+    connector.updateRegistrationState(true, 'dummy_deviceId')
   })
 
   agent.on('connectorConnect', () => {
-    ret.connector.updateConnectionState(true)
+    connector.updateConnectionState(true)
     connectorConnectReceived = true
   })
 
+  const agentConfig = Object.assign(Utils.createDefaultAgentConfig(1990),
+      Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort))
+  await agent.startup(agentConfig)
+  
   return new Promise(async (resolve, reject) => {
     setTimeout(() => {
       server.removeListener('verifyLicense', verifyCallback)
