@@ -1,6 +1,7 @@
 /* @flow */
 import test from 'ava'
 import fs from 'fs'
+import path from 'path'
 import jwt from 'jsonwebtoken'
 
 import EnebularAgent from '../../src/enebular-agent'
@@ -16,10 +17,15 @@ export async function createStartedAgent(
   let connector = new ConnectorService(() => {
     connector.updateActiveState(true)
   })
-  let agent = new EnebularAgent(connector)
 
   agentConfig = Object.assign(Utils.createDefaultAgentConfig(1990), agentConfig)
-  await agent.startup(agentConfig)
+  let agent = new EnebularAgent({
+      portBasePath: path.resolve(__dirname, '../'),
+      connector: connector,
+      config: agentConfig
+  })
+
+  await agent.startup()
   return { agent: agent, connector: connector }
 }
 
@@ -32,7 +38,11 @@ export async function createConnectedAgent(
     connector.updateRegistrationState(true, 'dummy_deviceId')
   })
   agentConfig = Object.assign(Utils.createDefaultAgentConfig(1990), agentConfig)
-  let agent = new EnebularAgent(connector)
+  let agent = new EnebularAgent({
+      portBasePath: path.resolve(__dirname, '../'),
+      connector: connector,
+      config: agentConfig
+  })
 
   return new Promise(async (resolve, reject) => {
     agent.on('connectorConnect', async () => {

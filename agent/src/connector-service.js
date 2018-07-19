@@ -14,8 +14,8 @@ export default class ConnectorService extends EventEmitter {
 
   constructor(init: ConnectorInit, registerConfig: ConnectorRegisterConfig) {
     super()
-    this._init = init
-    this._registerConfig = registerConfig
+    this.init = init
+    this.registerConfig = registerConfig
   }
 
   get active(): boolean {

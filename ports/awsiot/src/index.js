@@ -224,7 +224,7 @@ function onConnectorRegisterConfig() {
     '../../config.json'
   )
 
-  agent.config.addVariable('AWSIOT_CONFIG_FILE', defaultAWSIoTConfigPath, true)
+  agent.config.addItem('AWSIOT_CONFIG_FILE', defaultAWSIoTConfigPath, true)
 
   agent.commandLine.addConfigOption(
     '--aws-iot-config-file <path>',
@@ -234,18 +234,27 @@ function onConnectorRegisterConfig() {
   )
 }
 
+function ensureAbsolutePath(pathToCheck: string, configPath: string) {
+  if (!path.isAbsolute(pathToCheck)) {
+    pathToCheck = path.resolve(configPath, pathToCheck)
+  }
+}
+
 function onConnectorInit() {
-  console.log('AWS IoT config file: ' + agent.config.get('AWSIOT_CONFIG_FILE'))
+  const awsIotConfigFile = agent.config.get('AWSIOT_CONFIG_FILE')
+  info('AWS IoT config file: ' + awsIotConfigFile)
 
   let awsIotConfig
   try {
-    awsIotConfig = JSON.parse(
-      fs.readFileSync(agent.config.get('AWSIOT_CONFIG_FILE'), 'utf8')
-    )
+    awsIotConfig = JSON.parse(fs.readFileSync(awsIotConfigFile, 'utf8'))
   } catch (err) {
     console.error(err)
     process.exit(1)
   }
+
+  ensureAbsolutePath(awsIotConfig.caCert, awsIotConfigFile)
+  ensureAbsolutePath(awsIotConfig.clientCert, awsIotConfigFile)
+  ensureAbsolutePath(awsIotConfig.privateKey, awsIotConfigFile)
 
   thingName = awsIotConfig.thingName
   thingShadow = setupThingShadow(awsIotConfig)
@@ -267,14 +276,17 @@ function onConnectorInit() {
   connector.updateActiveState(true)
   connector.updateRegistrationState(true, thingName)
 
-  info('Agent & Connector started')
+  info('Agent started')
 }
 
 async function startup() {
   connector = new ConnectorService(onConnectorInit, onConnectorRegisterConfig)
-  agent = new EnebularAgent(connector)
+  agent = new EnebularAgent({
+    portBasePath: path.resolve(__dirname, '../'),
+    connector: connector
+  })
 
-  await agent.startup({})
+  await agent.startup()
 }
 
 async function shutdown() {

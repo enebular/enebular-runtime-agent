@@ -1,5 +1,6 @@
 /* @flow */
 import test from 'ava'
+import path from 'path'
 import { Server } from 'net'
 
 import EnebularAgent from '../src/enebular-agent'
@@ -70,8 +71,12 @@ test.serial(
     let agentConfig = Utils.createDefaultAgentConfig(NodeRedPort)
     agentConfig['configFile'] = configFile
 
-    agent = new EnebularAgent(connector)
-    await t.throws( agent.startup(agentConfig) , Error)
+    agent = new EnebularAgent({
+        portBasePath: path.resolve(__dirname, '../'),
+        connector: connector,
+        config: agentConfig
+    })
+    await t.throws( agent.startup() , Error)
   }
 )
 
@@ -197,7 +202,13 @@ test.serial('Activator.6: License is valid.', async t => {
   const connector = new ConnectorService(() => {
     connector.updateActiveState(true)
   })
-  agent = new EnebularAgent(connector)
+  const agentConfig = Object.assign(Utils.createDefaultAgentConfig(1990),
+      Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort))
+  agent = new EnebularAgent({
+      portBasePath: path.resolve(__dirname, '../'),
+      connector: connector,
+      config: agentConfig
+  })
 
   agent.on('connectorRegister', () => {
     connector.updateRegistrationState(true, 'dummy_deviceId')
@@ -208,9 +219,7 @@ test.serial('Activator.6: License is valid.', async t => {
     connectorConnectReceived = true
   })
 
-  const agentConfig = Object.assign(Utils.createDefaultAgentConfig(1990),
-      Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort))
-  await agent.startup(agentConfig)
+  await agent.startup()
   
   return new Promise(async (resolve, reject) => {
     setTimeout(() => {

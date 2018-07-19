@@ -25,7 +25,7 @@ export default class ProcessUtil {
       timeout = setTimeout(() => {
         clearInterval(timer)
         reject(new Error('timeout to kill process.'))
-      }, 1000)
+      }, 3000)
     })
   }
 

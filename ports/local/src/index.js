@@ -160,9 +160,12 @@ async function startup() {
 
     localServer = await startLocalServer(connector)
   })
-  agent = new EnebularAgent(connector)
+  agent = new EnebularAgent({
+      portBasePath: path.resolve(__dirname, '../'),
+      connector: connector
+  })
 
-  await agent.startup({})
+  await agent.startup()
 }
 
 async function shutdown() {

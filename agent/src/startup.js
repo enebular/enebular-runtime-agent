@@ -24,7 +24,7 @@ const systemdTemplate =
   'WantedBy=multi-user.target network-online.target\n'
 
 export default class Startup {
-  static requireRootUser(user: string) {
+  static _requireRootUser(user: string) {
     console.log(
       'To register/unregister the Startup Script, copy/paste the following command:'
     )
@@ -41,12 +41,12 @@ export default class Startup {
     console.log('You have to run this with root permission.')
   }
 
-  static appendEnvironment(src: string, key: string, value: string) {
+  static _appendEnvironment(src: string, key: string, value: string) {
     console.log('\t' + key + ':' + value)
     return src + 'Environment=' + key + '=' + value + '\n'
   }
 
-  static getServiceFilePath(serviceName: string) {
+  static _getServiceFilePath(serviceName: string) {
     return '/etc/systemd/system/' + serviceName + '.service'
   }
 
@@ -56,24 +56,25 @@ export default class Startup {
     config: Config
   ): boolean {
     if (process.getuid() !== 0) {
-      Startup.requireRootUser(user)
+      Startup._requireRootUser(user)
       return false
     }
 
     let appendEnvs = ''
-    const exposedVariables = config.getExposedVariables()
-    const items = Object.keys(exposedVariables)
-    items.forEach(function(key) {
-      appendEnvs = Startup.appendEnvironment(
+    const exposedItems = config.getExposedItems()
+    const itemKeys = Object.keys(exposedItems)
+    itemKeys.forEach(key => {
+      appendEnvs = Startup._appendEnvironment(
         appendEnvs,
         key,
-        exposedVariables[key]
+        exposedItems[key]
       )
     })
 
     let template = systemdTemplate
-    let destination = Startup.getServiceFilePath(serviceName)
-    let startAgentCommand = process.mainModule.filename + ' --enable-syslog'
+    let destination = Startup._getServiceFilePath(serviceName)
+    let startAgentCommand =
+      process.mainModule.filename + ' --enable-syslog --daemon-mode'
     template = template
       .replace(/%APPEND_ENV%/g, appendEnvs)
       .replace(/%START_AGENT%/g, startAgentCommand)
@@ -118,20 +119,20 @@ export default class Startup {
     serviceName: string,
     config: Config
   ): boolean {
-    if (!fs.existsSync(Startup.getServiceFilePath(serviceName))) {
+    if (!fs.existsSync(Startup._getServiceFilePath(serviceName))) {
       console.error('No startup service has been registered.')
       return
     }
 
     if (process.getuid() !== 0) {
-      Startup.requireRootUser(user)
+      Startup._requireRootUser(user)
       return false
     }
 
     let commands = [
       'systemctl stop ' + serviceName,
       'systemctl disable ' + serviceName,
-      'rm ' + Startup.getServiceFilePath(serviceName)
+      'rm ' + Startup._getServiceFilePath(serviceName)
     ]
 
     execSync(commands.join('&& '), (err, stdout, stderr) => {

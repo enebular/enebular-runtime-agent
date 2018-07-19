@@ -1,6 +1,7 @@
 /* @flow */
 import test from 'ava'
 import fs from 'fs'
+import path from 'path'
 import jwt from 'jsonwebtoken'
 import { Server } from 'net'
 
@@ -60,7 +61,11 @@ test.serial(
     let agentConfig = Utils.createDefaultAgentConfig(NodeRedPort)
     agentConfig['configFile'] = configFile
 
-    agent = new EnebularAgent(connector)
+    agent = new EnebularAgent({
+        portBasePath: path.resolve(__dirname, '../'),
+        connector: connector,
+        config: agentConfig
+    })
 
     return new Promise(async (resolve, reject) => {
       agent.on('connectorConnect', async () => {
@@ -68,7 +73,7 @@ test.serial(
         resolve()
       })
 
-      await agent.startup(agentConfig)
+      await agent.startup()
       setTimeout(async () => {
         t.fail()
         reject(new Error('no connect request.'))
