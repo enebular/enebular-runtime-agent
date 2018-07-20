@@ -1,9 +1,8 @@
 /* @flow */
 import fs from 'fs-extra'
-import path from 'path'
 import EventEmitter from 'events'
 import ConnectorService from './connector-service'
-import Activator from './activator'
+import EnebularActivator from './enebular-activator'
 import DeviceAuthMediator from './device-auth-mediator'
 import AgentManagerMediator from './agent-manager-mediator'
 import NodeREDController from './node-red-controller'
@@ -69,7 +68,7 @@ function isPossibleStateTransition(state: AgentState, nextState: AgentState) {
 
 export default class EnebularAgent extends EventEmitter {
   _connector: ConnectorService
-  _activator: Activator
+  _activator: EnebularActivator
   _configFile: string
   _config: Config
   _commandLine: CommandLine
@@ -185,12 +184,9 @@ export default class EnebularAgent extends EventEmitter {
     this._log.info('Node-RED command: ' + nodeRedCommand)
     this._log.info('Enebular config file: ' + configFile)
 
-    const activatorName = 'enebular'
-    const activatorPath = path.join(__dirname, `${activatorName}-activator.js`)
-    if (fs.existsSync(activatorPath)) {
-      const Activator = require(activatorPath).default
-      this._activator = new Activator()
-    }
+    this._activator = new EnebularActivator(
+      this._config.get('ACTIVATOR_CONFIG_PATH')
+    )
 
     this._agentMan = new AgentManagerMediator(this._log)
     this._logManager.setEnebularAgentManager(this._agentMan)

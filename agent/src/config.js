@@ -23,6 +23,10 @@ export default class Config {
         '.node-red-config'
       ),
       NODE_RED_KILL_SIGNAL: 'SIGINT',
+      ACTIVATOR_CONFIG_PATH: p.resolve(
+        portBasePath,
+        '.enebular-activation-config.json'
+      ),
       ENEBULAR_MONITOR_INTERVAL_FAST: 30,
       ENEBULAR_MONITOR_INTERVAL_NORMAL: 60 * 5,
       /* the +1 is to allow the last fast interval to trigger first */

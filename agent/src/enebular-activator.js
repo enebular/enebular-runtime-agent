@@ -1,18 +1,25 @@
 /* @flow */
 import fetch from 'isomorphic-fetch'
 import fs from 'fs'
-import Activator from './activator'
 
-export default class EnebularActivator extends Activator {
+export type ActivatableResult = {
+  canActivate: boolean,
+  message?: string
+}
+
+export type ActivationResult = {
+  connectionId: string,
+  authRequestUrl: string,
+  agentManagerBaseUrl: string
+}
+
+export default class EnebularActivator {
   _enabled: boolean = false
   _verifyURL: ?string
   _activateURL: ?string
   _licenseKey: ?string
 
-  constructor() {
-    super()
-    let configPath =
-      process.env.ACTIVATOR_CONFIG_PATH || '.enebular-activation-config.json'
+  constructor(configPath: string) {
     this._loadConfig(configPath)
   }
 
