@@ -4,7 +4,7 @@ import pkg from '../package.json'
 import ProcessUtil from './process-util'
 import Startup from './startup'
 
-import type { Config } from './config'
+import Config from './config'
 
 export default class CommandLine {
   _command: string
@@ -136,7 +136,7 @@ export default class CommandLine {
   }
 
   getConfigOptions() {
-    let options = []
+    let options = {}
     const myself = this
     const configItems = Object.keys(this._configOptionMap)
     configItems.forEach(function(configName) {

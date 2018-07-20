@@ -9,8 +9,8 @@ export default class ConnectorService extends EventEmitter {
   _registered: boolean = false
   _connected: boolean = false
   _deviceId: string
-  _init: ConnectorInit
-  _registerConfig: ConnectorRegisterConfig
+  init: ConnectorInit
+  registerConfig: ConnectorRegisterConfig
 
   constructor(init: ConnectorInit, registerConfig: ConnectorRegisterConfig) {
     super()

@@ -22,10 +22,13 @@ export type EnebularAgentConfig = {
   logLevel?: string,
   enableConsoleLog?: boolean,
   enableFileLog?: boolean,
+  enableSyslog?: boolean,
   logfilePath?: string,
   enableEnebularLog?: boolean,
   enebularLogCachePath?: string,
   enebularLogMaxCacheSize?: number,
+  enebularLogMaxSizePerInterval?: number,
+  enebularLogSendInterval?: number,
   monitorIntervalFast?: number,
   monitorIntervalFastPeriod?: number,
   monitorIntervalNormal?: number
@@ -92,9 +95,9 @@ export default class EnebularAgent extends EventEmitter {
   _connectorRegisteringForActivation: boolean
   _monitoringActivated: boolean = false
   _monitoringUpdateID: ?number
-  _monitorIntervalFast: ?number
-  _monitorIntervalFastPeriod: ?number
-  _monitorIntervalNormal: ?number
+  _monitorIntervalFast: number
+  _monitorIntervalFastPeriod: number
+  _monitorIntervalNormal: number
   _notifyStatusActivated: boolean = false
   _notifyStatusInterval: number
   _notifyStatusIntervalID: ?number
@@ -139,7 +142,7 @@ export default class EnebularAgent extends EventEmitter {
       this._config.set('ENEBULAR_LOG_LEVEL', config.logLevel)
       this._config.set('ENEBULAR_ENABLE_CONSOLE_LOG', config.enableConsoleLog)
       this._config.set('ENEBULAR_ENABLE_FILE_LOG', config.enableFileLog)
-      this._config.set('ENEBULAR_ENABLE_SYSLOG', config.enableSysLog)
+      this._config.set('ENEBULAR_ENABLE_SYSLOG', config.enableSyslog)
       this._config.set('ENEBULAR_LOG_FILE_PATH', config.logfilePath)
       this._config.set('ENEBULAR_ENABLE_ENEBULAR_LOG', config.enableEnebularLog)
       this._config.set(
@@ -295,7 +298,7 @@ export default class EnebularAgent extends EventEmitter {
     this._loadAgentConfig()
 
     if (this._connector.init) {
-      this._connector.init(this._config)
+      this._connector.init()
     }
     return this._nodeRed.startService()
   }

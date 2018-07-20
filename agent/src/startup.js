@@ -103,7 +103,7 @@ export default class Startup {
 
     commands.forEach(item => {
       console.log('Executing ' + item + '...')
-      execSync(item,{ stdio: 'inherit' })
+      execSync(item, { stdio: 'inherit' })
     })
     return true
   }
@@ -115,7 +115,7 @@ export default class Startup {
   ): boolean {
     if (!fs.existsSync(Startup._getServiceFilePath(serviceName))) {
       console.error('No startup service has been registered.')
-      return
+      return true
     }
 
     if (process.getuid() !== 0) {
@@ -131,7 +131,7 @@ export default class Startup {
 
     commands.forEach(item => {
       console.log('Executing ' + item + '...')
-      execSync(item,{ stdio: 'inherit' })
+      execSync(item, { stdio: 'inherit' })
     })
     return true
   }

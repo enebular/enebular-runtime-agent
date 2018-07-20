@@ -46,11 +46,11 @@ export default class Config {
     }
   }
 
-  get(key: string) {
+  get(key: string): any {
     return this._items[key]
   }
 
-  set(key: string, value: string) {
+  set(key: string, value: any) {
     if (value) {
       this._items[key] = value
     }

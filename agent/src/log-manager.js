@@ -5,7 +5,7 @@ import { Syslog } from 'winston-syslog'
 import { Enebular } from './winston-enebular'
 import type { WinstonEnebularConfig } from './winston-enebular'
 import type AgentManagerMediator from './agent-manager-mediator'
-import type { Config } from './config'
+import Config from './config'
 
 export default class LogManager {
   _transports: { [string]: winston.Transport }

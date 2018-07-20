@@ -19,12 +19,13 @@ export default class ProcessUtil {
           // console.log('pid=%d process killed', pid)
           clearTimeout(timeout)
           clearInterval(timer)
-          resolve()
+          resolve(true)
         }
       }, 100)
       timeout = setTimeout(() => {
         clearInterval(timer)
-        reject(new Error('timeout to kill process.'))
+        console.error('timeout to kill process.')
+        resolve(false)
       }, 3000)
     })
   }
@@ -32,12 +33,10 @@ export default class ProcessUtil {
   static async killProcess(pid: number): boolean {
     try {
       process.kill(pid, 'SIGTERM')
-      await ProcessUtil._waitForProcessToDie(pid)
-      return true
     } catch (err) {
       console.error('%s pid can not be killed', pid)
-      return false
     }
+    return await ProcessUtil._waitForProcessToDie(pid)
   }
 
   static killProcessByPIDFile(pidFileName: string): boolean {
