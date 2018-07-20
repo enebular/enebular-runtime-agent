@@ -103,13 +103,7 @@ export default class Startup {
 
     commands.forEach(item => {
       console.log('Executing ' + item + '...')
-      execSync(item, (err, stdout, stderr) => {
-        console.log(stdout)
-        console.log(stderr)
-        if (err) {
-          console.error(err)
-        }
-      })
+      execSync(item,{ stdio: 'inherit' })
     })
     return true
   }
@@ -135,12 +129,9 @@ export default class Startup {
       'rm ' + Startup._getServiceFilePath(serviceName)
     ]
 
-    execSync(commands.join('&& '), (err, stdout, stderr) => {
-      console.log(stdout)
-      console.log(stderr)
-      if (err) {
-        console.error(err)
-      }
+    commands.forEach(item => {
+      console.log('Executing ' + item + '...')
+      execSync(item,{ stdio: 'inherit' })
     })
     return true
   }
