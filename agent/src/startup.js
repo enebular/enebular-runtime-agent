@@ -1,5 +1,5 @@
 /* @flow */
-import fs from 'fs-extra'
+import fs from 'fs'
 import path from 'path'
 import { execSync } from 'child_process'
 import Config from './config'

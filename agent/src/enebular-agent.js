@@ -1,5 +1,5 @@
 /* @flow */
-import fs from 'fs-extra'
+import fs from 'fs'
 import EventEmitter from 'events'
 import ConnectorService from './connector-service'
 import EnebularActivator from './enebular-activator'
