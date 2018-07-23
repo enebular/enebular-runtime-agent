@@ -75,11 +75,13 @@ export default class CommandLine {
   }
 
   _listConfigItems() {
-    console.log('  Available Config Items:')
+    console.log(
+      '  Note: all configuration items can be set as environment variables.'
+    )
     console.log('')
     console.log(
-      '    ' +
-        'Name(can be overridden via Env)'.padEnd(45) +
+      '  ' +
+        'Name'.padEnd(45) +
         'Command Line Option'.padEnd(35) +
         'Description'
     )
@@ -96,7 +98,7 @@ export default class CommandLine {
           })
         }
         console.log(
-          '    ' + key.padEnd(45) + flags.padEnd(35) + items[key].description
+          '  ' + key.padEnd(44) + flags.padEnd(36) + items[key].description
         )
       }
     })

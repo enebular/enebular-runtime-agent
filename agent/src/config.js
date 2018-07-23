@@ -70,7 +70,11 @@ export default class Config {
       },
 
       // logging
-      ENEBULAR_LOG_LEVEL: { value: 'info', description: 'Logging level', userExpose: true },
+      ENEBULAR_LOG_LEVEL: {
+        value: 'info',
+        description: 'Logging level',
+        userExpose: true
+      },
       ENEBULAR_ENABLE_CONSOLE_LOG: {
         value: false,
         description: 'Enable logging to the console',
