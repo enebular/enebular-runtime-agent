@@ -61,13 +61,13 @@ export default class Startup {
     }
 
     let appendEnvs = ''
-    const exposedItems = config.getExposedItems()
-    const itemKeys = Object.keys(exposedItems)
+    const overriddenItems = config.getOverriddenItems()
+    const itemKeys = Object.keys(overriddenItems)
     itemKeys.forEach(key => {
       appendEnvs = Startup._appendEnvironment(
         appendEnvs,
         key,
-        exposedItems[key]
+        overriddenItems[key]
       )
     })
 

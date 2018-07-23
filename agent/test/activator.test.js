@@ -53,7 +53,7 @@ test.serial(
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
     const ret = await createConnectedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
     )
     agent = ret.agent
 
@@ -69,7 +69,7 @@ test.serial(
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
     const connector = new ConnectorService()
     let agentConfig = Utils.createDefaultAgentConfig(NodeRedPort)
-    agentConfig['configFile'] = configFile
+    agentConfig['ENEBULAR_CONFIG_PATH'] = configFile
 
     agent = new EnebularAgent({
         portBasePath: path.resolve(__dirname, '../'),
@@ -96,7 +96,7 @@ test.serial(
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
     const ret = await createStartedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
     )
     agent = ret.agent
 
@@ -126,7 +126,7 @@ test.serial(
     const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
     const ret = await createConnectedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
     )
     agent = ret.agent
 
@@ -161,7 +161,7 @@ test.serial(
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
     const ret = await createStartedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
     )
     agent = ret.agent
 
@@ -203,7 +203,7 @@ test.serial('Activator.6: License is valid.', async t => {
     connector.updateActiveState(true)
   })
   const agentConfig = Object.assign(Utils.createDefaultAgentConfig(1990),
-      Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort))
+      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort))
   agent = new EnebularAgent({
       portBasePath: path.resolve(__dirname, '../'),
       connector: connector,

@@ -80,7 +80,7 @@ export async function createAuthenticatedAgent(
   const configFile = Utils.createDummyEnebularConfig({}, port)
   const { agent, connector } = await createConnectedAgent(
     t,
-    Object.assign({ configFile: configFile }, agentConfig)
+    Object.assign({ ENEBULAR_CONFIG_PATH: configFile }, agentConfig)
   )
   return new Promise(async (resolve, reject) => {
     setTimeout(async () => {
@@ -104,7 +104,7 @@ export async function createUnauthenticatedAgent(
   const configFile = Utils.createDummyEnebularConfig({}, port)
   return createConnectedAgent(
     t,
-    Object.assign({ configFile: configFile }, agentConfig)
+    Object.assign({ ENEBULAR_CONFIG_PATH: configFile }, agentConfig)
   )
 }
 

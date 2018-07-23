@@ -12,26 +12,26 @@ import Config from './config'
 import type { Logger } from 'winston'
 
 export type EnebularAgentConfig = {
-  nodeRedDir: string,
-  nodeRedDataDir: string,
-  nodeRedCommand?: string,
-  nodeRedKillSignal?: string,
+  NODE_RED_DIR: string,
+  NODE_RED_DATA_DIR: string,
+  NODE_RED_COMMAND?: string,
+  NODE_RED_KILL_SIGNAL?: string,
 
-  configFile?: string,
+  ENEBULAR_CONFIG_PATH?: string,
 
-  logLevel?: string,
-  enableConsoleLog?: boolean,
-  enableFileLog?: boolean,
-  enableSyslog?: boolean,
-  logfilePath?: string,
-  enableEnebularLog?: boolean,
-  enebularLogCachePath?: string,
-  enebularLogMaxCacheSize?: number,
-  enebularLogMaxSizePerInterval?: number,
-  enebularLogSendInterval?: number,
-  monitorIntervalFast?: number,
-  monitorIntervalFastPeriod?: number,
-  monitorIntervalNormal?: number
+  ENEBULAR_LOG_LEVEL?: string,
+  ENEBULAR_ENABLE_CONSOLE_LOG?: boolean,
+  ENEBULAR_ENABLE_FILE_LOG?: boolean,
+  ENEBULAR_ENABLE_SYSLOG?: boolean,
+  ENEBULAR_LOG_FILE_PATH?: string,
+  ENEBULAR_ENABLE_ENEBULAR_LOG?: boolean,
+  ENEBULAR_ENEBULAR_LOG_CACHE_PATH?: string,
+  ENEBULAR_ENEBULAR_LOG_MAX_CACHE_SIZE?: number,
+  ENEBULAR_ENEBULAR_LOG_MAX_SIZE_PER_INTERVAL?: number,
+  ENEBULAR_ENEBULAR_LOG_SEND_INTERVAL?: number,
+  ENEBULAR_MONITOR_INTERVAL_FAST?: number,
+  ENEBULAR_MONITOR_INTERVAL_FAST_PERIOD?: number,
+  ENEBULAR_MONITOR_INTERVAL_NORMAL?: number
 }
 
 export type EnebularAgentSettings = {
@@ -108,7 +108,7 @@ export default class EnebularAgent extends EventEmitter {
     this._enebularAgentConfig = settings.config
 
     this._config = new Config(settings.portBasePath)
-    this._commandLine = new CommandLine()
+    this._commandLine = new CommandLine(this._config)
 
     this._connector.on('activeChange', () => this._onConnectorActiveChange())
     this._connector.on('registrationChange', () => this._onConnectorRegChange())
@@ -120,47 +120,10 @@ export default class EnebularAgent extends EventEmitter {
 
   _init() {
     if (this._enebularAgentConfig) {
-      const config = this._enebularAgentConfig
-      this._config.set('NODE_RED_DIR', config.nodeRedDir)
-      this._config.set('NODE_RED_DATA_DIR', config.nodeRedDataDir)
-      this._config.set('NODE_RED_COMMAND', config.nodeRedCommand)
-      this._config.set('NODE_RED_KILL_SIGNAL', config.nodeRedKillSignal)
-      this._config.set('ENEBULAR_CONFIG_PATH', config.configFile)
-      this._config.set(
-        'ENEBULAR_MONITOR_INTERVAL_FAST',
-        config.monitorIntervalFast
-      )
-      this._config.set(
-        'ENEBULAR_MONITOR_INTERVAL_FAST_PERIOD',
-        config.monitorIntervalFastPeriod
-      )
-      this._config.set(
-        'ENEBULAR_MONITOR_INTERVAL_NORMAL',
-        config.monitorIntervalNormal
-      )
-
-      this._config.set('ENEBULAR_LOG_LEVEL', config.logLevel)
-      this._config.set('ENEBULAR_ENABLE_CONSOLE_LOG', config.enableConsoleLog)
-      this._config.set('ENEBULAR_ENABLE_FILE_LOG', config.enableFileLog)
-      this._config.set('ENEBULAR_ENABLE_SYSLOG', config.enableSyslog)
-      this._config.set('ENEBULAR_LOG_FILE_PATH', config.logfilePath)
-      this._config.set('ENEBULAR_ENABLE_ENEBULAR_LOG', config.enableEnebularLog)
-      this._config.set(
-        'ENEBULAR_ENEBULAR_LOG_CACHE_PATH',
-        config.enebularLogCachePath
-      )
-      this._config.set(
-        'ENEBULAR_ENEBULAR_LOG_MAX_CACHE_SIZE',
-        config.enebularLogMaxCacheSize
-      )
-      this._config.set(
-        'ENEBULAR_ENEBULAR_LOG_MAX_SIZE_PER_INTERVAL',
-        config.enebularLogMaxSizePerInterval
-      )
-      this._config.set(
-        'ENEBULAR_ENEBULAR_LOG_SEND_INTERVAL',
-        config.enebularLogSendInterval
-      )
+      const configKeys = Object.keys(this._enebularAgentConfig)
+      configKeys.forEach(key => {
+        this._config.set(key, this._enebularAgentConfig[key])
+      })
     }
 
     const nodeRedDir = this._config.get('NODE_RED_DIR')
@@ -288,7 +251,7 @@ export default class EnebularAgent extends EventEmitter {
 
     if (this._commandLine.hasCommand()) {
       // User input sub command, skip agent initialization.
-      return this._commandLine.processCommand(this._config)
+      return this._commandLine.processCommand()
     }
 
     this._init()

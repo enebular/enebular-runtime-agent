@@ -75,8 +75,8 @@ async function createAgentRunningWithTestNodeRedSettings(
     t,
     server,
     {
-      nodeRedDataDir: tmpNodeRedDataDir,
-      nodeRedCommand:
+      NODE_RED_DATA_DIR: tmpNodeRedDataDir,
+      NODE_RED_COMMAND:
         './node_modules/.bin/node-red -p ' +
         NodeRedPort +
         ' -s ' +
@@ -98,7 +98,7 @@ test.serial(
     const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
     const ret = await createConnectedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
     )
     agent = ret.agent
 
@@ -121,7 +121,7 @@ test.serial(
     fs.writeFileSync(flowFileName, data)
 
     const ret = await createConnectedAgent(t, {
-      nodeRedCommand:
+      NODE_RED_COMMAND:
         './node_modules/.bin/node-red -p ' + NodeRedPort + ' ' + flowFileName
     })
     agent = ret.agent

@@ -7,49 +7,24 @@ import Startup from './startup'
 import Config from './config'
 
 export default class CommandLine {
+  _config: Config
   _command: string
   _commandOptions: Object
   _configOptionMap: Object = {}
 
-  constructor() {
+  constructor(config: Config) {
+    this._config = config
     commander.version(pkg.version, '-v, --version')
 
     this.addConfigOption(
-      '--enebular-config-file <path>',
-      'Enebular config file path',
       'ENEBULAR_CONFIG_PATH',
-      'enebularConfigFile'
+      '--enebular-config-file <path>'
     )
-    this.addConfigOption(
-      '--node-red-dir <path>',
-      'Node-RED installation path',
-      'NODE_RED_DIR',
-      'nodeRedDir'
-    )
-    this.addConfigOption(
-      '--node-red-data-dir <path>',
-      'Node-RED data path',
-      'NODE_RED_DATA_DIR',
-      'nodeRedDataDir'
-    )
-    this.addConfigOption(
-      '--node-red-command <command>',
-      'Node-RED startup command',
-      'NODE_RED_COMMAND',
-      'nodeRedCommand'
-    )
-    this.addConfigOption(
-      '--enable-syslog',
-      'Enable syslog at info level',
-      'ENEBULAR_ENABLE_SYSLOG',
-      'enableSyslog'
-    )
-    this.addConfigOption(
-      '--daemon-mode',
-      'Run as daemon',
-      'ENEBULAR_DAEMON_MODE',
-      'daemonMode'
-    )
+    this.addConfigOption('NODE_RED_DIR', '--node-red-dir <path>')
+    this.addConfigOption('NODE_RED_DATA_DIR', '--node-red-data-dir <path>')
+    this.addConfigOption('NODE_RED_COMMAND', '--node-red-command <command>')
+    this.addConfigOption('ENEBULAR_ENABLE_SYSLOG', '--enable-syslog')
+    this.addConfigOption('ENEBULAR_DAEMON_MODE', '--daemon-mode')
 
     commander
       .command('startup-register')
@@ -84,12 +59,48 @@ export default class CommandLine {
         this._commandOptions = options
       })
     commander
+      .command('list-config-items')
+      .description('list available config items')
+      .action(options => {
+        this._command = 'list-config-items'
+        this._commandOptions = options
+      })
+    commander
       .command('kill')
       .description('kill the agent process')
       .action(options => {
         this._command = 'kill'
         this._commandOptions = options
       })
+  }
+
+  _listConfigItems() {
+    console.log('  Available Config Items:')
+    console.log('')
+    console.log(
+      '    ' +
+        'Name(can be overridden via Env)'.padEnd(45) +
+        'Command Line Option'.padEnd(35) +
+        'Description'
+    )
+    console.log('')
+    const items = this._config.items
+    const configKeys = Object.keys(items)
+    configKeys.forEach(key => {
+      if (items[key].userExpose) {
+        let flags = ''
+        if (this._configOptionMap[key]) {
+          commander.options.forEach(option => {
+            if (option.attributeName() === this._configOptionMap[key])
+              flags = option.flags
+          })
+        }
+        console.log(
+          '    ' + key.padEnd(45) + flags.padEnd(35) + items[key].description
+        )
+      }
+    })
+    console.log('')
   }
 
   parse() {
@@ -100,7 +111,7 @@ export default class CommandLine {
     return !!this._command
   }
 
-  processCommand(config: Config) {
+  processCommand() {
     switch (this._command) {
       case 'startup-register':
       case 'startup-unregister':
@@ -114,32 +125,31 @@ export default class CommandLine {
           this._command === 'startup-register'
             ? Startup.startupRegister
             : Startup.startupUnregister
-        return func(user, serviceName, config)
+        return func(user, serviceName, this._config)
       case 'kill':
         return ProcessUtil.killProcessByPIDFile(
-          config.get('ENEBULAR_AGENT_PID_FILE')
+          this._config.get('ENEBULAR_AGENT_PID_FILE')
         )
+      case 'list-config-items':
+        return this._listConfigItems()
       default:
         console.log(this._command + ' is not supported.')
         return false
     }
   }
 
-  addConfigOption(
-    option: string,
-    description: string,
-    configName: string,
-    optionName: string
-  ) {
-    commander.option(option, description)
-    this._configOptionMap[configName] = optionName
+  addConfigOption(configName: string, option: string) {
+    commander.option(option, this._config.getDescription(configName))
+    this._configOptionMap[configName] = commander.options
+      .slice(-1)[0]
+      .attributeName()
   }
 
   getConfigOptions() {
     let options = {}
     const myself = this
     const configItems = Object.keys(this._configOptionMap)
-    configItems.forEach(function(configName) {
+    configItems.forEach(configName => {
       const optionName = myself._configOptionMap[configName]
       if (commander[optionName]) {
         options[configName] = commander[optionName]

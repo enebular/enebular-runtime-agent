@@ -1,85 +1,171 @@
 /* @flow */
 import p from 'path'
 
+export type ConfigItem = {
+  value?: string,
+  description: string,
+  override?: boolean,
+  userExpose?: boolean
+}
+
 export default class Config {
   _items: Object
-  _exposedItemNames: Array<string> = [
-    'DEBUG',
-    'ENEBULAR_CONFIG_PATH',
-    'NODE_RED_DIR',
-    'NODE_RED_DATA_DIR',
-    'NODE_RED_COMMAND'
-  ]
 
   constructor(portBasePath: string) {
     this._items = {
-      ENEBULAR_DAEMON_MODE: false,
-      ENEBULAR_CONFIG_PATH: p.resolve(portBasePath, '.enebular-config.json'),
-      ENEBULAR_AGENT_PID_FILE: p.resolve(portBasePath, '.enebular-agent.pid'),
-      NODE_RED_DIR: p.resolve(portBasePath, '../../node-red'),
-      NODE_RED_DATA_DIR: p.resolve(
-        portBasePath,
-        '../../node-red/',
-        '.node-red-config'
-      ),
-      NODE_RED_KILL_SIGNAL: 'SIGINT',
-      ACTIVATOR_CONFIG_PATH: p.resolve(
-        portBasePath,
-        '.enebular-activation-config.json'
-      ),
-      ENEBULAR_MONITOR_INTERVAL_FAST: 30,
-      ENEBULAR_MONITOR_INTERVAL_NORMAL: 60 * 5,
+      ENEBULAR_DAEMON_MODE: {
+        value: false,
+        description: 'Run as daemon',
+        userExpose: true
+      },
+      ENEBULAR_CONFIG_PATH: {
+        value: p.resolve(portBasePath, '.enebular-config.json'),
+        description: 'Enebular config file path',
+        userExpose: true
+      },
+      ENEBULAR_AGENT_PID_FILE: {
+        value: p.resolve(portBasePath, '.enebular-agent.pid'),
+        description: 'PID file path when running as daemon',
+        userExpose: true
+      },
+      NODE_RED_DIR: {
+        value: p.resolve(portBasePath, '../../node-red'),
+        description: 'Node-RED installation path',
+        userExpose: true
+      },
+      NODE_RED_DATA_DIR: {
+        value: p.resolve(portBasePath, '../../node-red/', '.node-red-config'),
+        description: 'Node-RED data path',
+        userExpose: true
+      },
+      NODE_RED_COMMAND: {
+        description: 'Node-RED startup command',
+        userExpose: true
+      },
+      NODE_RED_KILL_SIGNAL: {
+        value: 'SIGINT',
+        description: 'Signal name to use to terminal Node-RED',
+        userExpose: true
+      },
+      ACTIVATOR_CONFIG_PATH: {
+        value: p.resolve(portBasePath, '.enebular-activation-config.json'),
+        description: 'Activator config file path',
+        userExpose: true
+      },
+      ENEBULAR_MONITOR_INTERVAL_FAST: {
+        value: 30,
+        description: '',
+        userExpose: false
+      },
+      ENEBULAR_MONITOR_INTERVAL_NORMAL: {
+        value: 60 * 5,
+        description: '',
+        userExpose: false
+      },
       /* the +1 is to allow the last fast interval to trigger first */
-      ENEBULAR_MONITOR_INTERVAL_FAST_PERIOD: 60 * 3 + 1,
+      ENEBULAR_MONITOR_INTERVAL_FAST_PERIOD: {
+        value: 60 * 3 + 1,
+        description: '',
+        userExpose: false
+      },
 
       // logging
-      ENEBULAR_LOG_LEVEL: 'info',
-      ENEBULAR_ENABLE_CONSOLE_LOG: false,
-      ENEBULAR_ENABLE_FILE_LOG: false,
-      ENEBULAR_ENABLE_SYSLOG: false,
-      ENEBULAR_LOG_FILE_PATH: '/var/log/enebular/enebular.log',
-      ENEBULAR_ENABLE_ENEBULAR_LOG: true,
-      ENEBULAR_ENEBULAR_LOG_CACHE_PATH: '/tmp/enebular-log-cache',
-      ENEBULAR_ENEBULAR_LOG_MAX_CACHE_SIZE: 2 * 1024 * 1024,
-      ENEBULAR_ENEBULAR_LOG_MAX_SIZE_PER_INTERVAL: 10 * 1024,
-      ENEBULAR_ENEBULAR_LOG_SEND_INTERVAL: 30
+      ENEBULAR_LOG_LEVEL: { value: 'info', description: 'Logging level', userExpose: true },
+      ENEBULAR_ENABLE_CONSOLE_LOG: {
+        value: false,
+        description: 'Enable logging to the console',
+        userExpose: true
+      },
+      ENEBULAR_ENABLE_FILE_LOG: {
+        value: false,
+        description: 'Enable logging to a file',
+        userExpose: true
+      },
+      ENEBULAR_ENABLE_SYSLOG: {
+        value: false,
+        description: 'Enable syslog logging',
+        userExpose: true
+      },
+      ENEBULAR_LOG_FILE_PATH: {
+        value: '/var/log/enebular/enebular.log',
+        description: 'Log file path',
+        userExpose: true
+      },
+      ENEBULAR_ENABLE_ENEBULAR_LOG: {
+        value: true,
+        description: 'Enable logging to enebular',
+        userExpose: true
+      },
+      ENEBULAR_ENEBULAR_LOG_CACHE_PATH: {
+        value: '/tmp/enebular-log-cache',
+        description: 'Cache path for enebular logging',
+        userExpose: true
+      },
+      ENEBULAR_ENEBULAR_LOG_MAX_CACHE_SIZE: {
+        value: 2 * 1024 * 1024,
+        description: 'Maximum cache size for enebular logging',
+        userExpose: true
+      },
+      ENEBULAR_ENEBULAR_LOG_MAX_SIZE_PER_INTERVAL: {
+        value: 10 * 1024,
+        description: '',
+        userExpose: false
+      },
+      ENEBULAR_ENEBULAR_LOG_SEND_INTERVAL: {
+        value: 30,
+        description: '',
+        userExpose: false
+      }
     }
   }
 
+  get items(): Object {
+    return this._items
+  }
+
+  getDescription(key: string): string {
+    return this._items[key] ? this._items[key].description : undefined
+  }
+
   get(key: string): any {
-    return this._items[key]
+    return this._items[key] ? this._items[key].value : undefined
   }
 
   set(key: string, value: any) {
     if (value) {
-      this._items[key] = value
+      if (this._items[key]) {
+        this._items[key].override = true
+      } else {
+        this._items[key] = {}
+      }
+      this._items[key].value = value
     }
   }
 
-  getExposedItems(): Object {
+  getOverriddenItems(): Object {
     const myself = this
     const items = {}
-    this._exposedItemNames.forEach(key => {
-      if (myself._items[key]) {
-        items[key] = myself._items[key]
+    const itemKeys = Object.keys(this._items)
+    itemKeys.forEach(key => {
+      if (myself._items[key].override) {
+        items[key] = myself._items[key].value
       }
     })
     return items
   }
 
-  addItem(name: string, value: string, expose: boolean) {
-    this._items[name] = value
-    if (expose) {
-      this._exposedItemNames.push(name)
-    }
+  addItem(key: string, value: any, description: string, userExpose: boolean) {
+    this.set(key, value)
+    this._items[key].description = description
+    this._items[key].userExpose = userExpose
   }
 
   importItems(items: Object) {
     const myself = this
     const itemKeys = Object.keys(items)
     itemKeys.forEach(key => {
-      if (items[key]) {
-        myself._items[key] = items[key]
+      if (myself._items[key]) {
+        myself.set(key, items[key])
       }
     })
   }

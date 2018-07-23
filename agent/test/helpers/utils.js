@@ -70,7 +70,7 @@ export default class Utils {
 
   static addNodeRedPortToConfig(config, nodeRedPort) {
     return Object.assign(
-      { nodeRedCommand: './node_modules/.bin/node-red -p ' + nodeRedPort },
+      { NODE_RED_COMMAND: './node_modules/.bin/node-red -p ' + nodeRedPort },
       config
     )
   }
@@ -99,9 +99,9 @@ export default class Utils {
 
   static createDefaultAgentConfig(nodeRedPort) {
     let agentConfig = {}
-    agentConfig['nodeRedDir'] = '../node-red'
-    agentConfig['nodeRedDataDir'] = '../node-red/.node-red-config'
-    agentConfig['nodeRedCommand'] =
+    agentConfig['NODE_RED_DIR'] = '../node-red'
+    agentConfig['NODE_RED_DATA_DIR'] = '../node-red/.node-red-config'
+    agentConfig['NODE_RED_COMMAND'] =
       './node_modules/.bin/node-red -p ' + nodeRedPort
     return agentConfig
   }

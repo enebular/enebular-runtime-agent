@@ -30,27 +30,28 @@ export default class ProcessUtil {
     })
   }
 
-  static async killProcess(pid: number): boolean {
+  static killProcess(pid: number): Promise {
     try {
       process.kill(pid, 'SIGTERM')
     } catch (err) {
       console.error('%s pid can not be killed', pid)
     }
-    return await ProcessUtil._waitForProcessToDie(pid)
+    return ProcessUtil._waitForProcessToDie(pid)
   }
 
-  static killProcessByPIDFile(pidFileName: string): boolean {
+  static async killProcessByPIDFile(pidFileName: string): boolean {
+    let ret = false
     if (!fs.existsSync(pidFileName)) {
       console.error("Can't find pid file " + pidFileName)
-      return false
+      return ret
     }
 
     try {
       const pid = fs.readFileSync(pidFileName)
-      return ProcessUtil.killProcess(parseInt(pid))
+      ret = await ProcessUtil.killProcess(parseInt(pid))
     } catch (err) {
       console.error(err)
     }
-    return false
+    return ret
   }
 }

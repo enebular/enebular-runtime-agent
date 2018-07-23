@@ -57,9 +57,9 @@ test.serial('Log.1: Log cache size is within max cache size', async t => {
     Utils.addNodeRedPortToConfig(
       {
         // set interval size larger than cache size so that cache size can be used.
-        enebularLogMaxSizePerInterval: 100 * 1024 * 1024,
-        enebularLogMaxCacheSize: maxSize,
-        enebularLogCachePath: tmpLogCacheDir
+        ENEBULAR_ENEBULAR_LOG_MAX_SIZE_PER_INTERVAL: 100 * 1024 * 1024,
+        ENEBULAR_ENEBULAR_LOG_MAX_CACHE_SIZE: maxSize,
+        ENEBULAR_ENEBULAR_LOG_CACHE_PATH: tmpLogCacheDir
       },
       NodeRedPort
     ),
@@ -110,8 +110,8 @@ test.serial('Log.2: Log is sent to server periodically', async t => {
     server,
     Utils.addNodeRedPortToConfig(
       {
-        monitorIntervalFast: interval,
-        enebularLogCachePath: tmpLogCacheDir
+        ENEBULAR_MONITOR_INTERVAL_FAST: interval,
+        ENEBULAR_ENEBULAR_LOG_CACHE_PATH: tmpLogCacheDir
       },
       NodeRedPort
     ),
@@ -153,9 +153,9 @@ test.serial('Log.3: Log level is handled correctly', async t => {
     server,
     Utils.addNodeRedPortToConfig(
       {
-        monitorIntervalFast: interval,
-        enebularLogCachePath: tmpLogCacheDir,
-        logLevel: 'info'
+        ENEBULAR_MONITOR_INTERVAL_FAST: interval,
+        ENEBULAR_ENEBULAR_LOG_CACHE_PATH: tmpLogCacheDir,
+        ENEBULAR_LOG_LEVEL: 'info'
       },
       NodeRedPort
     ),
@@ -198,9 +198,9 @@ test.serial.skip(
       Utils.addNodeRedPortToConfig(
         {
           // set interval size larger than cache size so that cache size can be used.
-          enebularLogMaxSizePerInterval: 5 * 1024,
-          enableConsoleLog: false,
-          monitorIntervalFast: 2
+          ENEBULAR_ENEBULAR_LOG_MAX_SIZE_PER_INTERVAL: 5 * 1024,
+          ENEBULAR_ENABLE_CONSOLE_LOG: false,
+          ENEBULAR_MONITOR_INTERVAL_FAST: 2
         },
         NodeRedPort
       ),
