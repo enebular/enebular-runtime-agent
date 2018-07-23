@@ -34,7 +34,7 @@ export type EnebularAgentConfig = {
   ENEBULAR_MONITOR_INTERVAL_NORMAL?: number
 }
 
-export type EnebularAgentSettings = {
+export type EnebularAgentOptions = {
   portBasePath: string,
   connector: ConnectorService,
   config: EnebularAgentConfig
@@ -102,12 +102,12 @@ export default class EnebularAgent extends EventEmitter {
   _notifyStatusInterval: number
   _notifyStatusIntervalID: ?number
 
-  constructor(settings: EnebularAgentSettings) {
+  constructor(options: EnebularAgentOptions) {
     super()
-    this._connector = settings.connector
-    this._enebularAgentConfig = settings.config
+    this._connector = options.connector
+    this._enebularAgentConfig = options.config
 
-    this._config = new Config(settings.portBasePath)
+    this._config = new Config(options.portBasePath)
     this._commandLine = new CommandLine(this._config)
 
     this._connector.on('activeChange', () => this._onConnectorActiveChange())
