@@ -239,9 +239,9 @@ function onConnectorRegisterConfig() {
 }
 
 function ensureAbsolutePath(pathToCheck: string, configPath: string) {
-  if (!path.isAbsolute(pathToCheck)) {
-    pathToCheck = path.resolve(configPath, pathToCheck)
-  }
+  return path.isAbsolute(pathToCheck)
+    ? pathToCheck
+    : path.resolve(configPath, pathToCheck)
 }
 
 function onConnectorInit() {
@@ -256,9 +256,18 @@ function onConnectorInit() {
     process.exit(1)
   }
 
-  ensureAbsolutePath(awsIotConfig.caCert, awsIotConfigFile)
-  ensureAbsolutePath(awsIotConfig.clientCert, awsIotConfigFile)
-  ensureAbsolutePath(awsIotConfig.privateKey, awsIotConfigFile)
+  awsIotConfig.caCert = ensureAbsolutePath(
+    awsIotConfig.caCert,
+    awsIotConfigFile
+  )
+  awsIotConfig.clientCert = ensureAbsolutePath(
+    awsIotConfig.clientCert,
+    awsIotConfigFile
+  )
+  awsIotConfig.privateKey = ensureAbsolutePath(
+    awsIotConfig.privateKey,
+    awsIotConfigFile
+  )
 
   thingName = awsIotConfig.thingName
   thingShadow = setupThingShadow(awsIotConfig)
