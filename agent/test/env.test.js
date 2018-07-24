@@ -15,6 +15,7 @@ const DummyServerPort = 3001
 let agent: EnebularAgent
 
 test.before(t => {
+  process.env.ENEBULAR_TEST = true
   process.env.DEBUG = 'info'
 })
 

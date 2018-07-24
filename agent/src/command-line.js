@@ -27,7 +27,9 @@ export default class CommandLine {
     this.addConfigOption('ENEBULAR_DAEMON_MODE', '--daemon-mode')
 
     commander.on('command:*', () => {
-      this._command = 'unknown'
+      if (!process.env.ENEBULAR_TEST) {
+        this._command = 'unknown'
+      }
     })
     commander
       .command('startup-register')

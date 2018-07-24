@@ -25,6 +25,7 @@ let http: Server
 let tmpNodeRedDataDir: string
 
 test.before(async t => {
+  process.env.ENEBULAR_TEST = true
   process.env.DEBUG = 'info'
   server = new DummyServer()
   http = await server.start(DummyServerPort)
