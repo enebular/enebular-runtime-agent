@@ -38,7 +38,8 @@ export default class Startup {
 
     console.log(
       'sudo env PATH=$PATH:' +
-        path.dirname(process.execPath) + appendEnvs +
+        path.dirname(process.execPath) +
+        appendEnvs +
         ' ' +
         process.argv[1] +
         ' ' +

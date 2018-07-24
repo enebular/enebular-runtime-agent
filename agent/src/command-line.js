@@ -26,6 +26,9 @@ export default class CommandLine {
     this.addConfigOption('ENEBULAR_ENABLE_SYSLOG', '--enable-syslog')
     this.addConfigOption('ENEBULAR_DAEMON_MODE', '--daemon-mode')
 
+    commander.on('command:*', () => {
+      this._command = 'unknown'
+    })
     commander
       .command('startup-register')
       .description(
@@ -134,8 +137,12 @@ export default class CommandLine {
         )
       case 'list-config-items':
         return this._listConfigItems()
+      case 'unknown':
       default:
-        console.log(this._command + ' is not supported.')
+        console.error(
+          'Invalid command: %s\nSee --help for a list of available commands.',
+          commander.args.join(' ')
+        )
         return false
     }
   }
