@@ -238,10 +238,10 @@ function onConnectorRegisterConfig() {
   )
 }
 
-function ensureAbsolutePath(pathToCheck: string, configPath: string) {
+function ensureAbsolutePath(pathToCheck: string, configFilePath: string) {
   return path.isAbsolute(pathToCheck)
     ? pathToCheck
-    : path.resolve(configPath, pathToCheck)
+    : path.resolve(path.dirname(configFilePath), pathToCheck)
 }
 
 function onConnectorInit() {
