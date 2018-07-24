@@ -33,7 +33,7 @@ export default class Startup {
     const overriddenItems = config.getOverriddenItems()
     const itemKeys = Object.keys(overriddenItems)
     itemKeys.forEach(key => {
-      appendEnvs = appendEnvs + ' ' + key + '=' + overriddenItems[key]
+      appendEnvs = appendEnvs + ` ${key}='${overriddenItems[key]}'`
     })
 
     console.log(
@@ -52,7 +52,7 @@ export default class Startup {
 
   static _appendEnvironment(src: string, key: string, value: string) {
     console.log('\t' + key + ':' + value)
-    return src + 'Environment=' + key + '=' + value + '\n'
+    return src + `Environment='${key}=${value}'\n`
   }
 
   static _getServiceFilePath(serviceName: string) {
