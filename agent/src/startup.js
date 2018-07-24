@@ -24,13 +24,21 @@ const systemdTemplate =
   'WantedBy=multi-user.target network-online.target\n'
 
 export default class Startup {
-  static _requireRootUser(user: string) {
+  static _requireRootUser(user: string, config: Config) {
     console.log(
       'To register/unregister the Startup Script, copy/paste the following command:'
     )
+
+    let appendEnvs = ''
+    const overriddenItems = config.getOverriddenItems()
+    const itemKeys = Object.keys(overriddenItems)
+    itemKeys.forEach(key => {
+      appendEnvs = appendEnvs + ' ' + key + '=' + overriddenItems[key]
+    })
+
     console.log(
       'sudo env PATH=$PATH:' +
-        path.dirname(process.execPath) +
+        path.dirname(process.execPath) + appendEnvs +
         ' ' +
         process.argv[1] +
         ' ' +
@@ -56,7 +64,7 @@ export default class Startup {
     config: Config
   ): boolean {
     if (process.getuid() !== 0) {
-      Startup._requireRootUser(user)
+      Startup._requireRootUser(user, config)
       return false
     }
 
@@ -119,7 +127,7 @@ export default class Startup {
     }
 
     if (process.getuid() !== 0) {
-      Startup._requireRootUser(user)
+      Startup._requireRootUser(user, config)
       return false
     }
 
