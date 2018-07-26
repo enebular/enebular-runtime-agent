@@ -107,7 +107,7 @@ export default class Startup {
       // if the daemon is not running start it.
       commands.push('systemctl start ' + serviceName)
       commands.push('systemctl daemon-reload')
-      commands.push('systemctl status ' + serviceName)
+      commands.push('systemctl status --no-pager ' + serviceName)
     }
 
     commands.forEach(item => {
