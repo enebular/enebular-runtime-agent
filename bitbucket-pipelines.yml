@@ -1,8 +1,9 @@
-image: node:8.10.0
+image: node:9.2.1
 
 pipelines:
   default: 
     - step:
+        name: Build and test
         caches:
         - node
         script:
@@ -11,7 +12,39 @@ pipelines:
         - npm -v
         - npm config set -g production false
         - (cd node-red && npm i)
-        - (cd agent && npm i && npm run build)
+        - (cd agent && npm i)
         - (cd agent && npm run test:serial)
-        - (cd ports/awsiot && npm i && npm run build && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientid":"thing_name","thingname":"thing_name","cacert":"./certs/root_certificate","clientcert":"./certs/thing_cert","privatekey":"./certs/thing_private_key>","topic":"aws/things/thing_name/shadow/update"}' > ./config.json)
-        - (cd ports/awsiot && npm run test)
+        - (cd ports/awsiot && npm i
+          && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientid":"thing_name","thingname":"thing_name","cacert":"./certs/root_certificate","clientcert":"./certs/thing_cert","privatekey":"./certs/thing_private_key>","topic":"aws/things/thing_name/shadow/update"}' > ./config.json
+          && npm run test)
+        - (cd ports/local && npm i)
+  tags:
+    '*-release':
+      - step:
+          name: Build and test
+          caches:
+          - node
+          script:
+          - (node -v | xargs echo build environment nodejs:)
+          - (echo ${BITBUCKET_TAG} | xargs echo release tag:)
+          - (cd node-red && npm i)
+          # - (cd agent && npm i && npm run test:serial)
+          - (cd agent && npm i)
+          - (cd ports/awsiot && npm i
+            && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientid":"thing_name","thingname":"thing_name","cacert":"./certs/root_certificate","clientcert":"./certs/thing_cert","privatekey":"./certs/thing_private_key>","topic":"aws/things/thing_name/shadow/update"}' > ./config.json)
+          # - (cd ports/awsiot && npm i
+          #  && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientid":"thing_name","thingname":"thing_name","cacert":"./certs/root_certificate","clientcert":"./certs/thing_cert","privatekey":"./certs/thing_private_key>","topic":"aws/things/thing_name/shadow/update"}' > ./config.json
+          #            && npm run test)
+          - (cd ports/local && npm i)
+          - git archive --format=tar.gz --prefix=${BITBUCKET_TAG}/ ${BITBUCKET_TAG} >${BITBUCKET_TAG}.tar.gz
+          - (cd node-red && rm -rf node_modules)
+          - (cd agent && rm -rf node_modules)
+          - (cd ports/awsiot && rm -rf node_modules)
+          - (cd ports/local && rm -rf node_modules)
+          - rm -rf .git
+          - tar --transform 's,^\.,${BITBUCKET_TAG},' -czf ${BITBUCKET_TAG}-prebuilt.tar.gz .
+          artifacts:
+          - ${BITBUCKET_TAG}.tar.gz
+          - ${BITBUCKET_TAG}-prebuilt.tar.gz
+
+
