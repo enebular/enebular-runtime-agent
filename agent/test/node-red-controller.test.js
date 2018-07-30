@@ -25,6 +25,7 @@ let http: Server
 let tmpNodeRedDataDir: string
 
 test.before(async t => {
+  process.env.ENEBULAR_TEST = true
   process.env.DEBUG = 'info'
   server = new DummyServer()
   http = await server.start(DummyServerPort)
@@ -75,8 +76,8 @@ async function createAgentRunningWithTestNodeRedSettings(
     t,
     server,
     {
-      nodeRedDataDir: tmpNodeRedDataDir,
-      nodeRedCommand:
+      NODE_RED_DATA_DIR: tmpNodeRedDataDir,
+      NODE_RED_COMMAND:
         './node_modules/.bin/node-red -p ' +
         NodeRedPort +
         ' -s ' +
@@ -89,7 +90,7 @@ async function createAgentRunningWithTestNodeRedSettings(
   connector = ret.connector
 
   // console.log("user directory: ", agent._nodeRed._getDataDir())
-  t.true(await nodeRedIsAlive(NodeRedPort, 3000))
+  t.true(await nodeRedIsAlive(NodeRedPort, 5000))
 }
 
 test.serial(
@@ -98,7 +99,7 @@ test.serial(
     const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
     const ret = await createConnectedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
     )
     agent = ret.agent
 
@@ -121,7 +122,7 @@ test.serial(
     fs.writeFileSync(flowFileName, data)
 
     const ret = await createConnectedAgent(t, {
-      nodeRedCommand:
+      NODE_RED_COMMAND:
         './node_modules/.bin/node-red -p ' + NodeRedPort + ' ' + flowFileName
     })
     agent = ret.agent
@@ -268,7 +269,7 @@ test.serial(
           t.fail('dependencies failed to install')
         }
         resolve()
-      }, 5000)
+      }, 8000)
     })
   }
 )

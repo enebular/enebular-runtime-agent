@@ -1,42 +1,23 @@
 /* @flow */
 
 import winston from 'winston'
+import { Syslog } from 'winston-syslog'
 import { Enebular } from './winston-enebular'
 import type { WinstonEnebularConfig } from './winston-enebular'
 import type AgentManagerMediator from './agent-manager-mediator'
-
-export type LogManagerConfig = {
-  level?: string,
-  enableConsole?: boolean,
-  enableFile?: boolean,
-  filePath?: string,
-  enableEnebular?: boolean,
-  enebularCachePath?: string,
-  enebularMaxCacheSize?: number,
-  enebularMaxSizePerInterval?: number
-}
+import Config from './config'
 
 export default class LogManager {
   _transports: { [string]: winston.Transport }
   _loggers: winston.Container
   _enebularTransport: winston.Transport = null
 
-  constructor(config: LogManagerConfig) {
-    const {
-      level = 'info',
-      enableConsole = false,
-      enableFile = false,
-      filePath = '/var/log/enebular/enebular.log',
-      enableEnebular = true,
-      enebularCachePath = '/tmp/enebular-log-cache',
-      enebularMaxCacheSize = 2 * 1024 * 1024,
-      enebularMaxSizePerInterval = 10 * 1024,
-      enebularSendInterval = 30
-    } = config
+  constructor(config: Config) {
+    const level = config.get('ENEBULAR_LOG_LEVEL')
 
     this._transports = {}
 
-    if (enableConsole) {
+    if (config.get('ENEBULAR_ENABLE_CONSOLE_LOG')) {
       this.addTransport(
         new winston.transports.Console({
           name: 'console',
@@ -67,27 +48,41 @@ export default class LogManager {
       )
     }
 
-    if (enableFile) {
+    if (config.get('ENEBULAR_ENABLE_FILE_LOG')) {
       this.addTransport(
         new winston.transports.File({
           name: 'file',
           level: level,
-          filename: filePath,
+          filename: config.get('ENEBULAR_LOG_FILE_PATH'),
           handleExceptions: true,
           json: false
         })
       )
     }
 
-    if (enableEnebular) {
+    if (config.get('ENEBULAR_ENABLE_SYSLOG')) {
+      this.addTransport(
+        new Syslog({
+          name: 'syslog',
+          level: level,
+          app_name: 'enebular-agent',
+          protocol: 'unix',
+          path: '/dev/log'
+        })
+      )
+    }
+
+    if (config.get('ENEBULAR_ENABLE_ENEBULAR_LOG')) {
       this._enebularTransport = new Enebular({
         name: 'enebular',
         level: level,
         handleExceptions: true,
-        cachePath: enebularCachePath,
-        maxCacheSize: enebularMaxCacheSize,
-        maxSizePerInterval: enebularMaxSizePerInterval,
-        sendInterval: enebularSendInterval
+        cachePath: config.get('ENEBULAR_ENEBULAR_LOG_CACHE_PATH'),
+        maxCacheSize: config.get('ENEBULAR_ENEBULAR_LOG_MAX_CACHE_SIZE'),
+        maxSizePerInterval: config.get(
+          'ENEBULAR_ENEBULAR_LOG_MAX_SIZE_PER_INTERVAL'
+        ),
+        sendInterval: config.get('ENEBULAR_ENEBULAR_LOG_SEND_INTERVAL')
       })
       this.addTransport(this._enebularTransport)
     }

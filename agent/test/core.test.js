@@ -1,6 +1,7 @@
 /* @flow */
 import test from 'ava'
 import fs from 'fs'
+import path from 'path'
 import jwt from 'jsonwebtoken'
 import { Server } from 'net'
 
@@ -22,6 +23,7 @@ let server: DummyServer
 let http: Server
 
 test.before(async t => {
+  process.env.ENEBULAR_TEST = true
   process.env.DEBUG = 'info'
   server = new DummyServer()
   http = await server.start(DummyServerPort)
@@ -53,14 +55,18 @@ test.serial(
   'Core.1: No activator config present, agent connects to connector',
   t => {
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
-    const connector = new ConnectorService()
-    let agentConfig = {}
-    agentConfig['nodeRedDir'] = '../node-red'
-    agentConfig['nodeRedCommand'] =
-      './node_modules/.bin/node-red -p ' + NodeRedPort
-    agentConfig['configFile'] = configFile
+    const connector = new ConnectorService(() => {
+      connector.updateActiveState(true)
+      connector.updateRegistrationState(true, 'dummy_deviceId')
+    })
+    let agentConfig = Utils.createDefaultAgentConfig(NodeRedPort)
+    agentConfig['ENEBULAR_CONFIG_PATH'] = configFile
 
-    agent = new EnebularAgent(connector, agentConfig)
+    agent = new EnebularAgent({
+        portBasePath: path.resolve(__dirname, '../'),
+        connector: connector,
+        config: agentConfig
+    })
 
     return new Promise(async (resolve, reject) => {
       agent.on('connectorConnect', async () => {
@@ -69,8 +75,6 @@ test.serial(
       })
 
       await agent.startup()
-      connector.updateActiveState(true)
-      connector.updateRegistrationState(true, 'dummy_deviceId')
       setTimeout(async () => {
         t.fail()
         reject(new Error('no connect request.'))
@@ -83,7 +87,7 @@ test.serial('Core.2: Agent correctly handle register message', async t => {
   const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
   const ret = await createConnectedAgent(
     t,
-    Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
+    Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
   )
   agent = ret.agent
   const config = {
@@ -120,7 +124,7 @@ test.serial(
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
     const ret = await createConnectedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
     )
     agent = ret.agent
     const config = {
@@ -159,7 +163,7 @@ test.serial(
     const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
     const ret = await createConnectedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ configFile: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
     )
     agent = ret.agent
     return new Promise((resolve, reject) => {
@@ -236,8 +240,8 @@ test.serial(
       server,
       Utils.addNodeRedPortToConfig(
         {
-          monitorIntervalFast: 1,
-          monitorIntervalFastPeriod: 5
+          ENEBULAR_MONITOR_INTERVAL_FAST: 1,
+          ENEBULAR_MONITOR_INTERVAL_FAST_PERIOD: 5
         },
         NodeRedPort
       ),
@@ -271,9 +275,9 @@ test.serial(
       server,
       Utils.addNodeRedPortToConfig(
         {
-          monitorIntervalFast: 1,
-          monitorIntervalFastPeriod: 2,
-          monitorIntervalNormal: 3
+          ENEBULAR_MONITOR_INTERVAL_FAST: 1,
+          ENEBULAR_MONITOR_INTERVAL_FAST_PERIOD: 2,
+          ENEBULAR_MONITOR_INTERVAL_NORMAL: 3
         },
         NodeRedPort
       ),
@@ -308,7 +312,7 @@ test.serial(
       server,
       Utils.addNodeRedPortToConfig(
         {
-          monitorIntervalFast: 1
+          ENEBULAR_MONITOR_INTERVAL_FAST: 1
         },
         NodeRedPort
       ),

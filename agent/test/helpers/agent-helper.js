@@ -1,6 +1,7 @@
 /* @flow */
 import test from 'ava'
 import fs from 'fs'
+import path from 'path'
 import jwt from 'jsonwebtoken'
 
 import EnebularAgent from '../../src/enebular-agent'
@@ -13,16 +14,18 @@ export async function createStartedAgent(
   t: test,
   agentConfig: EnebularAgentConfig
 ) {
-  let connector = new ConnectorService()
-  let _agentConfig = {}
-  _agentConfig['nodeRedDir'] = '../node-red'
-  _agentConfig['nodeRedCommand'] = './node_modules/.bin/node-red -p 1990'
+  let connector = new ConnectorService(() => {
+    connector.updateActiveState(true)
+  })
 
-  agentConfig = Object.assign(_agentConfig, agentConfig)
-  let agent = new EnebularAgent(connector, agentConfig)
+  agentConfig = Object.assign(Utils.createDefaultAgentConfig(1990), agentConfig)
+  let agent = new EnebularAgent({
+      portBasePath: path.resolve(__dirname, '../'),
+      connector: connector,
+      config: agentConfig
+  })
 
   await agent.startup()
-  connector.updateActiveState(true)
   return { agent: agent, connector: connector }
 }
 
@@ -30,13 +33,16 @@ export async function createConnectedAgent(
   t: test,
   agentConfig: EnebularAgentConfig
 ) {
-  let connector = new ConnectorService()
-  let _agentConfig = {}
-  _agentConfig['nodeRedDir'] = '../node-red'
-  _agentConfig['nodeRedCommand'] = './node_modules/.bin/node-red -p 1990'
-
-  agentConfig = Object.assign(_agentConfig, agentConfig)
-  let agent = new EnebularAgent(connector, agentConfig)
+  let connector = new ConnectorService(() => {
+    connector.updateActiveState(true)
+    connector.updateRegistrationState(true, 'dummy_deviceId')
+  })
+  agentConfig = Object.assign(Utils.createDefaultAgentConfig(1990), agentConfig)
+  let agent = new EnebularAgent({
+      portBasePath: path.resolve(__dirname, '../'),
+      connector: connector,
+      config: agentConfig
+  })
 
   return new Promise(async (resolve, reject) => {
     agent.on('connectorConnect', async () => {
@@ -44,9 +50,7 @@ export async function createConnectedAgent(
       resolve({ agent: agent, connector: connector })
     })
 
-    await agent.startup()
-    connector.updateActiveState(true)
-    connector.updateRegistrationState(true, 'dummy_deviceId')
+    await agent.startup(agentConfig)
     setTimeout(async () => {
       reject(new Error('no connect request.'))
     }, 1000)
@@ -76,7 +80,7 @@ export async function createAuthenticatedAgent(
   const configFile = Utils.createDummyEnebularConfig({}, port)
   const { agent, connector } = await createConnectedAgent(
     t,
-    Object.assign({ configFile: configFile }, agentConfig)
+    Object.assign({ ENEBULAR_CONFIG_PATH: configFile }, agentConfig)
   )
   return new Promise(async (resolve, reject) => {
     setTimeout(async () => {
@@ -100,7 +104,7 @@ export async function createUnauthenticatedAgent(
   const configFile = Utils.createDummyEnebularConfig({}, port)
   return createConnectedAgent(
     t,
-    Object.assign({ configFile: configFile }, agentConfig)
+    Object.assign({ ENEBULAR_CONFIG_PATH: configFile }, agentConfig)
   )
 }
 

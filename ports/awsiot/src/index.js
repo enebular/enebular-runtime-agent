@@ -1,17 +1,10 @@
 /* @flow */
 import fs from 'fs'
+import path from 'path'
 import awsIot from 'aws-iot-device-sdk'
 import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
 
 const MODULE_NAME = 'aws-iot'
-
-const {
-  ENEBULAR_CONFIG_PATH,
-  NODE_RED_DIR,
-  NODE_RED_DATA_DIR,
-  NODE_RED_COMMAND,
-  AWSIOT_CONFIG_FILE
-} = process.env
 
 let agent: EnebularAgent
 let connector: ConnectorService
@@ -225,35 +218,58 @@ function setupThingShadow(config: AWSIoTConfig) {
   return shadow
 }
 
-async function startup() {
-  const configFile = ENEBULAR_CONFIG_PATH || '.enebular-config.json'
-  const nodeRedDir = NODE_RED_DIR || 'node-red'
-  const awsIoTConfigFile = AWSIOT_CONFIG_FILE || './config.json'
+function onConnectorRegisterConfig() {
+  const AWSIoTConfigName = 'AWSIOT_CONFIG_FILE'
+  const defaultAWSIoTConfigPath = path.resolve(
+    process.argv[1],
+    '../../config.json'
+  )
 
-  console.log('AWS IoT config file: ' + awsIoTConfigFile)
+  agent.config.addItem(
+    AWSIoTConfigName,
+    defaultAWSIoTConfigPath,
+    'AWSIoT config file path',
+    true
+  )
+
+  agent.commandLine.addConfigOption(
+    AWSIoTConfigName,
+    '--aws-iot-config-file <path>'
+  )
+}
+
+function ensureAbsolutePath(pathToCheck: string, configFilePath: string) {
+  return path.isAbsolute(pathToCheck)
+    ? pathToCheck
+    : path.resolve(path.dirname(configFilePath), pathToCheck)
+}
+
+function onConnectorInit() {
+  const awsIotConfigFile = agent.config.get('AWSIOT_CONFIG_FILE')
+  info('AWS IoT config file: ' + awsIotConfigFile)
 
   let awsIotConfig
   try {
-    awsIotConfig = JSON.parse(fs.readFileSync(awsIoTConfigFile, 'utf8'))
+    awsIotConfig = JSON.parse(fs.readFileSync(awsIotConfigFile, 'utf8'))
   } catch (err) {
     console.error(err)
     process.exit(1)
   }
 
-  thingName = awsIotConfig.thingName
-  connector = new ConnectorService()
-  let agentConfig = {
-    nodeRedDir: nodeRedDir,
-    configFile: configFile
-  }
-  if (NODE_RED_DATA_DIR) {
-    agentConfig['nodeRedDataDir'] = NODE_RED_DATA_DIR
-  }
-  if (NODE_RED_COMMAND) {
-    agentConfig['nodeRedCommand'] = NODE_RED_COMMAND
-  }
-  agent = new EnebularAgent(connector, agentConfig)
+  awsIotConfig.caCert = ensureAbsolutePath(
+    awsIotConfig.caCert,
+    awsIotConfigFile
+  )
+  awsIotConfig.clientCert = ensureAbsolutePath(
+    awsIotConfig.clientCert,
+    awsIotConfigFile
+  )
+  awsIotConfig.privateKey = ensureAbsolutePath(
+    awsIotConfig.privateKey,
+    awsIotConfigFile
+  )
 
+  thingName = awsIotConfig.thingName
   thingShadow = setupThingShadow(awsIotConfig)
 
   agent.on('connectorRegister', () => {
@@ -270,11 +286,20 @@ async function startup() {
     updateThingShadowRegisterState()
   })
 
-  await agent.startup()
-  info('Agent started')
-
   connector.updateActiveState(true)
   connector.updateRegistrationState(true, thingName)
+
+  info('Agent started')
+}
+
+async function startup() {
+  connector = new ConnectorService(onConnectorInit, onConnectorRegisterConfig)
+  agent = new EnebularAgent({
+    portBasePath: path.resolve(__dirname, '../'),
+    connector: connector
+  })
+
+  await agent.startup()
 }
 
 async function shutdown() {

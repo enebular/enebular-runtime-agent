@@ -61,7 +61,8 @@ export default class NodeREDController {
     this._nodeRedLog = logManager.addLogger('service.node-red', [
       'console',
       'enebular',
-      'file'
+      'file',
+      'syslog'
     ])
   }
 
@@ -76,7 +77,7 @@ export default class NodeREDController {
   }
 
   _getDataDir() {
-    return this._dataDir || path.join(this._dir, '.node-red-config')
+    return this._dataDir
   }
 
   _registerHandler(emitter: EventEmitter) {
