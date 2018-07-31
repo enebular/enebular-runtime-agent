@@ -1,4 +1,6 @@
-image: node:9.2.1
+image: 
+  name: node:9.2.1
+  run-as-user: 1000
 
 pipelines:
   default: 
@@ -10,8 +12,7 @@ pipelines:
         - echo "hello enebular-agent-runtime"
         - node -v
         - npm -v
-        - npm config set -g production false
-        - (cd node-red && npm i)
+        - (cd node-red && rm -rf node_modules && npm i)
         - (cd agent && npm i)
         - (cd agent && npm run test:serial)
         - (cd ports/awsiot && npm i
@@ -21,30 +22,36 @@ pipelines:
   tags:
     '*-release':
       - step:
-          name: Build and test
-          caches:
-          - node
+          name: Build, Test and Package
           script:
           - (node -v | xargs echo build environment nodejs:)
           - (echo ${BITBUCKET_TAG} | xargs echo release tag:)
+          # build & test
           - (cd node-red && npm i)
-          # - (cd agent && npm i && npm run test:serial)
-          - (cd agent && npm i)
+          - (cd agent && npm i && npm run test:serial)
           - (cd ports/awsiot && npm i
-            && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientid":"thing_name","thingname":"thing_name","cacert":"./certs/root_certificate","clientcert":"./certs/thing_cert","privatekey":"./certs/thing_private_key>","topic":"aws/things/thing_name/shadow/update"}' > ./config.json)
-          # - (cd ports/awsiot && npm i
-          #  && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientid":"thing_name","thingname":"thing_name","cacert":"./certs/root_certificate","clientcert":"./certs/thing_cert","privatekey":"./certs/thing_private_key>","topic":"aws/things/thing_name/shadow/update"}' > ./config.json
-          #            && npm run test)
+            && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientid":"thing_name","thingname":"thing_name","cacert":"./certs/root_certificate","clientcert":"./certs/thing_cert","privatekey":"./certs/thing_private_key>","topic":"aws/things/thing_name/shadow/update"}' > ./config.json
+            && npm run test)
           - (cd ports/local && npm i)
-          - git archive --format=tar.gz --prefix=${BITBUCKET_TAG}/ ${BITBUCKET_TAG} >${BITBUCKET_TAG}.tar.gz
+          # package
           - (cd node-red && rm -rf node_modules)
           - (cd agent && rm -rf node_modules)
           - (cd ports/awsiot && rm -rf node_modules)
           - (cd ports/local && rm -rf node_modules)
+          - git archive --format=tar.gz --prefix=${BITBUCKET_TAG}/ ${BITBUCKET_TAG} >/tmp/${BITBUCKET_TAG}.tar.gz
           - rm -rf .git
-          - tar --transform 's,^\.,${BITBUCKET_TAG},' -czf ${BITBUCKET_TAG}-prebuilt.tar.gz .
+          - tar --transform "s,^\.,${BITBUCKET_TAG}," -czf /tmp/${BITBUCKET_TAG}-prebuilt.tar.gz .
+          - mkdir -p dist 
+            && mv /tmp/${BITBUCKET_TAG}.tar.gz dist/ 
+            && mv /tmp/${BITBUCKET_TAG}-prebuilt.tar.gz dist/ 
+          - (cd dist && sha256sum * > SHASUMS256.txt)
           artifacts:
-          - ${BITBUCKET_TAG}.tar.gz
-          - ${BITBUCKET_TAG}-prebuilt.tar.gz
-
-
+          - dist/**
+      - step:
+          name: Upload to S3
+          image: python:3.5.1
+          script:
+          - pip install boto3==1.3.0 # required for s3_upload.py
+          - S3_BUCKET=enebular-release
+          - python s3_upload.py ${S3_BUCKET} "is_folder" "${BITBUCKET_TAG}/"
+          - (cd dist && find * -exec python ../s3_upload.py ${S3_BUCKET} {} ${BITBUCKET_TAG}/{} \;)
