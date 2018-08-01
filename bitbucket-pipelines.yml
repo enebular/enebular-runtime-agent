@@ -20,7 +20,7 @@ pipelines:
           && npm run test)
         - (cd ports/local && npm i)
   tags:
-    '*-release':
+    '*':
       - step:
           name: Build, Test and Package
           script:
@@ -38,22 +38,18 @@ pipelines:
           - (cd agent && rm -rf node_modules)
           - (cd ports/awsiot && rm -rf node_modules)
           - (cd ports/local && rm -rf node_modules)
-          - git archive --format=tar.gz --prefix=${BITBUCKET_TAG}/ ${BITBUCKET_TAG} >/tmp/${BITBUCKET_TAG}.tar.gz
           - rm -rf .git
           - tar --transform "s,^\.,${BITBUCKET_TAG}," -czf /tmp/${BITBUCKET_TAG}-prebuilt.tar.gz .
           - mkdir -p dist 
-            && mv /tmp/${BITBUCKET_TAG}.tar.gz dist/ 
             && mv /tmp/${BITBUCKET_TAG}-prebuilt.tar.gz dist/ 
           - (cd dist && sha256sum * > SHASUMS256.txt)
           artifacts:
           - dist/**
-      - step:
-          name: Upload to S3
-          image: python:3.5.1
-          script:
-          - pip install boto3==1.3.0 # required for s3_upload.py
-          - S3_BUCKET=enebular-release
-          - echo ${BITBUCKET_TAG} | cut -d- -f4 > latest
-          - python s3_upload.py ${S3_BUCKET} "latest" "latest"
-          - python s3_upload.py ${S3_BUCKET} "is_folder" "${BITBUCKET_TAG}/"
-          - (cd dist && find * -exec python ../s3_upload.py ${S3_BUCKET} {} ${BITBUCKET_TAG}/{} \;)
+#      - step:
+#          name: Upload to S3
+#          image: python:3.5.1
+#          script:
+#          - pip install boto3==1.3.0 # required for s3_upload.py
+#          - S3_BUCKET=enebular-release
+#          - python s3_upload.py ${S3_BUCKET} "is_folder" "${BITBUCKET_TAG}/"
+#          - (cd dist && find * -exec python ../s3_upload.py ${S3_BUCKET} {} ${BITBUCKET_TAG}/{} \;)
