@@ -27,8 +27,8 @@ export default class ThingFactory {
       return false
     }
 
+    console.log('Creating thing: ' + thingName)
     configSavePath = configSavePath || path.resolve('../../ports/awsiot')
-    console.log('Config saving path is:' + configSavePath)
 
     const iot = new IoT({
       apiVersion: '2015-05-28',
@@ -40,7 +40,6 @@ export default class ThingFactory {
     let endPoint
     try {
       endPoint = await iot.describeEndpoint().promise()
-      console.log(endPoint)
     } catch (err) {
       console.log('Get unique endpoint failed.')
       console.log(err)
@@ -52,7 +51,6 @@ export default class ThingFactory {
       keysAndCert = await iot
         .createKeysAndCertificate({ setAsActive: true })
         .promise()
-      console.log(keysAndCert)
     } catch (err) {
       console.log('Create key pairs and certificate failed.')
       console.log(err)
@@ -63,7 +61,6 @@ export default class ThingFactory {
     let policy
     try {
       policy = await iot.getPolicy({ policyName: policyName }).promise()
-      console.log(policy)
     } catch (err) {
       console.log('Failed to get policy, try to create one.')
       try {
@@ -97,7 +94,6 @@ export default class ThingFactory {
     let thing
     try {
       thing = await iot.createThing({ thingName: thingName }).promise()
-      console.log(thing)
     } catch (err) {
       console.log('Create thing failed.')
       console.log(err)
