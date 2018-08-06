@@ -251,23 +251,22 @@ function onConnectorInit() {
   let awsIotConfig
   try {
     awsIotConfig = JSON.parse(fs.readFileSync(awsIotConfigFile, 'utf8'))
+    awsIotConfig.caCert = ensureAbsolutePath(
+      awsIotConfig.caCert,
+      awsIotConfigFile
+    )
+    awsIotConfig.clientCert = ensureAbsolutePath(
+      awsIotConfig.clientCert,
+      awsIotConfigFile
+    )
+    awsIotConfig.privateKey = ensureAbsolutePath(
+      awsIotConfig.privateKey,
+      awsIotConfigFile
+    )
   } catch (err) {
     console.error(err)
     process.exit(1)
   }
-
-  awsIotConfig.caCert = ensureAbsolutePath(
-    awsIotConfig.caCert,
-    awsIotConfigFile
-  )
-  awsIotConfig.clientCert = ensureAbsolutePath(
-    awsIotConfig.clientCert,
-    awsIotConfigFile
-  )
-  awsIotConfig.privateKey = ensureAbsolutePath(
-    awsIotConfig.privateKey,
-    awsIotConfigFile
-  )
 
   thingName = awsIotConfig.thingName
   thingShadow = setupThingShadow(awsIotConfig)
