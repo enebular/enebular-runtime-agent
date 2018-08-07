@@ -100,19 +100,9 @@ export default class Startup {
     }
 
     let commands = ['systemctl enable ' + serviceName]
-
-    try {
-      fs.readFileSync(config.get('ENEBULAR_AGENT_PID_FILE')).toString()
-      // if the daemon is running restart it.
-      commands.push('systemctl daemon-reload')
-      commands.push('systemctl restart ' + serviceName)
-    } catch (e) {
-      // if the daemon is not running start it.
-      commands.push('systemctl daemon-reload')
-      commands.push('systemctl start ' + serviceName)
-      commands.push('systemctl status --no-pager ' + serviceName)
-    }
-
+    commands.push('systemctl daemon-reload')
+    commands.push('systemctl restart ' + serviceName)
+    commands.push('systemctl status --no-pager ' + serviceName)
     commands.forEach(item => {
       console.log('Executing ' + item + '...')
       execSync(item, { stdio: 'inherit' })
