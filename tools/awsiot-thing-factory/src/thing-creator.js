@@ -4,27 +4,26 @@ import path from 'path'
 import http from 'https'
 import fs from 'fs'
 
-export type ThingFactoryConfig = {
-  awsAccessKeyId: string,
-  awsSecretAccessKey: string,
-  awsIotRegion: string
+export type ThingCreatorConfig = {
+  awsAccessKeyId: ?string,
+  awsSecretAccessKey: ?string,
+  awsIotRegion: ?string
 }
 
-export default class ThingFactory {
-  _awsSecretAccessKey: string
-  _awsAccessKeyId: string
-  _awsIotRegion: string
+export default class ThingCreator {
+  _awsSecretAccessKey: ?string
+  _awsAccessKeyId: ?string
+  _awsIotRegion: ?string
 
-  constructor(config: ThingFactoryConfig) {
+  constructor(config: ThingCreatorConfig) {
     this._awsAccessKeyId = config.awsAccessKeyId
     this._awsSecretAccessKey = config.awsSecretAccessKey
     this._awsIotRegion = config.awsIotRegion
   }
 
-  async createAWSIoTThing(configSavePath: string, thingName: string) {
+  async createThing(configSavePath: ?string, thingName: ?string) {
     if (!thingName) {
-      console.log('thingName is required.')
-      return false
+      throw('thingName is required.')
     }
 
     console.log('Creating thing: ' + thingName)
@@ -41,9 +40,7 @@ export default class ThingFactory {
     try {
       endPoint = await iot.describeEndpoint().promise()
     } catch (err) {
-      console.log('Get unique endpoint failed.')
-      console.log(err)
-      return false
+      throw('Get AWS IoT unique endpoint failed. Please check your aws iot configuration.')
     }
 
     let keysAndCert
@@ -52,29 +49,23 @@ export default class ThingFactory {
         .createKeysAndCertificate({ setAsActive: true })
         .promise()
     } catch (err) {
-      console.log('Create key pairs and certificate failed.')
-      console.log(err)
-      return false
+      throw('Create key pairs and certificate failed.')
     }
 
     const policyName = 'enebular_policy'
-    let policy
     try {
-      policy = await iot.getPolicy({ policyName: policyName }).promise()
+      await iot.getPolicy({ policyName: policyName }).promise()
     } catch (err) {
-      console.log('Failed to get policy, try to create one.')
+      console.log('Failed to get policy, try to create a new one using enebular default policy.')
       try {
-        policy = await iot
+        await iot
           .createPolicy({
             policyName: policyName,
             policyDocument: fs.readFileSync(`./${policyName}.json`, 'utf8')
           })
           .promise()
-        console.log(policy)
       } catch (err) {
-        console.log('Failed to create policy.')
-        console.log(err)
-        return false
+        throw('Failed to create policy.')
       }
     }
 
@@ -86,18 +77,13 @@ export default class ThingFactory {
         })
         .promise()
     } catch (err) {
-      console.log('Attach policy to certificate failed.')
-      console.log(err)
-      return false
+      throw('Attach policy to certificate failed.')
     }
 
-    let thing
     try {
-      thing = await iot.createThing({ thingName: thingName }).promise()
+      await iot.createThing({ thingName: thingName }).promise()
     } catch (err) {
-      console.log('Create thing failed.')
-      console.log(err)
-      return false
+      throw('Create thing failed.')
     }
 
     try {
@@ -108,28 +94,19 @@ export default class ThingFactory {
         })
         .promise()
     } catch (err) {
-      console.log('Attach thing to certificate failed.')
-      console.log(err)
-      return false
+      throw('Attach thing to certificate failed.')
     }
 
-    const ret = this.save(
-        configSavePath,
-        thingName,
-        endPoint.endpointAddress,
-        keysAndCert.certificatePem,
-        keysAndCert.keyPair.PrivateKey
-      )
-
-    if (ret) {
-      console.log(
-        `Thing ${thingName} created successfully. Config saved to ${configSavePath}/config.json`
-      )
-    }
-    return ret
+    return await this._save(
+      configSavePath,
+      thingName,
+      endPoint.endpointAddress,
+      keysAndCert.certificatePem,
+      keysAndCert.keyPair.PrivateKey
+    )
   }
 
-  async save(
+  async _save(
     configSavePath: string,
     thingName: string,
     endpointAddress: string,
@@ -140,15 +117,13 @@ export default class ThingFactory {
     try {
       const stat = fs.lstatSync(certsPath)
       if (!stat.isDirectory()) {
-        console.log("certificate path can't be a existing file")
-        return false
+        throw("Certificate path can't be a existing file")
       }
     } catch (err) {
       try {
         fs.mkdirSync(certsPath)
       } catch (err) {
-        console.log(err)
-        return false
+        throw("Make directory failed.")
       }
     }
 
@@ -163,8 +138,7 @@ export default class ThingFactory {
         'utf8'
       )
     } catch (err) {
-      console.log(err)
-      return false
+      throw("Save certificate failed.")
     }
 
     try {
@@ -174,19 +148,16 @@ export default class ThingFactory {
         'utf8'
       )
     } catch (err) {
-      console.log(err)
-      return false
+      throw("Save privateKey failed.")
     }
 
     try {
-      await this.download(
+      await this._download(
         'https://www.symantec.com/content/en/us/enterprise/verisign/roots/VeriSign-Class%203-Public-Primary-Certification-Authority-G5.pem',
         path.resolve(configSavePath, rootCertRelativePath)
       )
     } catch (err) {
-      console.log('Download AWS root certificate failed.')
-      console.log(err)
-      return false
+      throw('Download AWS root certificate failed.')
     }
 
     const data = JSON.stringify(
@@ -206,13 +177,14 @@ export default class ThingFactory {
     try {
       fs.writeFileSync(configSavePath + '/config.json', data, 'utf8')
     } catch (err) {
-      console.log(err)
-      return false
+      throw("Save config file failed.")
     }
-    return true
+    console.log(
+      `Thing ${thingName} created successfully. Config saved to ${configSavePath}/config.json`
+    )
   }
 
-  download(url, dest) {
+  _download(url: string, dest: string) {
     return new Promise((resolve, reject) => {
       const file = fs.createWriteStream(dest)
       const request = http.get(url, response => {
