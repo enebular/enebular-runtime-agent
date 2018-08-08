@@ -1,5 +1,5 @@
 {
-  "name": "awsiot-thing-factory",
+  "name": "awsiot-thing-creator",
   "version": "0.0.1",
   "description": "The utility to create AWS IoT thing from API",
   "main": "lib/index",
