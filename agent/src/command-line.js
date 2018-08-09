@@ -27,7 +27,7 @@ export default class CommandLine {
     this.addConfigOption('ENEBULAR_DAEMON_MODE', '--daemon-mode')
 
     commander.on('command:*', () => {
-      if (!process.env.ENEBULAR_TEST) {
+      if (!process.env.ENEBULAR_TEST && commander.args.length > 0) {
         this._command = 'unknown'
       }
     })
