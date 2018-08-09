@@ -1,0 +1,17 @@
+image: node:8.10.0
+
+pipelines:
+  default: 
+    - step:
+        caches:
+        - node
+        script:
+        - echo "hello enebular-agent-runtime"
+        - node -v
+        - npm -v
+        - npm config set -g production false
+        - (cd node-red && npm i)
+        - (cd agent && npm i && npm run build)
+        - (cd agent && npm run test:serial)
+        - (cd ports/awsiot && npm i && npm run build && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientid":"thing_name","thingname":"thing_name","cacert":"./certs/root_certificate","clientcert":"./certs/thing_cert","privatekey":"./certs/thing_private_key>","topic":"aws/things/thing_name/shadow/update"}' > ./config.json)
+        - (cd ports/awsiot && npm run test)
