@@ -23,7 +23,7 @@ export default class ThingCreator {
 
   async createThing(configSavePath: ?string, thingName: ?string) {
     if (!thingName) {
-      throw('thingName is required.')
+      throw new Error('thingName is required.')
     }
 
     console.log('Creating thing: ' + thingName)
@@ -40,7 +40,9 @@ export default class ThingCreator {
     try {
       endPoint = await iot.describeEndpoint().promise()
     } catch (err) {
-      throw('Get AWS IoT unique endpoint failed. Please check your aws iot configuration.')
+      throw new Error(
+        'Get AWS IoT unique endpoint failed. Please check your aws iot configuration.'
+      )
     }
 
     let keysAndCert
@@ -49,14 +51,16 @@ export default class ThingCreator {
         .createKeysAndCertificate({ setAsActive: true })
         .promise()
     } catch (err) {
-      throw('Create key pairs and certificate failed.')
+      throw new Error('Create key pairs and certificate failed.')
     }
 
     const policyName = 'enebular_policy'
     try {
       await iot.getPolicy({ policyName: policyName }).promise()
     } catch (err) {
-      console.log('Failed to get policy, try to create a new one using enebular default policy.')
+      console.log(
+        'Failed to get policy, try to create a new one using enebular default policy.'
+      )
       try {
         await iot
           .createPolicy({
@@ -65,7 +69,7 @@ export default class ThingCreator {
           })
           .promise()
       } catch (err) {
-        throw('Failed to create policy.')
+        throw new Error('Failed to create policy.')
       }
     }
 
@@ -77,13 +81,13 @@ export default class ThingCreator {
         })
         .promise()
     } catch (err) {
-      throw('Attach policy to certificate failed.')
+      throw new Error('Attach policy to certificate failed.')
     }
 
     try {
       await iot.createThing({ thingName: thingName }).promise()
     } catch (err) {
-      throw('Create thing failed.')
+      throw new Error('Create thing failed.')
     }
 
     try {
@@ -94,10 +98,10 @@ export default class ThingCreator {
         })
         .promise()
     } catch (err) {
-      throw('Attach thing to certificate failed.')
+      throw new Error('Attach thing to certificate failed.')
     }
 
-    return await this._save(
+    return this._save(
       configSavePath,
       thingName,
       endPoint.endpointAddress,
@@ -117,13 +121,13 @@ export default class ThingCreator {
     try {
       const stat = fs.lstatSync(certsPath)
       if (!stat.isDirectory()) {
-        throw("Certificate path can't be a existing file")
+        throw new Error("Certificate path can't be a existing file")
       }
     } catch (err) {
       try {
         fs.mkdirSync(certsPath)
       } catch (err) {
-        throw("Make directory failed.")
+        throw new Error('Make directory failed.')
       }
     }
 
@@ -138,7 +142,7 @@ export default class ThingCreator {
         'utf8'
       )
     } catch (err) {
-      throw("Save certificate failed.")
+      throw new Error('Save certificate failed.')
     }
 
     try {
@@ -148,7 +152,7 @@ export default class ThingCreator {
         'utf8'
       )
     } catch (err) {
-      throw("Save privateKey failed.")
+      throw new Error('Save privateKey failed.')
     }
 
     try {
@@ -157,7 +161,7 @@ export default class ThingCreator {
         path.resolve(configSavePath, rootCertRelativePath)
       )
     } catch (err) {
-      throw('Download AWS root certificate failed.')
+      throw new Error('Download AWS root certificate failed.')
     }
 
     const data = JSON.stringify(
@@ -177,7 +181,7 @@ export default class ThingCreator {
     try {
       fs.writeFileSync(configSavePath + '/config.json', data, 'utf8')
     } catch (err) {
-      throw("Save config file failed.")
+      throw new Error('Save config file failed.')
     }
     console.log(
       `Thing ${thingName} created successfully. Config saved to ${configSavePath}/config.json`
