@@ -36,8 +36,8 @@
     "rimraf": "^2.6.2"
   },
   "dependencies": {
-    "aws-sdk": "^2.286.2",
-    "babel-preset-flow": "^6.23.0",
-    "babel-runtime": "^6.23.0"
+    "aws-sdk": "2.286.2",
+    "babel-preset-flow": "6.23.0",
+    "babel-runtime": "6.26.0"
   }
 }
