@@ -182,7 +182,7 @@ test.serial('Log.3: Log level is handled correctly', async t => {
 })
 
 // TODO: the max size per interval maybe exceed as it stops caching after reaching the limit.
-test.serial.skip(
+test.serial(
   'Log.4: Size of each log is within max size per interval',
   async t => {
     let tmpLogCacheDir = '/tmp/enebular-log-cache-' + Utils.randomString()
@@ -200,6 +200,7 @@ test.serial.skip(
         {
           // set interval size larger than cache size so that cache size can be used.
           ENEBULAR_ENEBULAR_LOG_MAX_SIZE_PER_INTERVAL: 5 * 1024,
+          ENEBULAR_ENEBULAR_LOG_CACHE_PATH: tmpLogCacheDir,
           ENEBULAR_ENABLE_CONSOLE_LOG: false,
           ENEBULAR_MONITOR_INTERVAL_FAST: 2
         },
