@@ -3,6 +3,7 @@ import fs from 'fs'
 import EventEmitter from 'events'
 import path from 'path'
 import { spawn, type ChildProcess } from 'child_process'
+import ProcessUtil from './process-util'
 import fetch from 'isomorphic-fetch'
 import type { Logger } from 'winston'
 import type LogManager from './log-manager'
@@ -11,7 +12,8 @@ export type NodeREDConfig = {
   dir: string,
   dataDir: string,
   command: string,
-  killSignal: string
+  killSignal: string,
+  pidFile: string
 }
 
 const moduleName = 'node-red'
@@ -29,6 +31,7 @@ export default class NodeREDController {
   _dataDir: string
   _command: string
   _killSignal: string
+  _pidFile: string
   _cproc: ?ChildProcess = null
   _actions: Array<() => Promise<any>> = []
   _isProcessing: ?Promise<void> = null
@@ -48,6 +51,7 @@ export default class NodeREDController {
     this._dataDir = config.dataDir
     this._command = config.command
     this._killSignal = config.killSignal
+    this._pidFile = config.pidFile
 
     if (!fs.existsSync(this._dir)) {
       throw new Error(`The Node-RED directory was not found: ${this._dir}`)
@@ -205,6 +209,29 @@ export default class NodeREDController {
     })
   }
 
+  _createPIDFile(pid: string) {
+    try {
+      fs.writeFileSync(
+        this._pidFile,
+        pid,
+        'utf8'
+      )
+    } catch (err) {
+      this._log.error(err)
+    }
+  }
+
+  _removePIDFile() {
+    if (!fs.existsSync(this._pidFile))
+      return
+
+    try {
+      fs.unlinkSync(this._pidFile)
+    } catch (err) {
+      this._log.error(err)
+    }
+  }
+
   async startService() {
     return this._queueAction(() => this._startService())
   }
@@ -212,6 +239,10 @@ export default class NodeREDController {
   async _startService() {
     this.info('Staring service...')
     return new Promise((resolve, reject) => {
+      if (fs.existsSync(this._pidFile)) {
+        ProcessUtil.killProcessByPIDFile(this._pidFile)
+      }
+
       const [command, ...args] = this._command.split(/\s+/)
       const cproc = spawn(command, args, { stdio: 'pipe', cwd: this._dir })
       cproc.stdout.on('data', data => {
@@ -251,12 +282,14 @@ export default class NodeREDController {
             /* Other restart strategies(change port, etc.) may be tried here. */
           }
         }
+        this._removePIDFile()
       })
       cproc.once('error', err => {
         this._cproc = null
         reject(err)
       })
       this._cproc = cproc
+      this._createPIDFile(this._cproc.pid.toString())
       setTimeout(() => resolve(), 1000)
     })
   }

@@ -28,6 +28,11 @@ export default class Config {
         description: 'PID file path when running as daemon',
         userExpose: true
       },
+      ENEBULAR_NODE_RED_PID_FILE: {
+        value: p.resolve(portBasePath, '.node-red.pid'),
+        description: 'Node-RED PID file path',
+        userExpose: true
+      },
       NODE_RED_DIR: {
         value: p.resolve(portBasePath, '../../node-red'),
         description: 'Node-RED installation path',
