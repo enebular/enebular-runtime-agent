@@ -15,6 +15,8 @@ export type NodeREDConfig = {
 }
 
 const moduleName = 'node-red'
+const maxRetryCount = 5
+const maxRetryCountResetInterval = 5
 
 type NodeRedFlowPackage = {
   flows: Object[],
@@ -33,6 +35,8 @@ export default class NodeREDController {
   _log: Logger
   _logManager: LogManager
   _nodeRedLog: Logger
+  _exceptionRetryCount: number = 0
+  _lastRetryTimestamp: number = Date.now()
 
   constructor(
     emitter: EventEmitter,
@@ -218,10 +222,35 @@ export default class NodeREDController {
         let str = data.toString().replace(/(\n|\r)+$/, '')
         this._nodeRedLog.error(str)
       })
-      cproc.once('exit', code => {
-        this.info(`Service exited (${code})`)
+      cproc.once('exit', (code, signal) => {
+        this.info(`Service exited (${code !== null ? code : signal})`)
         this._cproc = null
-        this.startService()
+        /* We don't want to restart service if it exits normally. */
+        if (code !== 0) {
+          const now = Date.now()
+          /* Detecting continuously crashing(exceptions happen within 5 seconds). */
+          this._exceptionRetryCount =
+            this._lastRetryTimestamp + maxRetryCountResetInterval * 1000 > now
+              ? this._exceptionRetryCount + 1
+              : 0
+          this._lastRetryTimestamp = now
+          if (this._exceptionRetryCount < maxRetryCount) {
+            this.info(
+              'Unexpected exit, restart service in 1 second. retry count:' +
+                this._exceptionRetryCount
+            )
+            setTimeout(() => {
+              this.startService()
+            }, 1000)
+          } else {
+            this.info(
+              `Unexpected exit, but retry count(${
+                this._exceptionRetryCount
+              }) exceed max.`
+            )
+            /* Other restart strategies(change port, etc.) may be tried here. */
+          }
+        }
       })
       cproc.once('error', err => {
         this._cproc = null
@@ -241,8 +270,6 @@ export default class NodeREDController {
       const cproc = this._cproc
       if (cproc) {
         this.info('Shutting down service...')
-        /* remove 'exit' event listener from start service */
-        cproc.removeAllListeners('exit')
         cproc.once('exit', () => {
           this.info('Service ended')
           this._cproc = null
