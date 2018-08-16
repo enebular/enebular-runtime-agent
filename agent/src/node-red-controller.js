@@ -221,6 +221,7 @@ export default class NodeREDController {
       cproc.once('exit', code => {
         this.info(`Service exited (${code})`)
         this._cproc = null
+        this.startService()
       })
       cproc.once('error', err => {
         this._cproc = null
@@ -240,12 +241,14 @@ export default class NodeREDController {
       const cproc = this._cproc
       if (cproc) {
         this.info('Shutting down service...')
-        cproc.kill(this._killSignal)
+        /* remove 'exit' event listener from start service */
+        cproc.removeAllListeners('exit')
         cproc.once('exit', () => {
           this.info('Service ended')
           this._cproc = null
           resolve()
         })
+        cproc.kill(this._killSignal)
       } else {
         this.info('Service already shutdown')
         resolve()
