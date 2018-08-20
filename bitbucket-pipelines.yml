@@ -53,5 +53,5 @@ pipelines:
 #          script:
 #          - pip install boto3==1.3.0 # required for s3_upload.py
 #          - S3_BUCKET=enebular-release
-#          - python s3_upload.py ${S3_BUCKET} "is_folder" "${BITBUCKET_TAG}/"
+#          - python tools/s3_upload.py ${S3_BUCKET} "is_folder" "${BITBUCKET_TAG}/"
 #          - (cd dist && find * -exec python ../s3_upload.py ${S3_BUCKET} {} ${BITBUCKET_TAG}/{} \;)
