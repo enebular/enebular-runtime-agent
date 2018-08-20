@@ -72,7 +72,7 @@ enebular-agent supports a number of configuration options set via environment va
 
 Each of the ports have additional configuration options. Please see the readme files of each port for details.
 
-A full list of supported configuration options can be displayed by running the port with the `list-config-items` subcommand, as shown below.
+A full list of supported configuration options can be displayed by running the port command with the `list-config-items` subcommand, as shown below.
 
 ```
 cd ports/<port>
@@ -85,3 +85,20 @@ For example, if using AWS IoT, then it be as follows.
 cd ports/awsiot
 ./bin/enebular-awsiot-agent list-config-items
 ```
+
+## Startup Registration
+
+enebular-agent has the ability to generate the configuration needed for it to be started up automatically at boot-time on Debian (systemd) based systems. This is done by running the port command with the `startup-register` subcommand and specifying an appropriate user (for enebular-agent to run as). An example of specifying `enebular` for the user when using the AWS IoT port is shown below.
+
+```
+cd ports/awsiot
+./bin/enebular-awsiot-agent startup-register -u enebular
+```
+
+As with `ENEBULAR_LOG_LEVEL` option in the following example, any extra configuration options that are specified will be captured by the startup-register subcommand and included in the startup configuration.
+
+```
+ENEBULAR_LOG_LEVEL=debug ./bin/enebular-awsiot-agent startup-register -u enebular
+```
+
+As registering the startup configuration requires root permissions, when the `startup-register` subcommand is run without root permissions it will not attempt the registration but instead display the correct full `sudo` command that should actually be run. Follow the instructions and run the full `sudo` command that is displayed.
