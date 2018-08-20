@@ -58,7 +58,7 @@ The current ports are:
 
 - **AWS IoT** - For use with AWS IoT
 - **Local** - For use together other local programs
-    - This is used together with the [enebular-agent Mbed Cloud Connector](https://github.com/enebular/enebular-runtime-agent-mbed-cloud-connector) for Mbed Cloud support
+    - This is used together with the [enebular-agent Mbed Cloud Connector](https://github.com/enebular/enebular-runtime-agent-mbed-cloud-connector) when using enebular-agent with Mbed Cloud
 
 ## Installation
 

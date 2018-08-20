@@ -48,15 +48,26 @@ enebular-agentは、Node.jsモジュールの集合として実装されてい�
 
 Node-REDもNode.jsのモジュールとしてインストールされます。
 
+## ポート
+
+ポートとは、enebular-agentをAWS IoTやMbed Cloudなどの外部サービスと連携するために個別に準備されたenebular-agentのエディションのことを指します。
+
+enebular-agentを利用するには、利用する外部サービスに合わせて適切なポートを選択し、そのポートのインストールと設定を行ってから、ポートの`bin`ディレクトリの下にある実行ファイルを実行します。
+
+現在、以下のポートがあります。
+
+- **AWS IoT** - AWS IoTと連携して利用します
+- **Local** - ローカルにある他のプログラムと併せて利用します
+    - enebular-agentをMbed Cloudと連携して利用する場合に[enebular-agent Mbed Cloud Connector](https://github.com/enebular/enebular-runtime-agent-mbed-cloud-connector)と併せて利用します。
+
 ## インストール方法
 
-enebular-agentを実行するには、利用するIoTプラットフォームのポート(※)に必要となっているNode.jsモジュールをインストールし、IoTプラットフォームの接続情報を正しく設定する必要があります。
+enebular-agentを実行するには、利用するIoTプラットフォームのポートに必要となっているNode.jsモジュールをインストールし、IoTプラットフォームの接続情報を正しく設定する必要があります。
 
 必要なモジュールと接続情報は、各IoTプラットフォームのポートによって異なります。enebular-agentの設定と実行の詳細については、各ポートのreadmeファイルを参照してください。
 
-- [ポート](ports)
-
-(※) ここでのポートとは、enebular-agentをAWS IoTやMbed Cloudなどの外部サービスと連携するために個別に準備されたenebular-agentのエディションのことを指します。
+- [AWS IoTポートのREADME](ports/awsiot/README.ja.md)
+- [LocalポートのREADME](ports/local/README.ja.md)
 
 ## 設定方法
 
