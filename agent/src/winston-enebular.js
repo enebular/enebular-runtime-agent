@@ -120,8 +120,12 @@ Enebular.prototype._appendOutput = function(output, callback) {
    * length as the adjustments could result in the removal of 'current', which
    * would change what the prefix should be.
    */
-  const prefixLength = 3
-  if ((this._intervalTotal + output.length + prefixLength) >= this._maxSizePerInterval) {
+  const prefixLength = 2
+  const finalizeSuffixLength = 2
+  if (
+    this._intervalTotal + output.length + prefixLength >=
+    this._maxSizePerInterval - finalizeSuffixLength
+  ) {
     debug('max-size-per-interval reached so ignoring new log event')
     return callback(null, true)
   }

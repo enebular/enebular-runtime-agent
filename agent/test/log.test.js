@@ -181,15 +181,20 @@ test.serial('Log.3: Log level is handled correctly', async t => {
   })
 })
 
-// TODO: the max size per interval maybe exceed as it stops caching after reaching the limit.
 test.serial(
   'Log.4: Size of each log is within max size per interval',
   async t => {
+    const maxSizePerInterval = 1107
+    let seq = 0
     let tmpLogCacheDir = '/tmp/enebular-log-cache-' + Utils.randomString()
     const logCallback = file => {
-      // TODO: check size of the log
       console.log('size.........:', file.size)
-      t.true(file.size < 5 * 1024)
+      t.true(file.size < maxSizePerInterval)
+      if (seq) {
+        // We pick 1107 as size, which should result the subsequental log size matches exact size boundary
+        t.true(file.size === maxSizePerInterval - 1)
+      }
+      seq++
     }
     server.on('recordLogs', logCallback)
 
@@ -199,10 +204,10 @@ test.serial(
       Utils.addNodeRedPortToConfig(
         {
           // set interval size larger than cache size so that cache size can be used.
-          ENEBULAR_ENEBULAR_LOG_MAX_SIZE_PER_INTERVAL: 5 * 1024,
+          ENEBULAR_ENEBULAR_LOG_MAX_SIZE_PER_INTERVAL: maxSizePerInterval,
           ENEBULAR_ENEBULAR_LOG_CACHE_PATH: tmpLogCacheDir,
           ENEBULAR_ENABLE_CONSOLE_LOG: false,
-          ENEBULAR_MONITOR_INTERVAL_FAST: 2
+          ENEBULAR_MONITOR_INTERVAL_FAST: 1
         },
         NodeRedPort
       ),
@@ -210,15 +215,10 @@ test.serial(
     )
     agent = ret.agent
 
-    t.is(agent._logManager._enebularTransport._maxSizePerInterval, 5 * 1024)
-
-    const data = fs.readFileSync(
-      path.join(__dirname, 'data', 'text.1k'),
-      'utf8'
-    )
+    t.is(agent._logManager._enebularTransport._maxSizePerInterval, maxSizePerInterval)
     const intervalObj = setInterval(() => {
-      agent.log.info(data)
-    }, 10)
+      agent.log.info('1')
+    }, 1)
 
     return new Promise((resolve, reject) => {
       setTimeout(() => {
