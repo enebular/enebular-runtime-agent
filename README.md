@@ -92,7 +92,7 @@ cd ports/<port>
 ./bin/enebular-<port>-agent list-config-items
 ```
 
-For example, if using AWS IoT, then it be as follows.
+For example, if using AWS IoT, then the command is as follows.
 
 ```
 cd ports/awsiot

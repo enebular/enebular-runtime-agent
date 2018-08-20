@@ -84,3 +84,17 @@ enebular-agentは、環境変数で設定できるIoTプラットフォーム共
 - `ENEBULAR_CONFIG_PATH` - enebular-agentの設定ファイルのパス
 
 さらに、各ポートにはそれぞれの専用設定オプションがあります。詳細については、各ポートのreadmeファイルを参照してください。
+
+サポートされている設定オプションの一覧は、以下のようにポートの実行ファイルに`list-config-items`のサブコマンドを指定して実行することによって表示できます。
+
+```
+cd ports/<port>
+./bin/enebular-<port>-agent list-config-items
+```
+
+AWS IoTを利用する場合、コマンドが以下の例のようになります。
+
+```
+cd ports/awsiot
+./bin/enebular-awsiot-agent list-config-items
+```
