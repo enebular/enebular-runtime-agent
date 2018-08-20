@@ -54,8 +54,8 @@ To use enebular-agent you select the appropriate port for the IoT platform conne
 
 The current ports are:
 
-- [AWS IoT](ports/awsiot) - For use with AWS IoT
-- [Local](ports/local) - For use together other local programs
+- **AWS IoT** - For use with AWS IoT
+- **Local** - For use together other local programs
     - This is used together with the [enebular-agent Mbed Cloud Connector](https://github.com/enebular/enebular-runtime-agent-mbed-cloud-connector) for Mbed Cloud support
 
 ## Installation
@@ -83,7 +83,7 @@ enebular-agent supports a number of configuration options set via environment va
 
 Each of the ports have additional configuration options. Please see the readme files of each port for details.
 
-A full list of supported configuration options can be displayed by running the port command with the `list-config-items` subcommand, as shown below.
+A full list of supported configuration options can be displayed by running the port's executable with the `list-config-items` subcommand, as shown below.
 
 ```
 cd ports/<port>
@@ -99,7 +99,7 @@ cd ports/awsiot
 
 ## Startup Registration
 
-enebular-agent has the ability to generate the configuration needed for it to be started up automatically at boot-time on Debian (systemd) based systems. This is done by running the port command with the `startup-register` subcommand and specifying an appropriate user (for enebular-agent to run as).
+enebular-agent has the ability to generate the configuration needed for it to be started up automatically at boot-time on Debian (systemd) based systems. This is done by running the port's executable with the `startup-register` subcommand and specifying an appropriate user (for enebular-agent to run as).
 
 An example of using the `startup-register` subcommand and specifying `enebular` for the user when using the AWS IoT port is shown below.
 
