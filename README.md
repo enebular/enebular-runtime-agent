@@ -71,3 +71,17 @@ enebular-agent supports a number of configuration options set via environment va
 - `ENEBULAR_CONFIG_PATH` - The path of the enebular-agent's main configuration file.
 
 Each of the ports have additional configuration options. Please see the readme files of each port for details.
+
+A full list of supported configuration options can be displayed by running the port with the `list-config-items` subcommand, as shown below.
+
+```
+cd ports/<port>
+./bin/enebular-<port>-agent list-config-items
+```
+
+For example, if using AWS IoT, then it be as follows.
+
+```
+cd ports/awsiot
+./bin/enebular-awsiot-agent list-config-items
+```
