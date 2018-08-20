@@ -85,7 +85,7 @@ enebular-agentは、環境変数で設定できるIoTプラットフォーム共
 
 さらに、各ポートにはそれぞれの専用設定オプションがあります。詳細については、各ポートのreadmeファイルを参照してください。
 
-サポートされている設定オプションの一覧は、以下のようにポートの実行ファイルに`list-config-items`のサブコマンドを指定して実行することによって表示できます。
+サポートされている設定オプションの一覧は、以下のようにポートの実行ファイルに`list-config-items`サブコマンドを指定して実行することによって表示できます。
 
 ```
 cd ports/<port>
@@ -98,3 +98,22 @@ AWS IoTを利用する場合、コマンドが以下の例のようになりま�
 cd ports/awsiot
 ./bin/enebular-awsiot-agent list-config-items
 ```
+
+## スタートアップ登録
+
+enebular-agentは、Debian (systemd)ベースのデバイスで起動時に自動的に立ち上がるための設定を生成して登録する機能を持っています。この機能はポートの実行ファイルに`startup-register`サブコマンドと、適切な（起動時に使用される）ユーザを指定して利用します。
+
+以下の例では、AWS IoTのポートを利用して、`startup-register`サブコマンドとユーザに`enebular`を指定する方法を示しています。
+
+```
+cd ports/awsiot
+./bin/enebular-awsiot-agent startup-register -u enebular
+```
+
+以下の例の`ENEBULAR_LOG_LEVEL`オプションのように、その他に指定された設定オプションがキャプチャされてスタートアップ用の設定に含まれいます。
+
+```
+ENEBULAR_LOG_LEVEL=debug ./bin/enebular-awsiot-agent startup-register -u enebular
+```
+
+スタートアップ用設定の登録をするためにroot権限が必要なため、`startup-register`サブコマンドがroot権限なしで実行された場合は、登録処理が行われないで、かわりに`sudo`コマンドに指定して実行するべきのコマンド内容がコンソールで表示されます。この場合、コンソールで表示される指示に従って適切な`sudo`コマンドを実行してください。
