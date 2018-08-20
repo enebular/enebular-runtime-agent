@@ -42,19 +42,30 @@ enebular-agent provides simple reporting on its status to enebular (when it has 
 
 ## Structure
 
-enebular-agent is implemented as a collection of Node.js modules. Its core runtime functionality is implemented as the `enebular-runtime-agent` module (under the `agent` directory). On top of this, there is a module for each of the supported IoT platform connection types (under the `ports` directory). Each of the ports includes the enebular-runtime-agent core module as a dependency.
+enebular-agent is implemented as a collection of Node.js modules. Its core runtime functionality is implemented as the `enebular-runtime-agent` module (under the `agent` directory). On top of this, there is a module for each of the supported IoT platform connection types (under the `ports` directory). Each of the ports includes the enebular-runtime-agent core module as a dependency. See below for more information on the ports.
 
 Node-RED is also installed as a Node.js module.
 
+## Ports
+
+A 'port' refers to the individual enebular-agent editions created to allow it to work with external connection services such as AWS IoT and Mbed Cloud.
+
+To use enebular-agent you select the appropriate port for the IoT platform connection type you want to use, install and configure the port, and then run it using the executable under its `bin` directory.
+
+The current ports are:
+
+- [AWS IoT](ports/awsiot) - For use with AWS IoT
+- [Local](ports/local) - For use together other local programs
+    - This is used together with the [enebular-agent Mbed Cloud Connector](https://github.com/enebular/enebular-runtime-agent-mbed-cloud-connector) for Mbed Cloud support
+
 ## Installation
 
-To run enebular-agent you need to install the Node.js modules required by the IoT platform port [1] you want to use and also correctly configure the IoT platform's connection details.
+To run enebular-agent you need to install the Node.js modules required by the IoT platform port you want to use and also correctly configure the IoT platform's connection details.
 
 The required modules and connection configuration differs for each IoT platform port. Please see the readme files of each port for details on how to set up and run the enebular-agent.
 
-- [Ports](ports)
-
-[1]: Here a 'port' refers to the individual enebular-agent editions created to allow it to work with external services such as AWS IoT and Mbed Cloud.
+- [AWS IoT Port README](ports/awsiot/README.md)
+- [Local Port README](ports/local/README.md)
 
 ## Configuration
 
