@@ -256,10 +256,10 @@ export default class NodeREDController {
       cproc.once('exit', (code, signal) => {
         this.info(`Service exited (${code !== null ? code : signal})`)
         this._cproc = null
-        /* We don't want to restart service if it exits normally. */
+        /* Restart automatically on an abnormal exit. */
         if (code !== 0) {
           const now = Date.now()
-          /* Detecting continuously crashing(exceptions happen within 5 seconds). */
+          /* Detect continuous crashes (exceptions happen within 5 seconds). */
           this._exceptionRetryCount =
             this._lastRetryTimestamp + maxRetryCountResetInterval * 1000 > now
               ? this._exceptionRetryCount + 1
@@ -267,7 +267,7 @@ export default class NodeREDController {
           this._lastRetryTimestamp = now
           if (this._exceptionRetryCount < maxRetryCount) {
             this.info(
-              'Unexpected exit, restart service in 1 second. retry count:' +
+              'Unexpected exit, restarting service in 1 second. Retry count:' +
                 this._exceptionRetryCount
             )
             setTimeout(() => {
@@ -279,7 +279,7 @@ export default class NodeREDController {
                 this._exceptionRetryCount
               }) exceed max.`
             )
-            /* Other restart strategies(change port, etc.) may be tried here. */
+            /* Other restart strategies (change port, etc.) could be tried here. */
           }
         }
         this._removePIDFile()
