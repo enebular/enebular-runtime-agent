@@ -59,7 +59,7 @@ export default class ThingCreator {
       await iot.getPolicy({ policyName: policyName }).promise()
     } catch (err) {
       console.log(
-        'Failed to get policy, try to create a new one using enebular default policy.'
+        'Failed to find enebular_policy, creating enebular_policy...'
       )
       try {
         await iot
