@@ -115,17 +115,21 @@ Enebular.prototype._appendOutput = function(output, callback) {
     return callback(new Error(msg))
   }
 
-  if (this._intervalTotal >= this._maxSizePerInterval) {
-    debug('max-size-per-interval reached so ignoring new log event')
-    return callback(null, true)
-  }
-
   /**
    * We need to do the size related adjustments based on an assumed prefix
    * length as the adjustments could result in the removal of 'current', which
    * would change what the prefix should be.
    */
-  const prefixLength = 3
+  const prefixLength = 2
+  const finalizeSuffixLength = 2
+  if (
+    this._intervalTotal + output.length + prefixLength >=
+    this._maxSizePerInterval - finalizeSuffixLength
+  ) {
+    debug('max-size-per-interval reached so ignoring new log event')
+    return callback(null, true)
+  }
+
   let outputSize = output.length + prefixLength
   let ok = this._shrinkCacheToFit(outputSize)
   if (!ok) {
