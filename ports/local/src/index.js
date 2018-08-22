@@ -1,6 +1,7 @@
 /* @flow */
 import net from 'net'
 import fs from 'fs'
+import path from 'path'
 import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
 
 const MODULE_NAME = 'local'
