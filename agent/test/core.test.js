@@ -277,7 +277,7 @@ test.serial(
         {
           ENEBULAR_MONITOR_INTERVAL_FAST: 1,
           ENEBULAR_MONITOR_INTERVAL_FAST_PERIOD: 2,
-          ENEBULAR_MONITOR_INTERVAL_NORMAL: 3
+          ENEBULAR_MONITOR_INTERVAL_NORMAL: 6
         },
         NodeRedPort
       ),
@@ -285,7 +285,7 @@ test.serial(
     )
     agent = ret.agent
 
-    let runningTime = 10
+    let runningTime = 17
     return new Promise(async (resolve, reject) => {
       setTimeout(() => {
         t.is(

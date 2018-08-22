@@ -32,9 +32,11 @@ enebular-agent accepts flows deployed from enebular and manages a Node-RED insta
 
 ### Logging
 
-enebular-agent will periodically send logged messages to enebular (when it has been made a 'paid' device). It can also log to its own standard output streams (command-line console), but this is not enabled by default. To have it also log to the console, set the `DEBUG` environment variable.
+enebular-agent will periodically send logged messages to enebular. It can also log to its own standard output streams (command-line console), but this is not enabled by default. To have it also log to the console, set the `DEBUG` environment variable. enebular-agent can also optionally log to syslog. See ’Configuration’ below for more information on configuration options.
 
-Along with its own logging, enebular-agent captures and re-logs any messages that Node-RED logs to its standard output streams (stdout and stderr). This includes any messages from nodes in the flow being run which log to the console, like when the debug node is configured to log to the "debug tab and console". All messages captured from Node-RED are currently re-logged at the 'info' log level.
+enebular-agent captures and re-logs any messages that Node-RED logs to its standard output streams (stdout and stderr). This includes any messages from nodes in the flow being run which log to the console, like when the debug node is configured to log to the "debug tab and console". All messages captured from Node-RED are currently re-logged at the 'info' log level.
+
+To view the logs on enebular, the device must be a 'paid' device.
 
 ### Status Reporting
 
@@ -42,19 +44,30 @@ enebular-agent provides simple reporting on its status to enebular (when it has 
 
 ## Structure
 
-enebular-agent is implemented as a collection of Node.js modules. Its core runtime functionality is implemented as the `enebular-runtime-agent` module (under the `agent` directory). On top of this, there is a module for each of the supported IoT platform connection types (under the `ports` directory). Each of the ports includes the enebular-runtime-agent core module as a dependency.
+enebular-agent is implemented as a collection of Node.js modules. Its core runtime functionality is implemented as the `enebular-runtime-agent` module (under the `agent` directory). On top of this, there is a module for each of the supported IoT platform connection types (under the `ports` directory). Each of the ports includes the enebular-runtime-agent core module as a dependency. See below for more information on the ports.
 
 Node-RED is also installed as a Node.js module.
 
+## Ports
+
+A 'port' refers to the individual enebular-agent editions created to allow it to work with external connection services such as AWS IoT and Mbed Cloud.
+
+To use enebular-agent you select the appropriate port for the IoT platform connection type you want to use, install and configure the port, and then run it using the executable under its `bin` directory.
+
+The current ports are:
+
+- **AWS IoT** - For use with AWS IoT
+- **Local** - For use together other local programs
+    - This is used together with the [enebular-agent Mbed Cloud Connector](https://github.com/enebular/enebular-runtime-agent-mbed-cloud-connector) when using enebular-agent with Mbed Cloud
+
 ## Installation
 
-To run enebular-agent you need to install the Node.js modules required by the IoT platform port [1] you want to use and also correctly configure the IoT platform's connection details.
+To run enebular-agent you need to install the Node.js modules required by the IoT platform port you want to use and also correctly configure the IoT platform's connection details.
 
 The required modules and connection configuration differs for each IoT platform port. Please see the readme files of each port for details on how to set up and run the enebular-agent.
 
-- [Ports](ports)
-
-[1]: Here a 'port' refers to the individual enebular-agent editions created to allow it to work with external services such as AWS IoT and Mbed Cloud.
+- [AWS IoT Port README](ports/awsiot/README.md)
+- [Local Port README](ports/local/README.md)
 
 ## Configuration
 
@@ -71,3 +84,36 @@ enebular-agent supports a number of configuration options set via environment va
 - `ENEBULAR_CONFIG_PATH` - The path of the enebular-agent's main configuration file.
 
 Each of the ports have additional configuration options. Please see the readme files of each port for details.
+
+A full list of supported configuration options can be displayed by running the port's executable with the `list-config-items` subcommand, as shown below.
+
+```
+cd ports/<port>
+./bin/enebular-<port>-agent list-config-items
+```
+
+For example, if using AWS IoT, then the command is as follows.
+
+```
+cd ports/awsiot
+./bin/enebular-awsiot-agent list-config-items
+```
+
+## Startup Registration
+
+enebular-agent has the ability to generate and register the configuration needed for it to be started up automatically at boot-time on Debian (systemd) based devices. This is done by running the port's executable with the `startup-register` subcommand and specifying an appropriate user (for enebular-agent to run as).
+
+An example of using the `startup-register` subcommand and specifying `enebular` for the user when using the AWS IoT port is shown below.
+
+```
+cd ports/awsiot
+./bin/enebular-awsiot-agent startup-register -u enebular
+```
+
+As with the `ENEBULAR_LOG_LEVEL` option in the following example, any extra configuration options that are specified will be captured and included in the startup configuration.
+
+```
+ENEBULAR_LOG_LEVEL=debug ./bin/enebular-awsiot-agent startup-register -u enebular
+```
+
+As registering the startup configuration requires root permissions, when the `startup-register` subcommand is run without root permissions it will not attempt the registration but instead display the correct full `sudo` command that should actually be run. Follow the instructions and run the full `sudo` command that is displayed.
