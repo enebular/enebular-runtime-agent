@@ -167,7 +167,8 @@ export default class EnebularAgent extends EventEmitter {
         dir: nodeRedDir,
         dataDir: nodeRedDataDir,
         command: nodeRedCommand,
-        killSignal: this._config.get('NODE_RED_KILL_SIGNAL')
+        killSignal: this._config.get('NODE_RED_KILL_SIGNAL'),
+        pidFile: this._config.get('ENEBULAR_NODE_RED_PID_FILE')
       }
     )
 
