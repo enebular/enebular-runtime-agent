@@ -62,10 +62,10 @@ The current ports are:
 
 ## Quick Setup
 
-You can quickly set up enebular-agent on a Debian based device by using the install script. The best way to use the script is by running it as a command with an ssh client on your development PC. To use the script you'll need to have the following.
+You can quickly set up enebular-agent on a Debian based device (like a Raspberry Pi) by using the install script. The best way to use the script is by running it as a command with an ssh client on your development PC. To use the script you'll need to have the following.
 
 - An ssh client command installed on your development PC
-- The `sudo` installed command on your target device
+- The `sudo` command installed on your target device
 
 You'll also need the following information about the target device.
 
@@ -95,7 +95,7 @@ For example, to run the script on a remote Raspberry Pi with the default pi user
 ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
 ```
 
-This will install the AWS IoT enebular-agent port, but as it will be missing the required connection info it will not actually run. If you'd like to automatically add a new AWS IoT *thing* to use, then follow the instructions in the "Automatic AWS IoT Thing Creation and Setup" section below instead. Otherwise, see the "More Details" section further below.
+This will install the AWS IoT enebular-agent port, but as it will be missing the required connection info it will not actually run. If you'd like to automatically add a new AWS IoT *thing* to use, then follow the instructions in the "Automatic AWS IoT Thing Creation and Setup" section below instead. Otherwise, see the "Manual Setup" section further below for details on the remaining manual configuration required.
 
 ### Automatic AWS IoT Thing Creation and Setup
 
@@ -131,7 +131,9 @@ Once the script has completed successfully, it will display a report similar to 
 
 ### More Details
 
-TODO
+For more information about other options the install script has, please refer to its readme file.
+
+- [Install script README](tools/install/README.md)
 
 ## Manual Setup
 
