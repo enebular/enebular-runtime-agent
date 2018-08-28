@@ -87,17 +87,32 @@ The install script can be run on a remote device via SSH with the following comm
 ssh -t <user>@<device-ip-address> "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
 ```
 
+This installs the AWS IoT enebular-agent port by default.
+
 For example, to run the script on a remote Raspberry Pi with the default pi user and an IP address of 192.168.1.125, the command would be as follows.
 
 ```
 ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
 ```
 
-This will install enebular-agent, but as it will be missing the connection info needed to connect to a third-party IoT platform it will not actually run. If you're using AWS IoT and you'd like to automatically add a new *thing* to use with that, then see the "Automatic AWS IoT Thing Creation and Setup" section below. Otherwise, see the "More Details" section further below.
+This will install the AWS IoT enebular-agent port, but as it will be missing the required connection info it will not actually run. If you'd like to automatically add a new AWS IoT *thing* and use that, then follow the instructions "Automatic AWS IoT Thing Creation and Setup" section below instead. Otherwise, see the "More Details" section further below.
 
 ### Automatic AWS IoT Thing Creation and Setup
 
-TODO
+To install the AWS IoT enebular-agent port and also add a new AWS IoT *thing* and use that, the following four options must also be specified.
+
+```
+--aws-access-key-id=<Your AWS account access key ID>
+--aws-secret-access-key=<Your AWS account secret access key>
+--aws-iot-region=<Your AWS IoT region>
+--aws-iot-thing-name=<A name for the new thing>
+```
+
+For example, to install the AWS IoT port and create an AWS IoT thing named "raspberry-pi" on a Raspberry Pi device (with the pi user and IP address of 192.168.1.125)., the command would be similar to the following.
+
+```
+ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
+```
 
 ### Confirmation
 
