@@ -81,7 +81,7 @@ If you are using enebular-agent with AWS IoT and you'd like to automatically add
 
 ### Basic Usage
 
-The install script can be run on a remote device via SSH with the following command pattern.
+The install script can be run on a remote device by using SSH on your development PC with the following command pattern.
 
 ```
 ssh -t <user>@<device-ip-address> "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
