@@ -59,7 +59,7 @@ The install script will create the activation configuration file for enebular-ag
 
 While this script will fully install enebular-agent and set it up to run at system startup, as enebular-agent also needs additional configuration specific to the selected port, if you didn't select to automatically add an AWS IoT thing then enebular-agent will actually fail to run to start with.
 
-To have enebular-agent run correctly, add the required files for the port (in the correct location and with the correct user permissions) as specified in the enebular-agent READMEs and then restart enebular-agent.
+To have enebular-agent run correctly, add the required files for the port (in the correct location and with the correct user permissions) as specified in the enebular-agent readme files and then restart enebular-agent.
 
 See the *Post Install* section below for information on how to restart enebular-agent and check its runtime state.
 

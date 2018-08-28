@@ -53,15 +53,15 @@ AWS IoTのThingを作成するコマンドの例については、下記「事�
 
 ## アクティベーション
 
-The install script will create the activation configuration file for enebular-agent if the `--license-key` option is provided.
+`--license-key` オプションを指定するとインストールスクリプトがenebular-agentのアクティベーション用の設定ファイルを作成します。
 
 ## ポートの手動設定
 
-While this script will fully install enebular-agent and set it up to run at system startup, as enebular-agent also needs additional configuration specific to the selected port, if you didn't select to automatically add an AWS IoT thing then enebular-agent will actually fail to run to start with.
+このスクリプトはenebular-agentを完全にインストールし、システム起動時に実行されるように設定しますが、選択したポート固有の設定も必要なため、AWS IoTのThingの自動作成を選択しなかった場合、そのままだと起動が失敗します。
 
-To have enebular-agent run correctly, add the required files for the port (in the correct location and with the correct user permissions) as specified in the enebular-agent READMEs and then restart enebular-agent.
+この場合、enebular-agentを正しく実行させるには、enebular-agentのreadmeファイルの説明に従って、ポートに必要なファイルを適切な場所と正しいユーザー権限で追加してから、enebular-agentを再起動します。
 
-See the *Post Install* section below for information on how to restart enebular-agent and check its runtime state.
+enebular-agentの再起動方法と実行状態の確認方法については、下記「インストール完了後」の項を参照してください。
 
 ## インストール完了後
 
