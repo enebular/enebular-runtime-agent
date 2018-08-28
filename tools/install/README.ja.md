@@ -26,17 +26,17 @@ ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/en
 
 ## ユーザ
 
-By default enebular-agent is installed so that it runs as the `enebular` user. The install script will create the user if it doesn't already exist.
+デフォルトでは、enebular-agentが `enebular` ユーザとして実行されるようにインストールされます。そのユーザが存在しない場合はインストールスクリプトが追加します。
 
 ## ポート
 
-By default the AWS IoT port of enebular-agent is installed. See the *Options* section below for alternatives.
+デフォルトでは、enebular-agentのAWS IoTポートがインストールされます。その他のポートを選択するには、下記「オプション」の項を参照してください。
 
 ## AWS IoTのThing作成
 
-The install script provides the ability to automatically create a Thing on AWS IoT for enebular-agent to use.
+インストールスクリプトは、enebular-agentが使用するためのAWS IoT上のThingを自動的に作成する機能を持っています。
 
-To create a Thing, the following four options must be specified:
+Thingを作成するには、次の4つのオプションを指定する必要があります。
 
 ```sh
 --aws-access-key-id
@@ -45,11 +45,11 @@ To create a Thing, the following four options must be specified:
 --aws-iot-thing-name
 ```
 
-It's best to only use this feature when running the script remotely to avoid having the secret access key recorded on the device (in the bash history).
+この機能は、秘密のアクセスキーがデバイスに（bashの履歴内で）記録されないように、インストールスクリプトをリモートで実行する場合のみに利用するのが望ましいです。
 
-The generated keys and certificates will be stored in `/home/enebular/enebular-runtime-agent/ports/awsiot/certs` by default. The user must make sure the keys and certificates are backed up securely if necessary.
+生成される鍵と証明書は、デフォルトで `/home/enebular/enebular-runtime-agent/ports/awsiot/certs` の下に保存されます。 利用者が必要に応じて鍵と証明書を安全な方法でバックアップするようにしないといけません。
 
-See the *Examples* section below for an example of a command to create an AWS IoT thing.
+AWS IoTのThingを作成するコマンドの例については、下記「事例」の項を参照してください。
 
 ## アクティベーション
 
