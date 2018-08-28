@@ -65,19 +65,19 @@ enebular-agentの再起動方法と実行状態の確認方法については、
 
 ## インストール完了後
 
-Once installed, you should be able to check the status of the enebular-agent with the systemd journal using the following command pattern.
+インストールが完了してから、次のコマンドパターンを使用してsystemdジャーナルでenebular-agentの実行状態を確認することができます。
 
 ```sh
 sudo journalctl -ex -u enebular-agent-<user>.service
 ```
 
-By default the user is set to `enebular`, and therefore the command to use is:
+デフォルトの `enebular` ユーザの場合、使用するコマンドは次の通りです。
 
 ```sh
 sudo journalctl -ex -u enebular-agent-enebular.service
 ```
 
-To restart enebular-agent, use the following command.
+enebular-agentを再起動するには、次のコマンドを使用します。
 
 ```sh
 sudo systemctl restart enebular-agent-enebular.service
@@ -85,7 +85,7 @@ sudo systemctl restart enebular-agent-enebular.service
 
 ## Node.jsのバージョン
 
-The supported Node.js version is as defined in the offical enebular documentation. If the install script can't find an existing installation of this version, it will try to install a prebuilt release from nodejs.org.
+サポートされているNode.jsのバージョンは、enebularのドキュメントで定義されています。インストールスクリプトがこのバージョンの既存インストールを見つけられない場合、nodejs.orgから事前にビルドされたリリースをインストールします。
 
 ## オプション
 

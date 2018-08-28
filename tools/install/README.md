@@ -71,7 +71,7 @@ Once installed, you should be able to check the status of the enebular-agent wit
 sudo journalctl -ex -u enebular-agent-<user>.service
 ```
 
-By default the user is set to `enebular`, and therefore the command to use is:
+With the default `enebular` user, the command to use is:
 
 ```sh
 sudo journalctl -ex -u enebular-agent-enebular.service
