@@ -60,7 +60,41 @@ The current ports are:
 - **Local** - For use together other local programs
     - This is used together with the [enebular-agent Mbed Cloud Connector](https://github.com/enebular/enebular-runtime-agent-mbed-cloud-connector) when using enebular-agent with Mbed Cloud
 
-## Installation
+## Quick Setup
+
+You can quickly set up enebular-agent on a Debian based device by using the install script. The best way to use the script is by running it as a command with an ssh client on your development PC. To use the script you'll need to have an ssh client command installed on your development PC, and be able to use the `sudo` command on your device.
+
+You'll need the following information about the target device.
+
+- User login details (username and password)
+- Current IP address
+
+If you are using enebular-agent with AWS IoT and you'd like to automatically add a new *thing* and use that, you'll also need to know the following.
+
+- Your AWS account access key ID
+- Your AWS account secret access key
+- Your AWS IoT region
+- A name for the new *thing*
+
+### Basic Usage
+
+TODO
+
+### Automatic AWS IoT Creation and Setup
+
+TODO
+
+### Confirmation
+
+TODO
+
+### More Details
+
+TODO
+
+## Manual Setup
+
+### Installation
 
 To run enebular-agent you need to install the Node.js modules required by the IoT platform port you want to use and also correctly configure the IoT platform's connection details.
 
@@ -69,7 +103,7 @@ The required modules and connection configuration differs for each IoT platform 
 - [AWS IoT Port README](ports/awsiot/README.md)
 - [Local Port README](ports/local/README.md)
 
-## Configuration
+### Configuration
 
 enebular-agent supports a number of configuration options set via environment variables that are available no matter what IoT platform port is used. This includes the following.
 
@@ -99,7 +133,7 @@ cd ports/awsiot
 ./bin/enebular-awsiot-agent list-config-items
 ```
 
-## Startup Registration
+### Startup Registration
 
 enebular-agent has the ability to generate and register the configuration needed for it to be started up automatically at boot-time on Debian (systemd) based devices. This is done by running the port's executable with the `startup-register` subcommand and specifying an appropriate user (for enebular-agent to run as).
 
