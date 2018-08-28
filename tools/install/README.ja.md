@@ -91,33 +91,34 @@ sudo systemctl restart enebular-agent-enebular.service
 
 ```sh
 OPTION                      FORMAT              DEFAULT                              DESCRIPTION
--p or --port                -p=[local,awsiot]   awsiot                               Port to install
--u or --user                -u=*                enebular                             User to run as after being installed
--d or --install-dir         -d=<path>           /home/<user>/enebular-runtime-agent  Install directory
--v or --release-version     -v=*                The latest release                   Release version of enebular-agent
---no-startup-register       N/A                 N/A                                  Do not register system startup configuration
+-p or --port                -p=[local,awsiot]   awsiot                               インストールするポート
+-u or --user                -u=*                enebular                             インストール後の実行ユーザ
+-d or --install-dir         -d=<path>           /home/<user>/enebular-runtime-agent  インストール先のディレクトリ
+-v or --release-version     -v=*                The latest release                   enebular-agentのリリース
+--no-startup-register       N/A                 N/A                                  システム起動時用のスタートアップ登録をしない
 --aws-access-key-id         =*                  N/A                                  AWS access key ID
 --aws-secret-access-key     =*                  N/A                                  AWS secret access key
---aws-iot-region            =*                  N/A                                  AWS IoT region
---aws-iot-thing-name        =*                  N/A                                  AWS IoT thing name
---license-key               =*                  N/A                                  Enebular licence key to activate
+--aws-iot-region            =*                  N/A                                  AWS IoTのリージョン
+--aws-iot-thing-name        =*                  N/A                                  AWS IoTのThing名
+--license-key               =*                  N/A                                  アクティベーション用のライセンスキー
 ```
 
 ## 事例
 
-Install the AWS IoT enebular-agent port and create a AWS IoT thing named "raspberry-pi" on a Raspberry Pi device via SSH (with the `pi` user and IP address of `192.168.1.125`).
+Raspberry Piデバイスに `pi` ユーザと ` 192.168.1.125` のIPアドレスでSSHを介してAWS IoTのenebular-agentポートをインストールし、`raspberry-pi`
+ という名前のAWS IoTのThingを作成します。
 
 ```sh
 ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
 ```
 
-Install the AWS IoT enebular-agent port using the `2.1.2` release.
+`2.1.2` リリースを使用してAWS IoTのenebular-agentポートをインストールします。
 
 ```sh
 wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s -- -v=2.1.2
 ```
 
-Install the AWS IoT enebular-agent port using the `2.1.3` release with the user set to `enebular-user-test`, the install directory set to `/home/enebular-user-test/my-agent`, and startup registration disabled.
+ユーザを `enebular-user-test` に、インストール先のディレクトリを `/home/enebular-user-test/my-agent` に、スタートアップ登録なしで `2.1.3` のリリースを使用してAWS IoTのenebular-agentポートをインストールします。
 
 ```sh
 wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s -- -v=2.1.3 --user=enebular-user-test -d=/home/enebular-user-test/my-agent --no-startup-register
