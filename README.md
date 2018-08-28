@@ -72,7 +72,7 @@ You'll also need the following information about the target device.
 - User login details (username and password)
 - Current IP address
 
-If you are using enebular-agent with AWS IoT and you'd like to automatically add a new *thing* and use that, you'll also need to know the following.
+If you are using enebular-agent with AWS IoT and you'd like to automatically add a new *thing* to use, you'll also need to know the following.
 
 - Your AWS account access key ID
 - Your AWS account secret access key
@@ -95,11 +95,11 @@ For example, to run the script on a remote Raspberry Pi with the default pi user
 ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
 ```
 
-This will install the AWS IoT enebular-agent port, but as it will be missing the required connection info it will not actually run. If you'd like to automatically add a new AWS IoT *thing* and use that, then follow the instructions "Automatic AWS IoT Thing Creation and Setup" section below instead. Otherwise, see the "More Details" section further below.
+This will install the AWS IoT enebular-agent port, but as it will be missing the required connection info it will not actually run. If you'd like to automatically add a new AWS IoT *thing* to use, then follow the instructions in the "Automatic AWS IoT Thing Creation and Setup" section below instead. Otherwise, see the "More Details" section further below.
 
 ### Automatic AWS IoT Thing Creation and Setup
 
-To install the AWS IoT enebular-agent port and also add a new AWS IoT *thing* and use that, the following four options must also be specified.
+To install the AWS IoT enebular-agent port and also add a new AWS IoT *thing* to use, the following four options must also be specified.
 
 ```
 --aws-access-key-id=<Your AWS account access key ID>
@@ -108,7 +108,7 @@ To install the AWS IoT enebular-agent port and also add a new AWS IoT *thing* an
 --aws-iot-thing-name=<A name for the new thing>
 ```
 
-For example, to install the AWS IoT port and create an AWS IoT thing named "raspberry-pi" on a Raspberry Pi device (with the pi user and IP address of 192.168.1.125)., the command would be similar to the following.
+For example, to install the AWS IoT port and create an AWS IoT thing named "raspberry-pi" on a Raspberry Pi device (with the pi user and IP address of 192.168.1.125), the command would be similar to the following.
 
 ```
 ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
@@ -116,7 +116,18 @@ ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/en
 
 ### Confirmation
 
-TODO
+Once the script has completed successfully, it will display a report similar to the following.
+
+```
+ enebular-agent has been successfully installed ✔
+ Version: <version>
+ Location: <directory>
+ User: enebular
+ AWS IoT Thing <thing-name> has been created.
+ enebular-agent is running as a system service.
+ To check the status of agent, run the following command on the target device:
+   sudo journalctl -ex -u enebular-agent-<user>.service
+```
 
 ### More Details
 
