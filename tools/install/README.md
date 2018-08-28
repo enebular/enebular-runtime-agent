@@ -1,6 +1,8 @@
 
 # enebular-agent Install Script
 
+*Read this in other languages: [English](README.md), [日本語](README.ja.md)*
+
 This is a bash script based utility that offers one-step installation of eneblar-agent on Debian based systems.
 
 ## Install Locally
