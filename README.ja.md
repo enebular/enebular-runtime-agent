@@ -60,7 +60,88 @@ enebular-agentを利用するには、利用する外部サービスに合わせ
 - **Local** - ローカルにある他のプログラムと併せて利用します
     - enebular-agentをMbed Cloudと連携して利用する場合に[enebular-agent Mbed Cloud Connector](https://github.com/enebular/enebular-runtime-agent-mbed-cloud-connector)と併せて利用します。
 
-## インストール方法
+## Quick Setup
+
+You can quickly set up enebular-agent on a Debian based device (like a Raspberry Pi) by using the install script. The best way to use the script is by running it as a command with an ssh client on your development PC. To use the script you'll need to have the following.
+
+- An ssh client command installed on your development PC
+- The `sudo` command installed on your target device
+
+You'll also need the following information about the target device.
+
+- User login details (username and password)
+- Current IP address
+
+If you are using enebular-agent with AWS IoT and you'd like to automatically add a new *thing* to use, you'll also need to know the following.
+
+- Your AWS account access key ID
+- Your AWS account secret access key
+- Your AWS IoT region
+- A name for the new *thing*
+
+### Basic Usage
+
+The install script can be run on a remote device by using SSH on your development PC with the following command pattern.
+
+```sh
+ssh -t <user>@<device-ip-address> "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
+```
+
+This installs the AWS IoT enebular-agent port by default.
+
+For example, to run the script on a remote Raspberry Pi with the default pi user and an IP address of 192.168.1.125, the command would be as follows.
+
+```sh
+ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
+```
+
+This will install the AWS IoT enebular-agent port, but as it will be missing the required connection info it will not actually run. If you'd like to automatically add a new AWS IoT *thing* to use, then follow the instructions in the "Automatic AWS IoT Thing Creation and Setup" section below instead.
+
+If you'd like to set up the connection info manually, you'll need to add the required files for the port (in the correct location and with the correct user permissions) as specified in the port's readme file and then restart enebular-agent. See the "Manual Setup" section further below for more details on this.
+
+### Automatic AWS IoT Thing Creation and Setup
+
+To install the AWS IoT enebular-agent port and also add a new AWS IoT *thing* to use, the following four options must also be specified.
+
+```
+--aws-access-key-id=<Your AWS account access key ID>
+--aws-secret-access-key=<Your AWS account secret access key>
+--aws-iot-region=<Your AWS IoT region>
+--aws-iot-thing-name=<A name for the new thing>
+```
+
+For example, to install the AWS IoT port and create an AWS IoT thing named "raspberry-pi" on a Raspberry Pi device (with the pi user and IP address of 192.168.1.125), the command would be similar to the following.
+
+```sh
+ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
+```
+
+### Confirmation
+
+Once the script has completed successfully, it will display a report similar to the following.
+
+```
+ enebular-agent has been successfully installed ✔
+ Version: <version>
+ Location: <directory>
+ User: enebular
+ AWS IoT Thing <thing-name> has been created.
+ enebular-agent is running as a system service.
+ To check the status of agent, run the following command on the target device:
+   sudo journalctl -ex -u enebular-agent-<user>.service
+```
+
+### More Details
+
+For more information about other options the install script has, please refer to its readme file.
+
+- [Install script README](tools/install/README.md)
+
+## Manual Setup
+
+The following describes how to set up enebular-agent manually (without using the install script).
+
+### Installation
 
 enebular-agentを実行するには、利用するIoTプラットフォームのポートに必要となっているNode.jsモジュールをインストールし、IoTプラットフォームの接続情報を正しく設定する必要があります。
 
@@ -69,7 +150,7 @@ enebular-agentを実行するには、利用するIoTプラットフォームの
 - [AWS IoTポートのREADME](ports/awsiot/README.ja.md)
 - [LocalポートのREADME](ports/local/README.ja.md)
 
-## 設定方法
+### 設定方法
 
 enebular-agentは、環境変数で設定できるIoTプラットフォーム共通の設定オプションをいくつかサポートしています。例として以下のオプションがあります。
 
@@ -87,33 +168,53 @@ enebular-agentは、環境変数で設定できるIoTプラットフォーム共
 
 サポートされている設定オプションは、以下のようにポートの実行ファイルに`list-config-items`サブコマンドを指定して実行することによって一覧表示できます。
 
-```
+```sh
 cd ports/<port>
 ./bin/enebular-<port>-agent list-config-items
 ```
 
 AWS IoTを利用する場合、コマンドは次の通りです。
 
-```
+```sh
 cd ports/awsiot
 ./bin/enebular-awsiot-agent list-config-items
 ```
 
-## スタートアップ登録
+### スタートアップ登録
 
 enebular-agentは、Debian (systemd)ベースのデバイスで起動時に自動的に立ち上がるための設定を生成して登録する機能を持っています。この機能はポートの実行ファイルに`startup-register`サブコマンドと、適切な（起動時に使用される）ユーザを指定して利用します。
 
 以下の例では、AWS IoTのポートを利用して、`startup-register`サブコマンドとユーザに`enebular`を指定する方法を示しています。
 
-```
+```sh
 cd ports/awsiot
 ./bin/enebular-awsiot-agent startup-register -u enebular
 ```
 
 以下の例の`ENEBULAR_LOG_LEVEL`オプションのように、その他に指定された設定オプションがキャプチャされてスタートアップ用の設定に含まれます。
 
-```
+```sh
 ENEBULAR_LOG_LEVEL=debug ./bin/enebular-awsiot-agent startup-register -u enebular
 ```
 
 スタートアップ用設定の登録をするためにはルート権限が必要です。`startup-register`サブコマンドがルート権限なしで実行された場合は、登録処理が行われずにかわりに`sudo`コマンドに指定して実行するべきコマンド内容がコンソールで表示されます。この場合、コンソールで表示される指示に従って適切な`sudo`コマンドを実行してください。
+
+### Confirmation
+
+Once it's registered to start up automatically, you should be able to check the status of the enebular-agent with the systemd journal using the following command pattern.
+
+```sh
+sudo journalctl -ex -u enebular-agent-<user>.service
+```
+
+If the user was set to `enebular`, the command to use will be:
+
+```sh
+sudo journalctl -ex -u enebular-agent-enebular.service
+```
+
+To restart enebular-agent, use the following command.
+
+```sh
+sudo systemctl restart enebular-agent-enebular.service
+```

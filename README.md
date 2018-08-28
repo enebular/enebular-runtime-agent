@@ -83,7 +83,7 @@ If you are using enebular-agent with AWS IoT and you'd like to automatically add
 
 The install script can be run on a remote device by using SSH on your development PC with the following command pattern.
 
-```
+```sh
 ssh -t <user>@<device-ip-address> "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
 ```
 
@@ -91,7 +91,7 @@ This installs the AWS IoT enebular-agent port by default.
 
 For example, to run the script on a remote Raspberry Pi with the default pi user and an IP address of 192.168.1.125, the command would be as follows.
 
-```
+```sh
 ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
 ```
 
@@ -112,7 +112,7 @@ To install the AWS IoT enebular-agent port and also add a new AWS IoT *thing* to
 
 For example, to install the AWS IoT port and create an AWS IoT thing named "raspberry-pi" on a Raspberry Pi device (with the pi user and IP address of 192.168.1.125), the command would be similar to the following.
 
-```
+```sh
 ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
 ```
 
@@ -168,14 +168,14 @@ Each of the ports have additional configuration options. Please see the readme f
 
 A full list of supported configuration options can be displayed by running the port's executable with the `list-config-items` subcommand, as shown below.
 
-```
+```sh
 cd ports/<port>
 ./bin/enebular-<port>-agent list-config-items
 ```
 
 For example, if using AWS IoT, then the command is as follows.
 
-```
+```sh
 cd ports/awsiot
 ./bin/enebular-awsiot-agent list-config-items
 ```
@@ -186,14 +186,14 @@ enebular-agent has the ability to generate and register the configuration needed
 
 An example of using the `startup-register` subcommand and specifying `enebular` for the user when using the AWS IoT port is shown below.
 
-```
+```sh
 cd ports/awsiot
 ./bin/enebular-awsiot-agent startup-register -u enebular
 ```
 
 As with the `ENEBULAR_LOG_LEVEL` option in the following example, any extra configuration options that are specified will be captured and included in the startup configuration.
 
-```
+```sh
 ENEBULAR_LOG_LEVEL=debug ./bin/enebular-awsiot-agent startup-register -u enebular
 ```
 
