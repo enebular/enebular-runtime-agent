@@ -62,9 +62,12 @@ The current ports are:
 
 ## Quick Setup
 
-You can quickly set up enebular-agent on a Debian based device by using the install script. The best way to use the script is by running it as a command with an ssh client on your development PC. To use the script you'll need to have an ssh client command installed on your development PC, and be able to use the `sudo` command on your device.
+You can quickly set up enebular-agent on a Debian based device by using the install script. The best way to use the script is by running it as a command with an ssh client on your development PC. To use the script you'll need to have the following.
 
-You'll need the following information about the target device.
+- An ssh client command installed on your development PC
+- The `sudo` installed command on your target device
+
+You'll also need the following information about the target device.
 
 - User login details (username and password)
 - Current IP address
@@ -78,9 +81,21 @@ If you are using enebular-agent with AWS IoT and you'd like to automatically add
 
 ### Basic Usage
 
-TODO
+The install script can be run on a remote device via SSH with the following command pattern.
 
-### Automatic AWS IoT Creation and Setup
+```
+ssh -t <user>@<device-ip-address> "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
+```
+
+For example, to run the script on a remote Raspberry Pi with the default pi user and an IP address of 192.168.1.125, the command would be as follows.
+
+```
+ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
+```
+
+This will install enebular-agent, but as it will be missing the connection info needed to connect to a third-party IoT platform it will not actually run. If you're using AWS IoT and you'd like to automatically add a new *thing* to use with that, then see the "Automatic AWS IoT Thing Creation and Setup" section below. Otherwise, see the "More Details" section further below.
+
+### Automatic AWS IoT Thing Creation and Setup
 
 TODO
 
