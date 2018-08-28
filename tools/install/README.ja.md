@@ -1,10 +1,10 @@
 # enebular-agentのインストール
 
-This is a bash script based utility that offers one-step installation of eneblar-agent on Debian based systems.
+これはDebianベースのシステムでeneblar-agentのワンステップインストールを提供するbashスクリプトのユーティリティです。
 
 ## ローカルのインストール
 
-To use the install script directly on a target device, you can download it with wget and then run it as shown below.
+インストールスクリプトをターゲットのデバイスで直接に使用するには、次に示すようにwgetを使用してダウンロードして実行します。
 
 ```sh
 wget -qO- http://52.63.25.180/enebular/enebular-agent-install.sh | sudo -E bash -s
@@ -12,13 +12,13 @@ wget -qO- http://52.63.25.180/enebular/enebular-agent-install.sh | sudo -E bash 
 
 ## リモートのインストール
 
-The install script can also be run on a remote target device via SSH with the following command pattern.
+インストールスクリプトは、次のコマンドパターンのようにSSH経由でリモートのデバイスで実行することもできます。
 
 ```sh
 ssh -t <user>@<device-ip-address> "wget -qO- http://52.63.25.180/enebular/enebular-agent-install.sh | sudo -E bash -s"
 ```
 
-For example, to run the script on a remote Raspberry Pi with the default `pi` user and an IP address of `192.168.1.125,` the command would be as follows.
+その例として、デフォルトの `pi` ユーザと `192.168.1.125` のIPアドレスを持つリモートのRaspberry Piでスクリプトを実行するコマンドは次のようになります。
 
 ```sh
 ssh -t pi@192.168.1.125 "wget -qO- http://52.63.25.180/enebular/enebular-agent-install.sh | sudo -E bash -s"
