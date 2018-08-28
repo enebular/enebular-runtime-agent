@@ -1,4 +1,5 @@
-# enebular-agent Installation
+
+# enebular-agent Install Script
 
 This is a bash script based utility that offers one-step installation of eneblar-agent on Debian based systems.
 

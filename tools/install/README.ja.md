@@ -1,4 +1,5 @@
-# enebular-agentのインストール
+
+# enebular-agentのインストールスクリプト
 
 これはDebianベースのシステムでeneblar-agentのワンステップインストールを提供するbashスクリプトのユーティリティです。
 
