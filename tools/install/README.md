@@ -7,7 +7,7 @@ This is a bash script based utility that offers one-step installation of eneblar
 To use the install script directly on a target device, you can download it with wget and then run it as shown below.
 
 ```sh
-wget -qO- http://52.63.25.180/enebular/enebular-agent-install.sh | sudo -E bash -s
+wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s
 ```
 
 ## Install Remotely
@@ -15,13 +15,13 @@ wget -qO- http://52.63.25.180/enebular/enebular-agent-install.sh | sudo -E bash 
 The install script can also be run on a remote target device via SSH with the following command pattern.
 
 ```sh
-ssh -t <user>@<device-ip-address> "wget -qO- http://52.63.25.180/enebular/enebular-agent-install.sh | sudo -E bash -s"
+ssh -t <user>@<device-ip-address> "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
 ```
 
 For example, to run the script on a remote Raspberry Pi with the default `pi` user and an IP address of `192.168.1.125,` the command would be as follows.
 
 ```sh
-ssh -t pi@192.168.1.125 "wget -qO- http://52.63.25.180/enebular/enebular-agent-install.sh | sudo -E bash -s"
+ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
 ```
 
 ## User
@@ -108,17 +108,17 @@ OPTION                      FORMAT              DEFAULT                         
 Install the AWS IoT enebular-agent port and create a AWS IoT thing named "raspberry-pi" on a Raspberry Pi device via SSH (with the `pi` user and IP address of `192.168.1.125`).
 
 ```sh
-ssh -t pi@192.168.1.125 "wget -qO- http://52.63.25.180/enebular/enebular-agent-install.sh | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
+ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
 ```
 
 Install the AWS IoT enebular-agent port using the `2.1.2` release.
 
 ```sh
-wget -qO- http://52.63.25.180/enebular/enebular-agent-install.sh | sudo -E bash -s -- -v=2.1.2
+wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s -- -v=2.1.2
 ```
 
 Install the AWS IoT enebular-agent port using the `2.1.3` release with the user set to `enebular-user-test`, the install directory set to `/home/enebular-user-test/my-agent`, and startup registration disabled.
 
 ```sh
-wget -qO- http://52.63.25.180/enebular/enebular-agent-install.sh | sudo -E bash -s -- -v=2.1.3 --user=enebular-user-test -d=/home/enebular-user-test/my-agent --no-startup-register
+wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s -- -v=2.1.3 --user=enebular-user-test -d=/home/enebular-user-test/my-agent --no-startup-register
 ```
