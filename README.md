@@ -95,7 +95,9 @@ For example, to run the script on a remote Raspberry Pi with the default pi user
 ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
 ```
 
-This will install the AWS IoT enebular-agent port, but as it will be missing the required connection info it will not actually run. If you'd like to automatically add a new AWS IoT *thing* to use, then follow the instructions in the "Automatic AWS IoT Thing Creation and Setup" section below instead. Otherwise, see the "Manual Setup" section further below for details on the remaining manual configuration required.
+This will install the AWS IoT enebular-agent port, but as it will be missing the required connection info it will not actually run. If you'd like to automatically add a new AWS IoT *thing* to use, then follow the instructions in the "Automatic AWS IoT Thing Creation and Setup" section below instead.
+
+If you'd like to set up the connection info manually, you'll need to add the required files for the port (in the correct location and with the correct user permissions) as specified in the port's readme file and then restart enebular-agent. See the "Manual Setup" section further below for more details on this.
 
 ### Automatic AWS IoT Thing Creation and Setup
 
@@ -136,6 +138,8 @@ For more information about other options the install script has, please refer to
 - [Install script README](tools/install/README.md)
 
 ## Manual Setup
+
+The following describes how to set up enebular-agent manually (without using the install script).
 
 ### Installation
 
@@ -194,3 +198,23 @@ ENEBULAR_LOG_LEVEL=debug ./bin/enebular-awsiot-agent startup-register -u enebula
 ```
 
 As registering the startup configuration requires root permissions, when the `startup-register` subcommand is run without root permissions it will not attempt the registration but instead display the correct full `sudo` command that should actually be run. Follow the instructions and run the full `sudo` command that is displayed.
+
+### Confirmation
+
+Once it's registered to start up automatically, you should be able to check the status of the enebular-agent with the systemd journal using the following command pattern.
+
+```sh
+sudo journalctl -ex -u enebular-agent-<user>.service
+```
+
+If the user was set to `enebular`, the command to use will be:
+
+```sh
+sudo journalctl -ex -u enebular-agent-enebular.service
+```
+
+To restart enebular-agent, use the following command.
+
+```sh
+sudo systemctl restart enebular-agent-enebular.service
+```
