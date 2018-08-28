@@ -62,22 +62,22 @@ enebular-agentを利用するには、利用する外部サービスに合わせ
 
 ## クイックセットアップ
 
-You can quickly set up enebular-agent on a Debian based device (like a Raspberry Pi) by using the install script. The best way to use the script is by running it as a command with an ssh client on your development PC. To use the script you'll need to have the following.
+インストール用のスクリプトを使用してenebular-agentをRaspberry PiのようなDebianベースのデバイスで素早くセットアップできます。 このスクリプトはsshクライアントを使用して開発用のPC上のコマンドとして実行することをお勧めします。スクリプトの使用要件は以下の通りです。
 
-- An ssh client command installed on your development PC
-- The `sudo` command installed on your target device
+- 開発用のPCにsshクライアントコマンドがインストールされていること
+- ターゲットのデバイスに `sudo` コマンドがインストールされていること
 
-You'll also need the following information about the target device.
+また、ターゲットのデバイスに関する以下の情報も必要になります。
 
-- User login details (username and password)
-- Current IP address
+- ユーザログイン情報（ユーザ名とパスワード）
+- 現在のIPアドレス
 
-If you are using enebular-agent with AWS IoT and you'd like to automatically add a new *thing* to use, you'll also need to know the following.
+enebular-agentをAWS IoTと一緒に使用して、新しいThingを自動的に追加して利用したい場合は、次の情報が必要になります。
 
-- Your AWS account access key ID
-- Your AWS account secret access key
-- Your AWS IoT region
-- A name for the new *thing*
+- AWSアカウントのアクセスキーID (access key ID)
+- AWSアカウント秘密アクセスキー (secret access key)
+- AWS IoTのリージョン
+- 追加するThingの名前
 
 ### 基本的な利用方法
 
