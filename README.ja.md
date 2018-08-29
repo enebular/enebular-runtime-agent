@@ -95,11 +95,11 @@ ssh -t <user>@<device-ip-address> "wget -qO- https://raw.githubusercontent.com/e
 ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
 ```
 
-上記のコマンドでenebular-agentのAWS IoTポートがインストールされますが、必要な接続情報がまだ設定されていないため、立ち上がることが出来ません。 新しいAWS IoTの*Thing*を自動的に追加して利用したい場合は、上記のコマンドの代わりに下記の「AWS IoTのThingの自動作成とセットアップ」の説明に従ってください。
+上記のコマンドでenebular-agentのAWS IoTポートがインストールされますが、必要な接続情報がまだ設定されていないため、立ち上がることが出来ません。 新しいAWS IoTの*Thing*を自動的に追加して利用したい場合は、上記のコマンドの代わりに下記の「AWS IoTのThing自動作成とセットアップ」の説明に従ってください。
 
 手動で接続情報を設定したい場合、ポートに必要なファイルを適切な場所と正しいユーザー権限で追加してから、enebular-agentを再起動しないといけません。詳細については、下記の「手動セットアップ」の項を参照してください。
 
-### AWS IoTのThingの自動作成とセットアップ
+### AWS IoTのThing自動作成とセットアップ
 
 enebular-agentのAWS IoTポートをインストールし、新しいAWS IoTの*Thing*を追加して利用するには、次の4つのオプションを指定します。
 
@@ -118,7 +118,7 @@ ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/en
 
 ### 確認方法
 
-Once the script has completed successfully, it will display a report similar to the following.
+スクリプトが正常に完了すると、次のように処理結果のレポートが表示されます。
 
 ```
  enebular-agent has been successfully installed ✔
@@ -133,13 +133,13 @@ Once the script has completed successfully, it will display a report similar to 
 
 ### 詳細情報
 
-For more information about other options the install script has, please refer to its readme file.
+上記以外のオプションなどの詳細情報については、インストールスクリプトのReadmeファイルを参照してください。
 
-- [Install script README](tools/install/README.md)
+- [インストールスクリプトのREADME](tools/install/README.md)
 
 ## 手動セットアップ
 
-The following describes how to set up enebular-agent manually (without using the install script).
+ここでインストールスクリプトを使用せずにenebular-agentを手動で設定する方法について説明します。
 
 ### インストール
 
@@ -201,19 +201,19 @@ ENEBULAR_LOG_LEVEL=debug ./bin/enebular-awsiot-agent startup-register -u enebula
 
 ### 確認方法
 
-Once it's registered to start up automatically, you should be able to check the status of the enebular-agent with the systemd journal using the following command pattern.
+自動的にスタートアップするための登録が完了してから、次のコマンドパターンを使用してsystemdジャーナルでenebular-agentの実行状態を確認することができます。
 
 ```sh
 sudo journalctl -ex -u enebular-agent-<user>.service
 ```
 
-If the user was set to `enebular`, the command to use will be:
+ユーザが `enebular` に設定された場合、使用するコマンドは次の通りです。
 
 ```sh
 sudo journalctl -ex -u enebular-agent-enebular.service
 ```
 
-To restart enebular-agent, use the following command.
+enebular-agentを再起動するには、次のコマンドを使用します。
 
 ```sh
 sudo systemctl restart enebular-agent-enebular.service
