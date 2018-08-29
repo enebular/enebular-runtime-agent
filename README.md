@@ -89,7 +89,7 @@ ssh -t <user>@<device-ip-address> "wget -qO- https://raw.githubusercontent.com/e
 
 This installs the AWS IoT enebular-agent port by default.
 
-For example, to run the script on a remote Raspberry Pi with the default pi user and an IP address of 192.168.1.125, the command would be as follows.
+For example, to run the script on a remote Raspberry Pi with the default `pi` user and an IP address of `192.168.1.125`, the command would be as follows.
 
 ```sh
 ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
@@ -110,7 +110,7 @@ To install the AWS IoT enebular-agent port and also add a new AWS IoT *thing* to
 --aws-iot-thing-name=<A name for the new thing>
 ```
 
-For example, to install the AWS IoT port and create an AWS IoT thing named "raspberry-pi" on a Raspberry Pi device (with the pi user and IP address of 192.168.1.125), the command would be similar to the following.
+For example, to install the AWS IoT port and create an AWS IoT thing named `raspberry-pi` on a Raspberry Pi device (with the `pi` user and IP address of `192.168.1.125`), the command would be similar to the following.
 
 ```sh
 ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
