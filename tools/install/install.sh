@@ -4,7 +4,7 @@ supported_node_version() {
 }
 
 agent_download_path() {
-  echo "https://api.github.com/repos/sporelab-io/enebular-agent/"
+  echo "https://api.github.com/repos/enebular/enebular-runtime-agent/"
 }
 
 _echo() {
