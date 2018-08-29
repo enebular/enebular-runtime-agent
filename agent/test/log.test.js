@@ -185,16 +185,10 @@ test.serial(
   'Log.4: Size of each log is within max size per interval',
   async t => {
     const maxSizePerInterval = 1107
-    let seq = 0
     let tmpLogCacheDir = '/tmp/enebular-log-cache-' + Utils.randomString()
     const logCallback = file => {
       console.log('size.........:', file.size)
       t.true(file.size < maxSizePerInterval)
-      if (seq) {
-        // We pick 1107 as size, which should result the subsequental log size matches exact size boundary
-        t.true(file.size === maxSizePerInterval - 1)
-      }
-      seq++
     }
     server.on('recordLogs', logCallback)
 
