@@ -1,12 +1,4 @@
 #!/bin/bash
-supported_node_version() {
-  echo "v9.2.1"
-}
-
-agent_download_path() {
-  echo "https://api.github.com/repos/sporelab-io/enebular-agent/"
-}
-
 _echo() {
   printf %s\\n "$*" 2>/dev/null
 }
@@ -344,7 +336,7 @@ install_nodejs() {
 ensure_nodejs_version() {
   if has "node" && has "npm"; then
     local VERSION_ALLOWED
-    VERSION_ALLOWED="$(supported_node_version)"
+    VERSION_ALLOWED="${SUPPORTED_NODE_VERSION}"
     local INSTALLED_NODE_VERSION
     INSTALLED_NODE_VERSION=`nodejs -v`
     if [ "${INSTALLED_NODE_VERSION}" == "${VERSION_ALLOWED}" ]; then
@@ -360,7 +352,7 @@ ensure_nodejs_version() {
     _echo Installing Node.js...
     _echo ---------
     local NODE_VERSION
-    NODE_VERSION="$(supported_node_version)"
+    NODE_VERSION="${SUPPORTED_NODE_VERSION}"
     local NODE_VERSION_PATH
     NODE_VERSION_PATH="/home/${USER}/nodejs-${NODE_VERSION}"
     install_nodejs "${NODE_VERSION}" "${NODE_VERSION_PATH}"
@@ -419,8 +411,6 @@ do_install() {
   local EXIT_CODE
   local TEMP_GZ
   TEMP_GZ=`mktemp --dry-run /tmp/enebular-agent.XXXXXXXXX`
-  local AGENT_DOWNLOAD_PATH
-  AGENT_DOWNLOAD_PATH="$(agent_download_path)"
   local VERSION_INFO
   local PREBUILT_URL
   if [ "${RELEASE_VERSION}" == "latest-release" ]; then
@@ -441,7 +431,7 @@ do_install() {
   local INSTALL_KIND
   if [ -z "${PREBUILT_URL}" ]; then
     INSTALL_KIND="source"
-    download_enebular_agent "$(agent_download_path)tarball/${RELEASE_VERSION}" "${TEMP_GZ}"
+    download_enebular_agent "${AGENT_DOWNLOAD_PATH}tarball/${RELEASE_VERSION}" "${TEMP_GZ}"
   else
     INSTALL_KIND="prebuilt"
     download_enebular_agent "${PREBUILT_URL}" "${TEMP_GZ}"
@@ -521,6 +511,8 @@ post_install() {
 USER=enebular
 PORT=awsiot
 RELEASE_VERSION="latest-release"
+AGENT_DOWNLOAD_PATH="https://api.github.com/repos/enebular/enebular-runtime-agent/"
+SUPPORTED_NODE_VERSION="v9.2.1"
 
 for i in "$@"
 do
@@ -559,6 +551,10 @@ case $i in
   ;;
   --aws-iot-thing-name=*)
   AWS_IOT_THING_NAME="${i#*=}"
+  shift
+  ;;
+  --agent-download-path=*)
+  AGENT_DOWNLOAD_PATH="${i#*=}"
   shift
   ;;
   --license-key=*)
