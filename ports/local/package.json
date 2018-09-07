@@ -1,6 +1,6 @@
 {
   "name": "enebular-local-agent",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "The 'local' port of enebular-agent for enebular",
   "main": "lib/index.js",
   "bin": {
@@ -11,7 +11,8 @@
     "build": "babel src -d lib",
     "start": "node lib/index.js",
     "lint": "eslint src",
-    "flow": "flow"
+    "flow": "flow",
+    "test": "test/bash/env.bash && test/bash/commandline-opts.bash"
   },
   "author": "",
   "license": "MIT",

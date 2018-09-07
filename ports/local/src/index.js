@@ -1,17 +1,12 @@
 /* @flow */
 import net from 'net'
 import fs from 'fs'
+import path from 'path'
 import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
 
 const MODULE_NAME = 'local'
 const END_OF_MSG_MARKER = 0x1e // RS (Record Separator)
 
-const {
-  ENEBULAR_CONFIG_PATH,
-  NODE_RED_DIR,
-  NODE_RED_DATA_DIR,
-  NODE_RED_COMMAND
-} = process.env
 const SOCKET_PATH =
   process.env.SOCKET_PATH || '/tmp/enebular-local-agent.socket'
 
@@ -151,38 +146,27 @@ async function startLocalServer(connector: ConnectorService): net.Server {
 }
 
 async function startup() {
-  const configFile = ENEBULAR_CONFIG_PATH || '.enebular-config.json'
-  const nodeRedDir = NODE_RED_DIR || 'node-red'
+  const connector = new ConnectorService(async () => {
+    agent.on('connectorRegister', () => {
+      clientSendMessage('register')
+    })
 
-  const connector = new ConnectorService()
-  let agentConfig = {
-    nodeRedDir: nodeRedDir,
-    configFile: configFile
-  }
-  if (NODE_RED_DATA_DIR) {
-    agentConfig['nodeRedDataDir'] = NODE_RED_DATA_DIR
-  }
-  if (NODE_RED_COMMAND) {
-    agentConfig['nodeRedCommand'] = NODE_RED_COMMAND
-  }
-  agent = new EnebularAgent(connector, agentConfig)
+    agent.on('connectorConnect', () => {
+      clientSendMessage('connect')
+    })
 
-  agent.on('connectorRegister', () => {
-    clientSendMessage('register')
+    agent.on('connectorDisconnect', () => {
+      clientSendMessage('disconnect')
+    })
+
+    localServer = await startLocalServer(connector)
   })
-
-  agent.on('connectorConnect', () => {
-    clientSendMessage('connect')
-  })
-
-  agent.on('connectorDisconnect', () => {
-    clientSendMessage('disconnect')
+  agent = new EnebularAgent({
+      portBasePath: path.resolve(__dirname, '../'),
+      connector: connector
   })
 
   await agent.startup()
-  info('Agent started')
-
-  localServer = await startLocalServer(connector)
 }
 
 async function shutdown() {

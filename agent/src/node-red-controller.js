@@ -3,6 +3,7 @@ import fs from 'fs'
 import EventEmitter from 'events'
 import path from 'path'
 import { spawn, type ChildProcess } from 'child_process'
+import ProcessUtil from './process-util'
 import fetch from 'isomorphic-fetch'
 import type { Logger } from 'winston'
 import type LogManager from './log-manager'
@@ -11,10 +12,13 @@ export type NodeREDConfig = {
   dir: string,
   dataDir: string,
   command: string,
-  killSignal: string
+  killSignal: string,
+  pidFile: string
 }
 
 const moduleName = 'node-red'
+const maxRetryCount = 5
+const maxRetryCountResetInterval = 5
 
 type NodeRedFlowPackage = {
   flows: Object[],
@@ -27,12 +31,15 @@ export default class NodeREDController {
   _dataDir: string
   _command: string
   _killSignal: string
+  _pidFile: string
   _cproc: ?ChildProcess = null
   _actions: Array<() => Promise<any>> = []
   _isProcessing: ?Promise<void> = null
   _log: Logger
   _logManager: LogManager
   _nodeRedLog: Logger
+  _exceptionRetryCount: number = 0
+  _lastRetryTimestamp: number = Date.now()
 
   constructor(
     emitter: EventEmitter,
@@ -44,12 +51,15 @@ export default class NodeREDController {
     this._dataDir = config.dataDir
     this._command = config.command
     this._killSignal = config.killSignal
+    this._pidFile = config.pidFile
 
     if (!fs.existsSync(this._dir)) {
       throw new Error(`The Node-RED directory was not found: ${this._dir}`)
     }
     if (!fs.existsSync(this._getDataDir())) {
-      throw new Error(`The Node-RED data directory was not found: ${this._getDataDir()}`)
+      throw new Error(
+        `The Node-RED data directory was not found: ${this._getDataDir()}`
+      )
     }
 
     this._registerHandler(emitter)
@@ -59,7 +69,8 @@ export default class NodeREDController {
     this._nodeRedLog = logManager.addLogger('service.node-red', [
       'console',
       'enebular',
-      'file'
+      'file',
+      'syslog'
     ])
   }
 
@@ -74,7 +85,7 @@ export default class NodeREDController {
   }
 
   _getDataDir() {
-    return this._dataDir || path.join(this._dir, '.node-red-config')
+    return this._dataDir
   }
 
   _registerHandler(emitter: EventEmitter) {
@@ -136,10 +147,7 @@ export default class NodeREDController {
       const flows = flowPackage.flow || flowPackage.flows
       updates.push(
         new Promise((resolve, reject) => {
-          const flowFilePath = path.join(
-            this._getDataDir(),
-            'flows.json'
-          )
+          const flowFilePath = path.join(this._getDataDir(), 'flows.json')
           fs.writeFile(
             flowFilePath,
             JSON.stringify(flows),
@@ -152,10 +160,7 @@ export default class NodeREDController {
       const creds = flowPackage.cred || flowPackage.creds
       updates.push(
         new Promise((resolve, reject) => {
-          const credFilePath = path.join(
-            this._getDataDir(),
-            'flows_cred.json'
-          )
+          const credFilePath = path.join(this._getDataDir(), 'flows_cred.json')
           fs.writeFile(
             credFilePath,
             JSON.stringify(creds),
@@ -204,6 +209,29 @@ export default class NodeREDController {
     })
   }
 
+  _createPIDFile(pid: string) {
+    try {
+      fs.writeFileSync(
+        this._pidFile,
+        pid,
+        'utf8'
+      )
+    } catch (err) {
+      this._log.error(err)
+    }
+  }
+
+  _removePIDFile() {
+    if (!fs.existsSync(this._pidFile))
+      return
+
+    try {
+      fs.unlinkSync(this._pidFile)
+    } catch (err) {
+      this._log.error(err)
+    }
+  }
+
   async startService() {
     return this._queueAction(() => this._startService())
   }
@@ -211,6 +239,10 @@ export default class NodeREDController {
   async _startService() {
     this.info('Staring service...')
     return new Promise((resolve, reject) => {
+      if (fs.existsSync(this._pidFile)) {
+        ProcessUtil.killProcessByPIDFile(this._pidFile)
+      }
+
       const [command, ...args] = this._command.split(/\s+/)
       const cproc = spawn(command, args, { stdio: 'pipe', cwd: this._dir })
       cproc.stdout.on('data', data => {
@@ -221,15 +253,43 @@ export default class NodeREDController {
         let str = data.toString().replace(/(\n|\r)+$/, '')
         this._nodeRedLog.error(str)
       })
-      cproc.once('exit', code => {
-        this.info(`Service exited (${code})`)
+      cproc.once('exit', (code, signal) => {
+        this.info(`Service exited (${code !== null ? code : signal})`)
         this._cproc = null
+        /* Restart automatically on an abnormal exit. */
+        if (code !== 0) {
+          const now = Date.now()
+          /* Detect continuous crashes (exceptions happen within 5 seconds). */
+          this._exceptionRetryCount =
+            this._lastRetryTimestamp + maxRetryCountResetInterval * 1000 > now
+              ? this._exceptionRetryCount + 1
+              : 0
+          this._lastRetryTimestamp = now
+          if (this._exceptionRetryCount < maxRetryCount) {
+            this.info(
+              'Unexpected exit, restarting service in 1 second. Retry count:' +
+                this._exceptionRetryCount
+            )
+            setTimeout(() => {
+              this.startService()
+            }, 1000)
+          } else {
+            this.info(
+              `Unexpected exit, but retry count(${
+                this._exceptionRetryCount
+              }) exceed max.`
+            )
+            /* Other restart strategies (change port, etc.) could be tried here. */
+          }
+        }
+        this._removePIDFile()
       })
       cproc.once('error', err => {
         this._cproc = null
         reject(err)
       })
       this._cproc = cproc
+      this._createPIDFile(this._cproc.pid.toString())
       setTimeout(() => resolve(), 1000)
     })
   }
@@ -243,12 +303,12 @@ export default class NodeREDController {
       const cproc = this._cproc
       if (cproc) {
         this.info('Shutting down service...')
-        cproc.kill(this._killSignal)
         cproc.once('exit', () => {
           this.info('Service ended')
           this._cproc = null
           resolve()
         })
+        cproc.kill(this._killSignal)
       } else {
         this.info('Service already shutdown')
         resolve()

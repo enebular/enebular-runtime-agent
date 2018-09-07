@@ -1,32 +1,43 @@
 /* @flow */
 import fs from 'fs'
-import path from 'path'
-import os from 'os'
 import EventEmitter from 'events'
 import ConnectorService from './connector-service'
-import Activator from './activator'
+import EnebularActivator from './enebular-activator'
 import DeviceAuthMediator from './device-auth-mediator'
 import AgentManagerMediator from './agent-manager-mediator'
 import NodeREDController from './node-red-controller'
 import LogManager from './log-manager'
-import type { LogManagerConfig } from './log-manager'
+import CommandLine from './command-line'
+import Config from './config'
 import type { Logger } from 'winston'
 
 export type EnebularAgentConfig = {
-  nodeRedDir: string,
-  nodeRedDataDir: string,
-  nodeRedCommand?: string,
-  nodeRedKillSignal?: string,
+  NODE_RED_DIR: string,
+  NODE_RED_DATA_DIR: string,
+  NODE_RED_COMMAND?: string,
+  NODE_RED_KILL_SIGNAL?: string,
 
-  configFile?: string,
+  ENEBULAR_CONFIG_PATH?: string,
 
-  logLevel?: string,
-  enableConsoleLog?: boolean,
-  enableFileLog?: boolean,
-  logfilePath?: string,
-  enableEnebularLog?: boolean,
-  enebularLogCachePath?: string,
-  enebularLogMaxCacheSize?: number
+  ENEBULAR_LOG_LEVEL?: string,
+  ENEBULAR_ENABLE_CONSOLE_LOG?: boolean,
+  ENEBULAR_ENABLE_FILE_LOG?: boolean,
+  ENEBULAR_ENABLE_SYSLOG?: boolean,
+  ENEBULAR_LOG_FILE_PATH?: string,
+  ENEBULAR_ENABLE_ENEBULAR_LOG?: boolean,
+  ENEBULAR_ENEBULAR_LOG_CACHE_PATH?: string,
+  ENEBULAR_ENEBULAR_LOG_MAX_CACHE_SIZE?: number,
+  ENEBULAR_ENEBULAR_LOG_MAX_SIZE_PER_INTERVAL?: number,
+  ENEBULAR_ENEBULAR_LOG_SEND_INTERVAL?: number,
+  ENEBULAR_MONITOR_INTERVAL_FAST?: number,
+  ENEBULAR_MONITOR_INTERVAL_FAST_PERIOD?: number,
+  ENEBULAR_MONITOR_INTERVAL_NORMAL?: number
+}
+
+export type EnebularAgentOptions = {
+  portBasePath: string,
+  connector: ConnectorService,
+  config: EnebularAgentConfig
 }
 
 type AgentSetting = {
@@ -35,11 +46,6 @@ type AgentSetting = {
   authRequestUrl?: string,
   agentManagerBaseUrl?: string
 }
-
-const MONITOR_INTERVAL_FAST = 30
-const MONITOR_INTERVAL_NORMAL = 60 * 5
-/* the +1 is to allow the last fast interval to trigger first */
-const MONITOR_INTERVAL_FAST_PERIOD = 60 * 3 + 1
 
 export type AgentState =
   | 'init'
@@ -65,8 +71,11 @@ function isPossibleStateTransition(state: AgentState, nextState: AgentState) {
 
 export default class EnebularAgent extends EventEmitter {
   _connector: ConnectorService
-  _activator: Activator
+  _activator: EnebularActivator
   _configFile: string
+  _config: Config
+  _commandLine: CommandLine
+  _enebularAgentConfig: EnebularAgentConfig
 
   _messageEmitter: EventEmitter
   _nodeRed: NodeREDController
@@ -86,35 +95,64 @@ export default class EnebularAgent extends EventEmitter {
   _connectorRegisteringForActivation: boolean
   _monitoringActivated: boolean = false
   _monitoringUpdateID: ?number
+  _monitorIntervalFast: number
+  _monitorIntervalFastPeriod: number
+  _monitorIntervalNormal: number
   _notifyStatusActivated: boolean = false
   _notifyStatusInterval: number
   _notifyStatusIntervalID: ?number
 
-  constructor(connector: ConnectorService, config: EnebularAgentConfig) {
+  constructor(options: EnebularAgentOptions) {
     super()
+    this._connector = options.connector
+    this._enebularAgentConfig = options.config
 
-    const {
-      nodeRedDir,
-      nodeRedDataDir,
-      nodeRedCommand = './node_modules/.bin/node-red -s .node-red-config/settings.js',
-      nodeRedKillSignal = 'SIGINT',
-      configFile = path.join(os.homedir(), '.enebular-config.json')
-    } = config
+    this._config = new Config(options.portBasePath)
+    this._commandLine = new CommandLine(this._config)
 
-    this._connector = connector
-    connector.on('activeChange', () => this._onConnectorActiveChange())
-    connector.on('registrationChange', () => this._onConnectorRegChange())
-    connector.on('connectionChange', () => this._onConnectorConnectionChange())
-    connector.on('message', params => this._onConnectorMessage(params))
+    this._connector.on('activeChange', () => this._onConnectorActiveChange())
+    this._connector.on('registrationChange', () => this._onConnectorRegChange())
+    this._connector.on('connectionChange', () =>
+      this._onConnectorConnectionChange()
+    )
+    this._connector.on('message', params => this._onConnectorMessage(params))
+  }
 
-    const activatorName = 'enebular'
-    const activatorPath = path.join(__dirname, `${activatorName}-activator.js`)
-    if (fs.existsSync(activatorPath)) {
-      const Activator = require(activatorPath).default
-      this._activator = new Activator()
+  _init() {
+    if (this._enebularAgentConfig) {
+      const configKeys = Object.keys(this._enebularAgentConfig)
+      configKeys.forEach(key => {
+        this._config.set(key, this._enebularAgentConfig[key])
+      })
     }
 
-    this._initLogging(config)
+    const nodeRedDir = this._config.get('NODE_RED_DIR')
+    const nodeRedDataDir = this._config.get('NODE_RED_DATA_DIR')
+    const nodeRedCommand =
+      this._config.get('NODE_RED_COMMAND') ||
+      './node_modules/.bin/node-red -s .node-red-config/settings.js'
+    const configFile = this._config.get('ENEBULAR_CONFIG_PATH')
+
+    this._monitorIntervalFast = this._config.get(
+      'ENEBULAR_MONITOR_INTERVAL_FAST'
+    )
+    this._monitorIntervalFastPeriod = this._config.get(
+      'ENEBULAR_MONITOR_INTERVAL_FAST_PERIOD'
+    )
+    this._monitorIntervalNormal = this._config.get(
+      'ENEBULAR_MONITOR_INTERVAL_NORMAL'
+    )
+
+    this._initLogging()
+
+    this._log.info('Node-RED dir: ' + nodeRedDir)
+    this._log.info('Node-RED data dir: ' + nodeRedDataDir)
+    this._log.info('Node-RED command: ' + nodeRedCommand)
+    this._log.info('Enebular config file: ' + configFile)
+
+    this._activator = new EnebularActivator(
+      this._config.get('ACTIVATOR_CONFIG_PATH')
+    )
 
     this._agentMan = new AgentManagerMediator(this._log)
     this._logManager.setEnebularAgentManager(this._agentMan)
@@ -129,7 +167,8 @@ export default class EnebularAgent extends EventEmitter {
         dir: nodeRedDir,
         dataDir: nodeRedDataDir,
         command: nodeRedCommand,
-        killSignal: nodeRedKillSignal
+        killSignal: this._config.get('NODE_RED_KILL_SIGNAL'),
+        pidFile: this._config.get('ENEBULAR_NODE_RED_PID_FILE')
       }
     )
 
@@ -140,29 +179,22 @@ export default class EnebularAgent extends EventEmitter {
     this._deviceAuth.on('accessTokenClear', () => this._onAccessTokenClear())
 
     this._configFile = configFile
-    this._notifyStatusInterval = MONITOR_INTERVAL_NORMAL
+    this._notifyStatusInterval = this._monitorIntervalNormal
     this._notifyStatusActivated = false
     this._agentState = 'init'
   }
 
-  _initLogging(config: EnebularAgentConfig) {
-    let logConfig: LogManagerConfig = {}
-    logConfig['level'] = config.logLevel
-    logConfig['enableConsole'] = config.enableConsoleLog
-    logConfig['enableFile'] = config.enableFileLog
-    logConfig['filePath'] = config.logfilePath
-    logConfig['enableEnebular'] = config.enableEnebularLog
-    logConfig['enebularCachePath'] = config.enebularLogCachePath
-    logConfig['enebularMaxCacheSize'] = config.enebularLogMaxCacheSize
+  _initLogging() {
     if (process.env.DEBUG) {
-      logConfig['level'] = process.env.DEBUG
-      logConfig['enableConsole'] = true
+      this._config.set('ENEBULAR_LOG_LEVEL', process.env.DEBUG)
+      this._config.set('ENEBULAR_ENABLE_CONSOLE_LOG', true)
     }
-    this._logManager = new LogManager(logConfig)
+    this._logManager = new LogManager(this._config)
     this._log = this._logManager.addLogger('internal', [
       'console',
       'enebular',
-      'file'
+      'file',
+      'syslog'
     ])
   }
 
@@ -174,6 +206,14 @@ export default class EnebularAgent extends EventEmitter {
     return this._logManager
   }
 
+  get config(): Config {
+    return this._config
+  }
+
+  get commandLine(): CommandLine {
+    return this._commandLine
+  }
+
   _requestConnectorRegister() {
     this.emit('connectorRegister')
   }
@@ -182,8 +222,48 @@ export default class EnebularAgent extends EventEmitter {
     this.emit(connect ? 'connectorConnect' : 'connectorDisconnect')
   }
 
+  _createPIDFile() {
+    try {
+      fs.writeFileSync(
+        this._config.get('ENEBULAR_AGENT_PID_FILE'),
+        process.pid.toString(),
+        'utf8'
+      )
+    } catch (err) {
+      this._log.error(err)
+    }
+  }
+
+  _removePIDFile() {
+    try {
+      fs.unlinkSync(this._config.get('ENEBULAR_AGENT_PID_FILE'))
+    } catch (err) {
+      this._log.error(err)
+    }
+  }
+
   async startup() {
+    if (this._connector.registerConfig) {
+      this._connector.registerConfig()
+    }
+    this._config.importEnvironmentVariables()
+    this._commandLine.parse()
+    this._config.importItems(this._commandLine.getConfigOptions())
+
+    if (this._commandLine.hasCommand()) {
+      // User input sub command, skip agent initialization.
+      return this._commandLine.processCommand()
+    }
+
+    this._init()
+    if (this._config.get('ENEBULAR_DAEMON_MODE')) {
+      this._createPIDFile()
+    }
     this._loadAgentConfig()
+
+    if (this._connector.init) {
+      this._connector.init()
+    }
     return this._nodeRed.startService()
   }
 
@@ -195,6 +275,9 @@ export default class EnebularAgent extends EventEmitter {
     await this._nodeRed.shutdownService()
     await this._logManager.shutdown()
     this._activateMonitoring(false)
+    if (this._config.get('ENEBULAR_DAEMON_MODE')) {
+      this._removePIDFile()
+    }
   }
 
   _activateMonitoring(active: boolean) {
@@ -221,10 +304,10 @@ export default class EnebularAgent extends EventEmitter {
       this._monitoringUpdateID = null
     }
     if (this._monitoringActivated) {
-      this._setMonitoringInterval(MONITOR_INTERVAL_FAST)
+      this._setMonitoringInterval(this._monitorIntervalFast)
       this._monitoringUpdateID = setTimeout(() => {
-        this._setMonitoringInterval(MONITOR_INTERVAL_NORMAL)
-      }, MONITOR_INTERVAL_FAST_PERIOD * 1000)
+        this._setMonitoringInterval(this._monitorIntervalNormal)
+      }, this._monitorIntervalFastPeriod * 1000)
     }
   }
 

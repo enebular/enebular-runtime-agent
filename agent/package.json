@@ -1,6 +1,6 @@
 {
   "name": "enebular-runtime-agent",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "The enebular-agent core for enebular",
   "main": "lib/index",
   "scripts": {
@@ -10,9 +10,12 @@
     "build:lib": "babel -d lib src",
     "build:flow": "flow-copy-source -v src lib",
     "flow": "flow",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "test": "ava",
+    "test:serial": "ava --serial"
   },
   "devDependencies": {
+    "ava": "^0.25.0",
     "babel-cli": "^6.18.0",
     "babel-eslint": "^8.2.3",
     "babel-plugin-transform-class-properties": "^6.24.1",
@@ -30,8 +33,11 @@
     "eslint-plugin-promise": "^3.7.0",
     "eslint-plugin-react": "^7.8.2",
     "eslint-plugin-standard": "^3.1.0",
+    "express": "^4.15.3",
     "flow-bin": "^0.72.0",
     "flow-copy-source": "^1.3.0",
+    "get-folder-size": "^2.0.0",
+    "multer": "^1.3.0",
     "prettier": "^1.12.1",
     "rimraf": "^2.6.2"
   },
@@ -41,6 +47,14 @@
     "form-data": "^2.3.2",
     "isomorphic-fetch": "^2.2.1",
     "jsonwebtoken": "^8.2.1",
-    "winston": "^2.4.2"
+    "winston": "^2.4.2",
+    "commander": "^2.16.0",
+    "winston-syslog": "^1.2.6"
+  },
+  "ava": {
+    "require": [
+      "babel-register"
+    ],
+    "babel": "inherit"
   }
 }
