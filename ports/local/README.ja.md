@@ -25,7 +25,7 @@ cd node-red
 npm install
 ```
 
-3 .  Localポートのモジュールをインストールします。
+3 . Localポートのモジュールをインストールします。
 
 ```
 cd ports/local
