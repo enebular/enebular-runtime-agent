@@ -50,7 +50,7 @@ python pal-platform/pal-platform.py fullbuild --target x86_x64_NativeLinux_mbedt
 
 For more information on build options, see the following Mbed Cloud documents.
 
-- [Connecting](https://cloud.mbed.com/docs/current/connecting/connecting.html)
+- [Connect a Linux device](https://cloud.mbed.com/docs/current/connecting/linux-on-pc.html)
 - [pal-platform utility](https://cloud.mbed.com/docs/current/porting/using-the-pal-platform-utility.html)
 
 Once built, you should end up with an executable binary called `enebular-agent-mbed-cloud-connector.elf` under the `out/Debug` and `out/Release` directories.
