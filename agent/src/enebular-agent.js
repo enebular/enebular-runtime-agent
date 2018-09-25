@@ -5,6 +5,7 @@ import ConnectorService from './connector-service'
 import EnebularActivator from './enebular-activator'
 import DeviceAuthMediator from './device-auth-mediator'
 import AgentManagerMediator from './agent-manager-mediator'
+import DeviceStateManager from './device-state-manager'
 import NodeREDController from './node-red-controller'
 import LogManager from './log-manager'
 import CommandLine from './command-line'
@@ -81,6 +82,7 @@ export default class EnebularAgent extends EventEmitter {
   _nodeRed: NodeREDController
   _deviceAuth: DeviceAuthMediator
   _agentMan: AgentManagerMediator
+  _deviceStateManager: DeviceStateManager
 
   _connectionId: ?string
   _deviceId: ?string
@@ -156,6 +158,8 @@ export default class EnebularAgent extends EventEmitter {
 
     this._agentMan = new AgentManagerMediator(this._log)
     this._logManager.setEnebularAgentManager(this._agentMan)
+
+    this._deviceStateManager = new DeviceStateManager(this._agentMan, this._log)
 
     this._messageEmitter = new EventEmitter()
 
@@ -462,6 +466,7 @@ export default class EnebularAgent extends EventEmitter {
         break
       case 'authenticated':
         await this._activateMonitoring(true)
+        this._deviceStateManager.activate(true)
         break
     }
   }
