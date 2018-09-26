@@ -20,9 +20,9 @@ export async function createStartedAgent(
 
   agentConfig = Object.assign(Utils.createDefaultAgentConfig(1990), agentConfig)
   let agent = new EnebularAgent({
-      portBasePath: path.resolve(__dirname, '../'),
-      connector: connector,
-      config: agentConfig
+    portBasePath: path.resolve(__dirname, '../'),
+    connector: connector,
+    config: agentConfig
   })
 
   await agent.startup()
@@ -39,9 +39,9 @@ export async function createConnectedAgent(
   })
   agentConfig = Object.assign(Utils.createDefaultAgentConfig(1990), agentConfig)
   let agent = new EnebularAgent({
-      portBasePath: path.resolve(__dirname, '../'),
-      connector: connector,
-      config: agentConfig
+    portBasePath: path.resolve(__dirname, '../'),
+    connector: connector,
+    config: agentConfig
   })
 
   return new Promise(async (resolve, reject) => {
@@ -111,7 +111,7 @@ export async function createUnauthenticatedAgent(
 export function pulling(callback, interval, timeout) {
   return new Promise((resolve, reject) => {
     const intervalObj = setInterval(async () => {
-      if(await callback()) {
+      if (await callback()) {
         resolve(true)
       }
     }, interval)
@@ -124,18 +124,18 @@ export function pulling(callback, interval, timeout) {
 }
 
 export function nodeRedIsAlive(port) {
-    const callback = async () => {
-      const api = new NodeRedAdminApi('http://127.0.0.1:' + port)
-      const settings = await api.getSettings()
-      return !!settings
-    }
-    return pulling(callback, 500, 10000)
+  const callback = async () => {
+    const api = new NodeRedAdminApi('http://127.0.0.1:' + port)
+    const settings = await api.getSettings()
+    return !!settings
+  }
+  return pulling(callback, 500, 10000)
 }
 
 export function nodeRedIsDead(port) {
   return new Promise(async (resolve, reject) => {
-      const api = new NodeRedAdminApi('http://127.0.0.1:' + port)
-      const settings = await api.getSettings()
-      resolve(!settings)
+    const api = new NodeRedAdminApi('http://127.0.0.1:' + port)
+    const settings = await api.getSettings()
+    resolve(!settings)
   })
 }

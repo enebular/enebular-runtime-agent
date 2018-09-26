@@ -63,9 +63,9 @@ test.serial(
     agentConfig['ENEBULAR_CONFIG_PATH'] = configFile
 
     agent = new EnebularAgent({
-        portBasePath: path.resolve(__dirname, '../'),
-        connector: connector,
-        config: agentConfig
+      portBasePath: path.resolve(__dirname, '../'),
+      connector: connector,
+      config: agentConfig
     })
 
     return new Promise(async (resolve, reject) => {
@@ -87,7 +87,10 @@ test.serial('Core.2: Agent correctly handle register message', async t => {
   const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
   const ret = await createConnectedAgent(
     t,
-    Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
+    Utils.addNodeRedPortToConfig(
+      { ENEBULAR_CONFIG_PATH: configFile },
+      NodeRedPort
+    )
   )
   agent = ret.agent
   const config = {
@@ -124,7 +127,10 @@ test.serial(
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
     const ret = await createConnectedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig(
+        { ENEBULAR_CONFIG_PATH: configFile },
+        NodeRedPort
+      )
     )
     agent = ret.agent
     const config = {
@@ -163,7 +169,10 @@ test.serial(
     const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
     const ret = await createConnectedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig(
+        { ENEBULAR_CONFIG_PATH: configFile },
+        NodeRedPort
+      )
     )
     agent = ret.agent
     return new Promise((resolve, reject) => {

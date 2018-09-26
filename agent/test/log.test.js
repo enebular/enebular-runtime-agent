@@ -209,7 +209,10 @@ test.serial(
     )
     agent = ret.agent
 
-    t.is(agent._logManager._enebularTransport._maxSizePerInterval, maxSizePerInterval)
+    t.is(
+      agent._logManager._enebularTransport._maxSizePerInterval,
+      maxSizePerInterval
+    )
     const intervalObj = setInterval(() => {
       agent.log.info('1')
     }, 1)

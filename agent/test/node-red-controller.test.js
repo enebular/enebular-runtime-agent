@@ -101,7 +101,10 @@ test.serial(
     const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
     const ret = await createConnectedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig(
+        { ENEBULAR_CONFIG_PATH: configFile },
+        NodeRedPort
+      )
     )
     agent = ret.agent
 
@@ -114,8 +117,6 @@ test.serial(
 test.serial(
   'NodeRedController.2: Agent restarts node-red correctly',
   async t => {
-    const api = new NodeRedAdminApi('http://127.0.0.1:' + NodeRedPort)
-
     const data = fs.readFileSync(
       path.join(__dirname, 'data', 'flow1.json'),
       'utf8'
@@ -254,8 +255,8 @@ test.serial(
 
     const callback = () => {
       return fs.existsSync(
-          tmpNodeRedDataDir + '/node_modules/node-red-node-pi-gpiod'
-        )
+        tmpNodeRedDataDir + '/node_modules/node-red-node-pi-gpiod'
+      )
     }
     t.true(await pulling(callback, 500, 10000))
   }
