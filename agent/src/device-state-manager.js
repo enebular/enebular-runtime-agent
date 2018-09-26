@@ -195,7 +195,7 @@ export default class DeviceStateManager extends EventEmitter {
 
   getState(type: string, path: string) {
     const state = this._getStateForType(type)
-    if (path) {
+    if (state && path) {
       return objectPath.get(state.state, path)
     }
     return state

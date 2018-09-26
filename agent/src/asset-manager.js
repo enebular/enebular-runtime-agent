@@ -5,9 +5,17 @@ import type { Logger } from 'winston'
 
 const moduleName = 'asset-man'
 
+//type AssetState = {
+//  id: string,
+//  updateId: string,
+//  state: string
+//  pendingChange: string (add|update|remove)
+//}
+
 export default class AssetManager {
   _deviceStateMan: DeviceStateManager
   _log: Logger
+  _assets: Array<{}> = []
 
   constructor(deviceStateMan: DeviceStateManager, log: Logger) {
     this._deviceStateMan = deviceStateMan
@@ -38,7 +46,50 @@ export default class AssetManager {
       return
     }
 
-    const state = this._deviceStateMan.getState('desired', 'assets')
-    this._debug('Assets state change: ' + JSON.stringify(state, null, '\t'))
+    const desiredState = this._deviceStateMan.getState('desired', 'assets')
+    this._debug(
+      'Assets state change: ' + JSON.stringify(desiredState, null, '\t')
+    )
+
+    // Determine 'added' and 'updated' assets
+    let newAssets = []
+    for (const desiredAssetId in desiredState) {
+      if (!desiredState.hasOwnProperty(desiredAssetId)) {
+        continue
+      }
+      let desiredAsset = desiredState[desiredAssetId]
+
+      let found = false
+      for (let asset of this._assets) {
+        if (asset.id === desiredAssetId) {
+          if (asset.updateId !== desiredAsset.updateId) {
+            asset.pendingChange = 'update'
+          }
+          found = true
+          break
+        }
+      }
+
+      if (!found) {
+        newAssets.push({
+          id: desiredAssetId,
+          updateId: desiredAsset.updateId,
+          state: 'pending',
+          pendingChange: 'add'
+        })
+      }
+    }
+
+    // Determine 'removed' assets
+    for (let asset of this._assets) {
+      if (!desiredState.hasOwnProperty(asset.id)) {
+        asset.pendingChange = 'remove'
+      }
+    }
+
+    // Append 'added' assets
+    this._assets = this._assets.concat(newAssets)
+
+    this._debug('assets: ' + JSON.stringify(this._assets, null, '\t'))
   }
 }
