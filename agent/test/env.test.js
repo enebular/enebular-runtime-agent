@@ -45,7 +45,7 @@ test.serial('Env.1: Agent starts if node-red path is valid', async t => {
   t.notThrows(async () => {
     await agent.startup()
   }, Error)
-  t.true(await nodeRedIsAlive(30001, 3000))
+  t.true(await nodeRedIsAlive(30001))
 })
 
 test.serial('Env.2: Agent fails to start if node-red path is invalid', async t => {
@@ -121,7 +121,7 @@ test.serial('Env.5: Agent takes nodeRedCommand to launch node-red', async t => {
   })
   await t.notThrows(agent.startup(), Error)
 
-  t.true(await nodeRedIsAlive(30000, 3000))
+  t.true(await nodeRedIsAlive(30000))
 })
 
 test.serial(

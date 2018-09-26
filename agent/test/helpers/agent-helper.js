@@ -108,12 +108,34 @@ export async function createUnauthenticatedAgent(
   )
 }
 
-export function nodeRedIsAlive(port, timeout) {
+export function pulling(callback, interval, timeout) {
   return new Promise((resolve, reject) => {
+    const intervalObj = setInterval(async () => {
+      if(await callback()) {
+        resolve(true)
+      }
+    }, interval)
     setTimeout(async () => {
+      clearInterval(intervalObj)
+      resolve(false)
+      // max waiting time
+    }, timeout)
+  })
+}
+
+export function nodeRedIsAlive(port) {
+    const callback = async () => {
       const api = new NodeRedAdminApi('http://127.0.0.1:' + port)
       const settings = await api.getSettings()
-      resolve(!!settings)
-    }, timeout || 500)
+      return !!settings
+    }
+    return pulling(callback, 500, 10000)
+}
+
+export function nodeRedIsDead(port) {
+  return new Promise(async (resolve, reject) => {
+      const api = new NodeRedAdminApi('http://127.0.0.1:' + port)
+      const settings = await api.getSettings()
+      resolve(!settings)
   })
 }

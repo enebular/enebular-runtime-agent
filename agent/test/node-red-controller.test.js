@@ -12,7 +12,9 @@ import DummyServer from './helpers/dummy-server'
 import {
   createUnauthenticatedAgent,
   createConnectedAgent,
-  nodeRedIsAlive
+  nodeRedIsAlive,
+  nodeRedIsDead,
+  pulling
 } from './helpers/agent-helper'
 
 const DummyServerPort = 3004
@@ -90,7 +92,7 @@ async function createAgentRunningWithTestNodeRedSettings(
   connector = ret.connector
 
   // console.log("user directory: ", agent._nodeRed._getDataDir())
-  t.true(await nodeRedIsAlive(NodeRedPort, 5000))
+  t.true(await nodeRedIsAlive(NodeRedPort))
 }
 
 test.serial(
@@ -103,9 +105,9 @@ test.serial(
     )
     agent = ret.agent
 
-    t.true(await nodeRedIsAlive(NodeRedPort, 3000))
+    t.true(await nodeRedIsAlive(NodeRedPort))
     await agent.shutdown()
-    t.false(await nodeRedIsAlive(NodeRedPort, 1))
+    t.true(await nodeRedIsDead(NodeRedPort))
   }
 )
 
@@ -127,7 +129,7 @@ test.serial(
     })
     agent = ret.agent
 
-    t.true(await nodeRedIsAlive(NodeRedPort, 3000))
+    t.true(await nodeRedIsAlive(NodeRedPort))
     // update the flow
     const expectedFlowJson = fs.readFileSync(
       path.join(__dirname, 'data', 'flow2.json'),
@@ -136,21 +138,19 @@ test.serial(
     fs.writeFileSync(flowFileName, expectedFlowJson)
 
     ret.connector.sendMessage('restart')
-    return new Promise((resolve, reject) => {
-      setTimeout(async () => {
-        const flow = await api.getFlow()
-        // console.log("Api return flow:", flow)
-        if (!flow) {
-          reject(new Error('api return error'))
-          t.fail()
-        } else {
-          t.truthy(flow)
-          const expectedFlow = JSON.parse(expectedFlowJson)
-          t.deepEqual(expectedFlow, flow)
-          resolve()
-        }
-      }, 5000)
-    })
+
+    const callback = async () => {
+      const api = new NodeRedAdminApi('http://127.0.0.1:' + NodeRedPort)
+      const flow = await api.getFlow()
+      if (flow) {
+        t.truthy(flow)
+        const expectedFlow = JSON.parse(expectedFlowJson)
+        t.deepEqual(expectedFlow, flow)
+        return true
+      }
+      return false
+    }
+    t.true(await pulling(callback, 500, 10000))
   }
 )
 
@@ -173,22 +173,19 @@ test.serial(
     connector.sendMessage('deploy', {
       downloadUrl: url
     })
-    return new Promise((resolve, reject) => {
-      setTimeout(async () => {
-        const api = new NodeRedAdminApi('http://127.0.0.1:' + NodeRedPort)
-        const flow = await api.getFlow()
-        // console.log("Api return flow:", flow)
-        if (!flow) {
-          reject(new Error('api return error'))
-          t.fail()
-        } else {
-          t.truthy(flow)
-          const expectedFlow = JSON.parse(expectedFlowJson)
-          t.deepEqual(expectedFlow, flow)
-          resolve()
-        }
-      }, 5000)
-    })
+
+    const callback = async () => {
+      const api = new NodeRedAdminApi('http://127.0.0.1:' + NodeRedPort)
+      const flow = await api.getFlow()
+      if (flow) {
+        t.truthy(flow)
+        const expectedFlow = JSON.parse(expectedFlowJson)
+        t.deepEqual(expectedFlow, flow)
+        return true
+      }
+      return false
+    }
+    t.true(await pulling(callback, 500, 10000))
   }
 )
 
@@ -211,22 +208,19 @@ test.serial(
     connector.sendMessage('update-flow', {
       downloadUrl: url
     })
-    return new Promise((resolve, reject) => {
-      setTimeout(async () => {
-        const api = new NodeRedAdminApi('http://127.0.0.1:' + NodeRedPort)
-        const flow = await api.getFlow()
-        // console.log("Api return flow:", flow)
-        if (!flow) {
-          reject(new Error('api return error'))
-          t.fail()
-        } else {
-          t.truthy(flow)
-          const expectedFlow = JSON.parse(expectedFlowJson)
-          t.deepEqual(expectedFlow, flow)
-          resolve()
-        }
-      }, 5000)
-    })
+
+    const callback = async () => {
+      const api = new NodeRedAdminApi('http://127.0.0.1:' + NodeRedPort)
+      const flow = await api.getFlow()
+      if (flow) {
+        t.truthy(flow)
+        const expectedFlow = JSON.parse(expectedFlowJson)
+        t.deepEqual(expectedFlow, flow)
+        return true
+      }
+      return false
+    }
+    t.true(await pulling(callback, 500, 10000))
   }
 )
 
@@ -236,9 +230,9 @@ test.serial(
     await createAgentRunningWithTestNodeRedSettings(t)
 
     connector.sendMessage('shutdown')
-    t.false(await nodeRedIsAlive(NodeRedPort))
+    t.true(await nodeRedIsDead(NodeRedPort))
     connector.sendMessage('start')
-    t.true(await nodeRedIsAlive(NodeRedPort, 5000))
+    t.true(await nodeRedIsAlive(NodeRedPort))
   }
 )
 
@@ -257,20 +251,13 @@ test.serial(
     connector.sendMessage('deploy', {
       downloadUrl: url
     })
-    return new Promise((resolve, reject) => {
-      setTimeout(async () => {
-        if (
-          fs.existsSync(
-            tmpNodeRedDataDir + '/node_modules/node-red-node-pi-gpiod'
-          )
-        ) {
-          t.pass()
-        } else {
-          t.fail('dependencies failed to install')
-        }
-        resolve()
-      }, 8000)
-    })
+
+    const callback = () => {
+      return fs.existsSync(
+          tmpNodeRedDataDir + '/node_modules/node-red-node-pi-gpiod'
+        )
+    }
+    t.true(await pulling(callback, 500, 10000))
   }
 )
 
@@ -311,7 +298,8 @@ test.serial(
   }
 )
 
-test.serial.skip(
+/*
+test.serial(
   'NodeRedController.8: Agent accepts flow credentials correctly if secret is specified',
   async t => {
     await createAgentRunningWithTestNodeRedSettings(t, true)
@@ -344,7 +332,7 @@ test.serial.skip(
   }
 )
 
-test.serial.skip(
+test.serial(
   'NodeRedController.9: Agent fails to recover flow credentials without secret',
   async t => {
     await createAgentRunningWithTestNodeRedSettings(t)
@@ -377,7 +365,7 @@ test.serial.skip(
   }
 )
 
-test.serial.skip(
+test.serial(
   'NodeRedController.10: Agent accepts clear text flow credentials correctly',
   async t => {
     await createAgentRunningWithTestNodeRedSettings(t)
@@ -409,3 +397,4 @@ test.serial.skip(
     })
   }
 )
+*/
