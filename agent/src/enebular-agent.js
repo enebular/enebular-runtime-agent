@@ -450,6 +450,9 @@ export default class EnebularAgent extends EventEmitter {
       this._deviceId
     )
     this._agentMan.setBaseUrl(this._agentManagerBaseUrl)
+    this._deviceStateManager.setFqDeviceId(
+      `${this._connectionId}::${this._deviceId}`
+    )
   }
 
   async _onChangeState() {
