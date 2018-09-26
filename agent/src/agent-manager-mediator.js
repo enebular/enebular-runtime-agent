@@ -11,6 +11,13 @@ export type DeviceStateGetStates = {
   baseUpdateId: number
 }
 
+export type DeviceStateStateUpdates = {
+  type: string,
+  op: string,
+  path: string,
+  state: {}
+}
+
 export default class AgentManagerMediator {
   _baseUrl: string
   _accessToken: string
@@ -104,5 +111,27 @@ export default class AgentManagerMediator {
       throw new Error('Failed to fetch device state: ' + resJson.message)
     }
     return resJson.states
+  }
+
+  async updateDeviceState(updates: Array<DeviceStateStateUpdates>) {
+    if (!this._accessRequirementsConfigured()) {
+      throw new Error('Access requirements not configured')
+    }
+
+    this.debug(`Updating device state...`)
+
+    const res = await fetch(`${this._baseUrl}/device/device-state/update`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this._accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ updates: updates })
+    })
+    const resJson = await res.json()
+    if (!res.ok) {
+      throw new Error('Failed to fetch device state update: ' + resJson.message)
+    }
+    return resJson.updates
   }
 }

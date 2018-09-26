@@ -50,19 +50,23 @@ export default class AssetManager {
     this._debug(
       'Assets state change: ' + JSON.stringify(desiredState, null, '\t')
     )
+    if (!desiredState || !desiredState.assets) {
+      return
+    }
 
     // Determine 'added' and 'updated' assets
     let newAssets = []
-    for (const desiredAssetId in desiredState) {
-      if (!desiredState.hasOwnProperty(desiredAssetId)) {
+    for (const desiredAssetId in desiredState.assets) {
+      if (!desiredState.assets.hasOwnProperty(desiredAssetId)) {
         continue
       }
-      let desiredAsset = desiredState[desiredAssetId]
+      let desiredAsset = desiredState.assets[desiredAssetId]
 
       let found = false
       for (let asset of this._assets) {
         if (asset.id === desiredAssetId) {
           if (asset.updateId !== desiredAsset.updateId) {
+            asset.updateId = desiredAsset.updateId
             asset.pendingChange = 'update'
           }
           found = true
@@ -82,7 +86,7 @@ export default class AssetManager {
 
     // Determine 'removed' assets
     for (let asset of this._assets) {
-      if (!desiredState.hasOwnProperty(asset.id)) {
+      if (!desiredState.assets.hasOwnProperty(asset.id)) {
         asset.pendingChange = 'remove'
       }
     }
@@ -91,5 +95,16 @@ export default class AssetManager {
     this._assets = this._assets.concat(newAssets)
 
     this._debug('assets: ' + JSON.stringify(this._assets, null, '\t'))
+
+    // tmp
+    for (let asset of this._assets) {
+      if (asset.pendingChange) {
+        this._deviceStateMan.updateReportedState(
+          'set',
+          'assets.assets.' + asset.id,
+          asset
+        )
+      }
+    }
   }
 }

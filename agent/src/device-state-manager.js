@@ -3,6 +3,7 @@
 import EventEmitter from 'events'
 import objectPath from 'object-path'
 import objectHash from 'object-hash'
+import { delay } from './utils'
 
 import type AgentManagerMediator from './agent-manager-mediator'
 import type { Logger } from 'winston'
@@ -15,7 +16,9 @@ export default class DeviceStateManager extends EventEmitter {
   _log: Logger
   _desiredState: {} = null
   _reportedState: {} = null
+  _reportedStateUpdates: Array<{}> = []
   _active: boolean = false
+  _sendingReportedStateUpdates: boolean = false
 
   constructor(
     agentMan: AgentManagerMediator,
@@ -189,8 +192,59 @@ export default class DeviceStateManager extends EventEmitter {
     }
   }
 
-  setReportedState(path: string, state: {}) {
-    // let state = this._getStateForType('reported')
+  async sendReportedStateUpdates() {
+    if (this._sendingReportedStateUpdates) {
+      return
+    }
+    this._sendingReportedStateUpdates = true
+
+    while (this._reportedStateUpdates.length > 0) {
+      let changes = this._reportedStateUpdates
+      let changesLen = changes.length
+      this._reportedStateUpdates = []
+
+      this._debug(`Sending ${changesLen} reported state updates...`)
+
+      try {
+        let requestedUpdates = changes.map(change => ({
+          type: 'reported',
+          op: change.op,
+          path: change.path,
+          state: change.state
+        }))
+        const updates = await this._agentMan.updateDeviceState(requestedUpdates)
+        const len = updates.length
+        for (let i = 0; i < len; i++) {
+          const update = updates[i]
+          if (update.success) {
+            this._debug(`Update ${i + 1}/${changesLen} sent successfully`)
+            changes.shift()
+          } else {
+            throw new Error(
+              `Update ${i + 1}/${changesLen} send failed: ` + update.message
+            )
+          }
+        }
+        await delay(1 * 1000)
+      } catch (err) {
+        this._error('Failed to send reported state changes: ' + err.message)
+        await delay(5 * 1000)
+      }
+
+      this._reportedStateUpdates = changes.concat(this._reportedStateUpdates)
+    }
+
+    this._sendingReportedStateUpdates = false
+  }
+
+  updateReportedState(op: string, path: string, state: {}) {
+    // todo: merge in same path updates
+    this._reportedStateUpdates.push({
+      op: op,
+      path: path,
+      state: Object.assign({}, state)
+    })
+    this.sendReportedStateUpdates()
   }
 
   getState(type: string, path: string) {
