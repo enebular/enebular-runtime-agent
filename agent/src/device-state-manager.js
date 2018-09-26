@@ -9,20 +9,20 @@ import type { Logger } from 'winston'
 
 const moduleName = 'device-state-man'
 
-export default class DeviceStateManager {
+export default class DeviceStateManager extends EventEmitter {
   _agentMan: AgentManagerMediator = null
   _fqDeviceId: string
   _log: Logger
   _desiredState: {} = null
   _reportedState: {} = null
   _active: boolean = false
-  _statesInited: boolean = false
 
   constructor(
     agentMan: AgentManagerMediator,
     messageEmitter: EventEmitter,
     log: Logger
   ) {
+    super()
     this._agentMan = agentMan
     this._log = log
     messageEmitter.on('deviceStateChange', params =>
@@ -106,7 +106,11 @@ export default class DeviceStateManager {
     return this._getMetaHash(state) === state.meta.hash
   }
 
-  async _initStates(stateTypes: Array<string>) {
+  _notifyStateChange(type: string, path: string) {
+    this.emit('stateChange', { type, path })
+  }
+
+  async _updateStatesFromAgentManager(stateTypes: Array<string>) {
     if (!this._fqDeviceId) {
       throw new Error('Attempted to initialize states when fqDeviceId not set')
     }
@@ -123,9 +127,8 @@ export default class DeviceStateManager {
           continue
         }
         this._setStateForType(state.type, state)
+        this._notifyStateChange(state.type)
       }
-      this._statesInited = true
-      // todo: notify of state init / change
     } catch (err) {
       this._error('Failed to get device state: ' + err.message)
     }
@@ -133,11 +136,6 @@ export default class DeviceStateManager {
 
   _handleDeviceStateChange(params) {
     this._debug('State change: ' + JSON.stringify(params, null, '\t'))
-
-    if (!this._statesInited) {
-      this._error('Attempted to handle change when state not yet initialized')
-      return
-    }
 
     const { type, op, path, state, meta } = params
 
@@ -184,20 +182,23 @@ export default class DeviceStateManager {
     if (this._stateIsValid(newState)) {
       this._debug('State change applied successfully')
       this._setStateForType(type, newState)
-      // todo: notify
+      this._notifyStateChange(type, path)
     } else {
       this._info('Updated state is not valid. Will fully refresh.')
-      this._initStates([type])
+      this._updateStatesFromAgentManager([type])
     }
   }
 
   setReportedState(path: string, state: {}) {
-    if (!this._statesInited) {
-      this._error('Attempted to set reported state when not yet initialized')
-      // return
-    }
-
     // let state = this._getStateForType('reported')
+  }
+
+  getState(type: string, path: string) {
+    const state = this._getStateForType(type)
+    if (path) {
+      return objectPath.get(state.state, path)
+    }
+    return state
   }
 
   activate(active: boolean) {
@@ -206,7 +207,7 @@ export default class DeviceStateManager {
     }
     this._active = active
     if (this._active) {
-      this._initStates(['desired', 'reported'])
+      this._updateStatesFromAgentManager(['desired', 'reported'])
     }
   }
 

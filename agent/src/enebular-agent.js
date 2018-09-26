@@ -6,6 +6,7 @@ import EnebularActivator from './enebular-activator'
 import DeviceAuthMediator from './device-auth-mediator'
 import AgentManagerMediator from './agent-manager-mediator'
 import DeviceStateManager from './device-state-manager'
+import AssetManager from './asset-manager'
 import NodeREDController from './node-red-controller'
 import LogManager from './log-manager'
 import CommandLine from './command-line'
@@ -83,6 +84,7 @@ export default class EnebularAgent extends EventEmitter {
   _deviceAuth: DeviceAuthMediator
   _agentMan: AgentManagerMediator
   _deviceStateManager: DeviceStateManager
+  _assetManager: AssetManager
 
   _connectionId: ?string
   _deviceId: ?string
@@ -166,6 +168,8 @@ export default class EnebularAgent extends EventEmitter {
       this._messageEmitter,
       this._log
     )
+
+    this._assetManager = new AssetManager(this._deviceStateManager, this._log)
 
     this._nodeRed = new NodeREDController(
       this._messageEmitter,
