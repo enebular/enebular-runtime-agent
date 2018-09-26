@@ -44,11 +44,13 @@
   "dependencies": {
     "babel-preset-flow": "^6.23.0",
     "babel-runtime": "^6.23.0",
+    "commander": "^2.16.0",
     "form-data": "^2.3.2",
     "isomorphic-fetch": "^2.2.1",
     "jsonwebtoken": "^8.2.1",
+    "object-hash": "^1.3.0",
+    "object-path": "^0.11.4",
     "winston": "^2.4.2",
-    "commander": "^2.16.0",
     "winston-syslog": "^1.2.6"
   },
   "ava": {

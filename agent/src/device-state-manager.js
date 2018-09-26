@@ -1,5 +1,7 @@
 /* @flow */
 
+import EventEmitter from 'events'
+import objectPath from 'object-path'
 import objectHash from 'object-hash'
 
 import type AgentManagerMediator from './agent-manager-mediator'
@@ -11,14 +13,21 @@ export default class DeviceStateManager {
   _agentMan: AgentManagerMediator = null
   _fqDeviceId: string
   _log: Logger
-  _desiredState = {}
-  _reportedState = {}
+  _desiredState: {} = null
+  _reportedState: {} = null
   _active: boolean = false
   _statesInited: boolean = false
 
-  constructor(agentMan: AgentManagerMediator, log: Logger) {
+  constructor(
+    agentMan: AgentManagerMediator,
+    messageEmitter: EventEmitter,
+    log: Logger
+  ) {
     this._agentMan = agentMan
     this._log = log
+    messageEmitter.on('deviceStateChange', params =>
+      this._handleDeviceStateChange(params)
+    )
   }
 
   _debug(msg: string, ...args: Array<mixed>) {
@@ -26,18 +35,14 @@ export default class DeviceStateManager {
     this._log.debug(msg, ...args)
   }
 
+  _info(msg: string, ...args: Array<mixed>) {
+    args.push({ module: moduleName })
+    this._log.info(msg, ...args)
+  }
+
   _error(msg: string, ...args: Array<mixed>) {
     args.push({ module: moduleName })
     this._log.error(msg, ...args)
-  }
-
-  _debugStates() {
-    this._debug(
-      'Desired state: ' + JSON.stringify(this._desiredState, null, '\t')
-    )
-    this._debug(
-      'Reported state: ' + JSON.stringify(this._reportedState, null, '\t')
-    )
   }
 
   _isSupportedStateType(type): boolean {
@@ -53,9 +58,11 @@ export default class DeviceStateManager {
   _getStateForType(type: string): {} {
     switch (type) {
       case 'desired':
-        return this._desiredState
+        return this._desiredState ? Object.assign({}, this._desiredState) : null
       case 'reported':
         return this._reportedState
+          ? Object.assign({}, this._reportedState)
+          : null
       default:
         throw new Error('Unsupported state type: ' + type)
     }
@@ -65,9 +72,15 @@ export default class DeviceStateManager {
     switch (type) {
       case 'desired':
         this._desiredState = state
+        this._debug(
+          'Desired state: ' + JSON.stringify(this._desiredState, null, '\t')
+        )
         break
       case 'reported':
         this._reportedState = state
+        this._debug(
+          'Reported state: ' + JSON.stringify(this._reportedState, null, '\t')
+        )
         break
       default:
         throw new Error('Unsupported state type: ' + type)
@@ -93,23 +106,16 @@ export default class DeviceStateManager {
     return this._getMetaHash(state) === state.meta.hash
   }
 
-  async _initStates() {
-    this._statesInited = false
+  async _initStates(stateTypes: Array<string>) {
     if (!this._fqDeviceId) {
       throw new Error('Attempted to initialize states when fqDeviceId not set')
     }
     this._debug('Getting states...')
     try {
-      const getStates = [
-        {
-          type: 'desired'
-          // todo: uId
-        },
-        {
-          type: 'reported'
-          // todo: uId
-        }
-      ]
+      const getStates = stateTypes.map(stateType => ({
+        type: stateType
+        // todo: uId
+      }))
       const states = await this._agentMan.getDeviceState(getStates)
       for (let state of states) {
         if (!this._stateIsValid(state)) {
@@ -119,10 +125,69 @@ export default class DeviceStateManager {
         this._setStateForType(state.type, state)
       }
       this._statesInited = true
-      this._debugStates()
       // todo: notify of state init / change
     } catch (err) {
       this._error('Failed to get device state: ' + err.message)
+    }
+  }
+
+  _handleDeviceStateChange(params) {
+    this._debug('State change: ' + JSON.stringify(params, null, '\t'))
+
+    if (!this._statesInited) {
+      this._error('Attempted to handle change when state not yet initialized')
+      return
+    }
+
+    const { type, op, path, state, meta } = params
+
+    if (!this._isSupportedStateType(type)) {
+      this._info('Unsupported state type: ' + type)
+      return
+    }
+    if (op !== 'set' && op !== 'remove') {
+      this._info('Unsupported operation type: ' + op)
+      return
+    }
+    if (op === 'set' && !state) {
+      this._info('No state provided for set operation')
+      return
+    }
+
+    let currentState = this._getStateForType(type)
+    if (!currentState && op === 'remove') {
+      this._info('Attempted remove operation with no previous state')
+      return
+    }
+
+    // Determine new state
+    let newState = {
+      type: type,
+      meta: meta
+    }
+    if (op === 'set') {
+      if (path && path.length > 0) {
+        newState.state = currentState ? currentState.state : {}
+        objectPath.set(newState.state, path, state)
+      } else {
+        newState.state = state
+      }
+    } else {
+      if (path && path.length > 0) {
+        newState.state = currentState.state
+        objectPath.del(newState.state, path)
+      } else {
+        newState.state = {}
+      }
+    }
+
+    if (this._stateIsValid(newState)) {
+      this._debug('State change applied successfully')
+      this._setStateForType(type, newState)
+      // todo: notify
+    } else {
+      this._info('Updated state is not valid. Will fully refresh.')
+      this._initStates([type])
     }
   }
 
@@ -141,7 +206,7 @@ export default class DeviceStateManager {
     }
     this._active = active
     if (this._active) {
-      this._initStates()
+      this._initStates(['desired', 'reported'])
     }
   }
 

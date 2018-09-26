@@ -159,9 +159,13 @@ export default class EnebularAgent extends EventEmitter {
     this._agentMan = new AgentManagerMediator(this._log)
     this._logManager.setEnebularAgentManager(this._agentMan)
 
-    this._deviceStateManager = new DeviceStateManager(this._agentMan, this._log)
-
     this._messageEmitter = new EventEmitter()
+
+    this._deviceStateManager = new DeviceStateManager(
+      this._agentMan,
+      this._messageEmitter,
+      this._log
+    )
 
     this._nodeRed = new NodeREDController(
       this._messageEmitter,
