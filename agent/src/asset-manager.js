@@ -14,6 +14,7 @@ const moduleName = 'asset-man'
 class Asset {
   _type: string
   _log: Logger
+  _baseDir: string
   id: string
   updateId: string
   state: string
@@ -30,10 +31,12 @@ class Asset {
     updateId: string,
     state: string,
     pendingChange: string,
+    baseDir: string,
     log: Logger
   ) {
     this._type = type
     this._log = log
+    this._baseDir = baseDir
     this.id = id
     this.updateId = updateId
     this.state = state
@@ -43,6 +46,16 @@ class Asset {
 
   async type() {
     return this._type
+  }
+
+  serialize(): {} {
+    return {
+      type: this._type,
+      id: this.id,
+      updateId: this.updateId,
+      state: this.state,
+      changeTs: this.changeTs
+    }
   }
 
   // todo: split deploy into: acquire, verify, install and exec
@@ -69,13 +82,48 @@ class FileAsset extends Asset {
     pendingChange: string,
     key: string,
     filename: string,
+    baseDir: string,
     agentMan: AgentManagerMediator,
     log: Logger
   ) {
-    super('file', id, updateId, state, pendingChange, log)
+    super('file', id, updateId, state, pendingChange, baseDir, log)
     this._agentMan = agentMan
     this._key = key
     this._filename = filename
+  }
+
+  serialize(): {} {
+    return Object.assign(super.serialize(), {
+      typeData: {
+        key: this._key,
+        filename: this._filename
+      }
+    })
+  }
+
+  static deserialize(
+    data,
+    baseDir,
+    agentMan: AgentManagerMediator,
+    log: Logger
+  ): FileAsset {
+    let asset = new FileAsset(
+      data.id,
+      data.updateId,
+      data.state,
+      null,
+      data.typeData.key,
+      data.typeData.filename,
+      baseDir,
+      agentMan,
+      log
+    )
+    asset.changeTs = data.changeTs
+    return asset
+  }
+
+  _filePath() {
+    return `${this._baseDir}/${this._filename}`
   }
 
   // Override
@@ -85,7 +133,7 @@ class FileAsset extends Asset {
       this._log.debug('Getting file download url...')
       const url = await this._agentMan.getInternalFileAssetDataUrl(this._key)
       this._log.debug('Got file download url')
-      const filename = this._filename
+      const path = this._filePath()
       const onProgress = state => {
         this._log.debug(
           util.format(
@@ -96,7 +144,7 @@ class FileAsset extends Asset {
           )
         )
       }
-      this._log.debug(`Dowloading ${url} to ${filename} ...`)
+      this._log.debug(`Dowloading ${url} to ${path} ...`)
       await new Promise(function(resolve, reject) {
         progress(request(url), {})
           .on('progress', onProgress)
@@ -106,7 +154,7 @@ class FileAsset extends Asset {
           .on('end', () => {
             resolve()
           })
-          .pipe(fs.createWriteStream(filename))
+          .pipe(fs.createWriteStream(path))
       })
       this._log.debug('Deploy done')
     } catch (err) {
@@ -118,8 +166,15 @@ class FileAsset extends Asset {
 
   // Override
   async remove() {
-    await delay(5 * 1000)
-    this._log.debug('todo: remove')
+    this._log.debug('Removing...')
+    const path = this._filePath()
+    this._log.debug(`Deleting ${path}...`)
+    try {
+      fs.unlinkSync(path)
+    } catch (err) {
+      this._log.debug('Failed to remove file: ' + path)
+      return false
+    }
     return true
   }
 }
@@ -135,6 +190,9 @@ export default class AssetManager {
   _log: Logger
   _assets: Array<Asset> = []
   _processingAssetState: boolean = false
+  _assetsInited: boolean = false
+  _dataDir: string = 'asset-data'
+  _serializedFile: string = 'asset-state'
 
   constructor(
     deviceStateMan: DeviceStateManager,
@@ -164,9 +222,84 @@ export default class AssetManager {
     this._log.error(msg, ...args)
   }
 
-  _handleDeviceStateChange(params) {
+  async setup() {
+    if (!fs.existsSync(this._dataDir)) {
+      fs.mkdirSync(this._dataDir)
+    }
+    this._initAssets()
+  }
+
+  async _initAssets() {
+    if (this._assetsInited) {
+      return
+    }
+
+    try {
+      if (fs.existsSync(this._serializedFile)) {
+        this._info('Reading serializedFile file: ' + this._serializedFile)
+        const data = fs.readFileSync(this._serializedFile, 'utf8')
+        let serializedAssets = JSON.parse(data)
+        for (let serializedAsset of serializedAssets) {
+          switch (serializedAsset.type) {
+            case 'file':
+              this._assets.push(
+                FileAsset.deserialize(
+                  serializedAsset,
+                  this._dataDir,
+                  this._agentMan,
+                  this._log
+                )
+              )
+              break
+            default:
+              throw new Error('Unsupported asset type: ' + serializedAsset.type)
+          }
+        }
+      }
+    } catch (err) {
+      this._error(err)
+    }
+
+    // get desired state & apply if it exists
+    // this._processPendingAssets()
+
+    this._assetsInited = true
+  }
+
+  _saveSerializedAssets() {
+    let serializedAssets = []
+    for (let asset of this._assets) {
+      switch (asset.state) {
+        case 'deployed':
+        case 'deployFail':
+        case 'removeFail':
+          serializedAssets.push(asset.serialize())
+          break
+        default:
+          break
+      }
+    }
+    this._debug(
+      'serializedAssets: ' + JSON.stringify(serializedAssets, null, '\t')
+    )
+    try {
+      fs.writeFileSync(
+        this._serializedFile,
+        JSON.stringify(serializedAssets),
+        'utf8'
+      )
+    } catch (err) {
+      this._error(err)
+    }
+  }
+
+  async _handleDeviceStateChange(params) {
     const { type, path } = params
     if (type !== 'desired' || (path && !path.startsWith('assets'))) {
+      return
+    }
+
+    if (!this._assetsInited) {
       return
     }
 
@@ -210,6 +343,7 @@ export default class AssetManager {
               'deploy',
               desiredAsset.typeConfig.key,
               desiredAsset.typeConfig.filename,
+              this._dataDir,
               this._agentMan,
               this._log
             )
@@ -237,6 +371,7 @@ export default class AssetManager {
 
     // this._debug('assets: ' + inspect(this._assets))
 
+    this._saveSerializedAssets()
     this._updateReportedAssetsState()
     this._processPendingAssets()
   }
@@ -375,6 +510,8 @@ export default class AssetManager {
           this._error('Unsupported pending change: ' + pendingChange)
           break
       }
+
+      this._saveSerializedAssets()
 
       await delay(2 * 1000)
     }

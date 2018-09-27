@@ -277,6 +277,8 @@ export default class EnebularAgent extends EventEmitter {
     }
     this._loadAgentConfig()
 
+    await this._assetManager.setup()
+
     if (this._connector.init) {
       this._connector.init()
     }
