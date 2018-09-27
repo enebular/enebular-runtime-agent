@@ -9,8 +9,19 @@ const moduleName = 'asset-man'
 //  id: string,
 //  updateId: string,
 //  state: string
-//  pendingChange: string (add|update|remove)
-//}
+//      pending | deploying | deployed | deploy-fail
+//      updating
+//      removing | remove-fail
+//  pendingChange: string (deploy|update|remove)
+//  changeTs
+//  todo:
+//   - failCount
+// }
+
+// reported states:
+//      deployPending | deploying | deployed | deploy-fail
+//      updatePending | updating | update-fail
+//      removePending | removing | remove-fail
 
 export default class AssetManager {
   _deviceStateMan: DeviceStateManager
@@ -54,7 +65,7 @@ export default class AssetManager {
       return
     }
 
-    // Determine 'added' and 'updated' assets
+    // Determine 'deploy' and 'update' assets
     let newAssets = []
     for (const desiredAssetId in desiredState.assets) {
       if (!desiredState.assets.hasOwnProperty(desiredAssetId)) {
@@ -68,6 +79,7 @@ export default class AssetManager {
           if (asset.updateId !== desiredAsset.updateId) {
             asset.updateId = desiredAsset.updateId
             asset.pendingChange = 'update'
+            asset.changeTs = Date.now()
           }
           found = true
           break
@@ -79,15 +91,17 @@ export default class AssetManager {
           id: desiredAssetId,
           updateId: desiredAsset.updateId,
           state: 'pending',
-          pendingChange: 'add'
+          pendingChange: 'deploy',
+          changeTs: Date.now()
         })
       }
     }
 
-    // Determine 'removed' assets
+    // Determine 'remove' assets
     for (let asset of this._assets) {
       if (!desiredState.assets.hasOwnProperty(asset.id)) {
         asset.pendingChange = 'remove'
+        asset.changeTs = Date.now()
       }
     }
 
@@ -96,15 +110,89 @@ export default class AssetManager {
 
     this._debug('assets: ' + JSON.stringify(this._assets, null, '\t'))
 
-    // tmp
+    this._updateReportedAssetsState()
+    this._processAssetState()
+  }
+
+  // todo: full 'asset' path set on startup
+
+  _updateReportedAssetState(asset) {
+    let state
+    if (asset.pendingChange) {
+      switch (asset.pendingChange) {
+        case 'deploy':
+          state = 'deployPending'
+          break
+        case 'update':
+          state = 'updatePending'
+          break
+        case 'remove':
+          state = 'removePending'
+          break
+        default:
+          state = 'unknown'
+          break
+      }
+    } else {
+      state = 'todo'
+    }
+    this._deviceStateMan.updateReportedState(
+      'set',
+      'assets.assets.' + asset.id,
+      {
+        updateId: asset.updateId,
+        ts: asset.changeTs,
+        state: state
+      }
+    )
+  }
+
+  _updateReportedAssetsState() {
     for (let asset of this._assets) {
-      if (asset.pendingChange) {
+      if (!asset.pendingChange) {
+        continue
+      }
+      this._updateReportedAssetState(asset)
+    }
+  }
+
+  // Note: this path 'update' approach needs improvement as if
+  // an update is missed at some point, its contents will never
+  // be sent to agent-man.
+
+  _processAssetState() {
+    if (this._assets.length < 1) {
+      return
+    }
+
+    // Process simple removes
+    let removeAssets = []
+    for (let asset of this._assets) {
+      if (
+        asset.pendingChange &&
+        asset.pendingChange === 'remove' &&
+        asset.state === 'pending'
+      ) {
         this._deviceStateMan.updateReportedState(
-          'set',
-          'assets.assets.' + asset.id,
-          asset
+          'remove',
+          'assets.assets.' + asset.id
         )
+        removeAssets.push(asset)
       }
     }
+    this._assets = this._assets.filter(asset => {
+      return !removeAssets.includes(asset)
+    })
+
+    if (this._assets.length < 1) {
+      return
+    }
+
+    // todo: all other updates:
+    //    - full removes
+    //    - deploys
+    //    - updates
+
+    this._debug('assets: todo: ensure one is processing')
   }
 }
