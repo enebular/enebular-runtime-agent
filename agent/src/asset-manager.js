@@ -2,31 +2,91 @@
 
 import type DeviceStateManager from './device-state-manager'
 import type { Logger } from 'winston'
+import { delay } from './utils'
+// import { inspect } from 'util'
 
 const moduleName = 'asset-man'
 
-//type AssetState = {
-//  id: string,
-//  updateId: string,
-//  state: string
-//      pending | deploying | deployed | deploy-fail
-//      updating
-//      removing | remove-fail
-//  pendingChange: string (deploy|update|remove)
-//  changeTs
-//  todo:
-//   - failCount
-// }
+class Asset {
+  _type: string
+  _log: Logger
+  id: string
+  updateId: string
+  state: string
+  //      pending | deploying | deployed | deployFail
+  //      removing | removeFail
+  pendingChange: string // (deploy|remove)
+  changeTs: string
+  //  todo:
+  //   - failCount
+
+  constructor(
+    type: string,
+    id: string,
+    updateId: string,
+    state: string,
+    pendingChange: string,
+    log: Logger
+  ) {
+    this._type = type
+    this._log = log
+    this.id = id
+    this.updateId = updateId
+    this.state = state
+    this.pendingChange = pendingChange
+    this.changeTs = Date.now()
+  }
+
+  async type() {
+    return this._type
+  }
+
+  async deploy(): boolean {
+    throw new Error('Called an abstract function')
+  }
+
+  async remove(): boolean {
+    throw new Error('Called an abstract function')
+  }
+}
+
+class FileAsset extends Asset {
+  constructor(
+    id: string,
+    updateId: string,
+    state: string,
+    pendingChange: string,
+    log: Logger
+  ) {
+    super('file', id, updateId, state, pendingChange, log)
+    // todo
+  }
+
+  // Override
+  async deploy() {
+    this._log.debug('todo: deploy')
+    await delay(5 * 1000)
+    return true
+  }
+
+  // Override
+  async remove() {
+    await delay(5 * 1000)
+    this._log.debug('todo: remove')
+    return true
+  }
+}
 
 // reported states:
-//      deployPending | deploying | deployed | deploy-fail
+//      deployPending | deploying | deployed | deployFail
 //      updatePending | updating | update-fail
-//      removePending | removing | remove-fail
+//      removePending | removing | removeFail
 
 export default class AssetManager {
   _deviceStateMan: DeviceStateManager
   _log: Logger
-  _assets: Array<{}> = []
+  _assets: Array<Asset> = []
+  _processingAssetState: boolean = false
 
   constructor(deviceStateMan: DeviceStateManager, log: Logger) {
     this._deviceStateMan = deviceStateMan
@@ -78,7 +138,7 @@ export default class AssetManager {
         if (asset.id === desiredAssetId) {
           if (asset.updateId !== desiredAsset.updateId) {
             asset.updateId = desiredAsset.updateId
-            asset.pendingChange = 'update'
+            asset.pendingChange = 'deploy'
             asset.changeTs = Date.now()
           }
           found = true
@@ -87,13 +147,24 @@ export default class AssetManager {
       }
 
       if (!found) {
-        newAssets.push({
-          id: desiredAssetId,
-          updateId: desiredAsset.updateId,
-          state: 'pending',
-          pendingChange: 'deploy',
-          changeTs: Date.now()
-        })
+        let asset = null
+        switch (desiredAsset.type) {
+          case 'file':
+            asset = new FileAsset(
+              desiredAssetId,
+              desiredAsset.updateId,
+              'pending',
+              'deploy',
+              this._log
+            )
+            break
+          default:
+            this._error('Unsupported asset type: ' + desiredAsset.type)
+            break
+        }
+        if (asset) {
+          newAssets.push(asset)
+        }
       }
     }
 
@@ -108,10 +179,10 @@ export default class AssetManager {
     // Append 'added' assets
     this._assets = this._assets.concat(newAssets)
 
-    this._debug('assets: ' + JSON.stringify(this._assets, null, '\t'))
+    // this._debug('assets: ' + inspect(this._assets))
 
     this._updateReportedAssetsState()
-    this._processAssetState()
+    this._processPendingAssets()
   }
 
   // todo: full 'asset' path set on startup
@@ -123,9 +194,6 @@ export default class AssetManager {
         case 'deploy':
           state = 'deployPending'
           break
-        case 'update':
-          state = 'updatePending'
-          break
         case 'remove':
           state = 'removePending'
           break
@@ -134,7 +202,7 @@ export default class AssetManager {
           break
       }
     } else {
-      state = 'todo'
+      state = asset.state
     }
     this._deviceStateMan.updateReportedState(
       'set',
@@ -160,39 +228,101 @@ export default class AssetManager {
   // an update is missed at some point, its contents will never
   // be sent to agent-man.
 
-  _processAssetState() {
+  _getFirstPendingChangeAsset(): Asset {
     if (this._assets.length < 1) {
-      return
+      return null
     }
-
-    // Process simple removes
-    let removeAssets = []
     for (let asset of this._assets) {
-      if (
-        asset.pendingChange &&
-        asset.pendingChange === 'remove' &&
-        asset.state === 'pending'
-      ) {
-        this._deviceStateMan.updateReportedState(
-          'remove',
-          'assets.assets.' + asset.id
-        )
-        removeAssets.push(asset)
+      if (asset.pendingChange) {
+        return asset
       }
     }
-    this._assets = this._assets.filter(asset => {
-      return !removeAssets.includes(asset)
-    })
+    return null
+  }
 
-    if (this._assets.length < 1) {
+  _pendingChangeAssetExists(): boolean {
+    return this._getFirstPendingChangeAsset() !== null
+  }
+
+  async _processPendingAssets() {
+    if (this._processingAssetState) {
       return
     }
+    this._processingAssetState = true
 
-    // todo: all other updates:
-    //    - full removes
-    //    - deploys
-    //    - updates
+    while (this._pendingChangeAssetExists()) {
+      // Process simple removes
+      let removeAssets = []
+      for (let asset of this._assets) {
+        if (
+          asset.pendingChange &&
+          asset.pendingChange === 'remove' &&
+          asset.state === 'pending'
+        ) {
+          this._deviceStateMan.updateReportedState(
+            'remove',
+            'assets.assets.' + asset.id
+          )
+          removeAssets.push(asset)
+        }
+      }
+      this._assets = this._assets.filter(asset => {
+        return !removeAssets.includes(asset)
+      })
 
-    this._debug('assets: todo: ensure one is processing')
+      let asset = this._getFirstPendingChangeAsset()
+      if (!asset) {
+        continue
+      }
+
+      let pendingChange = asset.pendingChange
+      asset.pendingChange = null
+
+      switch (pendingChange) {
+        case 'deploy':
+          if (asset.state === 'deployed') {
+            asset.state = 'removing'
+            this._updateReportedAssetState(asset)
+            let success = await asset.remove()
+            if (!success) {
+              asset.state = 'removeFail'
+              break
+            }
+          }
+          asset.state = 'deploying'
+          this._updateReportedAssetState(asset)
+          let success = await asset.deploy()
+          asset.state = success ? 'deployed' : 'deployFail'
+          this._updateReportedAssetState(asset)
+          break
+
+        case 'remove':
+          if (asset.state === 'deployed') {
+            asset.state = 'removing'
+            this._updateReportedAssetState(asset)
+            let success = await asset.remove()
+            if (!success) {
+              asset.state = 'removeFail'
+              break
+            }
+          }
+          this._deviceStateMan.updateReportedState(
+            'remove',
+            'assets.assets.' + asset.id
+          )
+          this._assets = this._assets.filter(a => {
+            return a !== asset
+          })
+          break
+
+        default:
+          this._error('Unsupported pending change: ' + pendingChange)
+          break
+      }
+
+      await delay(2 * 1000)
+    }
+
+    this._processingAssetState = false
   }
 }
