@@ -96,7 +96,7 @@ export default class AgentManagerMediator {
       throw new Error('Access requirements not configured')
     }
 
-    this.debug(`Getting device state...`)
+    this.debug('Getting device state...')
 
     const res = await fetch(`${this._baseUrl}/device/device-state/get`, {
       method: 'POST',
@@ -118,7 +118,7 @@ export default class AgentManagerMediator {
       throw new Error('Access requirements not configured')
     }
 
-    this.debug(`Updating device state...`)
+    this.debug('Updating device state...')
 
     const res = await fetch(`${this._baseUrl}/device/device-state/update`, {
       method: 'POST',
@@ -133,5 +133,32 @@ export default class AgentManagerMediator {
       throw new Error('Failed to fetch device state update: ' + resJson.message)
     }
     return resJson.updates
+  }
+
+  async getInternalFileAssetDataUrl(key: string) {
+    if (!this._accessRequirementsConfigured()) {
+      throw new Error('Access requirements not configured')
+    }
+
+    this.debug('Getting internal file data url...')
+
+    const res = await fetch(
+      `${this._baseUrl}/device/assets/get-internal-file-data-url`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this._accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ key: key })
+      }
+    )
+    const resJson = await res.json()
+    if (!res.ok) {
+      throw new Error(
+        'Failed to fetch internal file data url: ' + resJson.message
+      )
+    }
+    return resJson.url
   }
 }

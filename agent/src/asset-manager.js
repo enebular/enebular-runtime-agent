@@ -4,6 +4,7 @@ import fs from 'fs'
 import request from 'request'
 import progress from 'request-progress'
 import type DeviceStateManager from './device-state-manager'
+import type AgentManagerMediator from './agent-manager-mediator'
 import type { Logger } from 'winston'
 import { delay } from './utils'
 import util from 'util'
@@ -57,6 +58,7 @@ class Asset {
 }
 
 class FileAsset extends Asset {
+  _agentMan: AgentManagerMediator
   _key: string
   _filename: string
 
@@ -67,9 +69,11 @@ class FileAsset extends Asset {
     pendingChange: string,
     key: string,
     filename: string,
+    agentMan: AgentManagerMediator,
     log: Logger
   ) {
     super('file', id, updateId, state, pendingChange, log)
+    this._agentMan = agentMan
     this._key = key
     this._filename = filename
   }
@@ -77,31 +81,38 @@ class FileAsset extends Asset {
   // Override
   async deploy() {
     this._log.debug('Deploying...')
-    const onProgress = state => {
-      this._log.debug(
-        util.format(
-          'progress: %f%% @ %fB/s, %fsec',
-          state.percent ? state.percent.toPrecision(1) : 0,
-          state.speed ? state.speed.toPrecision(1) : 0,
-          state.time.elapsed ? state.time.elapsed.toPrecision(1) : 0
+    try {
+      this._log.debug('Getting file download url...')
+      const url = await this._agentMan.getInternalFileAssetDataUrl(this._key)
+      this._log.debug('Got file download url')
+      const filename = this._filename
+      const onProgress = state => {
+        this._log.debug(
+          util.format(
+            'progress: %f%% @ %fB/s, %fsec',
+            state.percent ? state.percent.toPrecision(1) : 0,
+            state.speed ? state.speed.toPrecision(1) : 0,
+            state.time.elapsed ? state.time.elapsed.toPrecision(1) : 0
+          )
         )
-      )
+      }
+      this._log.debug(`Dowloading ${url} to ${filename} ...`)
+      await new Promise(function(resolve, reject) {
+        progress(request(url), {})
+          .on('progress', onProgress)
+          .on('error', err => {
+            reject(err)
+          })
+          .on('end', () => {
+            resolve()
+          })
+          .pipe(fs.createWriteStream(filename))
+      })
+      this._log.debug('Deploy done')
+    } catch (err) {
+      this._log.debug('Deploy failed: ' + err.message)
+      return false
     }
-    const url = this._key
-    const filename = this._filename
-    this._log.debug(`Dowloading ${url} to ${filename} ...`)
-    await new Promise(function(resolve, reject) {
-      progress(request(url), {})
-        .on('progress', onProgress)
-        .on('error', err => {
-          reject(err)
-        })
-        .on('end', () => {
-          resolve()
-        })
-        .pipe(fs.createWriteStream(filename))
-    })
-    this._log.debug('Deploy done')
     return true
   }
 
@@ -120,12 +131,18 @@ class FileAsset extends Asset {
 
 export default class AssetManager {
   _deviceStateMan: DeviceStateManager
+  _agentMan: AgentManagerMediator
   _log: Logger
   _assets: Array<Asset> = []
   _processingAssetState: boolean = false
 
-  constructor(deviceStateMan: DeviceStateManager, log: Logger) {
+  constructor(
+    deviceStateMan: DeviceStateManager,
+    agentMan: AgentManagerMediator,
+    log: Logger
+  ) {
     this._deviceStateMan = deviceStateMan
+    this._agentMan = agentMan
     this._log = log
     this._deviceStateMan.on('stateChange', params =>
       this._handleDeviceStateChange(params)
@@ -193,6 +210,7 @@ export default class AssetManager {
               'deploy',
               desiredAsset.typeConfig.key,
               desiredAsset.typeConfig.filename,
+              this._agentMan,
               this._log
             )
             break

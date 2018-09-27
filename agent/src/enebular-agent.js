@@ -169,7 +169,11 @@ export default class EnebularAgent extends EventEmitter {
       this._log
     )
 
-    this._assetManager = new AssetManager(this._deviceStateManager, this._log)
+    this._assetManager = new AssetManager(
+      this._deviceStateManager,
+      this._agentMan,
+      this._log
+    )
 
     this._nodeRed = new NodeREDController(
       this._messageEmitter,
