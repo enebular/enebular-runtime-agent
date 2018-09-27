@@ -186,7 +186,11 @@ test.serial(
       }
       return false
     }
-    t.true(await pulling(callback, 500, 10000))
+
+    setTimeout(async () => {
+      t.true(await pulling(callback, 500, 10000))
+      // give it 2s to shutdown
+    }, 2000)
   }
 )
 
@@ -221,7 +225,11 @@ test.serial(
       }
       return false
     }
-    t.true(await pulling(callback, 500, 10000))
+
+    setTimeout(async () => {
+      t.true(await pulling(callback, 500, 10000))
+      // give it 2s to shutdown
+    }, 2000)
   }
 )
 
