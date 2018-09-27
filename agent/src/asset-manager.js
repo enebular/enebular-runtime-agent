@@ -44,6 +44,9 @@ class Asset {
     return this._type
   }
 
+  // todo: split deploy into: acquire, verify, install and exec
+  // todo: hooks exec
+
   async deploy(): boolean {
     throw new Error('Called an abstract function')
   }
@@ -54,45 +57,49 @@ class Asset {
 }
 
 class FileAsset extends Asset {
+  _key: string
+  _filename: string
+
   constructor(
     id: string,
     updateId: string,
     state: string,
     pendingChange: string,
+    key: string,
+    filename: string,
     log: Logger
   ) {
     super('file', id, updateId, state, pendingChange, log)
-    // todo
+    this._key = key
+    this._filename = filename
   }
 
   // Override
   async deploy() {
     this._log.debug('Deploying...')
-    let that = this
-    await new Promise(function(resolve, reject) {
-      progress(
-        request(
-          'https://github.com/enebular/enebular-runtime-agent/releases/download/2.2.0/2.2.0-prebuilt.tar.gz'
-        ),
-        {}
+    const onProgress = state => {
+      this._log.debug(
+        util.format(
+          'progress: %f%% @ %fB/s, %fsec',
+          state.percent ? state.percent.toPrecision(1) : 0,
+          state.speed ? state.speed.toPrecision(1) : 0,
+          state.time.elapsed ? state.time.elapsed.toPrecision(1) : 0
+        )
       )
-        .on('progress', state => {
-          that._log.debug(
-            util.format(
-              'progress: %f%% @ %fB/s, %fsec',
-              state.percent ? state.percent.toPrecision(1) : 0,
-              state.speed ? state.speed.toPrecision(1) : 0,
-              state.time.elapsed ? state.time.elapsed.toPrecision(1) : 0
-            )
-          )
-        })
+    }
+    const url = this._key
+    const filename = this._filename
+    this._log.debug(`Dowloading ${url} to ${filename} ...`)
+    await new Promise(function(resolve, reject) {
+      progress(request(url), {})
+        .on('progress', onProgress)
         .on('error', err => {
           reject(err)
         })
         .on('end', () => {
           resolve()
         })
-        .pipe(fs.createWriteStream('prebuilt.tar.gz'))
+        .pipe(fs.createWriteStream(filename))
     })
     this._log.debug('Deploy done')
     return true
@@ -184,6 +191,8 @@ export default class AssetManager {
               desiredAsset.updateId,
               'pending',
               'deploy',
+              desiredAsset.typeConfig.key,
+              desiredAsset.typeConfig.filename,
               this._log
             )
             break
