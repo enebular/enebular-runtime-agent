@@ -151,7 +151,7 @@ test.serial(
       }
       return false
     }
-    t.true(await polling(callback, 500, 10000))
+    t.true(await polling(callback, 0, 500, 10000))
   }
 )
 
@@ -187,10 +187,8 @@ test.serial(
       return false
     }
 
-    setTimeout(async () => {
-      t.true(await polling(callback, 500, 10000))
-      // give it 2s to shutdown
-    }, 2000)
+    // give it 2s to shutdown
+    t.true(await polling(callback, 2000, 500, 10000))
   }
 )
 
@@ -226,10 +224,8 @@ test.serial(
       return false
     }
 
-    setTimeout(async () => {
-      t.true(await polling(callback, 500, 10000))
-      // give it 2s to shutdown
-    }, 2000)
+    // give it 2s to shutdown
+    t.true(await polling(callback, 2000, 500, 10000))
   }
 )
 
@@ -266,7 +262,7 @@ test.serial(
         tmpNodeRedDataDir + '/node_modules/node-red-node-pi-gpiod'
       )
     }
-    t.true(await polling(callback, 500, 10000))
+    t.true(await polling(callback, 0, 500, 10000))
   }
 )
 

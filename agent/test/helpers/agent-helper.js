@@ -108,18 +108,26 @@ export async function createUnauthenticatedAgent(
   )
 }
 
-export function polling(callback, interval, timeout) {
+export function polling(callback, initialDelay, interval, timeout) {
   return new Promise((resolve, reject) => {
-    const intervalObj = setInterval(async () => {
-      if (await callback()) {
-        resolve(true)
-      }
-    }, interval)
-    setTimeout(async () => {
-      clearInterval(intervalObj)
-      resolve(false)
-      // max waiting time
-    }, timeout)
+    const cb = () => {
+      const intervalObj = setInterval(async () => {
+        if (await callback()) {
+          resolve(true)
+        }
+      }, interval)
+      setTimeout(async () => {
+        clearInterval(intervalObj)
+        resolve(false)
+        // max waiting time
+      }, timeout)
+    }
+    if (initialDelay) {
+      setTimeout(cb, initialDelay)
+    }
+    else {
+      cb()
+    }
   })
 }
 
@@ -129,7 +137,7 @@ export function nodeRedIsAlive(port) {
     const settings = await api.getSettings()
     return !!settings
   }
-  return polling(callback, 500, 10000)
+  return polling(callback, 0, 500, 10000)
 }
 
 export function nodeRedIsDead(port) {
