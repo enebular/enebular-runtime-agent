@@ -108,7 +108,7 @@ export async function createUnauthenticatedAgent(
   )
 }
 
-export function pulling(callback, interval, timeout) {
+export function polling(callback, interval, timeout) {
   return new Promise((resolve, reject) => {
     const intervalObj = setInterval(async () => {
       if (await callback()) {
@@ -129,7 +129,7 @@ export function nodeRedIsAlive(port) {
     const settings = await api.getSettings()
     return !!settings
   }
-  return pulling(callback, 500, 10000)
+  return polling(callback, 500, 10000)
 }
 
 export function nodeRedIsDead(port) {

@@ -14,7 +14,7 @@ import {
   createConnectedAgent,
   nodeRedIsAlive,
   nodeRedIsDead,
-  pulling
+  polling
 } from './helpers/agent-helper'
 
 const DummyServerPort = 3004
@@ -151,7 +151,7 @@ test.serial(
       }
       return false
     }
-    t.true(await pulling(callback, 500, 10000))
+    t.true(await polling(callback, 500, 10000))
   }
 )
 
@@ -188,7 +188,7 @@ test.serial(
     }
 
     setTimeout(async () => {
-      t.true(await pulling(callback, 500, 10000))
+      t.true(await polling(callback, 500, 10000))
       // give it 2s to shutdown
     }, 2000)
   }
@@ -227,7 +227,7 @@ test.serial(
     }
 
     setTimeout(async () => {
-      t.true(await pulling(callback, 500, 10000))
+      t.true(await polling(callback, 500, 10000))
       // give it 2s to shutdown
     }, 2000)
   }
@@ -266,7 +266,7 @@ test.serial(
         tmpNodeRedDataDir + '/node_modules/node-red-node-pi-gpiod'
       )
     }
-    t.true(await pulling(callback, 500, 10000))
+    t.true(await polling(callback, 500, 10000))
   }
 )
 
