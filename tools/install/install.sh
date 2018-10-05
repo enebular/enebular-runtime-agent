@@ -491,7 +491,7 @@ post_install() {
   if [ ! -z ${LICENSE_KEY} ]; then
     _echo Creating activation configuration file...
     _echo ---------
-    run_as_user ${USER} 'echo "{\"enebularBaseURL\": \"https://enebular.com/api/v1\",\"licenseKey\": \"'${LICENSE_KEY}'\"}" \
+    run_as_user ${USER} 'echo "{\"enebularBaseURL\": \"'${ACTIVATION_BASE_URL}'\",\"licenseKey\": \"'${LICENSE_KEY}'\"}" \
       > "'${INSTALL_DIR}'/ports/awsiot/.enebular-activation-config.json"'
   fi
 
@@ -513,6 +513,7 @@ PORT=awsiot
 RELEASE_VERSION="latest-release"
 AGENT_DOWNLOAD_PATH="https://api.github.com/repos/enebular/enebular-runtime-agent/"
 SUPPORTED_NODE_VERSION="v9.2.1"
+ACTIVATION_BASE_URL="https://enebular.com/api/v1"
 
 for i in "$@"
 do
@@ -559,6 +560,10 @@ case $i in
   ;;
   --license-key=*)
   LICENSE_KEY="${i#*=}"
+  shift
+  ;;
+  --activation-base-url=*)
+  ACTIVATION_BASE_URL="${i#*=}"
   shift
   ;;
   *)
