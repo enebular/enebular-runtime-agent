@@ -13,18 +13,31 @@ import util from 'util'
 
 const moduleName = 'asset-man'
 
+/**
+ * Asset states:
+ *   - notDeployed | deployed
+ *   - deploying | deployFail
+ *   - removing | removeFail
+ */
+
+/**
+ * Reported asset states:
+ *   - deployPending | deploying | deployed | deployFail
+ *   - updatePending | updating | update-fail (todo)
+ *   - removePending | removing | removeFail
+ */
+
 class Asset {
-  _type: string
   _assetMan: AssetManager
-  id: string
+  _type: string
+  _id: string
   updateId: string
   config: {}
-  pendingConfig: {}
   state: string
-  //      pending | deploying | deployed | deployFail
-  //      removing | removeFail
-  pendingChange: string // (deploy|remove)
   changeTs: string
+  pendingUpdateId: string
+  pendingChange: string // (deploy|remove)
+  pendingConfig: {}
   //  todo:
   //   - failCount
 
@@ -33,18 +46,14 @@ class Asset {
     id: string,
     updateId: string,
     config: {},
-    pendingConfig: {},
     state: string,
-    pendingChange: string,
     assetMan: AssetManager
   ) {
     this._type = type
-    this.id = id
+    this._id = id
     this.updateId = updateId
-    this.state = state
     this.config = config
-    this.pendingConfig = pendingConfig
-    this.pendingChange = pendingChange
+    this.state = state
     this._assetMan = assetMan
     this.changeTs = Date.now()
   }
@@ -57,14 +66,18 @@ class Asset {
     return [this._assetMan._dataDir, this.config.destPath].join('/')
   }
 
-  async type() {
+  type() {
     return this._type
+  }
+
+  id() {
+    return this._id
   }
 
   serialize(): {} {
     return {
       type: this._type,
-      id: this.id,
+      id: this._id,
       updateId: this.updateId,
       state: this.state,
       changeTs: this.changeTs,
@@ -152,11 +165,6 @@ class FileAsset extends Asset {
   }
 }
 
-// reported states:
-//      deployPending | deploying | deployed | deployFail
-//      updatePending | updating | update-fail
-//      removePending | removing | removeFail
-
 export default class AssetManager {
   _deviceStateMan: DeviceStateManager
   _agentMan: AgentManagerMediator
@@ -215,9 +223,7 @@ export default class AssetManager {
       serializedAsset.id,
       serializedAsset.updateId,
       serializedAsset.config,
-      null,
       serializedAsset.state,
-      null,
       this
     )
     asset.changeTs = serializedAsset.changeTs
@@ -305,9 +311,9 @@ export default class AssetManager {
 
       let found = false
       for (let asset of this._assets) {
-        if (asset.id === desiredAssetId) {
+        if (asset.id() === desiredAssetId) {
           if (asset.updateId !== desiredAsset.updateId) {
-            asset.updateId = desiredAsset.updateId
+            asset.pendingUpdateId = desiredAsset.updateId
             asset.pendingChange = 'deploy'
             asset.pendingConfig = desiredAsset.config
             asset.changeTs = Date.now()
@@ -324,16 +330,17 @@ export default class AssetManager {
             asset = new FileAsset(
               desiredAsset.config.type,
               desiredAssetId,
-              desiredAsset.updateId,
               null,
-              desiredAsset.config,
-              'pending',
-              'deploy',
+              null,
+              'notDeployed',
               this
             )
+            asset.pendingUpdateId = desiredAsset.updateId
+            asset.pendingChange = 'deploy'
+            asset.pendingConfig = desiredAsset.config
             break
           default:
-            this._error('Unsupported asset type: ' + desiredAsset.type)
+            this._error('Unsupported asset type: ' + desiredAsset.config.type)
             break
         }
         if (asset) {
@@ -344,7 +351,7 @@ export default class AssetManager {
 
     // Determine 'remove' assets
     for (let asset of this._assets) {
-      if (!desiredState.assets.hasOwnProperty(asset.id)) {
+      if (!desiredState.assets.hasOwnProperty(asset.id())) {
         asset.pendingChange = 'remove'
         asset.changeTs = Date.now()
       }
@@ -355,7 +362,6 @@ export default class AssetManager {
 
     // this._debug('assets: ' + inspect(this._assets))
 
-    this._saveSerializedAssets()
     this._updateReportedAssetsState()
     this._processPendingAssets()
   }
@@ -382,7 +388,7 @@ export default class AssetManager {
     this._deviceStateMan.updateState(
       'reported',
       'set',
-      'assets.assets.' + asset.id,
+      'assets.assets.' + asset.id(),
       {
         updateId: asset.updateId,
         ts: asset.changeTs,
@@ -433,12 +439,12 @@ export default class AssetManager {
         if (
           asset.pendingChange &&
           asset.pendingChange === 'remove' &&
-          asset.state === 'pending'
+          asset.state === 'notDeployed'
         ) {
           this._deviceStateMan.updateState(
             'reported',
             'remove',
-            'assets.assets.' + asset.id
+            'assets.assets.' + asset.id()
           )
           removeAssets.push(asset)
         }
@@ -467,6 +473,7 @@ export default class AssetManager {
             }
           }
           // todo: neeed to think carefully about this order
+          asset.updateId = asset.pendingUpdateId
           asset.config = asset.pendingConfig
           asset.pendingConfig = null
           asset.state = 'deploying'
@@ -489,7 +496,7 @@ export default class AssetManager {
           this._deviceStateMan.updateState(
             'reported',
             'remove',
-            'assets.assets.' + asset.id
+            'assets.assets.' + asset.id()
           )
           this._assets = this._assets.filter(a => {
             return a !== asset
