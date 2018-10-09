@@ -171,9 +171,9 @@ export default class AssetManager {
   _log: Logger
   _assets: Array<Asset> = []
   _processingAssetState: boolean = false
-  _assetsInited: boolean = false
-  _dataDir: string = 'asset-data'
-  _serializedFile: string = 'asset-state'
+  _inited: boolean = false
+  _dataDir: string = 'asset-data' // tmp
+  _stateFilePath: string = 'asset-state'
 
   constructor(
     deviceStateMan: DeviceStateManager,
@@ -204,13 +204,42 @@ export default class AssetManager {
   }
 
   async setup() {
+    if (this._inited) {
+      return
+    }
+
     if (!fs.existsSync(this._dataDir)) {
       fs.mkdirSync(this._dataDir)
     }
-    this._initAssets()
+
+    await this._initAssets()
+
+    this._inited = true
   }
 
-  deserializeAsset(serializedAsset): Asset {
+  async _initAssets() {
+    this._loadAssetState()
+
+    // todo get desired state & apply if it exists
+    // this._processPendingAssets()
+  }
+
+  _loadAssetState() {
+    if (!fs.existsSync(this._stateFilePath)) {
+      return
+    }
+
+    this._info('Loading asset state: ' + this._stateFilePath)
+
+    const data = fs.readFileSync(this._stateFilePath, 'utf8')
+    let serializedAssets = JSON.parse(data)
+    for (let serializedAsset of serializedAssets) {
+      let asset = this._deserializeAsset(serializedAsset)
+      this._assets.push(asset)
+    }
+  }
+
+  _deserializeAsset(serializedAsset): Asset {
     switch (serializedAsset.type) {
       case 'file':
         break
@@ -231,32 +260,9 @@ export default class AssetManager {
     return asset
   }
 
-  async _initAssets() {
-    if (this._assetsInited) {
-      return
-    }
+  _saveAssetState() {
+    this._debug('Saving asset state...')
 
-    try {
-      if (fs.existsSync(this._serializedFile)) {
-        this._info('Reading serializedFile file: ' + this._serializedFile)
-        const data = fs.readFileSync(this._serializedFile, 'utf8')
-        let serializedAssets = JSON.parse(data)
-        for (let serializedAsset of serializedAssets) {
-          let asset = this.deserializeAsset(serializedAsset)
-          this._assets.push(asset)
-        }
-      }
-    } catch (err) {
-      this._error(err)
-    }
-
-    // get desired state & apply if it exists
-    // this._processPendingAssets()
-
-    this._assetsInited = true
-  }
-
-  _saveSerializedAssets() {
     let serializedAssets = []
     for (let asset of this._assets) {
       switch (asset.state) {
@@ -269,17 +275,15 @@ export default class AssetManager {
           break
       }
     }
-    this._debug(
-      'serializedAssets: ' + JSON.stringify(serializedAssets, null, '\t')
-    )
+    this._debug('Asset state: ' + JSON.stringify(serializedAssets, null, '\t'))
     try {
       fs.writeFileSync(
-        this._serializedFile,
+        this._stateFilePath,
         JSON.stringify(serializedAssets),
         'utf8'
       )
     } catch (err) {
-      this._error(err)
+      this._error('Failed to save asset state: ' + err.message)
     }
   }
 
@@ -289,7 +293,7 @@ export default class AssetManager {
       return
     }
 
-    if (!this._assetsInited) {
+    if (!this._inited) {
       return
     }
 
@@ -508,7 +512,7 @@ export default class AssetManager {
           break
       }
 
-      this._saveSerializedAssets()
+      this._saveAssetState()
 
       await delay(2 * 1000)
     }
