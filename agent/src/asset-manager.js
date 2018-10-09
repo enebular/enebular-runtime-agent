@@ -202,9 +202,9 @@ export default class AssetManager {
     this._deviceStateMan = deviceStateMan
     this._agentMan = agentMan
     this._log = log
-    // tmp this._deviceStateMan.on('stateChange', params =>
-    //   this._handleDeviceStateChange(params)
-    // )
+    this._deviceStateMan.on('stateChange', params =>
+      this._handleDeviceStateChange(params)
+    )
   }
 
   _debug(msg: string, ...args: Array<mixed>) {
@@ -226,7 +226,7 @@ export default class AssetManager {
     if (!fs.existsSync(this._dataDir)) {
       fs.mkdirSync(this._dataDir)
     }
-    // tmp // this._initAssets()
+    this._initAssets()
   }
 
   async _initAssets() {
@@ -372,7 +372,7 @@ export default class AssetManager {
     // this._debug('assets: ' + inspect(this._assets))
 
     this._saveSerializedAssets()
-    // tmp this._updateReportedAssetsState()
+    this._updateReportedAssetsState()
     this._processPendingAssets()
   }
 
