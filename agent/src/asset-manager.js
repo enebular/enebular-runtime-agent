@@ -9,14 +9,18 @@ import type { Logger } from 'winston'
 import { delay } from './utils'
 import util from 'util'
 
+// todo: validate config
+
 const moduleName = 'asset-man'
 
 class Asset {
   _type: string
   _log: Logger
-  _baseDir: string
+  _dataDir: string
   id: string
   updateId: string
+  currentConfig: {}
+  pendingConfig: {}
   state: string
   //      pending | deploying | deployed | deployFail
   //      removing | removeFail
@@ -29,18 +33,22 @@ class Asset {
     type: string,
     id: string,
     updateId: string,
+    currentConfig: {},
+    pendingConfig: {},
     state: string,
     pendingChange: string,
-    baseDir: string,
-    log: Logger
+    log: Logger,
+    dataDir: string
   ) {
     this._type = type
     this._log = log
-    this._baseDir = baseDir
     this.id = id
     this.updateId = updateId
     this.state = state
+    this.currentConfig = currentConfig
+    this.pendingConfig = pendingConfig
     this.pendingChange = pendingChange
+    this._dataDir = dataDir
     this.changeTs = Date.now()
   }
 
@@ -54,7 +62,8 @@ class Asset {
       id: this.id,
       updateId: this.updateId,
       state: this.state,
-      changeTs: this.changeTs
+      changeTs: this.changeTs,
+      currentConfig: this.currentConfig
     }
   }
 
@@ -71,69 +80,36 @@ class Asset {
 }
 
 class FileAsset extends Asset {
-  _agentMan: AgentManagerMediator
-  _key: string
-  _filename: string
+  agentMan: AgentManagerMediator
 
-  constructor(
-    id: string,
-    updateId: string,
-    state: string,
-    pendingChange: string,
-    key: string,
-    filename: string,
-    baseDir: string,
-    agentMan: AgentManagerMediator,
-    log: Logger
-  ) {
-    super('file', id, updateId, state, pendingChange, baseDir, log)
-    this._agentMan = agentMan
-    this._key = key
-    this._filename = filename
+  _currentDestDirPath() {
+    return [this._dataDir, this.currentConfig.destPath].join('/')
   }
 
-  serialize(): {} {
-    return Object.assign(super.serialize(), {
-      typeData: {
-        key: this._key,
-        filename: this._filename
-      }
-    })
+  _currentFilePath() {
+    return [
+      this._dataDir,
+      this.currentConfig.destPath,
+      this.currentConfig.fileTypeConfig.filename
+    ].join('/')
   }
 
-  static deserialize(
-    data,
-    baseDir,
-    agentMan: AgentManagerMediator,
-    log: Logger
-  ): FileAsset {
-    let asset = new FileAsset(
-      data.id,
-      data.updateId,
-      data.state,
-      null,
-      data.typeData.key,
-      data.typeData.filename,
-      baseDir,
-      agentMan,
-      log
-    )
-    asset.changeTs = data.changeTs
-    return asset
-  }
-
-  _filePath() {
-    return `${this._baseDir}/${this._filename}`
+  _key() {
+    return this.currentConfig.fileTypeConfig.internalSrcConfig.key
   }
 
   // Override
   async deploy() {
     this._log.debug('Deploying...')
     try {
+      const destDir = this._currentDestDirPath()
+      if (!fs.existsSync(destDir)) {
+        fs.mkdirSync(destDir)
+      }
       this._log.debug('Getting file download url...')
-      const url = await this._agentMan.getInternalFileAssetDataUrl(this._key)
+      const url = await this.agentMan.getInternalFileAssetDataUrl(this._key())
       this._log.debug('Got file download url')
-      const path = this._filePath()
+      const path = this._currentFilePath()
       const onProgress = state => {
         this._log.debug(
           util.format(
@@ -167,7 +143,7 @@ class FileAsset extends Asset {
   // Override
   async remove() {
     this._log.debug('Removing...')
-    const path = this._filePath()
+    const path = this._currentFilePath()
     this._log.debug(`Deleting ${path}...`)
     try {
       fs.unlinkSync(path)
@@ -229,6 +205,30 @@ export default class AssetManager {
     this._initAssets()
   }
 
+  deserializeAsset(serializedAsset): Asset {
+    switch (serializedAsset.type) {
+      case 'file':
+        break
+      default:
+        throw new Error('Unsupported asset type: ' + serializedAsset.type)
+    }
+
+    let asset = new FileAsset(
+      serializedAsset.type,
+      serializedAsset.id,
+      serializedAsset.updateId,
+      serializedAsset.currentConfig,
+      null,
+      serializedAsset.state,
+      null,
+      this._log
+    )
+    asset.changeTs = serializedAsset.changeTs
+    asset.agentMan = this._agentMan
+
+    return asset
+  }
+
   async _initAssets() {
     if (this._assetsInited) {
       return
@@ -240,20 +240,8 @@ export default class AssetManager {
         const data = fs.readFileSync(this._serializedFile, 'utf8')
         let serializedAssets = JSON.parse(data)
         for (let serializedAsset of serializedAssets) {
-          switch (serializedAsset.type) {
-            case 'file':
-              this._assets.push(
-                FileAsset.deserialize(
-                  serializedAsset,
-                  this._dataDir,
-                  this._agentMan,
-                  this._log
-                )
-              )
-              break
-            default:
-              throw new Error('Unsupported asset type: ' + serializedAsset.type)
-          }
+          let asset = this.deserializeAsset(serializedAsset)
+          this._assets.push(asset)
         }
       }
     } catch (err) {
@@ -325,6 +313,7 @@ export default class AssetManager {
           if (asset.updateId !== desiredAsset.updateId) {
             asset.updateId = desiredAsset.updateId
             asset.pendingChange = 'deploy'
+            asset.pendingConfig = desiredAsset.config
             asset.changeTs = Date.now()
           }
           found = true
@@ -337,16 +326,17 @@ export default class AssetManager {
         switch (desiredAsset.config.type) {
           case 'file':
             asset = new FileAsset(
+              'file',
               desiredAssetId,
               desiredAsset.updateId,
+              null,
+              desiredAsset.config,
               'pending',
               'deploy',
-              desiredAsset.config.fileTypeConfig.internalSrcConfig.key,
-              desiredAsset.config.fileTypeConfig.filename,
-              this._dataDir,
-              this._agentMan,
-              this._log
+              this._log,
+              this._dataDir
             )
+            asset.agentMan = this._agentMan
             break
           default:
             this._error('Unsupported asset type: ' + desiredAsset.type)
@@ -482,6 +472,9 @@ export default class AssetManager {
               break
             }
           }
+          // todo: neeed to think carefully about this order
+          asset.currentConfig = asset.pendingConfig
+          asset.pendingConfig = null
           asset.state = 'deploying'
           this._updateReportedAssetState(asset)
           let success = await asset.deploy()
