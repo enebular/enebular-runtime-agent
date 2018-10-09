@@ -35,6 +35,7 @@ class Asset {
   config: {}
   state: string
   changeTs: string
+  changeErrMsg: string
   pendingUpdateId: string
   pendingChange: string // (deploy|remove)
   pendingConfig: {}
@@ -59,7 +60,15 @@ class Asset {
   }
 
   _debug(msg: string, ...args: Array<mixed>) {
-    this._assetMan._log.debug(msg, ...args)
+    this._assetMan._debug(msg, ...args)
+  }
+
+  _info(msg: string, ...args: Array<mixed>) {
+    this._assetMan._info(msg, ...args)
+  }
+
+  _error(msg: string, ...args: Array<mixed>) {
+    this._assetMan._error(msg, ...args)
   }
 
   _destDirPath() {
@@ -81,6 +90,7 @@ class Asset {
       updateId: this.updateId,
       state: this.state,
       changeTs: this.changeTs,
+      changeErrMsg: this.changeErrMsg,
       config: this.config
     }
   }
@@ -144,7 +154,9 @@ class FileAsset extends Asset {
       })
       this._debug('Deploy done')
     } catch (err) {
-      this._debug('Deploy failed: ' + err.message)
+      const msg = 'Deploy failed: ' + err.message
+      this.changeErrMsg = msg
+      this._error(msg)
       return false
     }
     return true
@@ -158,7 +170,9 @@ class FileAsset extends Asset {
     try {
       fs.unlinkSync(path)
     } catch (err) {
-      this._debug('Failed to remove file: ' + path)
+      const msg = 'Failed to remove file: ' + path
+      this.changeErrMsg = msg
+      this._error(msg)
       return false
     }
     return true
@@ -220,8 +234,10 @@ export default class AssetManager {
   async _initAssets() {
     this._loadAssetState()
 
-    // todo get desired state & apply if it exists
-    // this._processPendingAssets()
+    // todo
+    //  - get desired state & apply if it exists
+    //    - also: this._processPendingAssets()
+    //  - get reported state & update if it exists
   }
 
   _loadAssetState() {
@@ -256,6 +272,7 @@ export default class AssetManager {
       this
     )
     asset.changeTs = serializedAsset.changeTs
+    asset.changeErrMsg = serializedAsset.changeErrMsg
 
     return asset
   }
@@ -288,15 +305,27 @@ export default class AssetManager {
   }
 
   async _handleDeviceStateChange(params) {
-    const { type, path } = params
-    if (type !== 'desired' || (path && !path.startsWith('assets'))) {
-      return
-    }
-
     if (!this._inited) {
       return
     }
 
+    if (params.path && !params.path.startsWith('assets')) {
+      return
+    }
+
+    switch (params.type) {
+      case 'desired':
+        this._handleDesiredStateChange()
+        break
+      case 'reported':
+        this._handleReportedStateChange()
+        break
+      default:
+        break
+    }
+  }
+
+  async _handleDesiredStateChange(params) {
     const desiredState = this._deviceStateMan.getState('desired', 'assets')
     this._debug(
       'Assets state change: ' + JSON.stringify(desiredState, null, '\t')
@@ -305,7 +334,7 @@ export default class AssetManager {
       return
     }
 
-    // Determine 'deploy' and 'update' assets
+    // Determine assets requiring a 'deploy' change
     let newAssets = []
     for (const desiredAssetId in desiredState.assets) {
       if (!desiredState.assets.hasOwnProperty(desiredAssetId)) {
@@ -313,6 +342,7 @@ export default class AssetManager {
       }
       let desiredAsset = desiredState.assets[desiredAssetId]
 
+      // Updates to existing assets
       let found = false
       for (let asset of this._assets) {
         if (asset.id() === desiredAssetId) {
@@ -327,6 +357,7 @@ export default class AssetManager {
         }
       }
 
+      // New assets
       if (!found) {
         let asset = null
         switch (desiredAsset.config.type) {
@@ -353,7 +384,7 @@ export default class AssetManager {
       }
     }
 
-    // Determine 'remove' assets
+    // Determine assets requiring a 'remove change
     for (let asset of this._assets) {
       if (!desiredState.assets.hasOwnProperty(asset.id())) {
         asset.pendingChange = 'remove'
@@ -361,7 +392,7 @@ export default class AssetManager {
       }
     }
 
-    // Append 'added' assets
+    // Append 'new' assets
     this._assets = this._assets.concat(newAssets)
 
     // this._debug('assets: ' + inspect(this._assets))
@@ -370,7 +401,18 @@ export default class AssetManager {
     this._processPendingAssets()
   }
 
-  // todo: full 'asset' path set on startup
+  async _handleReportedStateChange(params) {
+    this._updateReportedAssetsState()
+  }
+
+  _removeReportedAssetState(asset) {
+    this._debug(`Removing asset '${asset.id()}' reported state`)
+    this._deviceStateMan.updateState(
+      'reported',
+      'remove',
+      'assets.assets.' + asset.id()
+    )
+  }
 
   _updateReportedAssetState(asset) {
     let state
@@ -389,30 +431,31 @@ export default class AssetManager {
     } else {
       state = asset.state
     }
+    const stateObj = {
+      ts: asset.changeTs,
+      state: state,
+      message: asset.changeErrMsg
+    }
+    stateObj.updateId =
+      asset.state === 'notDeployed' ? asset.pendingUpdateId : asset.updateId
+    this._debug(
+      `Updating asset '${asset.id()}' reported state: ` +
+        JSON.stringify(stateObj, null, '\t')
+    )
     this._deviceStateMan.updateState(
       'reported',
       'set',
       'assets.assets.' + asset.id(),
-      {
-        updateId: asset.updateId,
-        ts: asset.changeTs,
-        state: state
-      }
+      stateObj
     )
   }
 
   _updateReportedAssetsState() {
+    // todo: compare current reported state & only update as necessary
     for (let asset of this._assets) {
-      if (!asset.pendingChange) {
-        continue
-      }
       this._updateReportedAssetState(asset)
     }
   }
-
-  // Note: this path 'update' approach needs improvement as if
-  // an update is missed at some point, its contents will never
-  // be sent to agent-man.
 
   _getFirstPendingChangeAsset(): Asset {
     if (this._assets.length < 1) {
@@ -437,26 +480,19 @@ export default class AssetManager {
     this._processingAssetState = true
 
     while (this._pendingChangeAssetExists()) {
-      // Process simple removes
-      let removeAssets = []
-      for (let asset of this._assets) {
-        if (
-          asset.pendingChange &&
-          asset.pendingChange === 'remove' &&
-          asset.state === 'notDeployed'
-        ) {
-          this._deviceStateMan.updateState(
-            'reported',
-            'remove',
-            'assets.assets.' + asset.id()
-          )
-          removeAssets.push(asset)
-        }
-      }
+      // Process simple 'remove' changes
+      // todo: test this
+      let removeAssets = this._assets.filter(asset => {
+        return asset.pendingChange === 'remove' && asset.state === 'notDeployed'
+      })
       this._assets = this._assets.filter(asset => {
         return !removeAssets.includes(asset)
       })
+      for (let asset of removeAssets) {
+        this._removeReportedAssetState(asset)
+      }
 
+      // Process remaining changes
       let asset = this._getFirstPendingChangeAsset()
       if (!asset) {
         continue
@@ -476,7 +512,6 @@ export default class AssetManager {
               break
             }
           }
-          // todo: neeed to think carefully about this order
           asset.updateId = asset.pendingUpdateId
           asset.config = asset.pendingConfig
           asset.pendingConfig = null
@@ -497,14 +532,10 @@ export default class AssetManager {
               break
             }
           }
-          this._deviceStateMan.updateState(
-            'reported',
-            'remove',
-            'assets.assets.' + asset.id()
-          )
           this._assets = this._assets.filter(a => {
             return a !== asset
           })
+          this._removeReportedAssetState(asset)
           break
 
         default:
@@ -514,6 +545,7 @@ export default class AssetManager {
 
       this._saveAssetState()
 
+      // A small deploy to guard against becoming a heavy duty busy loop
       await delay(2 * 1000)
     }
 
