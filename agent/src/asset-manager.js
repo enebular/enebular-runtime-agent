@@ -187,7 +187,7 @@ export default class AssetManager {
   _processingChanges: boolean = false
   _inited: boolean = false
   _dataDir: string = 'asset-data' // tmp
-  _stateFilePath: string = 'asset-state'
+  _stateFilePath: string = 'asset-state' // tmp
 
   constructor(
     deviceStateMan: DeviceStateManager,
@@ -232,15 +232,12 @@ export default class AssetManager {
   }
 
   async _initAssets() {
-    this._loadAssetState()
-
-    // todo
-    //  - get desired state & apply if it exists
-    //    - also: this._processPendingChanges()
-    //  - get reported state & update if it exists
+    this._loadAssetsState()
+    this._updateAssetsStateFromDesiredState()
+    this._updateAssetsReportedState()
   }
 
-  _loadAssetState() {
+  _loadAssetsState() {
     if (!fs.existsSync(this._stateFilePath)) {
       return
     }
@@ -315,24 +312,25 @@ export default class AssetManager {
 
     switch (params.type) {
       case 'desired':
-        this._handleDesiredStateChange()
+        this._updateAssetsStateFromDesiredState()
         break
       case 'reported':
-        this._handleReportedStateChange()
+        this._updateAssetsReportedState()
         break
       default:
         break
     }
   }
 
-  async _handleDesiredStateChange(params) {
+  async _updateAssetsStateFromDesiredState() {
     const desiredState = this._deviceStateMan.getState('desired', 'assets')
-    this._debug(
-      'Assets state change: ' + JSON.stringify(desiredState, null, '\t')
-    )
     if (!desiredState || !desiredState.assets) {
       return
     }
+
+    this._debug(
+      'Assets state change: ' + JSON.stringify(desiredState, null, '\t')
+    )
 
     // Determine assets requiring a 'deploy' change
     let newAssets = []
@@ -399,10 +397,6 @@ export default class AssetManager {
 
     this._updateAssetsReportedState()
     this._processPendingChanges()
-  }
-
-  async _handleReportedStateChange(params) {
-    this._updateAssetsReportedState()
   }
 
   _removeAssetReportedState(asset) {
