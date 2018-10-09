@@ -15,11 +15,10 @@ const moduleName = 'asset-man'
 
 class Asset {
   _type: string
-  _log: Logger
-  _dataDir: string
+  _assetMan: AssetManager
   id: string
   updateId: string
-  currentConfig: {}
+  config: {}
   pendingConfig: {}
   state: string
   //      pending | deploying | deployed | deployFail
@@ -33,23 +32,29 @@ class Asset {
     type: string,
     id: string,
     updateId: string,
-    currentConfig: {},
+    config: {},
     pendingConfig: {},
     state: string,
     pendingChange: string,
-    log: Logger,
-    dataDir: string
+    assetMan: AssetManager
   ) {
     this._type = type
-    this._log = log
     this.id = id
     this.updateId = updateId
     this.state = state
-    this.currentConfig = currentConfig
+    this.config = config
     this.pendingConfig = pendingConfig
     this.pendingChange = pendingChange
-    this._dataDir = dataDir
+    this._assetMan = assetMan
     this.changeTs = Date.now()
+  }
+
+  _debug(msg: string, ...args: Array<mixed>) {
+    this._assetMan._log.debug(msg, ...args)
+  }
+
+  _destDirPath() {
+    return [this._assetMan._dataDir, this.config.destPath].join('/')
   }
 
   async type() {
@@ -63,7 +68,7 @@ class Asset {
       updateId: this.updateId,
       state: this.state,
       changeTs: this.changeTs,
-      currentConfig: this.currentConfig
+      config: this.config
     }
   }
 
@@ -80,38 +85,30 @@ class Asset {
 }
 
 class FileAsset extends Asset {
-  agentMan: AgentManagerMediator
-
-  _currentDestDirPath() {
-    return [this._dataDir, this.currentConfig.destPath].join('/')
-  }
-
-  _currentFilePath() {
-    return [
-      this._dataDir,
-      this.currentConfig.destPath,
-      this.currentConfig.fileTypeConfig.filename
-    ].join('/')
+  _filePath() {
+    return [this._destDirPath(), this.config.fileTypeConfig.filename].join('/')
   }
 
   _key() {
-    return this.currentConfig.fileTypeConfig.internalSrcConfig.key
+    return this.config.fileTypeConfig.internalSrcConfig.key
   }
 
   // Override
   async deploy() {
-    this._log.debug('Deploying...')
+    this._debug('Deploying...')
     try {
-      const destDir = this._currentDestDirPath()
+      const destDir = this._destDirPath()
       if (!fs.existsSync(destDir)) {
         fs.mkdirSync(destDir)
       }
-      this._log.debug('Getting file download url...')
-      const url = await this.agentMan.getInternalFileAssetDataUrl(this._key())
-      this._log.debug('Got file download url')
-      const path = this._currentFilePath()
+      this._debug('Getting file download url...')
+      const url = await this._assetMan._agentMan.getInternalFileAssetDataUrl(
+        this._key()
+      )
+      this._debug('Got file download url')
+      const path = this._filePath()
       const onProgress = state => {
-        this._log.debug(
+        this._debug(
           util.format(
             'progress: %f%% @ %fB/s, %fsec',
             state.percent ? state.percent.toPrecision(1) : 0,
@@ -120,7 +117,7 @@ class FileAsset extends Asset {
           )
         )
       }
-      this._log.debug(`Dowloading ${url} to ${path} ...`)
+      this._debug(`Dowloading ${url} to ${path} ...`)
       await new Promise(function(resolve, reject) {
         progress(request(url), {})
           .on('progress', onProgress)
@@ -132,9 +129,9 @@ class FileAsset extends Asset {
           })
           .pipe(fs.createWriteStream(path))
       })
-      this._log.debug('Deploy done')
+      this._debug('Deploy done')
     } catch (err) {
-      this._log.debug('Deploy failed: ' + err.message)
+      this._debug('Deploy failed: ' + err.message)
       return false
     }
     return true
@@ -142,13 +139,13 @@ class FileAsset extends Asset {
 
   // Override
   async remove() {
-    this._log.debug('Removing...')
-    const path = this._currentFilePath()
-    this._log.debug(`Deleting ${path}...`)
+    this._debug('Removing...')
+    const path = this._filePath()
+    this._debug(`Deleting ${path}...`)
     try {
       fs.unlinkSync(path)
     } catch (err) {
-      this._log.debug('Failed to remove file: ' + path)
+      this._debug('Failed to remove file: ' + path)
       return false
     }
     return true
@@ -217,14 +214,13 @@ export default class AssetManager {
       serializedAsset.type,
       serializedAsset.id,
       serializedAsset.updateId,
-      serializedAsset.currentConfig,
+      serializedAsset.config,
       null,
       serializedAsset.state,
       null,
-      this._log
+      this
     )
     asset.changeTs = serializedAsset.changeTs
-    asset.agentMan = this._agentMan
 
     return asset
   }
@@ -326,17 +322,15 @@ export default class AssetManager {
         switch (desiredAsset.config.type) {
           case 'file':
             asset = new FileAsset(
-              'file',
+              desiredAsset.config.type,
               desiredAssetId,
               desiredAsset.updateId,
               null,
               desiredAsset.config,
               'pending',
               'deploy',
-              this._log,
-              this._dataDir
+              this
             )
-            asset.agentMan = this._agentMan
             break
           default:
             this._error('Unsupported asset type: ' + desiredAsset.type)
@@ -473,7 +467,7 @@ export default class AssetManager {
             }
           }
           // todo: neeed to think carefully about this order
-          asset.currentConfig = asset.pendingConfig
+          asset.config = asset.pendingConfig
           asset.pendingConfig = null
           asset.state = 'deploying'
           this._updateReportedAssetState(asset)
