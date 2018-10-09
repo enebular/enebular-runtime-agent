@@ -184,7 +184,7 @@ export default class AssetManager {
   _agentMan: AgentManagerMediator
   _log: Logger
   _assets: Array<Asset> = []
-  _processingAssetState: boolean = false
+  _processingChanges: boolean = false
   _inited: boolean = false
   _dataDir: string = 'asset-data' // tmp
   _stateFilePath: string = 'asset-state'
@@ -236,7 +236,7 @@ export default class AssetManager {
 
     // todo
     //  - get desired state & apply if it exists
-    //    - also: this._processPendingAssets()
+    //    - also: this._processPendingChanges()
     //  - get reported state & update if it exists
   }
 
@@ -397,15 +397,15 @@ export default class AssetManager {
 
     // this._debug('assets: ' + inspect(this._assets))
 
-    this._updateReportedAssetsState()
-    this._processPendingAssets()
+    this._updateAssetsReportedState()
+    this._processPendingChanges()
   }
 
   async _handleReportedStateChange(params) {
-    this._updateReportedAssetsState()
+    this._updateAssetsReportedState()
   }
 
-  _removeReportedAssetState(asset) {
+  _removeAssetReportedState(asset) {
     this._debug(`Removing asset '${asset.id()}' reported state`)
     this._deviceStateMan.updateState(
       'reported',
@@ -414,7 +414,7 @@ export default class AssetManager {
     )
   }
 
-  _updateReportedAssetState(asset) {
+  _updateAssetReportedState(asset) {
     let state
     if (asset.pendingChange) {
       switch (asset.pendingChange) {
@@ -450,10 +450,10 @@ export default class AssetManager {
     )
   }
 
-  _updateReportedAssetsState() {
+  _updateAssetsReportedState() {
     // todo: compare current reported state & only update as necessary
     for (let asset of this._assets) {
-      this._updateReportedAssetState(asset)
+      this._updateAssetReportedState(asset)
     }
   }
 
@@ -473,11 +473,11 @@ export default class AssetManager {
     return this._getFirstPendingChangeAsset() !== null
   }
 
-  async _processPendingAssets() {
-    if (this._processingAssetState) {
+  async _processPendingChanges() {
+    if (this._processingChanges) {
       return
     }
-    this._processingAssetState = true
+    this._processingChanges = true
 
     while (this._pendingChangeAssetExists()) {
       // Process simple 'remove' changes
@@ -489,7 +489,7 @@ export default class AssetManager {
         return !removeAssets.includes(asset)
       })
       for (let asset of removeAssets) {
-        this._removeReportedAssetState(asset)
+        this._removeAssetReportedState(asset)
       }
 
       // Process remaining changes
@@ -505,7 +505,7 @@ export default class AssetManager {
         case 'deploy':
           if (asset.state === 'deployed') {
             asset.state = 'removing'
-            this._updateReportedAssetState(asset)
+            this._updateAssetReportedState(asset)
             let success = await asset.remove()
             if (!success) {
               asset.state = 'removeFail'
@@ -516,16 +516,16 @@ export default class AssetManager {
           asset.config = asset.pendingConfig
           asset.pendingConfig = null
           asset.state = 'deploying'
-          this._updateReportedAssetState(asset)
+          this._updateAssetReportedState(asset)
           let success = await asset.deploy()
           asset.state = success ? 'deployed' : 'deployFail'
-          this._updateReportedAssetState(asset)
+          this._updateAssetReportedState(asset)
           break
 
         case 'remove':
           if (asset.state === 'deployed') {
             asset.state = 'removing'
-            this._updateReportedAssetState(asset)
+            this._updateAssetReportedState(asset)
             let success = await asset.remove()
             if (!success) {
               asset.state = 'removeFail'
@@ -535,7 +535,7 @@ export default class AssetManager {
           this._assets = this._assets.filter(a => {
             return a !== asset
           })
-          this._removeReportedAssetState(asset)
+          this._removeAssetReportedState(asset)
           break
 
         default:
@@ -549,6 +549,6 @@ export default class AssetManager {
       await delay(2 * 1000)
     }
 
-    this._processingAssetState = false
+    this._processingChanges = false
   }
 }
