@@ -202,9 +202,9 @@ export default class AssetManager {
     this._deviceStateMan = deviceStateMan
     this._agentMan = agentMan
     this._log = log
-    this._deviceStateMan.on('stateChange', params =>
-      this._handleDeviceStateChange(params)
-    )
+    // tmp this._deviceStateMan.on('stateChange', params =>
+    //   this._handleDeviceStateChange(params)
+    // )
   }
 
   _debug(msg: string, ...args: Array<mixed>) {
@@ -226,7 +226,7 @@ export default class AssetManager {
     if (!fs.existsSync(this._dataDir)) {
       fs.mkdirSync(this._dataDir)
     }
-    this._initAssets()
+    // tmp // this._initAssets()
   }
 
   async _initAssets() {
@@ -334,15 +334,15 @@ export default class AssetManager {
 
       if (!found) {
         let asset = null
-        switch (desiredAsset.type) {
+        switch (desiredAsset.config.type) {
           case 'file':
             asset = new FileAsset(
               desiredAssetId,
               desiredAsset.updateId,
               'pending',
               'deploy',
-              desiredAsset.typeConfig.key,
-              desiredAsset.typeConfig.filename,
+              desiredAsset.config.fileTypeConfig.internalSrcConfig.key,
+              desiredAsset.config.fileTypeConfig.filename,
               this._dataDir,
               this._agentMan,
               this._log
@@ -372,7 +372,7 @@ export default class AssetManager {
     // this._debug('assets: ' + inspect(this._assets))
 
     this._saveSerializedAssets()
-    this._updateReportedAssetsState()
+    // tmp this._updateReportedAssetsState()
     this._processPendingAssets()
   }
 
@@ -395,7 +395,8 @@ export default class AssetManager {
     } else {
       state = asset.state
     }
-    this._deviceStateMan.updateReportedState(
+    this._deviceStateMan.updateState(
+      'reported',
       'set',
       'assets.assets.' + asset.id,
       {
@@ -450,7 +451,8 @@ export default class AssetManager {
           asset.pendingChange === 'remove' &&
           asset.state === 'pending'
         ) {
-          this._deviceStateMan.updateReportedState(
+          this._deviceStateMan.updateState(
+            'reported',
             'remove',
             'assets.assets.' + asset.id
           )
@@ -497,7 +499,8 @@ export default class AssetManager {
               break
             }
           }
-          this._deviceStateMan.updateReportedState(
+          this._deviceStateMan.updateState(
+            'reported',
             'remove',
             'assets.assets.' + asset.id
           )

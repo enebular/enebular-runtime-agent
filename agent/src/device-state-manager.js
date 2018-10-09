@@ -16,9 +16,10 @@ export default class DeviceStateManager extends EventEmitter {
   _log: Logger
   _desiredState: {} = null
   _reportedState: {} = null
-  _reportedStateUpdates: Array<{}> = []
+  _statusState: {} = null
+  _stateUpdates: Array<{}> = []
+  _sendingStateUpdates: boolean = false
   _active: boolean = false
-  _sendingReportedStateUpdates: boolean = false
 
   constructor(
     agentMan: AgentManagerMediator,
@@ -51,13 +52,43 @@ export default class DeviceStateManager extends EventEmitter {
   _isSupportedStateType(type): boolean {
     switch (type) {
       case 'desired': // fall-through
-      case 'reported':
+      case 'reported': // fall-through
+      case 'status':
         return true
       default:
         return false
     }
   }
 
+  _isWritableStateType(type): boolean {
+    switch (type) {
+      case 'reported': // fall-through
+      case 'status':
+        return true
+      case 'desired': // fall-through
+      default:
+        return false
+    }
+  }
+
+  _isFunctional() {
+    return this._active && this._fqDeviceId
+  }
+
+  _stateForTypeExists(type: string): boolean {
+    switch (type) {
+      case 'desired':
+        return this._desiredState !== null
+      case 'reported':
+        return this._reportedState !== null
+      case 'status':
+        return this._statusState !== null
+      default:
+        throw new Error('Unsupported state type: ' + type)
+    }
+  }
+
+  // returns a copy
   _getStateForType(type: string): {} {
     switch (type) {
       case 'desired':
@@ -66,6 +97,8 @@ export default class DeviceStateManager extends EventEmitter {
         return this._reportedState
           ? Object.assign({}, this._reportedState)
           : null
+      case 'status':
+        return this._statusState ? Object.assign({}, this._statusState) : null
       default:
         throw new Error('Unsupported state type: ' + type)
     }
@@ -75,19 +108,18 @@ export default class DeviceStateManager extends EventEmitter {
     switch (type) {
       case 'desired':
         this._desiredState = state
-        this._debug(
-          'Desired state: ' + JSON.stringify(this._desiredState, null, '\t')
-        )
         break
       case 'reported':
         this._reportedState = state
-        this._debug(
-          'Reported state: ' + JSON.stringify(this._reportedState, null, '\t')
-        )
+        break
+      case 'status':
+        this._statusState = state
         break
       default:
         throw new Error('Unsupported state type: ' + type)
     }
+
+    this._debug(`Set '${type}' state: ` + JSON.stringify(state, null, '\t'))
   }
 
   _getMetaHash(state): string {
@@ -113,10 +145,7 @@ export default class DeviceStateManager extends EventEmitter {
     this.emit('stateChange', { type, path })
   }
 
-  async _updateStatesFromAgentManager(stateTypes: Array<string>) {
-    if (!this._fqDeviceId) {
-      throw new Error('Attempted to initialize states when fqDeviceId not set')
-    }
+  async _refreshStatesFromAgentManager(stateTypes: Array<string>) {
     this._debug('Getting states...')
     try {
       const getStates = stateTypes.map(stateType => ({
@@ -188,63 +217,73 @@ export default class DeviceStateManager extends EventEmitter {
       this._notifyStateChange(type, path)
     } else {
       this._info('Updated state is not valid. Will fully refresh.')
-      this._updateStatesFromAgentManager([type])
+      this._refreshStatesFromAgentManager([type])
     }
   }
 
-  async sendReportedStateUpdates() {
-    if (this._sendingReportedStateUpdates) {
+  async _sendStateUpdates() {
+    if (this._sendingStateUpdates) {
       return
     }
-    this._sendingReportedStateUpdates = true
+    this._sendingStateUpdates = true
 
-    while (this._reportedStateUpdates.length > 0) {
-      let changes = this._reportedStateUpdates
-      let changesLen = changes.length
-      this._reportedStateUpdates = []
+    while (this._stateUpdates.length > 0) {
+      let updates = this._stateUpdates
+      let updatesLen = updates.length
+      this._stateUpdates = []
 
-      this._debug(`Sending ${changesLen} reported state updates...`)
+      this._debug(`Sending ${updatesLen} state updates...`)
 
       try {
-        let requestedUpdates = changes.map(change => ({
-          type: 'reported',
-          op: change.op,
-          path: change.path,
-          state: change.state
+        let requestedUpdates = updates.map(update => ({
+          type: update.type,
+          op: update.op,
+          path: update.path,
+          state: update.state
         }))
-        const updates = await this._agentMan.updateDeviceState(requestedUpdates)
-        const len = updates.length
+        const updateResults = await this._agentMan.updateDeviceState(
+          requestedUpdates
+        )
+        const len = updateResults.length
         for (let i = 0; i < len; i++) {
-          const update = updates[i]
-          if (update.success) {
-            this._debug(`Update ${i + 1}/${changesLen} sent successfully`)
-            changes.shift()
+          const updateResult = updateResults[i]
+          if (updateResult.success) {
+            this._debug(`Update ${i + 1}/${updatesLen} sent successfully`)
+            updates.shift()
           } else {
             throw new Error(
-              `Update ${i + 1}/${changesLen} send failed: ` + update.message
+              `Update ${i + 1}/${updatesLen} send failed: ` +
+                updateResult.message
             )
           }
         }
         await delay(1 * 1000)
       } catch (err) {
-        this._error('Failed to send reported state changes: ' + err.message)
+        this._error('Failed to send state updates: ' + err.message)
         await delay(5 * 1000)
       }
 
-      this._reportedStateUpdates = changes.concat(this._reportedStateUpdates)
+      this._stateUpdates = updates.concat(this._stateUpdates)
     }
 
-    this._sendingReportedStateUpdates = false
+    this._sendingStateUpdates = false
   }
 
-  updateReportedState(op: string, path: string, state: {}) {
+  updateState(type: string, op: string, path: string, state: {}) {
+    if (!this._isWritableStateType(type)) {
+      throw new Error('Attempted to update unwritable state type: ' + type)
+    }
+    if (!this._isFunctional() && this._stateForTypeExists(type)) {
+      throw new Error('Attempted to update state when not functional')
+    }
     // todo: merge in same path updates
-    this._reportedStateUpdates.push({
+    this._stateUpdates.push({
+      type: type,
       op: op,
       path: path,
       state: Object.assign({}, state)
     })
-    this.sendReportedStateUpdates()
+    this._sendStateUpdates()
   }
 
   getState(type: string, path: string) {
@@ -261,7 +300,7 @@ export default class DeviceStateManager extends EventEmitter {
     }
     this._active = active
     if (this._active) {
-      this._updateStatesFromAgentManager(['desired', 'reported'])
+      this._refreshStatesFromAgentManager(['desired', 'reported', 'status'])
     }
   }
 
