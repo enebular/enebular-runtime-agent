@@ -154,7 +154,14 @@ export default class DeviceStateManager extends EventEmitter {
       }))
       const states = await this._agentMan.getDeviceState(getStates)
       for (let state of states) {
-        if (!this._stateIsValid(state)) {
+        /**
+         * Note that if the state doesn't yet exist then agent-manager will
+         * return a successful result, but the state object will just have its
+         * type set, and an empty inner state object. It will have no meta.
+         *
+         * So we only check the validity of the state if it has meta.
+         */
+        if (state.meta && !this._stateIsValid(state)) {
           this._error('Invalid state: ' + JSON.stringify(state, null, '\t'))
           continue
         }

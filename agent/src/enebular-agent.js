@@ -6,6 +6,7 @@ import EnebularActivator from './enebular-activator'
 import DeviceAuthMediator from './device-auth-mediator'
 import AgentManagerMediator from './agent-manager-mediator'
 import DeviceStateManager from './device-state-manager'
+import AgentInfoManager from './agent-info-manager'
 import AssetManager from './asset-manager'
 import NodeREDController from './node-red-controller'
 import LogManager from './log-manager'
@@ -84,6 +85,7 @@ export default class EnebularAgent extends EventEmitter {
   _deviceAuth: DeviceAuthMediator
   _agentMan: AgentManagerMediator
   _deviceStateManager: DeviceStateManager
+  _agentInfoManager: AgentInfoManager
   _assetManager: AssetManager
 
   _connectionId: ?string
@@ -166,6 +168,11 @@ export default class EnebularAgent extends EventEmitter {
     this._deviceStateManager = new DeviceStateManager(
       this._agentMan,
       this._messageEmitter,
+      this._log
+    )
+
+    this._agentInfoManager = new AgentInfoManager(
+      this._deviceStateManager,
       this._log
     )
 
@@ -277,6 +284,7 @@ export default class EnebularAgent extends EventEmitter {
     }
     this._loadAgentConfig()
 
+    await this._agentInfoManager.setup()
     await this._assetManager.setup()
 
     if (this._connector.init) {
