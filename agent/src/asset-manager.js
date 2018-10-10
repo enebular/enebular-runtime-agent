@@ -1,13 +1,14 @@
 /* @flow */
 
 import fs from 'fs'
+import util from 'util'
 import request from 'request'
 import progress from 'request-progress'
+import objectHash from 'object-hash'
+import { delay } from './utils'
 import type DeviceStateManager from './device-state-manager'
 import type AgentManagerMediator from './agent-manager-mediator'
 import type { Logger } from 'winston'
-import { delay } from './utils'
-import util from 'util'
 
 // todo: validate config
 
@@ -232,12 +233,12 @@ export default class AssetManager {
   }
 
   async _initAssets() {
-    this._loadAssetsState()
-    this._updateAssetsStateFromDesiredState()
+    this._loadAssets()
+    this._updateAssetsFromDesiredState()
     this._updateAssetsReportedState()
   }
 
-  _loadAssetsState() {
+  _loadAssets() {
     if (!fs.existsSync(this._stateFilePath)) {
       return
     }
@@ -312,7 +313,7 @@ export default class AssetManager {
 
     switch (params.type) {
       case 'desired':
-        this._updateAssetsStateFromDesiredState()
+        this._updateAssetsFromDesiredState()
         break
       case 'reported':
         this._updateAssetsReportedState()
@@ -322,7 +323,7 @@ export default class AssetManager {
     }
   }
 
-  async _updateAssetsStateFromDesiredState() {
+  async _updateAssetsFromDesiredState() {
     const desiredState = this._deviceStateMan.getState('desired', 'assets')
     if (!desiredState || !desiredState.assets) {
       return
@@ -399,16 +400,27 @@ export default class AssetManager {
     this._processPendingChanges()
   }
 
-  _removeAssetReportedState(asset) {
-    this._debug(`Removing asset '${asset.id()}' reported state`)
+  _removeAssetReportedState(assetId) {
+    this._debug(`Removing asset '${assetId}' reported state`)
     this._deviceStateMan.updateState(
       'reported',
       'remove',
-      'assets.assets.' + asset.id()
+      'assets.assets.' + assetId
     )
   }
 
+  _getReportedAssetState(assetId: string): {} {
+    const reportedState = this._deviceStateMan.getState('reported', 'assets')
+    if (!reportedState || !reportedState.assets) {
+      return null
+    }
+
+    return reportedState.assets[assetId]
+  }
+
+  // Only updates the reported state if required (if there is a difference)
   _updateAssetReportedState(asset) {
+    // Create new reported state
     let state
     if (asset.pendingChange) {
       switch (asset.pendingChange) {
@@ -425,27 +437,69 @@ export default class AssetManager {
     } else {
       state = asset.state
     }
-    const stateObj = {
+    let newStateObj = {
       ts: asset.changeTs,
-      state: state,
-      message: asset.changeErrMsg
+      state: state
     }
-    stateObj.updateId =
+    if (asset.changeErrMsg) {
+      newStateObj.message = asset.changeErrMsg
+    }
+    newStateObj.updateId =
       asset.state === 'notDeployed' ? asset.pendingUpdateId : asset.updateId
+
+    // Compare with currently reported state
+    const currentStateObj = this._getReportedAssetState(asset.id())
+    if (
+      currentStateObj &&
+      objectHash(currentStateObj) === objectHash(newStateObj)
+    ) {
+      this._debug(`Update of asset '${asset.id()}' reported state not required`)
+      return
+    }
+
+    // Update if required
     this._debug(
       `Updating asset '${asset.id()}' reported state: ` +
-        JSON.stringify(stateObj, null, '\t')
+        util.inspect(newStateObj)
     )
     this._deviceStateMan.updateState(
       'reported',
       'set',
       'assets.assets.' + asset.id(),
-      stateObj
+      newStateObj
     )
   }
 
   _updateAssetsReportedState() {
-    // todo: compare current reported state & only update as necessary
+    const reportedState = this._deviceStateMan.getState('reported', 'assets')
+    if (!reportedState) {
+      return
+    }
+
+    this._debug(
+      'Assets reported state: ' + JSON.stringify(reportedState, null, '\t')
+    )
+
+    if (reportedState.assets) {
+      // Remove reported assets that no longer exist
+      for (const reportedAssetId in reportedState.assets) {
+        if (!reportedState.assets.hasOwnProperty(reportedAssetId)) {
+          continue
+        }
+        let found = false
+        for (let asset of this._assets) {
+          if (asset.id() === reportedAssetId) {
+            found = true
+            break
+          }
+        }
+        if (!found) {
+          this._removeAssetReportedState(reportedAssetId)
+        }
+      }
+    }
+
+    // Update all current assets (if required)
     for (let asset of this._assets) {
       this._updateAssetReportedState(asset)
     }
@@ -483,7 +537,7 @@ export default class AssetManager {
         return !removeAssets.includes(asset)
       })
       for (let asset of removeAssets) {
-        this._removeAssetReportedState(asset)
+        this._removeAssetReportedState(asset.id())
       }
 
       // Process remaining changes
@@ -529,7 +583,7 @@ export default class AssetManager {
           this._assets = this._assets.filter(a => {
             return a !== asset
           })
-          this._removeAssetReportedState(asset)
+          this._removeAssetReportedState(asset.id())
           break
 
         default:
