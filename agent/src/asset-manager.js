@@ -3,6 +3,7 @@
 import fs from 'fs'
 import util from 'util'
 import crypto from 'crypto'
+import rimraf from 'rimraf'
 import request from 'request'
 import progress from 'request-progress'
 import objectHash from 'object-hash'
@@ -177,11 +178,10 @@ class Asset {
       this._info('Deleted asset')
 
       // Clean up dest directory
-      // TODO: change to rm -r
       const destDir = this._destDirPath()
       if (fs.existsSync(destDir)) {
         this._debug('Removing asset directory: ' + destDir)
-        fs.rmdirSync(destDir)
+        rimraf.sync(destDir)
       }
     } catch (err) {
       this.changeErrMsg = err.message
