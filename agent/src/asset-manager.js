@@ -2,6 +2,7 @@
 
 import fs from 'fs'
 import util from 'util'
+import crypto from 'crypto'
 import request from 'request'
 import progress from 'request-progress'
 import objectHash from 'object-hash'
@@ -206,6 +207,20 @@ class FileAsset extends Asset {
     return this.config.fileTypeConfig.internalSrcConfig.key
   }
 
+  async _getIntegrity(path: string) {
+    return new Promise((resolve, reject) => {
+      const hash = crypto.createHash('sha256')
+      const file = fs.createReadStream(path)
+      file.on('data', data => {
+        hash.update(data)
+      })
+      file.on('end', () => {
+        const digest = hash.digest('base64')
+        return resolve(digest)
+      })
+    })
+  }
+
   async _acquire() {
     // Get asset file data download URL
     this._debug('Getting file download url...')
@@ -241,11 +256,22 @@ class FileAsset extends Asset {
   }
 
   async _verify() {
-    this._debug('todo: verify')
+    this._debug('Checking file integrity...')
+    const integrity = await this._getIntegrity(this._filePath())
+    if (integrity !== this.config.fileTypeConfig.integrity) {
+      throw new Error(
+        'File integrity mismatch: expected:' +
+          this.config.fileTypeConfig.integrity +
+          ', calculated:' +
+          integrity
+      )
+    }
+    this._debug('Integrity matched: ' + integrity)
   }
 
   async _install() {
     this._debug('todo: install')
+    // todo: do exec here for the time being
   }
 
   async _delete() {
