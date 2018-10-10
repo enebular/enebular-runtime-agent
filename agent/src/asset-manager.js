@@ -84,6 +84,10 @@ class Asset {
     return this._id
   }
 
+  name() {
+    return this.config.name
+  }
+
   serialize(): {} {
     return {
       type: this._type,
@@ -99,7 +103,7 @@ class Asset {
   // todo: hooks exec
 
   async deploy(): boolean {
-    this._info(`Deploying asset '${this._id}'...`)
+    this._info(`Deploying asset '${this.name()}'...`)
 
     try {
       // Ensure dest directory exists
@@ -141,7 +145,7 @@ class Asset {
       return false
     }
 
-    this._info('Deployed asset')
+    this._info(`Deployed asset '${this.name()}'`)
 
     return true
   }
@@ -159,7 +163,7 @@ class Asset {
   }
 
   async remove(): boolean {
-    this._info(`Removing asset '${this._id}'...`)
+    this._info(`Removing asset '${this.name()}'...`)
 
     try {
       // Delete
@@ -183,7 +187,7 @@ class Asset {
       return false
     }
 
-    this._info('Removed asset')
+    this._info(`Removed asset '${this.name()}'`)
 
     return true
   }
