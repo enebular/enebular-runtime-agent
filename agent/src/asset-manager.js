@@ -96,14 +96,99 @@ class Asset {
     }
   }
 
-  // todo: split deploy into: acquire, verify, install and exec
   // todo: hooks exec
 
   async deploy(): boolean {
+    this._info(`Deploying asset '${this._id}'...`)
+
+    try {
+      // Ensure dest directory exists
+      const destDir = this._destDirPath()
+      if (!fs.existsSync(destDir)) {
+        this._debug('Creating directory for asset: ' + destDir)
+        fs.mkdirSync(destDir)
+      }
+
+      // Acquire
+      try {
+        this._info('Acquiring asset...')
+        await this._acquire()
+      } catch (err) {
+        throw new Error('Failed to acquire asset: ' + err.message)
+      }
+      this._info('Acquired asset')
+
+      // Verify
+      try {
+        this._info('Verifying asset...')
+        await this._verify()
+      } catch (err) {
+        throw new Error('Failed to verify asset: ' + err.message)
+      }
+      this._info('Verified asset')
+
+      // Install
+      try {
+        this._info('Installing asset...')
+        await this._install()
+      } catch (err) {
+        throw new Error('Failed to install asset: ' + err.message)
+      }
+      this._info('Installed asset')
+    } catch (err) {
+      this.changeErrMsg = err.message
+      this._error(err.message)
+      return false
+    }
+
+    this._info('Deployed asset')
+
+    return true
+  }
+
+  async _acquire() {
+    throw new Error('Called an abstract function')
+  }
+
+  async _verify() {
+    throw new Error('Called an abstract function')
+  }
+
+  async _install() {
     throw new Error('Called an abstract function')
   }
 
   async remove(): boolean {
+    this._info(`Removing asset '${this._id}'...`)
+
+    try {
+      // Delete
+      try {
+        this._info('Deleting asset...')
+        await this._delete()
+      } catch (err) {
+        throw new Error('Failed to delete asset: ' + err.message)
+      }
+      this._info('Deleted asset')
+
+      // Clean up dest directory
+      const destDir = this._destDirPath()
+      if (fs.existsSync(destDir)) {
+        this._debug('Removing asset directory: ' + destDir)
+        fs.rmdirSync(destDir)
+      }
+    } catch (err) {
+      this.changeErrMsg = err.message
+      this._error(err.message)
+      return false
+    }
+
+    this._info('Removed asset')
+
+    return true
+  }
+
+  async _delete() {
     throw new Error('Called an abstract function')
   }
 }
@@ -117,66 +202,52 @@ class FileAsset extends Asset {
     return this.config.fileTypeConfig.internalSrcConfig.key
   }
 
-  // Override
-  async deploy() {
-    this._debug('Deploying...')
-    try {
-      const destDir = this._destDirPath()
-      if (!fs.existsSync(destDir)) {
-        fs.mkdirSync(destDir)
-      }
-      this._debug('Getting file download url...')
-      const url = await this._assetMan._agentMan.getInternalFileAssetDataUrl(
-        this._key()
-      )
-      this._debug('Got file download url')
-      const path = this._filePath()
-      const onProgress = state => {
-        this._debug(
-          util.format(
-            'progress: %f%% @ %fB/s, %fsec',
-            state.percent ? state.percent.toPrecision(1) : 0,
-            state.speed ? state.speed.toPrecision(1) : 0,
-            state.time.elapsed ? state.time.elapsed.toPrecision(1) : 0
-          )
+  async _acquire() {
+    // Get asset file data download URL
+    this._debug('Getting file download url...')
+    const url = await this._assetMan._agentMan.getInternalFileAssetDataUrl(
+      this._key()
+    )
+    this._debug('Got file download url')
+
+    // Donwload asset file data
+    const path = this._filePath()
+    const onProgress = state => {
+      this._debug(
+        util.format(
+          'progress: %f%% @ %fB/s, %fsec',
+          state.percent ? state.percent.toPrecision(1) : 0,
+          state.speed ? state.speed.toPrecision(1) : 0,
+          state.time.elapsed ? state.time.elapsed.toPrecision(1) : 0
         )
-      }
-      this._debug(`Dowloading ${url} to ${path} ...`)
-      await new Promise(function(resolve, reject) {
-        progress(request(url), {})
-          .on('progress', onProgress)
-          .on('error', err => {
-            reject(err)
-          })
-          .on('end', () => {
-            resolve()
-          })
-          .pipe(fs.createWriteStream(path))
-      })
-      this._debug('Deploy done')
-    } catch (err) {
-      const msg = 'Deploy failed: ' + err.message
-      this.changeErrMsg = msg
-      this._error(msg)
-      return false
+      )
     }
-    return true
+    this._debug(`Dowloading ${url} to ${path} ...`)
+    await new Promise(function(resolve, reject) {
+      progress(request(url), {})
+        .on('progress', onProgress)
+        .on('error', err => {
+          reject(err)
+        })
+        .on('end', () => {
+          resolve()
+        })
+        .pipe(fs.createWriteStream(path))
+    })
   }
 
-  // Override
-  async remove() {
-    this._debug('Removing...')
+  async _verify() {
+    this._debug('todo: verify')
+  }
+
+  async _install() {
+    this._debug('todo: install')
+  }
+
+  async _delete() {
     const path = this._filePath()
     this._debug(`Deleting ${path}...`)
-    try {
-      fs.unlinkSync(path)
-    } catch (err) {
-      const msg = 'Failed to remove file: ' + path
-      this.changeErrMsg = msg
-      this._error(msg)
-      return false
-    }
-    return true
+    fs.unlinkSync(path)
   }
 }
 
@@ -187,6 +258,7 @@ export default class AssetManager {
   _assets: Array<Asset> = []
   _processingChanges: boolean = false
   _inited: boolean = false
+  _active: boolean = false
   _dataDir: string = 'asset-data' // tmp
   _stateFilePath: string = 'asset-state' // tmp
 
@@ -522,7 +594,7 @@ export default class AssetManager {
   }
 
   async _processPendingChanges() {
-    if (this._processingChanges) {
+    if (!this._active || this._processingChanges) {
       return
     }
     this._processingChanges = true
@@ -598,5 +670,18 @@ export default class AssetManager {
     }
 
     this._processingChanges = false
+  }
+
+  activate(active: boolean) {
+    if (active === this._active) {
+      return
+    }
+    if (active && !this._inited) {
+      throw new Error('Attempted to activate asset-man when not initialized')
+    }
+    this._active = active
+    if (this._active) {
+      this._processPendingChanges()
+    }
   }
 }

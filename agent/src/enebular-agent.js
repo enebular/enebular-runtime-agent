@@ -492,6 +492,7 @@ export default class EnebularAgent extends EventEmitter {
       case 'authenticated':
         await this._activateMonitoring(true)
         this._deviceStateManager.activate(true)
+        this._assetManager.activate(true)
         break
     }
   }
