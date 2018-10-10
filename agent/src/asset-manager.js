@@ -177,6 +177,7 @@ class Asset {
       this._info('Deleted asset')
 
       // Clean up dest directory
+      // TODO: change to rm -r
       const destDir = this._destDirPath()
       if (fs.existsSync(destDir)) {
         this._debug('Removing asset directory: ' + destDir)
@@ -216,34 +217,52 @@ class FileAsset extends Asset {
       })
       file.on('end', () => {
         const digest = hash.digest('base64')
-        return resolve(digest)
+        resolve(digest)
+      })
+      file.on('error', err => {
+        reject(err)
       })
     })
   }
 
   async _acquire() {
     // Get asset file data download URL
-    this._debug('Getting file download url...')
+    this._debug('Getting file download URL...')
     const url = await this._assetMan._agentMan.getInternalFileAssetDataUrl(
       this._key()
     )
-    this._debug('Got file download url')
+    this._debug('Got file download URL')
 
     // Donwload asset file data
     const path = this._filePath()
     const onProgress = state => {
       this._debug(
         util.format(
-          'progress: %f%% @ %fB/s, %fsec',
+          'Download progress: %f%% @ %fB/s, %fsec',
           state.percent ? state.percent.toPrecision(1) : 0,
           state.speed ? state.speed.toPrecision(1) : 0,
           state.time.elapsed ? state.time.elapsed.toPrecision(1) : 0
         )
       )
     }
-    this._debug(`Dowloading ${url} to ${path} ...`)
+    this._debug(`Downloading ${url} to ${path} ...`)
+    const that = this
     await new Promise(function(resolve, reject) {
       progress(request(url), {})
+        .on('response', response => {
+          that._debug(
+            `Response: ${response.statusCode}: ${response.statusMessage}`
+          )
+          if (response.statusCode >= 400) {
+            reject(
+              new Error(
+                `Error response: ${response.statusCode}: ${
+                  response.statusMessage
+                }`
+              )
+            )
+          }
+        })
         .on('progress', onProgress)
         .on('error', err => {
           reject(err)
