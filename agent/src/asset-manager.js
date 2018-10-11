@@ -331,26 +331,31 @@ class FileAsset extends Asset {
     return envs.concat([this._filePath(), this._execArgs()]).join(' ')
   }
 
-  async _execFile() {
-    this._debug('Executing file...')
-    const cmd = this._fileExecCmd()
-    this._debug('Command: ' + cmd)
+  _execArgsArray() {
+    let args = this._execArgs()
+    return args ? args.split(/\s+/) : []
+  }
 
+  _execEnvObj() {
+    const envs = this._execEnvs()
+    let env = Object.assign({}, process.env)
+    if (envs) {
+      for (let e of envs) {
+        let eComps = e.split('=')
+        env[eComps[0]] = eComps[1]
+      }
+    }
+    return env
+  }
+
+  async _execFile() {
+    const args = this._execArgsArray()
+    const env = this._execEnvObj()
+    const cmd = this._fileExecCmd()
+    this._debug('Executing file...')
+    this._debug('Command: ' + cmd)
     const that = this
     await new Promise((resolve, reject) => {
-      let args = that._execArgs()
-      args = args ? args.split(/\s+/) : []
-      const envs = this._execEnvs()
-      let env = {}
-      if (envs) {
-        for (let e of envs) {
-          let eComps = e.split('=')
-          env[eComps[0]] = eComps[1]
-        }
-      }
-      let e = Object.assign({}, process.env)
-      env = Object.assign(e, env)
-      this._debug('env: ' + util.inspect(env))
       const cproc = spawn(that._filePath(), args, {
         stdio: 'pipe',
         env: env
