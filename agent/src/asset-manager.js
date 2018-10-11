@@ -3,6 +3,7 @@
 import fs from 'fs'
 import util from 'util'
 import crypto from 'crypto'
+import { spawn } from 'child_process'
 import rimraf from 'rimraf'
 import request from 'request'
 import progress from 'request-progress'
@@ -141,9 +142,21 @@ class Asset {
         throw new Error('Failed to install asset: ' + err.message)
       }
       this._info('Installed asset')
+
+      // Post-install
+      try {
+        this._info('Running post-install operations...')
+        await this._runPostInstallOps()
+      } catch (err) {
+        throw new Error(
+          'Failed to run post-install operations on asset: ' + err.message
+        )
+      }
+      this._info('Ran post-install operations')
     } catch (err) {
       this.changeErrMsg = err.message
       this._error(err.message)
+      // TODO: cleanup dir etc
       return false
     }
 
@@ -161,6 +174,10 @@ class Asset {
   }
 
   async _install() {
+    throw new Error('Called an abstract function')
+  }
+
+  async _runPostInstallOps() {
     throw new Error('Called an abstract function')
   }
 
@@ -200,12 +217,28 @@ class Asset {
 }
 
 class FileAsset extends Asset {
+  _fileName() {
+    return this.config.fileTypeConfig.filename
+  }
+
   _filePath() {
     return [this._destDirPath(), this.config.fileTypeConfig.filename].join('/')
   }
 
   _key() {
     return this.config.fileTypeConfig.internalSrcConfig.key
+  }
+
+  _execArgs() {
+    return this.config.fileTypeConfig.execConfig.args
+  }
+
+  _execEnvs() {
+    return this.config.fileTypeConfig.execConfig.envs
+  }
+
+  _execMaxTime() {
+    return this.config.fileTypeConfig.execConfig.maxTime
   }
 
   async _getIntegrity(path: string) {
@@ -289,8 +322,63 @@ class FileAsset extends Asset {
   }
 
   async _install() {
-    this._debug('todo: install')
-    // todo: do exec here for the time being
+    const mode = this.config.fileTypeConfig.exec ? 0o700 : 0o644
+    fs.chmodSync(this._filePath(), mode)
+  }
+
+  _fileExecCmd(): string {
+    return this._execEnvs()
+      .concat([this._filePath(), this._execArgs()])
+      .join(' ')
+  }
+
+  async _execFile() {
+    this._debug('Executing file...')
+    const cmd = this._fileExecCmd()
+    this._debug('Command: ' + cmd)
+
+    const that = this
+    await new Promise((resolve, reject) => {
+      let args = that._execArgs().split(/\s+/)
+      const cproc = spawn(that._filePath(), args, {
+        stdio: 'pipe'
+        // todo: use once we have an abs path
+        // cwd: that._destDirPath()
+      })
+      const timeoutID = setTimeout(() => {
+        that._info('Execution went over time limit')
+        cproc.kill()
+      }, that._execMaxTime() * 1000)
+      cproc.stdout.on('data', data => {
+        let str = data.toString().replace(/(\n|\r)+$/, '')
+        that._info('Asset: ' + str)
+      })
+      cproc.stderr.on('data', data => {
+        let str = data.toString().replace(/(\n|\r)+$/, '')
+        that._info('Asset: ' + str)
+      })
+      cproc.on('error', err => reject(err))
+      cproc.once('exit', (code, signal) => {
+        clearTimeout(timeoutID)
+        if (code !== null) {
+          if (code === 0) {
+            resolve()
+          } else {
+            reject(new Error('Execution ended with failure exit code: ' + code))
+          }
+        } else {
+          reject(new Error('Execution ended with signal: ' + signal))
+        }
+      })
+    })
+
+    this._debug('Executed file')
+  }
+
+  async _runPostInstallOps() {
+    if (this.config.fileTypeConfig.exec) {
+      await this._execFile()
+    }
   }
 
   async _delete() {
