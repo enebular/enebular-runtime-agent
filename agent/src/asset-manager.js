@@ -105,8 +105,18 @@ class Asset {
 
   // todo: hooks exec
 
+  _removeDestDir() {
+    const destDir = this._destDirPath()
+    if (fs.existsSync(destDir)) {
+      this._debug('Removing asset directory: ' + destDir)
+      rimraf.sync(destDir)
+    }
+  }
+
   async deploy(): boolean {
     this._info(`Deploying asset '${this.name()}'...`)
+
+    let cleanUpDestDir = true
 
     try {
       // Ensure dest directory exists
@@ -143,6 +153,8 @@ class Asset {
       }
       this._info('Installed asset')
 
+      cleanUpDestDir = false
+
       // Post-install
       try {
         this._info('Running post-install operations...')
@@ -156,7 +168,9 @@ class Asset {
     } catch (err) {
       this.changeErrMsg = err.message
       this._error(err.message)
-      // TODO: cleanup dir etc
+      if (cleanUpDestDir) {
+        this._removeDestDir()
+      }
       return false
     }
 
@@ -195,11 +209,7 @@ class Asset {
       this._info('Deleted asset')
 
       // Clean up dest directory
-      const destDir = this._destDirPath()
-      if (fs.existsSync(destDir)) {
-        this._debug('Removing asset directory: ' + destDir)
-        rimraf.sync(destDir)
-      }
+      this._removeDestDir()
     } catch (err) {
       this.changeErrMsg = err.message
       this._error(err.message)
