@@ -589,7 +589,7 @@ export default class AssetManager {
 
   async _updateAssetsFromDesiredState() {
     const desiredState = this._deviceStateMan.getState('desired', 'assets')
-    if (!desiredState || !desiredState.assets) {
+    if (!desiredState) {
       return
     }
 
@@ -597,13 +597,15 @@ export default class AssetManager {
       'Assets state change: ' + JSON.stringify(desiredState, null, '\t')
     )
 
+    const desiredAssets = desiredState.assets ? desiredState.assets : {}
+
     // Determine assets requiring a 'deploy' change
     let newAssets = []
-    for (const desiredAssetId in desiredState.assets) {
-      if (!desiredState.assets.hasOwnProperty(desiredAssetId)) {
+    for (const desiredAssetId in desiredAssets) {
+      if (!desiredAssets.hasOwnProperty(desiredAssetId)) {
         continue
       }
-      let desiredAsset = desiredState.assets[desiredAssetId]
+      let desiredAsset = desiredAssets[desiredAssetId]
 
       // Updates to existing assets
       let found = false
@@ -652,7 +654,7 @@ export default class AssetManager {
 
     // Determine assets requiring a 'remove change
     for (let asset of this._assets) {
-      if (!desiredState.assets.hasOwnProperty(asset.id())) {
+      if (!desiredAssets.hasOwnProperty(asset.id())) {
         asset.setPendingChange('remove', null, null)
       }
     }
