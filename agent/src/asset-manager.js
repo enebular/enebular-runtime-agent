@@ -327,9 +327,8 @@ class FileAsset extends Asset {
   }
 
   _fileExecCmd(): string {
-    return this._execEnvs()
-      .concat([this._filePath(), this._execArgs()])
-      .join(' ')
+    const envs = this._execEnvs() ? this._execEnvs() : []
+    return envs.concat([this._filePath(), this._execArgs()]).join(' ')
   }
 
   async _execFile() {
@@ -339,9 +338,22 @@ class FileAsset extends Asset {
 
     const that = this
     await new Promise((resolve, reject) => {
-      let args = that._execArgs().split(/\s+/)
+      let args = that._execArgs()
+      args = args ? args.split(/\s+/) : []
+      const envs = this._execEnvs()
+      let env = {}
+      if (envs) {
+        for (let e of envs) {
+          let eComps = e.split('=')
+          env[eComps[0]] = eComps[1]
+        }
+      }
+      let e = Object.assign({}, process.env)
+      env = Object.assign(e, env)
+      this._debug('env: ' + util.inspect(env))
       const cproc = spawn(that._filePath(), args, {
-        stdio: 'pipe'
+        stdio: 'pipe',
+        env: env
         // todo: use once we have an abs path
         // cwd: that._destDirPath()
       })
@@ -357,7 +369,10 @@ class FileAsset extends Asset {
         let str = data.toString().replace(/(\n|\r)+$/, '')
         that._info('Asset: ' + str)
       })
-      cproc.on('error', err => reject(err))
+      cproc.on('error', err => {
+        clearTimeout(timeoutID)
+        reject(err)
+      })
       cproc.once('exit', (code, signal) => {
         clearTimeout(timeoutID)
         if (code !== null) {
