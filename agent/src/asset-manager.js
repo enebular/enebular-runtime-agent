@@ -92,6 +92,19 @@ class Asset {
     return this.config.name
   }
 
+  setState(state: string) {
+    this.state = state
+    this.changeTs = Date.now()
+  }
+
+  setPendingChange(change: string, updateId: string, config: {}) {
+    this.pendingChange = change
+    this.pendingUpdateId = updateId
+    this.pendingConfig = config
+    this.changeErrMsg = null
+    this.changeTs = Date.now()
+  }
+
   serialize(): {} {
     return {
       type: this._type,
@@ -597,10 +610,11 @@ export default class AssetManager {
       for (let asset of this._assets) {
         if (asset.id() === desiredAssetId) {
           if (asset.updateId !== desiredAsset.updateId) {
-            asset.pendingUpdateId = desiredAsset.updateId
-            asset.pendingChange = 'deploy'
-            asset.pendingConfig = desiredAsset.config
-            asset.changeTs = Date.now()
+            asset.setPendingChange(
+              'deploy',
+              desiredAsset.updateId,
+              desiredAsset.config
+            )
           }
           found = true
           break
@@ -620,9 +634,11 @@ export default class AssetManager {
               'notDeployed',
               this
             )
-            asset.pendingUpdateId = desiredAsset.updateId
-            asset.pendingChange = 'deploy'
-            asset.pendingConfig = desiredAsset.config
+            asset.setPendingChange(
+              'deploy',
+              desiredAsset.updateId,
+              desiredAsset.config
+            )
             break
           default:
             this._error('Unsupported asset type: ' + desiredAsset.config.type)
@@ -637,8 +653,7 @@ export default class AssetManager {
     // Determine assets requiring a 'remove change
     for (let asset of this._assets) {
       if (!desiredState.assets.hasOwnProperty(asset.id())) {
-        asset.pendingChange = 'remove'
-        asset.changeTs = Date.now()
+        asset.setPendingChange('remove', null, null)
       }
     }
 
@@ -803,32 +818,33 @@ export default class AssetManager {
       switch (pendingChange) {
         case 'deploy':
           if (asset.state === 'deployed') {
-            asset.state = 'removing'
+            asset.setState('removing')
             this._updateAssetReportedState(asset)
             let success = await asset.remove()
             if (!success) {
               this._error('Remove failed, but contining with deploy...')
-              asset.state = 'removeFail'
+              asset.setState('removeFail')
               this._updateAssetReportedState(asset)
             }
           }
           asset.updateId = asset.pendingUpdateId
           asset.config = asset.pendingConfig
           asset.pendingConfig = null
-          asset.state = 'deploying'
+          asset.setState('deploying')
           this._updateAssetReportedState(asset)
           let success = await asset.deploy()
-          asset.state = success ? 'deployed' : 'deployFail'
+          asset.setState(success ? 'deployed' : 'deployFail')
           this._updateAssetReportedState(asset)
           break
 
         case 'remove':
           if (asset.state === 'deployed') {
-            asset.state = 'removing'
+            asset.setState('removing')
             this._updateAssetReportedState(asset)
             let success = await asset.remove()
             if (!success) {
-              asset.state = 'removeFail'
+              asset.setState('removeFail')
+              this._updateAssetReportedState(asset)
               break
             }
           }
