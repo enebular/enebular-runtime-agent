@@ -12,6 +12,7 @@ import { delay } from './utils'
 import type DeviceStateManager from './device-state-manager'
 import type AgentManagerMediator from './agent-manager-mediator'
 import type { Logger } from 'winston'
+import type Config from './config'
 
 // todo: validate config
 
@@ -426,17 +427,25 @@ export default class AssetManager {
   _processingChanges: boolean = false
   _inited: boolean = false
   _active: boolean = false
-  _dataDir: string = 'asset-data' // tmp
-  _stateFilePath: string = 'asset-state' // tmp
+  _dataDir: string
+  _stateFilePath: string
 
   constructor(
     deviceStateMan: DeviceStateManager,
     agentMan: AgentManagerMediator,
+    config: Config,
     log: Logger
   ) {
+    this._dataDir = config.get('ENEBULAR_ASSETS_DATA_PATH')
+    this._stateFilePath = config.get('ENEBULAR_ASSETS_STATE_PATH')
+    if (!this._dataDir || !this._stateFilePath) {
+      throw new Error('Missing asset-man configuration')
+    }
+
     this._deviceStateMan = deviceStateMan
     this._agentMan = agentMan
     this._log = log
+
     this._deviceStateMan.on('stateChange', params =>
       this._handleDeviceStateChange(params)
     )
@@ -461,6 +470,9 @@ export default class AssetManager {
     if (this._inited) {
       return
     }
+
+    this._debug('Asset data path: ' + this._dataDir)
+    this._debug('Asset state file path: ' + this._stateFilePath)
 
     if (!fs.existsSync(this._dataDir)) {
       fs.mkdirSync(this._dataDir)
@@ -795,8 +807,9 @@ export default class AssetManager {
             this._updateAssetReportedState(asset)
             let success = await asset.remove()
             if (!success) {
+              this._error('Remove failed, but contining with deploy...')
               asset.state = 'removeFail'
-              break
+              this._updateAssetReportedState(asset)
             }
           }
           asset.updateId = asset.pendingUpdateId

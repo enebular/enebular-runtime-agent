@@ -73,6 +73,16 @@ export default class Config {
         description: '',
         userExpose: false
       },
+      ENEBULAR_ASSETS_DATA_PATH: {
+        value: p.resolve(portBasePath, 'asset-data'),
+        description: 'Assets data directory path',
+        userExpose: true
+      },
+      ENEBULAR_ASSETS_STATE_PATH: {
+        value: p.resolve(portBasePath, '.enebular-assets-state.json'),
+        description: 'Assets state file path',
+        userExpose: true
+      },
 
       // logging
       ENEBULAR_LOG_LEVEL: {
