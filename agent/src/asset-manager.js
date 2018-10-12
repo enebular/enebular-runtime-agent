@@ -127,6 +127,76 @@ class Asset {
     }
   }
 
+  async _runCommandHook(hook: {}) {
+    this._info('Command: ' + hook.cmdTypeConfig.cmd)
+
+    const that = this
+    await new Promise((resolve, reject) => {
+      const cproc = spawn(hook.cmdTypeConfig.cmd, [], {
+        shell: true,
+        stdio: 'pipe'
+        // todo: use once we have an abs path
+        // cwd: that._destDirPath()
+      })
+      const timeoutID = setTimeout(() => {
+        that._info('Execution went over time limit')
+        cproc.kill()
+      }, hook.cmdTypeConfig.maxTime * 1000)
+      cproc.stdout.on('data', data => {
+        let str = data.toString().replace(/(\n|\r)+$/, '')
+        that._info('Command output: ' + str)
+      })
+      cproc.stderr.on('data', data => {
+        let str = data.toString().replace(/(\n|\r)+$/, '')
+        that._info('Command output: ' + str)
+      })
+      cproc.on('error', err => {
+        clearTimeout(timeoutID)
+        reject(err)
+      })
+      cproc.once('exit', (code, signal) => {
+        clearTimeout(timeoutID)
+        if (code !== null) {
+          if (code === 0) {
+            resolve()
+          } else {
+            reject(new Error('Execution ended with failure exit code: ' + code))
+          }
+        } else {
+          reject(new Error('Execution ended with signal: ' + signal))
+        }
+      })
+    })
+
+    this._debug('Command executed')
+  }
+
+  async _runHook(hook: {}) {
+    this._info('Running hook...')
+
+    switch (hook.type) {
+      case 'cmd':
+        await this._runCommandHook(hook)
+        break
+      default:
+        throw new Error('Unsupported hook type: ' + hook.type)
+    }
+
+    this._info('Ran hook')
+  }
+
+  async _runHooks(stage: string) {
+    if (!this.config.hooks) {
+      return
+    }
+    for (let hook of this.config.hooks) {
+      if (hook.stage !== stage) {
+        continue
+      }
+      await this._runHook(hook)
+    }
+  }
+
   async deploy(): boolean {
     this._info(`Deploying asset '${this.name()}'...`)
 
@@ -139,6 +209,15 @@ class Asset {
         this._debug('Creating directory for asset: ' + destDir)
         fs.mkdirSync(destDir)
       }
+
+      // Pre-deploy hooks
+      try {
+        this._info('Running pre-deploy hooks...')
+        await this._runHooks('preDeploy')
+      } catch (err) {
+        throw new Error('Failed to run pre-deploy hooks: ' + err.message)
+      }
+      this._info('Ran pre-deploy hooks')
 
       // Acquire
       try {
@@ -179,6 +258,15 @@ class Asset {
         )
       }
       this._info('Ran post-install operations')
+
+      // Post-deploy hooks
+      try {
+        this._info('Running post-deploy hooks...')
+        await this._runHooks('postDeploy')
+      } catch (err) {
+        throw new Error('Failed to run post-deploy hooks: ' + err.message)
+      }
+      this._info('Ran post-deploy hooks')
     } catch (err) {
       this.changeErrMsg = err.message
       this._error(err.message)
@@ -293,19 +381,22 @@ class FileAsset extends Asset {
     // Donwload asset file data
     const path = this._filePath()
     const onProgress = state => {
-      this._debug(
+      this._info(
         util.format(
-          'Download progress: %f%% @ %fB/s, %fsec',
-          state.percent ? state.percent.toPrecision(1) : 0,
-          state.speed ? state.speed.toPrecision(1) : 0,
-          state.time.elapsed ? state.time.elapsed.toPrecision(1) : 0
+          'Download progress: %f%% @ %fKB/s, %fsec',
+          state.percent ? Math.round(state.percent * 100) : 0,
+          state.speed ? Math.round(state.speed / 1024) : 0,
+          state.time.elapsed ? Math.round(state.time.elapsed) : 0
         )
       )
     }
     this._debug(`Downloading ${url} to ${path} ...`)
     const that = this
     await new Promise(function(resolve, reject) {
-      progress(request(url), {})
+      progress(request(url), {
+        delay: 5000,
+        throttle: 5000
+      })
         .on('response', response => {
           that._debug(
             `Response: ${response.statusCode}: ${response.statusMessage}`
