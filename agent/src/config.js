@@ -74,7 +74,7 @@ export default class Config {
         userExpose: false
       },
       ENEBULAR_ASSETS_DATA_PATH: {
-        value: p.resolve(portBasePath, 'asset-data'),
+        value: p.resolve(portBasePath, 'assets'),
         description: 'Assets data directory path',
         userExpose: true
       },
