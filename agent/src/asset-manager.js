@@ -1,6 +1,7 @@
 /* @flow */
 
 import fs from 'fs'
+import path from 'path'
 import util from 'util'
 import crypto from 'crypto'
 import { spawn } from 'child_process'
@@ -540,7 +541,7 @@ export default class AssetManager {
     config: Config,
     log: Logger
   ) {
-    this._dataDir = config.get('ENEBULAR_ASSETS_DATA_PATH')
+    this._dataDir = path.resolve(config.get('ENEBULAR_ASSETS_DATA_PATH'))
     this._stateFilePath = config.get('ENEBULAR_ASSETS_STATE_PATH')
     if (!this._dataDir || !this._stateFilePath) {
       throw new Error('Missing asset-man configuration')
