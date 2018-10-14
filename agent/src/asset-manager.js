@@ -437,7 +437,7 @@ class FileAsset extends Asset {
   }
 
   async _install() {
-    const mode = this.config.fileTypeConfig.exec ? 0o700 : 0o644
+    const mode = this.config.fileTypeConfig.exec ? 0o740 : 0o640
     fs.chmodSync(this._filePath(), mode)
   }
 
