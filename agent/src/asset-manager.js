@@ -78,7 +78,7 @@ class Asset {
   }
 
   _destDirPath() {
-    return [this._assetMan._dataDir, this.config.destPath].join('/')
+    return path.join(this._assetMan._dataDir, this.config.destPath)
   }
 
   type() {
@@ -335,7 +335,7 @@ class FileAsset extends Asset {
   }
 
   _filePath() {
-    return [this._destDirPath(), this.config.fileTypeConfig.filename].join('/')
+    return path.join(this._destDirPath(), this.config.fileTypeConfig.filename)
   }
 
   _key() {
