@@ -108,7 +108,12 @@ export default class AgentManagerMediator {
     })
     const resJson = await res.json()
     if (!res.ok) {
-      throw new Error('Failed to fetch device state: ' + resJson.message)
+      let errType = res.status + ' - ' + res.statusText
+      let msg = 'Failed to fetch device state: ' + errType
+      if (resJson.message) {
+        msg += ' (' + resJson.message + ')'
+      }
+      throw new Error(msg)
     }
     return resJson.states
   }
@@ -130,7 +135,12 @@ export default class AgentManagerMediator {
     })
     const resJson = await res.json()
     if (!res.ok) {
-      throw new Error('Failed to fetch device state update: ' + resJson.message)
+      let errType = res.status + ' - ' + res.statusText
+      let msg = 'Failed to fetch device state update: ' + errType
+      if (resJson.message) {
+        msg += ' (' + resJson.message + ')'
+      }
+      throw new Error(msg)
     }
     return resJson.updates
   }
@@ -155,9 +165,12 @@ export default class AgentManagerMediator {
     )
     const resJson = await res.json()
     if (!res.ok) {
-      throw new Error(
-        'Failed to fetch internal file data url: ' + resJson.message
-      )
+      let errType = res.status + ' - ' + res.statusText
+      let msg = 'Failed to fetch internal file data url: ' + errType
+      if (resJson.message) {
+        msg += ' (' + resJson.message + ')'
+      }
+      throw new Error(msg)
     }
     return resJson.url
   }
