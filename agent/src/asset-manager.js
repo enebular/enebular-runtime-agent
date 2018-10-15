@@ -131,13 +131,13 @@ class Asset {
   async _runCommandHook(hook: {}) {
     this._info('Command: ' + hook.cmdTypeConfig.cmd)
 
+    const cwd = this._assetMan._dataDir
     const that = this
     await new Promise((resolve, reject) => {
       const cproc = spawn(hook.cmdTypeConfig.cmd, [], {
         shell: true,
-        stdio: 'pipe'
-        // todo: use once we have an abs path
-        // cwd: that._destDirPath()
+        stdio: 'pipe',
+        cwd: cwd
       })
       const timeoutID = setTimeout(() => {
         that._info('Execution went over time limit')
@@ -468,15 +468,15 @@ class FileAsset extends Asset {
     const args = this._execArgsArray()
     const env = this._execEnvObj()
     const cmd = this._fileExecCmd()
+    const cwd = this._destDirPath()
     this._debug('Executing file...')
     this._debug('Command: ' + cmd)
     const that = this
     await new Promise((resolve, reject) => {
       const cproc = spawn(that._filePath(), args, {
         stdio: 'pipe',
-        env: env
-        // todo: use once we have an abs path
-        // cwd: that._destDirPath()
+        env: env,
+        cwd: cwd
       })
       const timeoutID = setTimeout(() => {
         that._info('Execution went over time limit')
