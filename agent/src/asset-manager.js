@@ -118,8 +118,6 @@ class Asset {
     }
   }
 
-  // todo: hooks exec
-
   _removeDestDir() {
     const destDir = this._destDirPath()
     if (fs.existsSync(destDir)) {
@@ -129,13 +127,27 @@ class Asset {
   }
 
   async _runCommandHook(hook: {}) {
-    this._info('Command: ' + hook.cmdTypeConfig.cmd)
+    const [cmd, ...args] = hook.cmdTypeConfig.cmd.split(/\s+/)
+    const cmdPath = path.join(this._assetMan._dataDir, cmd)
+    this._info('Command: ' + [cmdPath].concat(args).join(' '))
 
+    // Check cmdPath exists and chmod if necessary
+    if (!fs.existsSync(cmdPath)) {
+      throw new Error("Command doesn't exist")
+    }
+    const stats = fs.lstatSync(cmdPath)
+    const desiredPerm = 0o740
+    if (stats.mode !== desiredPerm) {
+      this._info('Changing command file permissions to 740...')
+      fs.chmodSync(cmdPath, desiredPerm)
+    }
+
+    // Exec
     const cwd = this._assetMan._dataDir
     const that = this
     await new Promise((resolve, reject) => {
-      const cproc = spawn(hook.cmdTypeConfig.cmd, [], {
-        shell: true,
+      const cproc = spawn(cmdPath, args, {
+        shell: false,
         stdio: 'pipe',
         cwd: cwd
       })
