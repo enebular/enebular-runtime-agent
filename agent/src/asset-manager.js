@@ -119,6 +119,9 @@ class Asset {
   }
 
   _removeDestDir() {
+    if (!this.config.destPath) {
+      return
+    }
     const destDir = this._destDirPath()
     if (fs.existsSync(destDir) && fs.readdirSync(destDir).length === 0) {
       this._debug('Removing asset directory: ' + destDir)
