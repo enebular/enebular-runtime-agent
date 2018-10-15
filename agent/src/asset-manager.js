@@ -15,8 +15,6 @@ import type AgentManagerMediator from './agent-manager-mediator'
 import type { Logger } from 'winston'
 import type Config from './config'
 
-// todo: validate config
-
 const moduleName = 'asset-man'
 
 /**
@@ -29,7 +27,6 @@ const moduleName = 'asset-man'
 /**
  * Reported asset states:
  *   - deployPending | deploying | deployed | deployFail
- *   - updatePending | updating | update-fail (todo)
  *   - removePending | removing | removeFail
  */
 
@@ -542,8 +539,10 @@ class FileAsset extends Asset {
 
   async _delete() {
     const path = this._filePath()
-    this._debug(`Deleting ${path}...`)
-    fs.unlinkSync(path)
+    if (fs.existsSync(path)) {
+      this._debug(`Deleting ${path}...`)
+      fs.unlinkSync(path)
+    }
   }
 }
 
@@ -841,10 +840,9 @@ export default class AssetManager {
     }
 
     // Update if required
-    this._debug(
-      `Updating asset '${asset.id()}' reported state: ` +
-        util.inspect(newStateObj)
-    )
+    this._debug(`Updating asset '${asset.id()}' reported state...`)
+    // this._debug('Current state: ' + util.inspect(currentStateObj))
+    // this._debug('New state: ' + util.inspect(newStateObj))
     this._deviceStateMan.updateState(
       'reported',
       'set',
@@ -900,37 +898,24 @@ export default class AssetManager {
     return null
   }
 
-  _pendingChangeAssetExists(): boolean {
-    return this._getFirstPendingChangeAsset() !== null
-  }
-
   async _processPendingChanges() {
     if (!this._active || this._processingChanges) {
       return
     }
     this._processingChanges = true
 
-    while (this._pendingChangeAssetExists()) {
-      // Process simple 'remove' changes
-      // todo: test this
-      let removeAssets = this._assets.filter(asset => {
-        return asset.pendingChange === 'remove' && asset.state === 'notDeployed'
-      })
-      this._assets = this._assets.filter(asset => {
-        return !removeAssets.includes(asset)
-      })
-      for (let asset of removeAssets) {
-        this._removeAssetReportedState(asset.id())
-      }
-
-      // Process remaining changes
+    while (true) {
       let asset = this._getFirstPendingChangeAsset()
       if (!asset) {
-        continue
+        break
       }
 
       let pendingChange = asset.pendingChange
+      let pendingUpdateId = asset.pendingUpdateId
+      let pendingConfig = asset.pendingConfig
       asset.pendingChange = null
+      asset.pendingUpdateId = null
+      asset.pendingConfig = null
 
       switch (pendingChange) {
         case 'deploy':
@@ -944,9 +929,8 @@ export default class AssetManager {
               this._updateAssetReportedState(asset)
             }
           }
-          asset.updateId = asset.pendingUpdateId
-          asset.config = asset.pendingConfig
-          asset.pendingConfig = null
+          asset.updateId = pendingUpdateId
+          asset.config = pendingConfig
           asset.setState('deploying')
           this._updateAssetReportedState(asset)
           let success = await asset.deploy()
@@ -965,10 +949,14 @@ export default class AssetManager {
               break
             }
           }
-          this._assets = this._assets.filter(a => {
-            return a !== asset
-          })
           this._removeAssetReportedState(asset.id())
+          // The asset may have received a new pendingChange again while we were
+          // await'ing, so check for that before we really remove it.
+          if (!asset.pendingChange) {
+            this._assets = this._assets.filter(a => {
+              return a !== asset
+            })
+          }
           break
 
         default:

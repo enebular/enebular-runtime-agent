@@ -173,6 +173,37 @@ export default class DeviceStateManager extends EventEmitter {
     }
   }
 
+  _newStateWithChanges(type, op, path, state, meta) {
+    let currentState = this._getStateForType(type)
+    if (!currentState && op === 'remove') {
+      this._info('Attempted remove operation with no previous state')
+      return
+    }
+
+    let newState = {
+      type: type,
+      meta: meta
+    }
+
+    if (op === 'set') {
+      if (path && path.length > 0) {
+        newState.state = currentState ? currentState.state : {}
+        objectPath.set(newState.state, path, state)
+      } else {
+        newState.state = state
+      }
+    } else {
+      if (path && path.length > 0) {
+        newState.state = currentState.state
+        objectPath.del(newState.state, path)
+      } else {
+        newState.state = {}
+      }
+    }
+
+    return newState
+  }
+
   _handleDeviceStateChange(params) {
     this._debug('State change: ' + JSON.stringify(params, null, '\t'))
 
@@ -191,32 +222,7 @@ export default class DeviceStateManager extends EventEmitter {
       return
     }
 
-    let currentState = this._getStateForType(type)
-    if (!currentState && op === 'remove') {
-      this._info('Attempted remove operation with no previous state')
-      return
-    }
-
-    // Determine new state
-    let newState = {
-      type: type,
-      meta: meta
-    }
-    if (op === 'set') {
-      if (path && path.length > 0) {
-        newState.state = currentState ? currentState.state : {}
-        objectPath.set(newState.state, path, state)
-      } else {
-        newState.state = state
-      }
-    } else {
-      if (path && path.length > 0) {
-        newState.state = currentState.state
-        objectPath.del(newState.state, path)
-      } else {
-        newState.state = {}
-      }
-    }
+    let newState = this._newStateWithChanges(type, op, path, state, meta)
 
     if (this._stateIsValid(newState)) {
       this._debug('State change applied successfully')
@@ -283,7 +289,14 @@ export default class DeviceStateManager extends EventEmitter {
     if (!this._isFunctional() && this._stateForTypeExists(type)) {
       throw new Error('Attempted to update state when not functional')
     }
-    // todo: merge in same path updates
+
+    // Apply update (ignoring meta as we're not attempting to maintain it for
+    // local changes for the time being)
+    let newState = this._newStateWithChanges(type, op, path, state, null)
+    this._setStateForType(type, newState)
+
+    // Push update
+    // Todo: merge in same path updates?
     this._stateUpdates.push({
       type: type,
       op: op,
