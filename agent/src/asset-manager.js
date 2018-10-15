@@ -78,6 +78,9 @@ class Asset {
   }
 
   _destDirPath() {
+    if (!this.config.destPath) {
+      return this._assetMan._dataDir
+    }
     return path.join(this._assetMan._dataDir, this.config.destPath)
   }
 
@@ -931,7 +934,7 @@ export default class AssetManager {
 
       switch (pendingChange) {
         case 'deploy':
-          if (asset.state === 'deployed') {
+          if (asset.state === 'deployed' || asset.state === 'deployFail') {
             asset.setState('removing')
             this._updateAssetReportedState(asset)
             let success = await asset.remove()
@@ -952,7 +955,7 @@ export default class AssetManager {
           break
 
         case 'remove':
-          if (asset.state === 'deployed') {
+          if (asset.state === 'deployed' || asset.state === 'deployFail') {
             asset.setState('removing')
             this._updateAssetReportedState(asset)
             let success = await asset.remove()
