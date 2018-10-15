@@ -79,7 +79,7 @@ export default class Config {
         userExpose: true
       },
       ENEBULAR_ASSETS_STATE_PATH: {
-        value: p.resolve(portBasePath, '.enebular-assets-state.json'),
+        value: p.resolve(portBasePath, '.enebular-assets.json'),
         description: 'Assets state file path',
         userExpose: true
       },
