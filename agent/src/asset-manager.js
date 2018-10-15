@@ -120,7 +120,7 @@ class Asset {
 
   _removeDestDir() {
     const destDir = this._destDirPath()
-    if (fs.existsSync(destDir)) {
+    if (fs.existsSync(destDir) && fs.readdirSync(destDir).length === 0) {
       this._debug('Removing asset directory: ' + destDir)
       rimraf.sync(destDir)
     }
@@ -284,7 +284,12 @@ class Asset {
       this.changeErrMsg = err.message
       this._error(err.message)
       if (cleanUpDestDir) {
-        this._removeDestDir()
+        try {
+          await this._delete()
+          this._removeDestDir()
+        } catch (err) {
+          this._error('Failed to clean up asset: ' + err.message)
+        }
       }
       return false
     }
