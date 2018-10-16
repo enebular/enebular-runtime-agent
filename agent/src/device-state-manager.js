@@ -138,7 +138,7 @@ export default class DeviceStateManager extends EventEmitter {
   }
 
   _stateIsValid(state: {}) {
-    return this._getMetaHash(state) === state.meta.hash
+    return state && state.meta && this._getMetaHash(state) === state.meta.hash
   }
 
   _notifyStateChange(type: string, path: string) {
@@ -222,8 +222,12 @@ export default class DeviceStateManager extends EventEmitter {
       return
     }
 
-    // todo: need to wrap this in a try
-    let newState = this._newStateWithChanges(type, op, path, state, meta)
+    let newState = null
+    try {
+      newState = this._newStateWithChanges(type, op, path, state, meta)
+    } catch (err) {
+      this._info('Failed to apply state changes: ' + err.message)
+    }
 
     if (this._stateIsValid(newState)) {
       this._debug('State change applied successfully')
@@ -287,14 +291,20 @@ export default class DeviceStateManager extends EventEmitter {
     if (!this._isWritableStateType(type)) {
       throw new Error('Attempted to update unwritable state type: ' + type)
     }
-    if (!this._isFunctional() && this._stateForTypeExists(type)) {
+    if (!this._isFunctional() || !this._stateForTypeExists(type)) {
       throw new Error('Attempted to update state when not functional')
     }
 
     // Apply update (ignoring meta as we're not attempting to maintain it for
     // local changes for the time being)
-    // todo: need to wrap this in a try
-    let newState = this._newStateWithChanges(type, op, path, state, null)
+    let newState
+    try {
+      newState = this._newStateWithChanges(type, op, path, state, null)
+    } catch (err) {
+      this._error('Failed to apply state changes: ' + err.message)
+      return
+    }
+
     this._setStateForType(type, newState)
 
     // Push update

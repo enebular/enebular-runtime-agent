@@ -799,6 +799,11 @@ export default class AssetManager {
   }
 
   _removeAssetReportedState(assetId) {
+    const reportedState = this._deviceStateMan.getState('reported', 'assets')
+    if (!reportedState) {
+      return
+    }
+
     this._debug(`Removing asset '${assetId}' reported state`)
     this._deviceStateMan.updateState(
       'reported',
