@@ -222,6 +222,7 @@ export default class DeviceStateManager extends EventEmitter {
       return
     }
 
+    // todo: need to wrap this in a try
     let newState = this._newStateWithChanges(type, op, path, state, meta)
 
     if (this._stateIsValid(newState)) {
@@ -292,6 +293,7 @@ export default class DeviceStateManager extends EventEmitter {
 
     // Apply update (ignoring meta as we're not attempting to maintain it for
     // local changes for the time being)
+    // todo: need to wrap this in a try
     let newState = this._newStateWithChanges(type, op, path, state, null)
     this._setStateForType(type, newState)
 

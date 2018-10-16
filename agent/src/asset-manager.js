@@ -37,13 +37,13 @@ class Asset {
   updateId: string
   config: {}
   state: string
+  updateAttemptCount: number
+  lastAttemptedUpdateId: string
   changeTs: string
   changeErrMsg: string
   pendingUpdateId: string
   pendingChange: string // (deploy|remove)
   pendingConfig: {}
-  //  todo:
-  //   - failCount
 
   constructor(
     type: string,
@@ -59,6 +59,7 @@ class Asset {
     this.config = config
     this.state = state
     this._assetMan = assetMan
+    this.updateAttemptCount = 0
     this.changeTs = Date.now()
   }
 
@@ -112,9 +113,14 @@ class Asset {
       id: this._id,
       updateId: this.updateId,
       state: this.state,
+      updateAttemptCount: this.updateAttemptCount,
+      lastAttemptedUpdateId: this.lastAttemptedUpdateId,
       changeTs: this.changeTs,
       changeErrMsg: this.changeErrMsg,
-      config: this.config
+      config: this.config,
+      pendingChange: this.pendingChange,
+      pendingUpdateId: this.pendingUpdateId,
+      pendingConfig: this.pendingConfig
     }
   }
 
@@ -556,6 +562,7 @@ export default class AssetManager {
   _active: boolean = false
   _dataDir: string
   _stateFilePath: string
+  _updateAttemptsMax: number = 3
 
   constructor(
     deviceStateMan: DeviceStateManager,
@@ -647,8 +654,13 @@ export default class AssetManager {
       serializedAsset.state,
       this
     )
+    asset.updateAttemptCount = serializedAsset.updateAttemptCount
+    asset.lastAttemptedUpdateId = serializedAsset.lastAttemptedUpdateId
     asset.changeTs = serializedAsset.changeTs
     asset.changeErrMsg = serializedAsset.changeErrMsg
+    asset.pendingChange = serializedAsset.pendingChange
+    asset.pendingUpdateId = serializedAsset.pendingUpdateId
+    asset.pendingConfig = serializedAsset.pendingConfig
 
     return asset
   }
@@ -659,6 +671,7 @@ export default class AssetManager {
     let serializedAssets = []
     for (let asset of this._assets) {
       switch (asset.state) {
+        case 'notDeployed':
         case 'deployed':
         case 'deployFail':
         case 'removeFail':
@@ -707,9 +720,7 @@ export default class AssetManager {
       return
     }
 
-    this._debug(
-      'Assets state change: ' + JSON.stringify(desiredState, null, 2)
-    )
+    // this._debug('Assets state change: ' + JSON.stringify(desiredState, null, 2))
 
     const desiredAssets = desiredState.assets ? desiredState.assets : {}
 
@@ -725,7 +736,12 @@ export default class AssetManager {
       let found = false
       for (let asset of this._assets) {
         if (asset.id() === desiredAssetId) {
-          if (asset.updateId !== desiredAsset.updateId) {
+          if (
+            (!asset.pendingChange &&
+              asset.updateId !== desiredAsset.updateId) ||
+            (asset.pendingChange === 'deploy' &&
+              asset.pendingUpdateId !== desiredAsset.updateId)
+          ) {
             asset.setPendingChange(
               'deploy',
               desiredAsset.updateId,
@@ -826,6 +842,12 @@ export default class AssetManager {
     if (asset.changeErrMsg) {
       newStateObj.message = asset.changeErrMsg
     }
+    if (asset.pendingChange) {
+      newStateObj.pendingUpdateId = asset.pendingUpdateId
+    }
+    if (state === 'deploying') {
+      newStateObj.updateAttemptCount = asset.updateAttemptCount
+    }
     newStateObj.updateId =
       asset.state === 'notDeployed' ? asset.pendingUpdateId : asset.updateId
 
@@ -899,12 +921,12 @@ export default class AssetManager {
   }
 
   async _processPendingChanges() {
-    if (!this._active || this._processingChanges) {
+    if (this._processingChanges) {
       return
     }
     this._processingChanges = true
 
-    while (true) {
+    while (this._active) {
       let asset = this._getFirstPendingChangeAsset()
       if (!asset) {
         break
@@ -916,9 +938,16 @@ export default class AssetManager {
       asset.pendingChange = null
       asset.pendingUpdateId = null
       asset.pendingConfig = null
+      if (pendingUpdateId !== asset.lastAttemptedUpdateId) {
+        asset.lastAttemptedUpdateId = pendingUpdateId
+        asset.updateAttemptCount = 0
+      }
 
       switch (pendingChange) {
         case 'deploy':
+          const prevState = asset.state
+          const prevConfig = asset.config
+          const prevUpdateId = asset.updateId
           if (asset.state === 'deployed' || asset.state === 'deployFail') {
             asset.setState('removing')
             this._updateAssetReportedState(asset)
@@ -931,9 +960,39 @@ export default class AssetManager {
           }
           asset.updateId = pendingUpdateId
           asset.config = pendingConfig
+          asset.updateAttemptCount++
           asset.setState('deploying')
           this._updateAssetReportedState(asset)
           let success = await asset.deploy()
+          if (!success) {
+            if (asset.updateAttemptCount < this._updateAttemptsMax) {
+              if (asset.pendingChange === null) {
+                this._info(
+                  `Deploy failed, but will retry (${asset.updateAttemptCount}/${
+                    this._updateAttemptsMax
+                  }).`
+                )
+                asset.setPendingChange(
+                  pendingChange,
+                  pendingUpdateId,
+                  pendingConfig
+                )
+              } else {
+                this._info('Deploy failed, but new change already pending.')
+              }
+              asset.updateId = prevUpdateId
+              asset.config = prevConfig
+              asset.setState(prevState)
+              this._updateAssetReportedState(asset)
+              break
+            } else {
+              this._info(
+                `Deploy failed maximum number of times (${
+                  asset.updateAttemptCount
+                })`
+              )
+            }
+          }
           asset.setState(success ? 'deployed' : 'deployFail')
           this._updateAssetReportedState(asset)
           break
@@ -966,8 +1025,8 @@ export default class AssetManager {
 
       this._saveAssetState()
 
-      // A small deploy to guard against becoming a heavy duty busy loop
-      await delay(2 * 1000)
+      // A small delay to guard against becoming a heavy duty busy loop
+      await delay(1 * 1000)
     }
 
     this._processingChanges = false
