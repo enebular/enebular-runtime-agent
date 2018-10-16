@@ -668,7 +668,7 @@ export default class AssetManager {
           break
       }
     }
-    this._debug('Asset state: ' + JSON.stringify(serializedAssets, null, '\t'))
+    this._debug('Asset state: ' + JSON.stringify(serializedAssets, null, 2))
     try {
       fs.writeFileSync(
         this._stateFilePath,
@@ -708,7 +708,7 @@ export default class AssetManager {
     }
 
     this._debug(
-      'Assets state change: ' + JSON.stringify(desiredState, null, '\t')
+      'Assets state change: ' + JSON.stringify(desiredState, null, 2)
     )
 
     const desiredAssets = desiredState.assets ? desiredState.assets : {}
@@ -858,7 +858,7 @@ export default class AssetManager {
     }
 
     this._debug(
-      'Assets reported state: ' + JSON.stringify(reportedState, null, '\t')
+      'Assets reported state: ' + JSON.stringify(reportedState, null, 2)
     )
 
     if (reportedState.assets) {

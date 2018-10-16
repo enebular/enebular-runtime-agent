@@ -119,7 +119,7 @@ export default class DeviceStateManager extends EventEmitter {
         throw new Error('Unsupported state type: ' + type)
     }
 
-    this._debug(`Set '${type}' state: ` + JSON.stringify(state, null, '\t'))
+    this._debug(`Set '${type}' state: ` + JSON.stringify(state, null, 2))
   }
 
   _getMetaHash(state): string {
@@ -162,7 +162,7 @@ export default class DeviceStateManager extends EventEmitter {
          * So we only check the validity of the state if it has meta.
          */
         if (state.meta && !this._stateIsValid(state)) {
-          this._error('Invalid state: ' + JSON.stringify(state, null, '\t'))
+          this._error('Invalid state: ' + JSON.stringify(state, null, 2))
           continue
         }
         this._setStateForType(state.type, state)
@@ -205,7 +205,7 @@ export default class DeviceStateManager extends EventEmitter {
   }
 
   _handleDeviceStateChange(params) {
-    this._debug('State change: ' + JSON.stringify(params, null, '\t'))
+    this._debug('State change: ' + JSON.stringify(params, null, 2))
 
     const { type, op, path, state, meta } = params
 
