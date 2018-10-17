@@ -74,7 +74,7 @@ export default class Config {
         userExpose: false
       },
       ENEBULAR_DEVICE_STATE_REFRESH_INTERVAL: {
-        value: 60 * 60 * 4,
+        value: 60 * 60 * 12,
         description: 'Device state refresh interval',
         userExpose: true
       },
