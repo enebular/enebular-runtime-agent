@@ -18,24 +18,13 @@ export default class Asset {
   pendingUpdateId: string
   pendingChange: string // (deploy|remove)
   pendingConfig: {}
-  updateAttemptCount: number
+  updateAttemptCount: number = 0
   lastAttemptedUpdateId: string
 
-  constructor(
-    type: string,
-    id: string,
-    updateId: string,
-    config: {},
-    state: string,
-    assetMan: AssetManager
-  ) {
+  constructor(type: string, id: string, assetMan: AssetManager) {
     this._type = type
     this._id = id
-    this.updateId = updateId
-    this.config = config
-    this.state = state
     this._assetMan = assetMan
-    this.updateAttemptCount = 0
     this.changeTs = Date.now()
   }
 
@@ -76,6 +65,12 @@ export default class Asset {
   }
 
   setPendingChange(change: string, updateId: string, config: {}) {
+    let name = config ? config.name : null
+    if (!name) {
+      name = this.config ? this.config.name : this._id
+    }
+    this._info(`Asset '${name}' now pending '${change}'`)
+
     this.pendingChange = change
     this.pendingUpdateId = updateId
     this.pendingConfig = config

@@ -122,21 +122,18 @@ export default class AssetManager {
         throw new Error('Unsupported asset type: ' + serializedAsset.type)
     }
 
-    let asset = new FileAsset(
-      serializedAsset.type,
-      serializedAsset.id,
-      serializedAsset.updateId,
-      serializedAsset.config,
-      serializedAsset.state,
-      this
-    )
-    asset.updateAttemptCount = serializedAsset.updateAttemptCount
-    asset.lastAttemptedUpdateId = serializedAsset.lastAttemptedUpdateId
+    let asset = new FileAsset(serializedAsset.type, serializedAsset.id, this)
+
+    asset.updateId = serializedAsset.updateId
+    asset.config = serializedAsset.config
+    asset.state = serializedAsset.state
     asset.changeTs = serializedAsset.changeTs
     asset.changeErrMsg = serializedAsset.changeErrMsg
     asset.pendingChange = serializedAsset.pendingChange
     asset.pendingUpdateId = serializedAsset.pendingUpdateId
     asset.pendingConfig = serializedAsset.pendingConfig
+    asset.updateAttemptCount = serializedAsset.updateAttemptCount
+    asset.lastAttemptedUpdateId = serializedAsset.lastAttemptedUpdateId
 
     return asset
   }
@@ -216,7 +213,8 @@ export default class AssetManager {
             (!asset.pendingChange &&
               asset.updateId !== desiredAsset.updateId) ||
             (asset.pendingChange === 'deploy' &&
-              asset.pendingUpdateId !== desiredAsset.updateId)
+              asset.pendingUpdateId !== desiredAsset.updateId) ||
+            asset.pendingChange === 'remove'
           ) {
             asset.setPendingChange(
               'deploy',
@@ -237,11 +235,9 @@ export default class AssetManager {
             asset = new FileAsset(
               desiredAsset.config.type,
               desiredAssetId,
-              null,
-              null,
-              'notDeployed',
               this
             )
+            asset.state = 'notDeployed'
             asset.setPendingChange(
               'deploy',
               desiredAsset.updateId,
@@ -331,6 +327,9 @@ export default class AssetManager {
     }
     if (state === 'deploying') {
       newStateObj.updateAttemptCount = asset.updateAttemptCount
+    }
+    if (asset.config) {
+      newStateObj.config = asset.config
     }
     newStateObj.updateId =
       asset.state === 'notDeployed' ? asset.pendingUpdateId : asset.updateId
@@ -477,6 +476,8 @@ export default class AssetManager {
               }
               asset.updateId = prevUpdateId
               asset.config = prevConfig
+              // Note that setting it back to prevConfig may be a lie as it may
+              // have been 'removed', but it's ok for now to keep things simple.
               this._setAssetState(asset, prevState)
             } else {
               this.info(
