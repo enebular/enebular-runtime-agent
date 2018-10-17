@@ -26,7 +26,6 @@ const moduleName = 'asset-man'
 
 export default class AssetManager {
   _deviceStateMan: DeviceStateManager
-  _agentMan: AgentManagerMediator
   _log: Logger
   _assets: Array<Asset> = []
   _processingChanges: boolean = false
@@ -35,6 +34,7 @@ export default class AssetManager {
   _dataDir: string
   _stateFilePath: string
   _updateAttemptsMax: number = 3
+  agentMan: AgentManagerMediator
 
   constructor(
     deviceStateMan: DeviceStateManager,
@@ -49,7 +49,7 @@ export default class AssetManager {
     }
 
     this._deviceStateMan = deviceStateMan
-    this._agentMan = agentMan
+    this.agentMan = agentMan
     this._log = log
 
     this._deviceStateMan.on('stateChange', params =>
@@ -57,17 +57,21 @@ export default class AssetManager {
     )
   }
 
-  _debug(msg: string, ...args: Array<mixed>) {
+  dataDir() {
+    return this._dataDir
+  }
+
+  debug(msg: string, ...args: Array<mixed>) {
     args.push({ module: moduleName })
     this._log.debug(msg, ...args)
   }
 
-  _info(msg: string, ...args: Array<mixed>) {
+  info(msg: string, ...args: Array<mixed>) {
     args.push({ module: moduleName })
     this._log.info(msg, ...args)
   }
 
-  _error(msg: string, ...args: Array<mixed>) {
+  error(msg: string, ...args: Array<mixed>) {
     args.push({ module: moduleName })
     this._log.error(msg, ...args)
   }
@@ -77,8 +81,8 @@ export default class AssetManager {
       return
     }
 
-    this._debug('Asset data path: ' + this._dataDir)
-    this._debug('Asset state file path: ' + this._stateFilePath)
+    this.debug('Asset data path: ' + this._dataDir)
+    this.debug('Asset state file path: ' + this._stateFilePath)
 
     if (!fs.existsSync(this._dataDir)) {
       fs.mkdirSync(this._dataDir)
@@ -100,7 +104,7 @@ export default class AssetManager {
       return
     }
 
-    this._info('Loading asset state: ' + this._stateFilePath)
+    this.info('Loading asset state: ' + this._stateFilePath)
 
     const data = fs.readFileSync(this._stateFilePath, 'utf8')
     let serializedAssets = JSON.parse(data)
@@ -138,7 +142,7 @@ export default class AssetManager {
   }
 
   _saveAssetState() {
-    this._debug('Saving asset state...')
+    this.debug('Saving asset state...')
 
     let serializedAssets = []
     for (let asset of this._assets) {
@@ -153,7 +157,7 @@ export default class AssetManager {
           break
       }
     }
-    this._debug('Asset state: ' + JSON.stringify(serializedAssets, null, 2))
+    this.debug('Asset state: ' + JSON.stringify(serializedAssets, null, 2))
     try {
       fs.writeFileSync(
         this._stateFilePath,
@@ -161,7 +165,7 @@ export default class AssetManager {
         'utf8'
       )
     } catch (err) {
-      this._error('Failed to save asset state: ' + err.message)
+      this.error('Failed to save asset state: ' + err.message)
     }
   }
 
@@ -192,7 +196,7 @@ export default class AssetManager {
       return
     }
 
-    // this._debug('Assets state change: ' + JSON.stringify(desiredState, null, 2))
+    // this.debug('Assets state change: ' + JSON.stringify(desiredState, null, 2))
 
     const desiredAssets = desiredState.assets ? desiredState.assets : {}
 
@@ -245,7 +249,7 @@ export default class AssetManager {
             )
             break
           default:
-            this._error('Unsupported asset type: ' + desiredAsset.config.type)
+            this.error('Unsupported asset type: ' + desiredAsset.config.type)
             break
         }
         if (asset) {
@@ -264,7 +268,7 @@ export default class AssetManager {
     // Append 'new' assets
     this._assets = this._assets.concat(newAssets)
 
-    // this._debug('assets: ' + inspect(this._assets))
+    // this.debug('assets: ' + inspect(this._assets))
 
     this._updateAssetsReportedState()
     this._processPendingChanges()
@@ -276,7 +280,7 @@ export default class AssetManager {
       return
     }
 
-    this._debug(`Removing asset '${assetId}' reported state`)
+    this.debug(`Removing asset '${assetId}' reported state`)
     this._deviceStateMan.updateState(
       'reported',
       'remove',
@@ -334,14 +338,14 @@ export default class AssetManager {
       currentStateObj &&
       objectHash(currentStateObj) === objectHash(newStateObj)
     ) {
-      this._debug(`Update of asset '${asset.id()}' reported state not required`)
+      this.debug(`Update of asset '${asset.id()}' reported state not required`)
       return
     }
 
     // Update if required
-    this._debug(`Updating asset '${asset.id()}' reported state...`)
-    // this._debug('Current state: ' + util.inspect(currentStateObj))
-    // this._debug('New state: ' + util.inspect(newStateObj))
+    this.debug(`Updating asset '${asset.id()}' reported state...`)
+    // this.debug('Current state: ' + util.inspect(currentStateObj))
+    // this.debug('New state: ' + util.inspect(newStateObj))
     this._deviceStateMan.updateState(
       'reported',
       'set',
@@ -356,7 +360,7 @@ export default class AssetManager {
       return
     }
 
-    this._debug(
+    this.debug(
       'Assets reported state: ' + JSON.stringify(reportedState, null, 2)
     )
 
@@ -430,7 +434,7 @@ export default class AssetManager {
             this._updateAssetReportedState(asset)
             let success = await asset.remove()
             if (!success) {
-              this._error('Remove failed, but contining with deploy...')
+              this.error('Remove failed, but contining with deploy...')
               asset.setState('removeFail')
               this._updateAssetReportedState(asset)
             }
@@ -444,7 +448,7 @@ export default class AssetManager {
           if (!success) {
             if (asset.updateAttemptCount < this._updateAttemptsMax) {
               if (asset.pendingChange === null) {
-                this._info(
+                this.info(
                   `Deploy failed, but will retry (${asset.updateAttemptCount}/${
                     this._updateAttemptsMax
                   }).`
@@ -455,7 +459,7 @@ export default class AssetManager {
                   pendingConfig
                 )
               } else {
-                this._info('Deploy failed, but new change already pending.')
+                this.info('Deploy failed, but new change already pending.')
               }
               asset.updateId = prevUpdateId
               asset.config = prevConfig
@@ -463,7 +467,7 @@ export default class AssetManager {
               this._updateAssetReportedState(asset)
               break
             } else {
-              this._info(
+              this.info(
                 `Deploy failed maximum number of times (${
                   asset.updateAttemptCount
                 })`
@@ -496,7 +500,7 @@ export default class AssetManager {
           break
 
         default:
-          this._error('Unsupported pending change: ' + pendingChange)
+          this.error('Unsupported pending change: ' + pendingChange)
           break
       }
 

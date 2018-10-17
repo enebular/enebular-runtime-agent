@@ -13,13 +13,13 @@ export default class Asset {
   updateId: string
   config: {}
   state: string
-  updateAttemptCount: number
-  lastAttemptedUpdateId: string
   changeTs: string
   changeErrMsg: string
   pendingUpdateId: string
   pendingChange: string // (deploy|remove)
   pendingConfig: {}
+  updateAttemptCount: number
+  lastAttemptedUpdateId: string
 
   constructor(
     type: string,
@@ -40,22 +40,22 @@ export default class Asset {
   }
 
   _debug(msg: string, ...args: Array<mixed>) {
-    this._assetMan._debug(msg, ...args)
+    this._assetMan.debug(msg, ...args)
   }
 
   _info(msg: string, ...args: Array<mixed>) {
-    this._assetMan._info(msg, ...args)
+    this._assetMan.info(msg, ...args)
   }
 
   _error(msg: string, ...args: Array<mixed>) {
-    this._assetMan._error(msg, ...args)
+    this._assetMan.error(msg, ...args)
   }
 
   _destDirPath() {
     if (!this.config.destPath) {
-      return this._assetMan._dataDir
+      return this._assetMan.dataDir()
     }
-    return path.join(this._assetMan._dataDir, this.config.destPath)
+    return path.join(this._assetMan.dataDir(), this.config.destPath)
   }
 
   type() {
@@ -113,13 +113,14 @@ export default class Asset {
 
   async _runCommandHook(hook: {}) {
     const [cmd, ...args] = hook.cmdTypeConfig.cmd.split(/\s+/)
-    const cmdPath = path.join(this._assetMan._dataDir, cmd)
+    const cmdPath = path.join(this._assetMan.dataDir(), cmd)
     this._info('Command: ' + [cmdPath].concat(args).join(' '))
 
-    // Check cmdPath exists and chmod if necessary
     if (!fs.existsSync(cmdPath)) {
       throw new Error("Command doesn't exist")
     }
+
+    // Check cmdPath exists and chmod if necessary
     const stats = fs.lstatSync(cmdPath)
     const desiredPerm = 0o740
     if (stats.mode !== desiredPerm) {
@@ -128,11 +129,10 @@ export default class Asset {
     }
 
     // Exec
-    const cwd = this._assetMan._dataDir
+    const cwd = this._assetMan.dataDir()
     const that = this
     await new Promise((resolve, reject) => {
       const cproc = spawn(cmdPath, args, {
-        shell: false,
         stdio: 'pipe',
         cwd: cwd
       })
@@ -284,22 +284,6 @@ export default class Asset {
     return true
   }
 
-  async _acquire() {
-    throw new Error('Called an abstract function')
-  }
-
-  async _verify() {
-    throw new Error('Called an abstract function')
-  }
-
-  async _install() {
-    throw new Error('Called an abstract function')
-  }
-
-  async _runPostInstallOps() {
-    throw new Error('Called an abstract function')
-  }
-
   async remove(): boolean {
     this._info(`Removing asset '${this.name()}'...`)
 
@@ -324,6 +308,22 @@ export default class Asset {
     this._info(`Removed asset '${this.name()}'`)
 
     return true
+  }
+
+  async _acquire() {
+    throw new Error('Called an abstract function')
+  }
+
+  async _verify() {
+    throw new Error('Called an abstract function')
+  }
+
+  async _install() {
+    throw new Error('Called an abstract function')
+  }
+
+  async _runPostInstallOps() {
+    throw new Error('Called an abstract function')
   }
 
   async _delete() {

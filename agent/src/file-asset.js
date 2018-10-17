@@ -54,7 +54,7 @@ export default class FileAsset extends Asset {
   async _acquire() {
     // Get asset file data download URL
     this._debug('Getting file download URL...')
-    const url = await this._assetMan._agentMan.getInternalFileAssetDataUrl(
+    const url = await this._assetMan.agentMan.getInternalFileAssetDataUrl(
       this._key()
     )
     this._debug('Got file download URL')
@@ -149,8 +149,10 @@ export default class FileAsset extends Asset {
     const env = this._execEnvObj()
     const cmd = this._fileExecCmd()
     const cwd = this._destDirPath()
+
     this._debug('Executing file...')
     this._debug('Command: ' + cmd)
+
     const that = this
     await new Promise((resolve, reject) => {
       const cproc = spawn(that._filePath(), args, {
