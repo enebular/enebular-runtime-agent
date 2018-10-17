@@ -198,7 +198,7 @@ export default class AssetManager {
 
     // this.debug('Assets state change: ' + JSON.stringify(desiredState, null, 2))
 
-    const desiredAssets = desiredState.assets ? desiredState.assets : {}
+    const desiredAssets = desiredState.assets || {}
 
     // Determine assets requiring a 'deploy' change
     let newAssets = []
@@ -275,8 +275,7 @@ export default class AssetManager {
   }
 
   _removeAssetReportedState(assetId) {
-    const reportedState = this._deviceStateMan.getState('reported', 'assets')
-    if (!reportedState) {
+    if (!this._deviceStateMan.canUpdateState('reported')) {
       return
     }
 
@@ -299,6 +298,10 @@ export default class AssetManager {
 
   // Only updates the reported state if required (if there is a difference)
   _updateAssetReportedState(asset) {
+    if (!this._deviceStateMan.canUpdateState('reported')) {
+      return
+    }
+
     // Create new reported state
     let state
     if (asset.pendingChange) {
@@ -401,6 +404,11 @@ export default class AssetManager {
     return null
   }
 
+  _setAssetState(asset, state) {
+    asset.setState(state)
+    this._updateAssetReportedState(asset)
+  }
+
   async _processPendingChanges() {
     if (this._processingChanges) {
       return
@@ -413,37 +421,43 @@ export default class AssetManager {
         break
       }
 
+      // Dequeue the pending change
       let pendingChange = asset.pendingChange
       let pendingUpdateId = asset.pendingUpdateId
       let pendingConfig = asset.pendingConfig
       asset.pendingChange = null
       asset.pendingUpdateId = null
       asset.pendingConfig = null
+
+      // Reset update attempt count if this is a different update
       if (pendingUpdateId !== asset.lastAttemptedUpdateId) {
         asset.lastAttemptedUpdateId = pendingUpdateId
         asset.updateAttemptCount = 0
       }
 
+      // Process the change
       switch (pendingChange) {
         case 'deploy':
+          // Save current state so we can revert back to it if required
           const prevState = asset.state
           const prevConfig = asset.config
           const prevUpdateId = asset.updateId
+
+          // Remove if already deployed (or deployFail)
           if (asset.state === 'deployed' || asset.state === 'deployFail') {
-            asset.setState('removing')
-            this._updateAssetReportedState(asset)
+            this._setAssetState(asset, 'removing')
             let success = await asset.remove()
             if (!success) {
-              this.error('Remove failed, but contining with deploy...')
-              asset.setState('removeFail')
-              this._updateAssetReportedState(asset)
+              this.info('Remove failed, but contining with deploy...')
+              this._setAssetState(asset, 'removeFail')
             }
           }
+
+          // Apply the update and attempt deploy
           asset.updateId = pendingUpdateId
           asset.config = pendingConfig
           asset.updateAttemptCount++
-          asset.setState('deploying')
-          this._updateAssetReportedState(asset)
+          this._setAssetState(asset, 'deploying')
           let success = await asset.deploy()
           if (!success) {
             if (asset.updateAttemptCount < this._updateAttemptsMax) {
@@ -463,29 +477,26 @@ export default class AssetManager {
               }
               asset.updateId = prevUpdateId
               asset.config = prevConfig
-              asset.setState(prevState)
-              this._updateAssetReportedState(asset)
-              break
+              this._setAssetState(asset, prevState)
             } else {
               this.info(
                 `Deploy failed maximum number of times (${
                   asset.updateAttemptCount
                 })`
               )
+              this._setAssetState(asset, 'deployFail')
             }
+          } else {
+            this._setAssetState(asset, 'deployed')
           }
-          asset.setState(success ? 'deployed' : 'deployFail')
-          this._updateAssetReportedState(asset)
           break
 
         case 'remove':
           if (asset.state === 'deployed' || asset.state === 'deployFail') {
-            asset.setState('removing')
-            this._updateAssetReportedState(asset)
+            this._setAssetState(asset, 'removing')
             let success = await asset.remove()
             if (!success) {
-              asset.setState('removeFail')
-              this._updateAssetReportedState(asset)
+              this._setAssetState(asset, 'removeFail')
               break
             }
           }
@@ -504,6 +515,7 @@ export default class AssetManager {
           break
       }
 
+      // Save the changed state
       this._saveAssetState()
 
       // A small delay to guard against becoming a heavy duty busy loop

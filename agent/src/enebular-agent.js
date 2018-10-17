@@ -297,6 +297,7 @@ export default class EnebularAgent extends EventEmitter {
 
   async shutdown() {
     this._deviceAuth.endAuthAttempt()
+    this._assetManager.activate(false)
     if (this._monitoringActivated) {
       await this._agentMan.notifyStatus('disconnected')
     }

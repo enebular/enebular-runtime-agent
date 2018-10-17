@@ -312,11 +312,15 @@ export default class DeviceStateManager extends EventEmitter {
     this._sendingStateUpdates = false
   }
 
+  canUpdateState(type: string) {
+    return this._isFunctional() && this._stateForTypeExists(type)
+  }
+
   updateState(type: string, op: string, path: string, state: {}) {
     if (!this._isWritableStateType(type)) {
       throw new Error('Attempted to update unwritable state type: ' + type)
     }
-    if (!this._isFunctional() || !this._stateForTypeExists(type)) {
+    if (!this.canUpdateState(type)) {
       throw new Error('Attempted to update state when not functional')
     }
 
