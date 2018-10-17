@@ -168,6 +168,7 @@ export default class EnebularAgent extends EventEmitter {
     this._deviceStateManager = new DeviceStateManager(
       this._agentMan,
       this._messageEmitter,
+      this._config,
       this._log
     )
 

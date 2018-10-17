@@ -7,6 +7,7 @@ import { delay } from './utils'
 
 import type AgentManagerMediator from './agent-manager-mediator'
 import type { Logger } from 'winston'
+import type Config from './config'
 
 const moduleName = 'device-state-man'
 
@@ -20,13 +21,22 @@ export default class DeviceStateManager extends EventEmitter {
   _stateUpdates: Array<{}> = []
   _sendingStateUpdates: boolean = false
   _active: boolean = false
+  _refreshInterval: number
+  _refreshIntervalID: number
 
   constructor(
     agentMan: AgentManagerMediator,
     messageEmitter: EventEmitter,
+    config: Config,
     log: Logger
   ) {
     super()
+    this._refreshInterval = parseInt(
+      config.get('ENEBULAR_DEVICE_STATE_REFRESH_INTERVAL')
+    )
+    if (isNaN(this._refreshInterval) || this._refreshInterval < 1) {
+      throw new Error('Invalid device state refresh interval')
+    }
     this._agentMan = agentMan
     this._log = log
     messageEmitter.on('deviceStateChange', params =>
@@ -146,14 +156,28 @@ export default class DeviceStateManager extends EventEmitter {
   }
 
   async _refreshStatesFromAgentManager(stateTypes: Array<string>) {
-    this._debug('Getting states...')
+    this._info(`Refreshing states (${stateTypes.join()})...`)
     try {
-      const getStates = stateTypes.map(stateType => ({
-        type: stateType
-        // todo: uId
-      }))
+      const getStates = stateTypes.map(stateType => {
+        let getState = {
+          type: stateType
+        }
+        const currentState = this._getStateForType(stateType)
+        if (currentState && currentState.meta) {
+          getState.baseUpdateId = currentState.meta.uId
+        }
+        return getState
+      })
       const states = await this._agentMan.getDeviceState(getStates)
       for (let state of states) {
+        /**
+         * Agent-manager will only return state if it's required (i.e the
+         * current uId is greater than the baseUpdateId in the request)
+         */
+        if (state.meta && !state.state) {
+          this._info(`No refresh of '${state.type}' state required`)
+          continue
+        }
         /**
          * Note that if the state doesn't yet exist then agent-manager will
          * return a successful result, but the state object will just have its
@@ -165,6 +189,7 @@ export default class DeviceStateManager extends EventEmitter {
           this._error('Invalid state: ' + JSON.stringify(state, null, 2))
           continue
         }
+        this._info(`Refreshed '${state.type}' state`)
         this._setStateForType(state.type, state)
         this._notifyStateChange(state.type)
       }
@@ -331,8 +356,15 @@ export default class DeviceStateManager extends EventEmitter {
       return
     }
     this._active = active
+
+    clearInterval(this._refreshIntervalID)
+
     if (this._active) {
       this._refreshStatesFromAgentManager(['desired', 'reported', 'status'])
+
+      this._refreshIntervalID = setInterval(() => {
+        this._refreshStatesFromAgentManager(['desired'])
+      }, this._refreshInterval * 1000)
     }
   }
 

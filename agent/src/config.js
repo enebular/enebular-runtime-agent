@@ -73,6 +73,11 @@ export default class Config {
         description: '',
         userExpose: false
       },
+      ENEBULAR_DEVICE_STATE_REFRESH_INTERVAL: {
+        value: 60 * 60 * 4,
+        description: 'Device state refresh interval',
+        userExpose: true
+      },
       ENEBULAR_ASSETS_DATA_PATH: {
         value: p.resolve(portBasePath, 'assets'),
         description: 'Assets data directory path',
