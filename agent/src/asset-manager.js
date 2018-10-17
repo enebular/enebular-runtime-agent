@@ -114,7 +114,7 @@ export default class AssetManager {
     }
   }
 
-  _deserializeAsset(serializedAsset: {}): Asset {
+  _deserializeAsset(serializedAsset: Object): Asset {
     switch (serializedAsset.type) {
       case 'file':
         break
@@ -166,7 +166,7 @@ export default class AssetManager {
     }
   }
 
-  async _handleDeviceStateChange(params: {}) {
+  async _handleDeviceStateChange(params: { type: string, path: ?string }) {
     if (!this._inited) {
       return
     }
@@ -283,7 +283,7 @@ export default class AssetManager {
     )
   }
 
-  _getReportedAssetState(assetId: string): {} {
+  _getReportedAssetState(assetId: string): ?Object {
     const reportedState = this._deviceStateMan.getState('reported', 'assets')
     if (!reportedState || !reportedState.assets) {
       return null
@@ -391,7 +391,7 @@ export default class AssetManager {
     }
   }
 
-  _getFirstPendingChangeAsset(): Asset {
+  _getFirstPendingChangeAsset(): ?Asset {
     if (this._assets.length < 1) {
       return null
     }

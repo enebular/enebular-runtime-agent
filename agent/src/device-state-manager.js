@@ -12,13 +12,13 @@ import type Config from './config'
 const moduleName = 'device-state-man'
 
 export default class DeviceStateManager extends EventEmitter {
-  _agentMan: AgentManagerMediator = null
+  _agentMan: AgentManagerMediator
   _fqDeviceId: string
   _log: Logger
-  _desiredState: {} = null
-  _reportedState: {} = null
-  _statusState: {} = null
-  _stateUpdates: Array<{}> = []
+  _desiredState: ?Object = null
+  _reportedState: ?Object = null
+  _statusState: ?Object = null
+  _stateUpdates: Array<Object> = []
   _sendingStateUpdates: boolean = false
   _active: boolean = false
   _refreshInterval: number
@@ -99,7 +99,7 @@ export default class DeviceStateManager extends EventEmitter {
   }
 
   // returns a copy
-  _getStateForType(type: string): {} {
+  _getStateForType(type: string): ?Object {
     switch (type) {
       case 'desired':
         return this._desiredState ? Object.assign({}, this._desiredState) : null
@@ -114,7 +114,7 @@ export default class DeviceStateManager extends EventEmitter {
     }
   }
 
-  _setStateForType(type: string, state: {}) {
+  _setStateForType(type: string, state: ?Object) {
     switch (type) {
       case 'desired':
         this._desiredState = state
@@ -132,7 +132,7 @@ export default class DeviceStateManager extends EventEmitter {
     this._debug(`Set '${type}' state: ` + JSON.stringify(state, null, 2))
   }
 
-  _getMetaHash(state: {}): string {
+  _getMetaHash(state: Object): string {
     let hashObj = {
       fqDeviceId: this._fqDeviceId,
       type: state.type,
@@ -147,11 +147,11 @@ export default class DeviceStateManager extends EventEmitter {
     return objectHash(hashObj, { algorithm: 'sha1', encoding: 'base64' })
   }
 
-  _stateIsValid(state: {}): boolean {
+  _stateIsValid(state: ?Object): boolean {
     return state && state.meta && this._getMetaHash(state) === state.meta.hash
   }
 
-  _notifyStateChange(type: string, path: string) {
+  _notifyStateChange(type: string, path: ?string) {
     this.emit('stateChange', { type, path })
   }
 
@@ -204,10 +204,10 @@ export default class DeviceStateManager extends EventEmitter {
   _newStateWithChanges(
     type: string,
     op: string,
-    path: string,
-    state: {},
-    meta: {}
-  ): {} {
+    path: ?string,
+    state: ?Object,
+    meta: ?Object
+  ): Object {
     if (op !== 'set' && op !== 'remove') {
       throw new Error('Unsupported operation type: ' + op)
     }
@@ -243,7 +243,7 @@ export default class DeviceStateManager extends EventEmitter {
     return newState
   }
 
-  _handleDeviceStateChange(params: {}) {
+  _handleDeviceStateChange(params: Object) {
     this._debug('State change: ' + JSON.stringify(params, null, 2))
 
     const { type, op, path, state, meta } = params
@@ -324,7 +324,7 @@ export default class DeviceStateManager extends EventEmitter {
     return this._isFunctional() && this._stateForTypeExists(type)
   }
 
-  updateState(type: string, op: string, path: string, state: {}) {
+  updateState(type: string, op: string, path: ?string, state: ?Object) {
     if (!this._isWritableStateType(type)) {
       throw new Error('Attempted to update unwritable state type: ' + type)
     }
@@ -354,7 +354,7 @@ export default class DeviceStateManager extends EventEmitter {
     this._sendStateUpdates()
   }
 
-  getState(type: string, path: string): {} {
+  getState(type: string, path: string): ?Object {
     const state = this._getStateForType(type)
     if (state && path) {
       return objectPath.get(state.state, path)

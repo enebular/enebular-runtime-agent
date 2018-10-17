@@ -27,7 +27,7 @@ export default class AgentInfoManager {
     //
   }
 
-  async _handleDeviceStateChange(params) {
+  async _handleDeviceStateChange(params: { type: string, path: ?string }) {
     const { type, path } = params
     if (type !== 'status' || (path && !path.startsWith('agent'))) {
       return

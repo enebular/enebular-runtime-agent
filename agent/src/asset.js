@@ -11,15 +11,15 @@ export default class Asset {
   _type: string
   _id: string
   updateId: string
-  config: {}
+  config: Object
   state: string
-  changeTs: string
-  changeErrMsg: string
-  pendingUpdateId: string
-  pendingChange: string // (deploy|remove)
-  pendingConfig: {}
+  changeTs: number
+  changeErrMsg: ?string
+  pendingUpdateId: ?string
+  pendingChange: ?string // (deploy|remove)
+  pendingConfig: ?Object
   updateAttemptCount: number = 0
-  lastAttemptedUpdateId: string
+  lastAttemptedUpdateId: ?string
 
   constructor(type: string, id: string, assetMan: AssetManager) {
     this._type = type
@@ -64,7 +64,7 @@ export default class Asset {
     this.changeTs = Date.now()
   }
 
-  setPendingChange(change: string, updateId: string, config: {}) {
+  setPendingChange(change: string, updateId: ?string, config: ?Object) {
     let name = config ? config.name : null
     if (!name) {
       name = this.config ? this.config.name : this._id
@@ -106,7 +106,7 @@ export default class Asset {
     }
   }
 
-  async _runCommandHook(hook: {}) {
+  async _runCommandHook(hook: Object) {
     const [cmd, ...args] = hook.cmdTypeConfig.cmd.split(/\s+/)
     const cmdPath = path.join(this._assetMan.dataDir(), cmd)
     this._info('Command: ' + [cmdPath].concat(args).join(' '))
@@ -164,7 +164,7 @@ export default class Asset {
     this._debug('Command executed')
   }
 
-  async _runHook(hook: {}) {
+  async _runHook(hook: Object) {
     this._info('Running hook...')
 
     switch (hook.type) {
@@ -190,7 +190,7 @@ export default class Asset {
     }
   }
 
-  async deploy(): boolean {
+  async deploy(): Promise<boolean> {
     this._info(`Deploying asset '${this.name()}'...`)
 
     let cleanUpDestDir = true
@@ -279,7 +279,7 @@ export default class Asset {
     return true
   }
 
-  async remove(): boolean {
+  async remove(): Promise<boolean> {
     this._info(`Removing asset '${this.name()}'...`)
 
     try {
