@@ -57,7 +57,7 @@ export default class AssetManager {
     )
   }
 
-  dataDir() {
+  dataDir(): string {
     return this._dataDir
   }
 
@@ -114,7 +114,7 @@ export default class AssetManager {
     }
   }
 
-  _deserializeAsset(serializedAsset): Asset {
+  _deserializeAsset(serializedAsset: {}): Asset {
     switch (serializedAsset.type) {
       case 'file':
         break
@@ -169,7 +169,7 @@ export default class AssetManager {
     }
   }
 
-  async _handleDeviceStateChange(params) {
+  async _handleDeviceStateChange(params: {}) {
     if (!this._inited) {
       return
     }
@@ -274,7 +274,7 @@ export default class AssetManager {
     this._processPendingChanges()
   }
 
-  _removeAssetReportedState(assetId) {
+  _removeAssetReportedState(assetId: string) {
     if (!this._deviceStateMan.canUpdateState('reported')) {
       return
     }
@@ -297,7 +297,7 @@ export default class AssetManager {
   }
 
   // Only updates the reported state if required (if there is a difference)
-  _updateAssetReportedState(asset) {
+  _updateAssetReportedState(asset: Asset) {
     if (!this._deviceStateMan.canUpdateState('reported')) {
       return
     }
@@ -404,7 +404,7 @@ export default class AssetManager {
     return null
   }
 
-  _setAssetState(asset, state) {
+  _setAssetState(asset: Asset, state: string) {
     asset.setState(state)
     this._updateAssetReportedState(asset)
   }

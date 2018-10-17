@@ -51,22 +51,22 @@ export default class Asset {
     this._assetMan.error(msg, ...args)
   }
 
-  _destDirPath() {
+  _destDirPath(): string {
     if (!this.config.destPath) {
       return this._assetMan.dataDir()
     }
     return path.join(this._assetMan.dataDir(), this.config.destPath)
   }
 
-  type() {
+  type(): string {
     return this._type
   }
 
-  id() {
+  id(): string {
     return this._id
   }
 
-  name() {
+  name(): string {
     return this.config.name
   }
 

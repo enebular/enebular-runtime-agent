@@ -59,7 +59,7 @@ export default class DeviceStateManager extends EventEmitter {
     this._log.error(msg, ...args)
   }
 
-  _isSupportedStateType(type): boolean {
+  _isSupportedStateType(type: string): boolean {
     switch (type) {
       case 'desired': // fall-through
       case 'reported': // fall-through
@@ -70,7 +70,7 @@ export default class DeviceStateManager extends EventEmitter {
     }
   }
 
-  _isWritableStateType(type): boolean {
+  _isWritableStateType(type: string): boolean {
     switch (type) {
       case 'reported': // fall-through
       case 'status':
@@ -81,7 +81,7 @@ export default class DeviceStateManager extends EventEmitter {
     }
   }
 
-  _isFunctional() {
+  _isFunctional(): boolean {
     return this._active && this._fqDeviceId
   }
 
@@ -132,7 +132,7 @@ export default class DeviceStateManager extends EventEmitter {
     this._debug(`Set '${type}' state: ` + JSON.stringify(state, null, 2))
   }
 
-  _getMetaHash(state): string {
+  _getMetaHash(state: {}): string {
     let hashObj = {
       fqDeviceId: this._fqDeviceId,
       type: state.type,
@@ -147,7 +147,7 @@ export default class DeviceStateManager extends EventEmitter {
     return objectHash(hashObj, { algorithm: 'sha1', encoding: 'base64' })
   }
 
-  _stateIsValid(state: {}) {
+  _stateIsValid(state: {}): boolean {
     return state && state.meta && this._getMetaHash(state) === state.meta.hash
   }
 
@@ -158,6 +158,7 @@ export default class DeviceStateManager extends EventEmitter {
   async _refreshStatesFromAgentManager(stateTypes: Array<string>) {
     this._info(`Refreshing states (${stateTypes.join()})...`)
     try {
+      // Create request states
       const getStates = stateTypes.map(stateType => {
         let getState = {
           type: stateType
@@ -168,6 +169,8 @@ export default class DeviceStateManager extends EventEmitter {
         }
         return getState
       })
+
+      // Get and apply states
       const states = await this._agentMan.getDeviceState(getStates)
       for (let state of states) {
         /**
@@ -198,7 +201,13 @@ export default class DeviceStateManager extends EventEmitter {
     }
   }
 
-  _newStateWithChanges(type, op, path, state, meta) {
+  _newStateWithChanges(
+    type: string,
+    op: string,
+    path: string,
+    state: {},
+    meta: {}
+  ): {} {
     let currentState = this._getStateForType(type)
     if (!currentState && op === 'remove') {
       this._info('Attempted remove operation with no previous state')
@@ -229,7 +238,7 @@ export default class DeviceStateManager extends EventEmitter {
     return newState
   }
 
-  _handleDeviceStateChange(params) {
+  _handleDeviceStateChange(params: {}) {
     this._debug('State change: ' + JSON.stringify(params, null, 2))
 
     const { type, op, path, state, meta } = params
@@ -312,7 +321,7 @@ export default class DeviceStateManager extends EventEmitter {
     this._sendingStateUpdates = false
   }
 
-  canUpdateState(type: string) {
+  canUpdateState(type: string): boolean {
     return this._isFunctional() && this._stateForTypeExists(type)
   }
 
@@ -347,7 +356,7 @@ export default class DeviceStateManager extends EventEmitter {
     this._sendStateUpdates()
   }
 
-  getState(type: string, path: string) {
+  getState(type: string, path: string): {} {
     const state = this._getStateForType(type)
     if (state && path) {
       return objectPath.get(state.state, path)

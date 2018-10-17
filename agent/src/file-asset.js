@@ -10,19 +10,19 @@ import progress from 'request-progress'
 import Asset from './asset'
 
 export default class FileAsset extends Asset {
-  _fileName() {
+  _fileName(): string {
     return this.config.fileTypeConfig.filename
   }
 
-  _filePath() {
+  _filePath(): string {
     return path.join(this._destDirPath(), this.config.fileTypeConfig.filename)
   }
 
-  _key() {
+  _key(): string {
     return this.config.fileTypeConfig.internalSrcConfig.key
   }
 
-  _execArgs() {
+  _execArgs(): string {
     return this.config.fileTypeConfig.execConfig.args
   }
 
@@ -127,12 +127,12 @@ export default class FileAsset extends Asset {
     return envs.concat([this._filePath(), this._execArgs()]).join(' ')
   }
 
-  _execArgsArray() {
+  _execArgsArray(): Array<string> {
     let args = this._execArgs()
     return args ? args.split(/\s+/) : []
   }
 
-  _execEnvObj() {
+  _execEnvObj(): {} {
     const envs = this._execEnvs()
     let env = Object.assign({}, process.env)
     if (envs) {
