@@ -14,6 +14,13 @@ export default class FileAsset extends Asset {
     return this.config.fileTypeConfig.filename
   }
 
+  _fileSubPath(): string {
+    if (!this.config.destPath) {
+      return this.config.fileTypeConfig.filename
+    }
+    return path.join(this.config.destPath, this.config.fileTypeConfig.filename)
+  }
+
   _filePath(): string {
     return path.join(this._destDirPath(), this.config.fileTypeConfig.filename)
   }
@@ -114,17 +121,18 @@ export default class FileAsset extends Asset {
           integrity
       )
     }
-    this._debug('Integrity matched: ' + integrity)
+    this._info('File integrity matched: ' + integrity)
   }
 
   async _install() {
     const mode = this.config.fileTypeConfig.exec ? 0o740 : 0o640
     fs.chmodSync(this._filePath(), mode)
+    this._info('File installed to: ' + this._fileSubPath())
   }
 
   _fileExecCmd(): string {
     const envs = this._execEnvs() ? this._execEnvs() : []
-    return envs.concat([this._filePath(), this._execArgs()]).join(' ')
+    return envs.concat([this._fileSubPath(), this._execArgs()]).join(' ')
   }
 
   _execArgsArray(): Array<string> {
@@ -145,14 +153,12 @@ export default class FileAsset extends Asset {
   }
 
   async _execFile() {
+    this._info('Executing file...')
+    this._info('File command: ' + this._fileExecCmd())
+
     const args = this._execArgsArray()
     const env = this._execEnvObj()
-    const cmd = this._fileExecCmd()
     const cwd = this._destDirPath()
-
-    this._debug('Executing file...')
-    this._debug('Command: ' + cmd)
-
     const that = this
     await new Promise((resolve, reject) => {
       const cproc = spawn(that._filePath(), args, {
