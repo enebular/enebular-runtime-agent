@@ -297,11 +297,12 @@ export default class EnebularAgent extends EventEmitter {
 
   async shutdown() {
     this._deviceAuth.endAuthAttempt()
-    this._assetManager.activate(false)
     if (this._monitoringActivated) {
       await this._agentMan.notifyStatus('disconnected')
     }
     await this._nodeRed.shutdownService()
+    this._assetManager.activate(false)
+    this._deviceStateManager.activate(false)
     await this._logManager.shutdown()
     this._activateMonitoring(false)
     if (this._config.get('ENEBULAR_DAEMON_MODE')) {

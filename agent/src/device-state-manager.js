@@ -208,10 +208,15 @@ export default class DeviceStateManager extends EventEmitter {
     state: {},
     meta: {}
   ): {} {
+    if (op !== 'set' && op !== 'remove') {
+      throw new Error('Unsupported operation type: ' + op)
+    }
+    if (op === 'set' && !state) {
+      throw new Error('No state provided for set operation')
+    }
     let currentState = this._getStateForType(type)
     if (!currentState && op === 'remove') {
-      this._info('Attempted remove operation with no previous state')
-      return
+      throw new Error('Attempted remove operation with no previous state')
     }
 
     let newState = {
@@ -220,14 +225,14 @@ export default class DeviceStateManager extends EventEmitter {
     }
 
     if (op === 'set') {
-      if (path && path.length > 0) {
+      if (path) {
         newState.state = currentState ? currentState.state : {}
         objectPath.set(newState.state, path, state)
       } else {
         newState.state = state
       }
     } else {
-      if (path && path.length > 0) {
+      if (path) {
         newState.state = currentState.state
         objectPath.del(newState.state, path)
       } else {
@@ -245,14 +250,6 @@ export default class DeviceStateManager extends EventEmitter {
 
     if (!this._isSupportedStateType(type)) {
       this._info('Unsupported state type: ' + type)
-      return
-    }
-    if (op !== 'set' && op !== 'remove') {
-      this._info('Unsupported operation type: ' + op)
-      return
-    }
-    if (op === 'set' && !state) {
-      this._info('No state provided for set operation')
       return
     }
 
@@ -279,7 +276,7 @@ export default class DeviceStateManager extends EventEmitter {
     }
     this._sendingStateUpdates = true
 
-    while (this._stateUpdates.length > 0) {
+    while (this._stateUpdates.length > 0 && this._active) {
       let updates = this._stateUpdates
       let updatesLen = updates.length
       this._stateUpdates = []
@@ -312,7 +309,9 @@ export default class DeviceStateManager extends EventEmitter {
         await delay(1 * 1000)
       } catch (err) {
         this._error('Failed to send state updates: ' + err.message)
-        await delay(5 * 1000)
+        const pauseSec = 60
+        this._info(`Pausing state updates send for ${pauseSec} seconds`)
+        await delay(pauseSec * 1000)
       }
 
       this._stateUpdates = updates.concat(this._stateUpdates)
@@ -346,7 +345,6 @@ export default class DeviceStateManager extends EventEmitter {
     this._setStateForType(type, newState)
 
     // Push update
-    // Todo: merge in same path updates?
     this._stateUpdates.push({
       type: type,
       op: op,
