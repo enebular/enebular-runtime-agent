@@ -275,8 +275,12 @@ test.serial(
   'Core.8: Agent receives status notification periodically - normal',
   async t => {
     let notifyStatusReceived = 0
+    let lastNotifyTime
     server.on('notifyStatus', req => {
       notifyStatusReceived++
+      if (lastNotifyTime)
+      console.log("interval to last notify: " + (Date.now() - lastNotifyTime))
+      lastNotifyTime = Date.now()
     })
 
     const ret = await createAuthenticatedAgent(
@@ -284,8 +288,8 @@ test.serial(
       server,
       Utils.addNodeRedPortToConfig(
         {
-          ENEBULAR_MONITOR_INTERVAL_FAST: 1,
-          ENEBULAR_MONITOR_INTERVAL_FAST_PERIOD: 2,
+          ENEBULAR_MONITOR_INTERVAL_FAST: 2,
+          ENEBULAR_MONITOR_INTERVAL_FAST_PERIOD: 4,
           ENEBULAR_MONITOR_INTERVAL_NORMAL: 6
         },
         NodeRedPort
@@ -294,7 +298,7 @@ test.serial(
     )
     agent = ret.agent
 
-    let runningTime = 17
+    let runningTime = 19
     return new Promise(async (resolve, reject) => {
       setTimeout(() => {
         t.is(
