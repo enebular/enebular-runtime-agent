@@ -38,17 +38,21 @@
     "flow-copy-source": "^1.3.0",
     "get-folder-size": "^2.0.0",
     "multer": "^1.3.0",
-    "prettier": "^1.12.1",
-    "rimraf": "^2.6.2"
+    "prettier": "^1.12.1"
   },
   "dependencies": {
     "babel-preset-flow": "^6.23.0",
     "babel-runtime": "^6.23.0",
+    "commander": "^2.16.0",
     "form-data": "^2.3.2",
     "isomorphic-fetch": "^2.2.1",
     "jsonwebtoken": "^8.2.1",
+    "object-hash": "^1.3.0",
+    "object-path": "^0.11.4",
+    "request": "^2.88.0",
+    "request-progress": "^3.0.0",
+    "rimraf": "^2.6.2",
     "winston": "^2.4.2",
-    "commander": "^2.16.0",
     "winston-syslog": "^1.2.6"
   },
   "ava": {

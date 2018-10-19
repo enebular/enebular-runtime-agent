@@ -5,6 +5,9 @@ import ConnectorService from './connector-service'
 import EnebularActivator from './enebular-activator'
 import DeviceAuthMediator from './device-auth-mediator'
 import AgentManagerMediator from './agent-manager-mediator'
+import DeviceStateManager from './device-state-manager'
+import AgentInfoManager from './agent-info-manager'
+import AssetManager from './asset-manager'
 import NodeREDController from './node-red-controller'
 import LogManager from './log-manager'
 import CommandLine from './command-line'
@@ -81,6 +84,9 @@ export default class EnebularAgent extends EventEmitter {
   _nodeRed: NodeREDController
   _deviceAuth: DeviceAuthMediator
   _agentMan: AgentManagerMediator
+  _deviceStateManager: DeviceStateManager
+  _agentInfoManager: AgentInfoManager
+  _assetManager: AssetManager
 
   _connectionId: ?string
   _deviceId: ?string
@@ -158,6 +164,25 @@ export default class EnebularAgent extends EventEmitter {
     this._logManager.setEnebularAgentManager(this._agentMan)
 
     this._messageEmitter = new EventEmitter()
+
+    this._deviceStateManager = new DeviceStateManager(
+      this._agentMan,
+      this._messageEmitter,
+      this._config,
+      this._log
+    )
+
+    this._agentInfoManager = new AgentInfoManager(
+      this._deviceStateManager,
+      this._log
+    )
+
+    this._assetManager = new AssetManager(
+      this._deviceStateManager,
+      this._agentMan,
+      this._config,
+      this._log
+    )
 
     this._nodeRed = new NodeREDController(
       this._messageEmitter,
@@ -261,6 +286,9 @@ export default class EnebularAgent extends EventEmitter {
     }
     this._loadAgentConfig()
 
+    await this._agentInfoManager.setup()
+    await this._assetManager.setup()
+
     if (this._connector.init) {
       this._connector.init()
     }
@@ -273,6 +301,8 @@ export default class EnebularAgent extends EventEmitter {
       await this._agentMan.notifyStatus('disconnected')
     }
     await this._nodeRed.shutdownService()
+    this._assetManager.activate(false)
+    this._deviceStateManager.activate(false)
     await this._logManager.shutdown()
     this._activateMonitoring(false)
     if (this._config.get('ENEBULAR_DAEMON_MODE')) {
@@ -446,6 +476,9 @@ export default class EnebularAgent extends EventEmitter {
       this._deviceId
     )
     this._agentMan.setBaseUrl(this._agentManagerBaseUrl)
+    this._deviceStateManager.setFqDeviceId(
+      `${this._connectionId}::${this._deviceId}`
+    )
   }
 
   async _onChangeState() {
@@ -462,6 +495,8 @@ export default class EnebularAgent extends EventEmitter {
         break
       case 'authenticated':
         await this._activateMonitoring(true)
+        this._deviceStateManager.activate(true)
+        this._assetManager.activate(true)
         break
     }
   }
@@ -611,6 +646,7 @@ export default class EnebularAgent extends EventEmitter {
         }
         break
       case 'deploy':
+      case 'deviceStateChange':
         this._refreshMonitoringInterval()
         break
       default:
