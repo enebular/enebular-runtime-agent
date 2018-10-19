@@ -20,9 +20,9 @@ export async function createStartedAgent(
 
   agentConfig = Object.assign(Utils.createDefaultAgentConfig(1990), agentConfig)
   let agent = new EnebularAgent({
-      portBasePath: path.resolve(__dirname, '../'),
-      connector: connector,
-      config: agentConfig
+    portBasePath: path.resolve(__dirname, '../'),
+    connector: connector,
+    config: agentConfig
   })
 
   await agent.startup()
@@ -39,9 +39,9 @@ export async function createConnectedAgent(
   })
   agentConfig = Object.assign(Utils.createDefaultAgentConfig(1990), agentConfig)
   let agent = new EnebularAgent({
-      portBasePath: path.resolve(__dirname, '../'),
-      connector: connector,
-      config: agentConfig
+    portBasePath: path.resolve(__dirname, '../'),
+    connector: connector,
+    config: agentConfig
   })
 
   return new Promise(async (resolve, reject) => {
@@ -108,12 +108,42 @@ export async function createUnauthenticatedAgent(
   )
 }
 
-export function nodeRedIsAlive(port, timeout) {
+export function polling(callback, initialDelay, interval, timeout) {
   return new Promise((resolve, reject) => {
-    setTimeout(async () => {
-      const api = new NodeRedAdminApi('http://127.0.0.1:' + port)
-      const settings = await api.getSettings()
-      resolve(!!settings)
-    }, timeout || 500)
+    const cb = () => {
+      const intervalObj = setInterval(async () => {
+        if (await callback()) {
+          resolve(true)
+        }
+      }, interval)
+      setTimeout(async () => {
+        clearInterval(intervalObj)
+        resolve(false)
+        // max waiting time
+      }, timeout)
+    }
+    if (initialDelay) {
+      setTimeout(cb, initialDelay)
+    }
+    else {
+      cb()
+    }
+  })
+}
+
+export function nodeRedIsAlive(port) {
+  const callback = async () => {
+    const api = new NodeRedAdminApi('http://127.0.0.1:' + port)
+    const settings = await api.getSettings()
+    return !!settings
+  }
+  return polling(callback, 0, 500, 10000)
+}
+
+export function nodeRedIsDead(port) {
+  return new Promise(async (resolve, reject) => {
+    const api = new NodeRedAdminApi('http://127.0.0.1:' + port)
+    const settings = await api.getSettings()
+    resolve(!settings)
   })
 }

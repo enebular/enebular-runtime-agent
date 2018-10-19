@@ -63,9 +63,9 @@ test.serial(
     agentConfig['ENEBULAR_CONFIG_PATH'] = configFile
 
     agent = new EnebularAgent({
-        portBasePath: path.resolve(__dirname, '../'),
-        connector: connector,
-        config: agentConfig
+      portBasePath: path.resolve(__dirname, '../'),
+      connector: connector,
+      config: agentConfig
     })
 
     return new Promise(async (resolve, reject) => {
@@ -87,7 +87,10 @@ test.serial('Core.2: Agent correctly handle register message', async t => {
   const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
   const ret = await createConnectedAgent(
     t,
-    Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
+    Utils.addNodeRedPortToConfig(
+      { ENEBULAR_CONFIG_PATH: configFile },
+      NodeRedPort
+    )
   )
   agent = ret.agent
   const config = {
@@ -124,7 +127,10 @@ test.serial(
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
     const ret = await createConnectedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig(
+        { ENEBULAR_CONFIG_PATH: configFile },
+        NodeRedPort
+      )
     )
     agent = ret.agent
     const config = {
@@ -163,7 +169,10 @@ test.serial(
     const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
     const ret = await createConnectedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig(
+        { ENEBULAR_CONFIG_PATH: configFile },
+        NodeRedPort
+      )
     )
     agent = ret.agent
     return new Promise((resolve, reject) => {
@@ -266,8 +275,12 @@ test.serial(
   'Core.8: Agent receives status notification periodically - normal',
   async t => {
     let notifyStatusReceived = 0
+    let lastNotifyTime
     server.on('notifyStatus', req => {
       notifyStatusReceived++
+      if (lastNotifyTime)
+      console.log("interval to last notify: " + (Date.now() - lastNotifyTime))
+      lastNotifyTime = Date.now()
     })
 
     const ret = await createAuthenticatedAgent(
@@ -275,8 +288,8 @@ test.serial(
       server,
       Utils.addNodeRedPortToConfig(
         {
-          ENEBULAR_MONITOR_INTERVAL_FAST: 1,
-          ENEBULAR_MONITOR_INTERVAL_FAST_PERIOD: 2,
+          ENEBULAR_MONITOR_INTERVAL_FAST: 2,
+          ENEBULAR_MONITOR_INTERVAL_FAST_PERIOD: 4,
           ENEBULAR_MONITOR_INTERVAL_NORMAL: 6
         },
         NodeRedPort
@@ -285,7 +298,7 @@ test.serial(
     )
     agent = ret.agent
 
-    let runningTime = 17
+    let runningTime = 19
     return new Promise(async (resolve, reject) => {
       setTimeout(() => {
         t.is(

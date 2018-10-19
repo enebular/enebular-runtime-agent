@@ -101,7 +101,10 @@ test.serial('Auth.3: Agent handles auth request failure(http)', async t => {
   })
   const ret = await createConnectedAgent(
     t,
-    Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
+    Utils.addNodeRedPortToConfig(
+      { ENEBULAR_CONFIG_PATH: configFile },
+      NodeRedPort
+    )
   )
   agent = ret.agent
   return new Promise(async (resolve, reject) => {
@@ -133,7 +136,10 @@ test.serial(
     const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
     const ret = await createConnectedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig(
+        { ENEBULAR_CONFIG_PATH: configFile },
+        NodeRedPort
+      )
     )
     agent = ret.agent
     connector = ret.connector
@@ -170,7 +176,10 @@ test.serial(
     const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
     const ret = await createConnectedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig(
+        { ENEBULAR_CONFIG_PATH: configFile },
+        NodeRedPort
+      )
     )
     agent = ret.agent
     connector = ret.connector
@@ -242,7 +251,10 @@ test.serial(
     )
     const ret = await createConnectedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig(
+        { ENEBULAR_CONFIG_PATH: configFile },
+        NodeRedPort
+      )
     )
     agent = ret.agent
 
