@@ -11,6 +11,7 @@
 #define OBJECT_ID_REGISTER          (26243)
 #define OBJECT_ID_AUTH_TOKEN        (26244)
 #define OBJECT_ID_CONFIG            (26245)
+#define OBJECT_ID_AGENT_INFO        (26246)
 
 #define RESOURCE_ID_DOWNLOAD_URL            (26241)
 #define RESOURCE_ID_CONNECTION_ID           (26241)
@@ -21,6 +22,7 @@
 #define RESOURCE_ID_ID_TOKEN                (26242)
 #define RESOURCE_ID_STATE                   (26243)
 #define RESOURCE_ID_MONITOR_ENABLE          (26241)
+#define RESOURCE_ID_AGENT_INFO              (26241)
 
 #define MAX_RESOURCE_SET_UPDATE_GAP (10)
 
@@ -80,6 +82,9 @@ EnebularAgentMbedCloudClient::EnebularAgentMbedCloudClient(EnebularAgentMbedClou
 
 EnebularAgentMbedCloudClient::~EnebularAgentMbedCloudClient()
 {
+    if (_agent_info) {
+        free(_agent_info);
+    }
     delete _clientCallback;
     pthread_mutex_destroy(&_lock);
 }
@@ -89,37 +94,42 @@ void EnebularAgentMbedCloudClient::setup_objects()
     _deploy_flow_download_url_res = add_rw_resource(
         OBJECT_ID_DEPLOY_FLOW, 0, RESOURCE_ID_DOWNLOAD_URL, "download_url",
         M2MResourceInstance::STRING, NULL, false,
-        value_updated_callback(this, &EnebularAgentMbedCloudClient::deploy_flow_download_url_cb));
+        value_updated_callback(this, &EnebularAgentMbedCloudClient::deploy_flow_download_url_cb), 0);
 
     _register_connection_id_res = add_rw_resource(
         OBJECT_ID_REGISTER, 0, RESOURCE_ID_CONNECTION_ID, "connection_id",
         M2MResourceInstance::STRING, NULL, false,
-        value_updated_callback(this, &EnebularAgentMbedCloudClient::register_connection_id_cb));
+        value_updated_callback(this, &EnebularAgentMbedCloudClient::register_connection_id_cb), 0);
     _register_device_id_res = add_rw_resource(
         OBJECT_ID_REGISTER, 0, RESOURCE_ID_DEVICE_ID, "device_id",
         M2MResourceInstance::STRING, NULL, false,
-        value_updated_callback(this, &EnebularAgentMbedCloudClient::register_device_id_cb));
+        value_updated_callback(this, &EnebularAgentMbedCloudClient::register_device_id_cb), 0);
     _register_auth_request_url_res = add_rw_resource(
         OBJECT_ID_REGISTER, 0, RESOURCE_ID_AUTH_REQUEST_URL, "auth_request_url",
         M2MResourceInstance::STRING, NULL, false,
-        value_updated_callback(this, &EnebularAgentMbedCloudClient::register_auth_request_url_cb));
+        value_updated_callback(this, &EnebularAgentMbedCloudClient::register_auth_request_url_cb), 0);
     _register_agent_manager_base_url_res = add_rw_resource(
         OBJECT_ID_REGISTER, 0, RESOURCE_ID_AGENT_MANAGER_BASE_URL, "agent_manager_base_url",
         M2MResourceInstance::STRING, NULL, false,
-        value_updated_callback(this, &EnebularAgentMbedCloudClient::register_agent_manager_base_url_cb));
+        value_updated_callback(this, &EnebularAgentMbedCloudClient::register_agent_manager_base_url_cb), 0);
 
     _update_auth_access_token_res = add_rw_resource(
         OBJECT_ID_AUTH_TOKEN, 0, RESOURCE_ID_ACCEESS_TOKEN, "access_token",
         M2MResourceInstance::STRING, NULL, false,
-        value_updated_callback(this, &EnebularAgentMbedCloudClient::update_auth_access_token_cb));
+        value_updated_callback(this, &EnebularAgentMbedCloudClient::update_auth_access_token_cb), 0);
     _update_auth_id_token_res = add_rw_resource(
         OBJECT_ID_AUTH_TOKEN, 0, RESOURCE_ID_ID_TOKEN, "id_token",
         M2MResourceInstance::STRING, NULL, false,
-        value_updated_callback(this, &EnebularAgentMbedCloudClient::update_auth_id_token_cb));
+        value_updated_callback(this, &EnebularAgentMbedCloudClient::update_auth_id_token_cb), 0);
     _update_auth_state_res = add_rw_resource(
         OBJECT_ID_AUTH_TOKEN, 0, RESOURCE_ID_STATE, "state",
         M2MResourceInstance::STRING, NULL, false,
-        value_updated_callback(this, &EnebularAgentMbedCloudClient::update_auth_state_cb));
+        value_updated_callback(this, &EnebularAgentMbedCloudClient::update_auth_state_cb), 0);
+
+    _agent_info_res = add_rw_resource(
+        OBJECT_ID_AGENT_INFO, 0, RESOURCE_ID_AGENT_INFO, "agent_info",
+        M2MResourceInstance::STRING, NULL, true,
+        value_updated_callback(this, &EnebularAgentMbedCloudClient::agent_info_cb), 30);
 }
 
 void EnebularAgentMbedCloudClient::process_deploy_flow_update()
@@ -283,6 +293,21 @@ void EnebularAgentMbedCloudClient::update_auth_state_cb(const char *name)
     process_update_auth_update();
 }
 
+/* Note: called from separate thread */
+void EnebularAgentMbedCloudClient::agent_info_cb(const char *name)
+{
+    _logger->log_console(DEBUG, "Client: update_agent_info: %s",
+        _agent_info_res->get_value_string().c_str());
+
+    const char *val;
+
+    pthread_mutex_lock(&_lock);
+    val = (_agent_info) ? _agent_info : "-";
+    pthread_mutex_unlock(&_lock);
+
+    _agent_info_res->set_value((uint8_t *)val, strlen(val));
+}
+
 bool EnebularAgentMbedCloudClient::init_fcc()
 {
     fcc_status_e status;
@@ -381,6 +406,18 @@ bool EnebularAgentMbedCloudClient::is_connecting()
 bool EnebularAgentMbedCloudClient::is_connected()
 {
     return _registered;
+}
+
+void EnebularAgentMbedCloudClient::set_agent_info(const char *info)
+{
+    pthread_mutex_lock(&_lock);
+
+    if (_agent_info) {
+        free(_agent_info);
+    }
+    _agent_info = strdup(info);
+
+    pthread_mutex_unlock(&_lock);
 }
 
 void EnebularAgentMbedCloudClient::on_connection_change(ClientConnectionStateCB cb)
@@ -580,7 +617,8 @@ M2MResource *EnebularAgentMbedCloudClient::add_resource(
         const char *value,
         bool observable,
         value_updated_callback value_updated_cb,
-        execute_callback execute_cb)
+        execute_callback execute_cb,
+        uint32_t max_age)
 {
     M2MObject *obj = NULL;
     M2MObjectInstance *obj_inst = NULL;
@@ -612,6 +650,9 @@ M2MResource *EnebularAgentMbedCloudClient::add_resource(
     if (value) {
         resource->set_value((const unsigned char*)value, strlen(value));
     }
+    if (max_age != 0) {
+        resource->set_max_age(max_age);
+    }
     resource->set_operation(operations);
     if (operations & M2MResourceInstance::PUT_ALLOWED) {
         resource->set_value_updated_function(value_updated_cb);
@@ -638,7 +679,8 @@ M2MResource *EnebularAgentMbedCloudClient::add_execute_resource(
     uint16_t instance_id,
     uint16_t resource_id,
     const char *resource_type,
-    execute_callback execute_cb)
+    execute_callback execute_cb,
+    uint32_t max_age)
 {
     return add_resource(
         object_id,
@@ -650,7 +692,8 @@ M2MResource *EnebularAgentMbedCloudClient::add_execute_resource(
         NULL,
         false,
         NULL,
-        execute_cb);
+        execute_cb,
+        max_age);
 }
 
 M2MResource *EnebularAgentMbedCloudClient::add_rw_resource(
@@ -661,7 +704,8 @@ M2MResource *EnebularAgentMbedCloudClient::add_rw_resource(
     M2MResourceInstance::ResourceType data_type,
     const char *value,
     bool observable,
-    value_updated_callback value_updated_cb)
+    value_updated_callback value_updated_cb,
+    uint32_t max_age)
 {
     return add_resource(
         object_id,
@@ -673,5 +717,6 @@ M2MResource *EnebularAgentMbedCloudClient::add_rw_resource(
         value,
         observable,
         value_updated_cb,
-        NULL);
+        NULL,
+        max_age);
 }

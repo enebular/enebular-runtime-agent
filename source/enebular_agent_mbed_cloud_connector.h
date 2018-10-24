@@ -123,6 +123,7 @@ private:
     void connection_request_cb(bool connect);
     void client_connection_change_cb();
     void agent_manager_message_cb(const char *type, const char *content);
+    void agent_info_cb(const char *type);
 
 };
 

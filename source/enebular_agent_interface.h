@@ -12,6 +12,7 @@ class Logger;
 typedef FP0<void> AgentConnectionChangeCB;
 typedef FP0<void> ConnectorRegistrationRequestCB;
 typedef FP1<void, bool> ConnectorConnectionRequestCB;
+typedef FP1<void, const char *> AgentInfoCB;
 
 /**
  * The enebular agent interface.
@@ -83,6 +84,15 @@ public:
     void on_connection_request(ConnectorConnectionRequestCB cb);
 
     /**
+     * Sets the agent info callback.
+     *
+     * Only one callback can be set.
+     *
+     * @param cb Callback
+     */
+    void on_agent_info(AgentInfoCB cb);
+
+    /**
      * Send an agent-manager message to the agent.
      *
      * @param type      Message type
@@ -133,6 +143,7 @@ private:
     vector<AgentConnectionChangeCB> _agent_conn_change_cbs;
     ConnectorRegistrationRequestCB _registration_request_cb;
     ConnectorConnectionRequestCB _connection_request_cb;
+    AgentInfoCB _agent_info_cb;
 
     bool connect_agent();
     void disconnect_agent();
@@ -143,6 +154,7 @@ private:
     void notify_conntection_state();
     void notify_registration_request();
     void notify_connection_request(bool connect);
+    void notify_agent_info(const char *info);
     void update_connected_state(bool connected);
 
 };

@@ -59,6 +59,11 @@ void EnebularAgentInterface::notify_connection_request(bool connect)
     _connection_request_cb.call(connect);
 }
 
+void EnebularAgentInterface::notify_agent_info(const char *info)
+{
+    _agent_info_cb.call(info);
+}
+
 void EnebularAgentInterface::update_connected_state(bool connected)
 {
     _is_connected = connected;
@@ -78,6 +83,10 @@ void EnebularAgentInterface::handle_recv_msg(const char *msg)
         } else {
             _logger->log_console(INFO, "Agent: received unexpected ok");
         }
+
+    } else if (strncmp(msg, "agent: ", strlen("agent: ")) == 0) {
+
+        notify_agent_info(msg + strlen("agent: "));
 
     } else if (strcmp(msg, "register") == 0) {
 
@@ -400,4 +409,9 @@ void EnebularAgentInterface::on_registration_request(ConnectorRegistrationReques
 void EnebularAgentInterface::on_connection_request(ConnectorConnectionRequestCB cb)
 {
     _connection_request_cb = cb;
+}
+
+void EnebularAgentInterface::on_agent_info(AgentInfoCB cb)
+{
+    _agent_info_cb = cb;
 }
