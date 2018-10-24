@@ -147,6 +147,7 @@ private:
     M2MResource *_update_auth_id_token_res;
     M2MResource *_update_auth_state_res;
     M2MResource *_agent_info_res;
+    M2MResource *_device_state_change_res;
 
     unsigned long long _register_connection_id_time;
     unsigned long long _register_device_id_time;
@@ -208,12 +209,14 @@ private:
     void update_auth_id_token_cb(const char *name);
     void update_auth_state_cb(const char *name);
     void agent_info_cb(const char *name);
+    void device_state_change_cb(const char *name);
 
     //void example_execute_function(void * argument);
 
     void process_deploy_flow_update();
     void process_register_update();
     void process_update_auth_update();
+    void process_device_state_change();
 
     void queue_agent_man_msg(const char *type, const char *content);
 

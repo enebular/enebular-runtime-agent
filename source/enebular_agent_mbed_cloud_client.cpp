@@ -7,11 +7,12 @@
 #include "enebular_agent_mbed_cloud_connector.h"
 #include "enebular_agent_mbed_cloud_client.h"
 
-#define OBJECT_ID_DEPLOY_FLOW       (26242)
-#define OBJECT_ID_REGISTER          (26243)
-#define OBJECT_ID_AUTH_TOKEN        (26244)
-#define OBJECT_ID_CONFIG            (26245)
-#define OBJECT_ID_AGENT_INFO        (26246)
+#define OBJECT_ID_DEPLOY_FLOW           (26242)
+#define OBJECT_ID_REGISTER              (26243)
+#define OBJECT_ID_AUTH_TOKEN            (26244)
+#define OBJECT_ID_CONFIG                (26245)
+#define OBJECT_ID_AGENT_INFO            (26246)
+#define OBJECT_ID_DEVICE_STATE          (26247)
 
 #define RESOURCE_ID_DOWNLOAD_URL            (26241)
 #define RESOURCE_ID_CONNECTION_ID           (26241)
@@ -23,6 +24,7 @@
 #define RESOURCE_ID_STATE                   (26243)
 #define RESOURCE_ID_MONITOR_ENABLE          (26241)
 #define RESOURCE_ID_AGENT_INFO              (26241)
+#define RESOURCE_ID_DEVICE_STATE_CHANGE     (26241)
 
 #define MAX_RESOURCE_SET_UPDATE_GAP (10)
 
@@ -130,6 +132,11 @@ void EnebularAgentMbedCloudClient::setup_objects()
         OBJECT_ID_AGENT_INFO, 0, RESOURCE_ID_AGENT_INFO, "agent_info",
         M2MResourceInstance::STRING, NULL, true,
         value_updated_callback(this, &EnebularAgentMbedCloudClient::agent_info_cb), 30);
+
+    _device_state_change_res = add_rw_resource(
+        OBJECT_ID_DEVICE_STATE, 0, RESOURCE_ID_DEVICE_STATE_CHANGE, "device_state_change",
+        M2MResourceInstance::STRING, NULL, false,
+        value_updated_callback(this, &EnebularAgentMbedCloudClient::device_state_change_cb), 0);
 }
 
 void EnebularAgentMbedCloudClient::process_deploy_flow_update()
@@ -212,6 +219,12 @@ void EnebularAgentMbedCloudClient::process_update_auth_update()
     _update_auth_access_token_time = 0;
     _update_auth_id_token_time = 0;
     _update_auth_state_time = 0;
+}
+
+void EnebularAgentMbedCloudClient::process_device_state_change()
+{
+    queue_agent_man_msg("deviceStateChange",
+        _device_state_change_res->get_value_string().c_str());
 }
 
 /* Note: called from separate thread */
@@ -306,6 +319,15 @@ void EnebularAgentMbedCloudClient::agent_info_cb(const char *name)
     pthread_mutex_unlock(&_lock);
 
     _agent_info_res->set_value((uint8_t *)val, strlen(val));
+}
+
+/* Note: called from separate thread */
+void EnebularAgentMbedCloudClient::device_state_change_cb(const char *name)
+{
+    _logger->log_console(DEBUG, "Client: device_state_change: %s",
+        _device_state_change_res->get_value_string().c_str());
+
+    process_device_state_change();
 }
 
 bool EnebularAgentMbedCloudClient::init_fcc()
