@@ -7,10 +7,11 @@ import { Server } from 'net'
 import EnebularAgent from '../src/enebular-agent'
 import Utils from './helpers/utils'
 import DummyServer from './helpers/dummy-server'
-import { createAuthenticatedAgent } from './helpers/agent-helper'
+import { createAuthenticatedAgent, polling } from './helpers/agent-helper'
 
 const DummyServerPort = 3006
 const NodeRedPort = 4006
+const MonitoringActiveDelay = 10 * 1000
 
 let agent: EnebularAgent
 let server: DummyServer
@@ -120,6 +121,17 @@ test.serial('Log.2: Log is sent to server periodically', async t => {
   )
   agent = ret.agent
 
+  t.true(
+    await polling(
+      () => {
+        return agent._monitoringActive
+      },
+      MonitoringActiveDelay,
+      500,
+      3000
+    )
+  )
+
   t.is(agent._logManager._enebularTransport._sendInterval, interval)
 
   const data = fs.readFileSync(path.join(__dirname, 'data', 'text.1k'), 'utf8')
@@ -163,6 +175,17 @@ test.serial('Log.3: Log level is handled correctly', async t => {
     DummyServerPort
   )
   agent = ret.agent
+
+  t.true(
+    await polling(
+      () => {
+        return agent._monitoringActive
+      },
+      MonitoringActiveDelay,
+      500,
+      3000
+    )
+  )
 
   t.is(agent._logManager._enebularTransport._sendInterval, interval)
 
