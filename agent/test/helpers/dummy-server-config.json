@@ -4,6 +4,10 @@
   "verifyLicenseURL": "/enebular/verify-license",
   "notifyStatusURL": "/agent-manager/notify-status",
   "recordLogsURL": "/agent-manager/record-logs",
+  "deviceStateGetURL": "/agent-manager/device/device-state/get",
+  "deviceStateUpdateURL": "/agent-manager/device/device-state/update",
+  "deviceAssetsFileDataURL": "/agent-manager/device/assets/get-internal-file-data-url",
+  "downloadAssetURL": "/test/download-asset",
   "downloadFlowURL": "/test/download-flow",
   "credsURL": "/test/creds"
 }

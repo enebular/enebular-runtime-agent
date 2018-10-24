@@ -1,5 +1,6 @@
 import fs from 'fs'
 import DummyServerConfig from './dummy-server-config'
+import objectHash from 'object-hash'
 
 export default class Utils {
   static randomString() {
@@ -104,5 +105,41 @@ export default class Utils {
     agentConfig['NODE_RED_COMMAND'] =
       './node_modules/.bin/node-red -p ' + nodeRedPort
     return agentConfig
+  }
+
+  static getMetaHash(state) {
+    let hashObj = {
+      fqDeviceId: state.fqDeviceId,
+      type: state.type,
+      state: state.state,
+      meta: {
+        v: state.meta.v,
+        ts: state.meta.ts,
+        uId: state.meta.uId,
+        pHash: state.meta.pHash
+      }
+    }
+    return objectHash(hashObj, { algorithm: 'sha1', encoding: 'base64' })
+  }
+
+  static getDummyStatusState(type, v) {
+    let new_state = {
+      fqDeviceId: 'dummy_connectionId::dummy_deviceId',
+      type: 'status',
+      meta: {
+        pHash: '-',
+        ts: Date.now(),
+        v: 1,
+        uId: 1,
+      },
+      state: {
+        agent: {
+          type: type,
+          v: v
+        }
+      }
+    }
+    new_state.meta.hash = Utils.getMetaHash(new_state)
+    return new_state
   }
 }
