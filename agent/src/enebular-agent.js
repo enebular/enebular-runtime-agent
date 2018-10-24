@@ -99,7 +99,9 @@ export default class EnebularAgent extends EventEmitter {
   _log: Logger
 
   _connectorRegisteringForActivation: boolean
-  _monitoringActivated: boolean = false
+  _monitoringEnabled: boolean = true
+  _monitoringShutdown: boolean = false
+  _monitoringActive: boolean = false
   _monitoringUpdateID: ?number
   _monitorIntervalFast: number
   _monitorIntervalFastPeriod: number
@@ -170,6 +172,9 @@ export default class EnebularAgent extends EventEmitter {
       this._messageEmitter,
       this._config,
       this._log
+    )
+    this._deviceStateManager.on('stateChange', params =>
+      this._handleDeviceStateChange(params)
     )
 
     this._agentInfoManager = new AgentInfoManager(
@@ -289,6 +294,8 @@ export default class EnebularAgent extends EventEmitter {
     await this._agentInfoManager.setup()
     await this._assetManager.setup()
 
+    this._updateMonitoringFromDesiredState()
+
     if (this._connector.init) {
       this._connector.init()
     }
@@ -297,35 +304,91 @@ export default class EnebularAgent extends EventEmitter {
 
   async shutdown() {
     this._deviceAuth.endAuthAttempt()
-    if (this._monitoringActivated) {
+    if (this._monitoringActive) {
       await this._agentMan.notifyStatus('disconnected')
     }
     await this._nodeRed.shutdownService()
     this._assetManager.activate(false)
     this._deviceStateManager.activate(false)
     await this._logManager.shutdown()
-    this._activateMonitoring(false)
+    this._monitoringShutdown = true
+    this._updateMonitoringActiveState()
     if (this._config.get('ENEBULAR_DAEMON_MODE')) {
       this._removePIDFile()
     }
   }
 
-  _activateMonitoring(active: boolean) {
-    if (active === this._monitoringActivated) {
+  async _handleDeviceStateChange(params: { type: string, path: ?string }) {
+    if (params.path && !params.path.startsWith('monitoring')) {
       return
     }
 
-    this._monitoringActivated = active
+    switch (params.type) {
+      case 'desired':
+        this._updateMonitoringFromDesiredState()
+        break
+      case 'reported':
+        this._updateMonitoringReportedState()
+        break
+      default:
+        break
+    }
+  }
 
-    if (active) {
+  _updateMonitoringFromDesiredState() {
+    const desiredState = this._deviceStateManager.getState(
+      'desired',
+      'monitoring'
+    )
+
+    if (desiredState && desiredState.hasOwnProperty('enable')) {
+      this._monitoringEnabled = desiredState.enable
+      this._updateMonitoringActiveState()
+      this._updateMonitoringReportedState()
+    }
+  }
+
+  _updateMonitoringReportedState() {
+    if (!this._deviceStateManager.canUpdateState('reported')) {
+      return
+    }
+
+    const reportedState = this._deviceStateManager.getState(
+      'reported',
+      'monitoring'
+    )
+
+    if (!reportedState || reportedState.enable !== this._monitoringEnabled) {
+      this._deviceStateManager.updateState('reported', 'set', 'monitoring', {
+        enable: this._monitoringEnabled
+      })
+    }
+  }
+
+  _updateMonitoringActiveState() {
+    let shouldBeActive
+    if (this._monitoringShutdown) {
+      shouldBeActive = false
+    } else {
+      shouldBeActive =
+        this._agentState === 'authenticated' && this._monitoringEnabled
+    }
+
+    if (shouldBeActive === this._monitoringActive) {
+      return
+    }
+
+    this._monitoringActive = shouldBeActive
+
+    if (this._monitoringActive) {
       this._log.info('Activating monitoring...')
       this._refreshMonitoringInterval()
     } else {
       this._log.info('Deactivating monitoring...')
     }
 
-    this._logManager.activateEnebular(active)
-    this._activateStatusNotification(active)
+    this._logManager.activateEnebular(this._monitoringActive)
+    this._activateStatusNotification(this._monitoringActive)
   }
 
   _refreshMonitoringInterval() {
@@ -333,7 +396,7 @@ export default class EnebularAgent extends EventEmitter {
       clearTimeout(this._monitoringUpdateID)
       this._monitoringUpdateID = null
     }
-    if (this._monitoringActivated) {
+    if (this._monitoringActive) {
       this._setMonitoringInterval(this._monitorIntervalFast)
       this._monitoringUpdateID = setTimeout(() => {
         this._setMonitoringInterval(this._monitorIntervalNormal)
@@ -483,7 +546,7 @@ export default class EnebularAgent extends EventEmitter {
 
   async _onChangeState() {
     if (this._agentState !== 'authenticated') {
-      this._activateMonitoring(false)
+      this._updateMonitoringActiveState()
     }
     switch (this._agentState) {
       case 'registered':
@@ -494,9 +557,11 @@ export default class EnebularAgent extends EventEmitter {
       case 'unregistered':
         break
       case 'authenticated':
-        await this._activateMonitoring(true)
         this._deviceStateManager.activate(true)
         this._assetManager.activate(true)
+        setTimeout(() => {
+          this._updateMonitoringActiveState()
+        }, 10 * 1000)
         break
     }
   }
