@@ -10,7 +10,7 @@
 #include "enebular_agent_mbed_cloud_connector.h"
 
 #define PROGRAM_NAME    "enebular-agent-mbed-cloud-connector"
-#define PROGRAM_VERSION "1.0.1"
+#define PROGRAM_VERSION "1.1.0"
 
 /**
  * Comments from the example:
