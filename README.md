@@ -42,6 +42,14 @@ To view the logs on enebular, the device must be a 'paid' device.
 
 enebular-agent provides simple reporting on its status to enebular (when it has been made a 'paid' device).
 
+## Desktop Editor Mode
+
+enebular-agent can be used to connect to a local enebular desktop editor, the editor will need to be installed manually. When launching enebular-agent, it needs to be started in desktop editor mode in order to talk with desktop editor, example:
+```sh
+cd ports/awsiot
+DESKTOP_EDITOR_URL=http://192.xxx.xx.xx:9000 ./bin/enebular-awsiot-agent
+```
+
 ## Structure
 
 enebular-agent is implemented as a collection of Node.js modules. Its core runtime functionality is implemented as the `enebular-runtime-agent` module (under the `agent` directory). On top of this, there is a module for each of the supported IoT platform connection types (under the `ports` directory). Each of the ports includes the enebular-runtime-agent core module as a dependency. See below for more information on the ports.
