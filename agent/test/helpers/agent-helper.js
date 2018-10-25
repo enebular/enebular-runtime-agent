@@ -113,6 +113,7 @@ export function polling(callback, initialDelay, interval, timeout) {
     const cb = () => {
       const intervalObj = setInterval(async () => {
         if (await callback()) {
+          clearInterval(intervalObj)
           resolve(true)
         }
       }, interval)
@@ -124,8 +125,7 @@ export function polling(callback, initialDelay, interval, timeout) {
     }
     if (initialDelay) {
       setTimeout(cb, initialDelay)
-    }
-    else {
+    } else {
       cb()
     }
   })

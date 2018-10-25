@@ -11,12 +11,14 @@ import Utils from './helpers/utils'
 import DummyServer from './helpers/dummy-server'
 import DummyServerConfig from './helpers/dummy-server-config'
 import {
+  polling,
   createConnectedAgent,
   createAuthenticatedAgent
 } from './helpers/agent-helper'
 
 const DummyServerPort = 3005
 const NodeRedPort = 4005
+const MonitoringActiveDelay = 10 * 1000
 
 let agent: EnebularAgent
 let server: DummyServer
@@ -202,7 +204,27 @@ test.serial(
       DummyServerPort
     )
     agent = ret.agent
-    t.true(notifyStatusReceived)
+
+    t.true(
+      await polling(
+        () => {
+          return agent._monitoringActive
+        },
+        MonitoringActiveDelay,
+        500,
+        3000
+      )
+    )
+    t.true(
+      await polling(
+        () => {
+          return notifyStatusReceived
+        },
+        0,
+        500,
+        5000
+      )
+    )
   }
 )
 
@@ -223,16 +245,30 @@ test.serial(
     )
     agent = ret.agent
 
+    t.true(
+      await polling(
+        () => {
+          return agent._monitoringActive
+        },
+        MonitoringActiveDelay,
+        500,
+        3000
+      )
+    )
     // shut down agent should trigger records-log request
     await agent.shutdown()
     agent = null
 
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        t.true(recordLogsReceived)
-        resolve()
-      }, 500)
-    })
+    t.true(
+      await polling(
+        () => {
+          return recordLogsReceived
+        },
+        0,
+        500,
+        5000
+      )
+    )
   }
 )
 
@@ -258,6 +294,17 @@ test.serial(
     )
     agent = ret.agent
 
+    t.true(
+      await polling(
+        () => {
+          return agent._monitoringActive
+        },
+        MonitoringActiveDelay,
+        500,
+        3000
+      )
+    )
+
     let runningTime = 8
     return new Promise(async (resolve, reject) => {
       setTimeout(() => {
@@ -279,7 +326,7 @@ test.serial(
     server.on('notifyStatus', req => {
       notifyStatusReceived++
       if (lastNotifyTime)
-      console.log("interval to last notify: " + (Date.now() - lastNotifyTime))
+        console.log('interval to last notify: ' + (Date.now() - lastNotifyTime))
       lastNotifyTime = Date.now()
     })
 
@@ -297,6 +344,17 @@ test.serial(
       DummyServerPort
     )
     agent = ret.agent
+
+    t.true(
+      await polling(
+        () => {
+          return agent._monitoringActive
+        },
+        MonitoringActiveDelay,
+        500,
+        3000
+      )
+    )
 
     let runningTime = 19
     return new Promise(async (resolve, reject) => {
@@ -332,6 +390,17 @@ test.serial(
       DummyServerPort
     )
     agent = ret.agent
+
+    t.true(
+      await polling(
+        () => {
+          return agent._monitoringActive
+        },
+        MonitoringActiveDelay,
+        500,
+        3000
+      )
+    )
 
     // callback to process unauthentication.
     const authCallback = req => {
