@@ -330,6 +330,8 @@ export default class AssetManager {
     }
     if (asset.config) {
       newStateObj.config = asset.config
+    } else if (asset.state === 'notDeployed' && asset.pendingConfig) {
+      newStateObj.config = asset.pendingConfig
     }
     newStateObj.updateId =
       asset.state === 'notDeployed' ? asset.pendingUpdateId : asset.updateId
