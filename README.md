@@ -33,7 +33,7 @@ enebular-agent accepts flows deployed from enebular and manages a Node-RED insta
 
 ### File Deploys
 
-enebular-agent accepts files deployed from enebular. It supports the optional execution of those files and also running any command hooks that have been configured.
+enebular-agent installs files deployed from enebular. It supports the execution of those files and also running any command hooks that have been configured.
 
 ### Logging
 

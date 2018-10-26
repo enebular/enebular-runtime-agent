@@ -8,7 +8,9 @@ enebular-agent には次の主要機能があります。
 
 - IoT デバイス（エージェント）のアクティベーションと登録、認証
 - Node-RED インスタンスの管理と enebular からデプロイされたフローの実行
+- enebular からのファイルデプロイと実行
 - enebular へのステータス通知およびログ送信
+- enebular desktop editorのサポート
 
 enebular は、サードパーティの IoT プラットフォーム接続を介して enebular-agent と通信します。
 
@@ -29,6 +31,10 @@ enebular-agent が enebular と通信するには、認証のための登録情�
 
 enebular-agent は enebular からデプロイされたフローを Node-RED で実行します。また、フローに npm で公開されているノードが使用されている場合、そのノードを自動的にインストールします。
 
+### ファイルデプロイ
+
+enebular-agent は enebular からデプロイされたファイルをインストールします。また、そのファイルの実行と、指定されたコマンドフックの実行に対応しています。
+
 ### ロギング
 
 enebular-agent は、定期的に enebular にログメッセージを送信します。標準出力ストリーム（コマンドラインのコンソールなど）にもロギングできますが、デフォルトでは有効になっていません。ロギングするには`DEBUG`環境変数を設定します。また、オプションで syslog にロギングすることもできます。設定オプションの詳細については「設定方法」の項を参照してください。
@@ -40,6 +46,10 @@ enebular-agent は、Node-RED が標準出力と標準エラー出力（stdout �
 ### ステータス通知
 
 enebular-agent は有償デバイスの場合に簡易なステータス情報を enebular に送信します。
+
+### Desktop Editorのサポート
+
+enebular-agent は enebular desktop editor と連携して利用することをサポートしています。これによって、desktop editor からローカルネットワークを介して enebular-agent のデバイスに直接にフローをデプロイすることができます。
 
 ## 構成
 
@@ -58,6 +68,16 @@ enebular-agent を利用するには、利用する外部サービスに合わ�
 - **AWS IoT** - AWS IoT と連携して利用します
 - **Local** - ローカルにある他のプログラムと併せて利用します
   - enebular-agent を Mbed Cloud と連携して利用する場合に[enebular-agent Mbed Cloud Connector](https://github.com/enebular/enebular-runtime-agent-mbed-cloud-connector)と併せて利用します。
+
+## Desktop Editor モードの利用
+
+enebular-agent を enebular desktop editor と連携して利用する場合は、enebular-agent を手動でセットアップします。手動のセットアップの詳細情報については、下記の「手動セットアップ」の項を参照してください。そして、 enebular-agent
+ を起動する際に `DESKTOP_EDITOR_URL` 環境変数を設定します。AWS IoT ポートを利用する場合の実行例を下に示します。
+
+```sh
+cd ports/awsiot
+DESKTOP_EDITOR_URL=http://192.xxx.xx.xx:9000 ./bin/enebular-awsiot-agent
+```
 
 ## クイックセットアップ
 
