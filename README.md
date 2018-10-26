@@ -75,7 +75,7 @@ To use enebular-agent with the enebular desktop editor, you will first need to i
 
 ```sh
 cd ports/awsiot
-DESKTOP_EDITOR_URL=http://192.xxx.xx.xx:9000 ./bin/enebular-awsiot-agent
+DESKTOP_EDITOR_URL=http://192.xxx.xx.xx:9017 ./bin/enebular-awsiot-agent
 ```
 
 ## Quick Setup

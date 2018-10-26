@@ -75,7 +75,7 @@ enebular-agent を enebular desktop editor と連携して利用するには、e
 
 ```sh
 cd ports/awsiot
-DESKTOP_EDITOR_URL=http://192.xxx.xx.xx:9000 ./bin/enebular-awsiot-agent
+DESKTOP_EDITOR_URL=http://192.xxx.xx.xx:9017 ./bin/enebular-awsiot-agent
 ```
 
 ## クイックセットアップ
