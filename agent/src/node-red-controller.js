@@ -293,7 +293,8 @@ export default class NodeREDController {
         reject(err)
       })
       this._cproc = cproc
-      this._createPIDFile(this._cproc.pid.toString())
+      if (this._cproc.pid)
+        this._createPIDFile(this._cproc.pid.toString())
       setTimeout(() => resolve(), 1000)
     })
   }
