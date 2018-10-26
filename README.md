@@ -29,6 +29,10 @@ enebular will also automatically update the enebular-agent's authentication info
 
 enebular-agent accepts flows deployed from enebular and manages a Node-RED instance to run them. It will also automatically install any published node modules that are depended on by the flow being deployed.
 
+### File Deploys
+
+enebular-agent accepts files deployed from enebular. It supports the optional execution of those files and also running any command hooks that have been configured.
+
 ### Logging
 
 enebular-agent will periodically send logged messages to enebular. It can also log to its own standard output streams (command-line console), but this is not enabled by default. To have it also log to the console, set the `DEBUG` environment variable. enebular-agent can also optionally log to syslog. See ’Configuration’ below for more information on configuration options.
