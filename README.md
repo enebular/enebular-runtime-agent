@@ -8,6 +8,7 @@ enebular-agent has the following key functionality.
 
 - IoT device (agent) activation, registration and authentication.
 - Management of a Node-RED instance, and deployment and execution of flows sent from enebular to that.
+- Deployment and execution of files sent from enebular.
 - Status and log reporting to enebular.
 
 enebular communicates with enebular-agent via a third-party IoT platform connection.
