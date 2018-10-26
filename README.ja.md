@@ -83,7 +83,7 @@ enebular-agent を AWS IoT と一緒に使用して、新しいモノを自動�
 インストールスクリプトは、次のコマンドで開発用の PC 上の SSH を使用してリモートのデバイスで実行します。
 
 ```sh
-ssh -t <user>@<device-ip-address> "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
+ssh -t <user>@<device-ip-address> "wget -qO- https://enebular.com/agent-install | sudo -E bash -s"
 ```
 
 上記のコマンドパターンではデフォルトで AWS IoT 用の enebular-agent ポートがインストールされます。
@@ -91,7 +91,7 @@ ssh -t <user>@<device-ip-address> "wget -qO- https://raw.githubusercontent.com/e
 例えば、リモートの Raspberry Pi のデフォルトである `pi` ユーザーと `192.168.1.125` の IP アドレスを使用してスクリプトを実行する場合のコマンドは次のようになります。
 
 ```sh
-ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s"
 ```
 
 上記のコマンドで enebular-agent の AWS IoT ポートがインストールされますが、必要な接続情報がまだ設定されていないため、起動することが出来ません。 新しい AWS IoT の*モノ*を自動的に追加して利用したい場合は、上記のコマンドの代わりに下記の「AWS IoT の Thing 自動作成とセットアップ」の説明に従ってください。
@@ -112,7 +112,7 @@ enebular-agent の AWS IoT ポートをインストールし、新しい AWS IoT
 例えば、`pi` ユーザと `192.168.1.125` の IP アドレスを持つ Raspberry Pi デバイスに AWS IoT のポートをインストールし、 `raspberry-pi` という名前の AWS IoT の*モノ*を作成する場合のコマンドは次のようになります。
 
 ```sh
-ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
 ```
 
 ### 確認方法

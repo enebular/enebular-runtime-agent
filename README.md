@@ -96,7 +96,7 @@ If you are using enebular-agent with AWS IoT and you'd like to automatically add
 The install script can be run on a remote device by using SSH on your development PC with the following command pattern.
 
 ```sh
-ssh -t <user>@<device-ip-address> "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
+ssh -t <user>@<device-ip-address> "wget -qO- https://enebular.com/agent-install | sudo -E bash -s"
 ```
 
 This installs the AWS IoT enebular-agent port by default.
@@ -104,7 +104,7 @@ This installs the AWS IoT enebular-agent port by default.
 For example, to run the script on a remote Raspberry Pi with the default `pi` user and an IP address of `192.168.1.125`, the command would be as follows.
 
 ```sh
-ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s"
 ```
 
 This will install the AWS IoT enebular-agent port, but as it will be missing the required connection info it will not actually run. If you'd like to automatically add a new AWS IoT _thing_ to use, then follow the instructions in the "Automatic AWS IoT Thing Creation and Setup" section below instead.
@@ -125,7 +125,7 @@ To install the AWS IoT enebular-agent port and also add a new AWS IoT _thing_ to
 For example, to install the AWS IoT port and create an AWS IoT thing named `raspberry-pi` on a Raspberry Pi device (with the `pi` user and IP address of `192.168.1.125`), the command would be similar to the following.
 
 ```sh
-ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
 ```
 
 ### Confirmation
