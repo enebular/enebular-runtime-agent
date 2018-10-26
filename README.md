@@ -65,7 +65,7 @@ The current ports are:
 
 ## Using Desktop Editor Mode
 
-To use enebular-agent with the enebular desktop editor, you will first need to install enebular-agent manually. For instructions on installing it manually, see the *Manual Setup* section further below. Then when start it, the `DESKTOP_EDITOR_URL` environment variable must be specified. An example of this when using the AWS IoT port is shown below.
+To use enebular-agent with the enebular desktop editor, you will first need to install enebular-agent manually. For instructions on installing it manually, see the *Manual Setup* section further below. Then when starting it, the `DESKTOP_EDITOR_URL` environment variable must be specified. An example of this when using the AWS IoT port is shown below.
 
 ```sh
 cd ports/awsiot
