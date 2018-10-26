@@ -71,8 +71,7 @@ enebular-agent を利用するには、利用する外部サービスに合わ�
 
 ## Desktop Editor モードの利用
 
-enebular-agent を enebular desktop editor と連携して利用する場合は、enebular-agent を手動でセットアップします。手動のセットアップの詳細情報については、下記の「手動セットアップ」の項を参照してください。そして、 enebular-agent
- を起動する際に `DESKTOP_EDITOR_URL` 環境変数を設定します。AWS IoT ポートを利用する場合の実行例を下に示します。
+enebular-agent を enebular desktop editor と連携して利用するには、enebular-agent を手動でセットアップする必要があります。手動セットアップの詳細については、下記「手動セットアップ」の項を参照してください。enebular-agentを起動する際に環境変数 `DESKTOP_EDITOR_URL` が設定されている必要があります。AWS IoT ポートを利用する場合の実行例を以下に示します。
 
 ```sh
 cd ports/awsiot
