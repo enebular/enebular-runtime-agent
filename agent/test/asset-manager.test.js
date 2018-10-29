@@ -130,6 +130,12 @@ async function initAgent(t, deviceStates, tmpAssetDataPath, tmpAssetStatePath,
   return ret
 }
 
+async function waitAssetProcessing(initdelay, timeout) {
+  await polling(() => { 
+      return !agent._assetManager._getFirstPendingChangeAsset() && !agent._assetManager._processingChanges
+  }, initdelay, 1000, timeout)
+}
+
 async function createAgentWithAssetsDeployed(t, assetCount, cleanup) {
   let tmpAssetDataPath = '/tmp/tmp-asset-data-' + Utils.randomString()
   let tmpAssetStatePath = '/tmp/tmp-asset-state-' + Utils.randomString()
@@ -159,9 +165,7 @@ async function createAgentWithAssetsDeployed(t, assetCount, cleanup) {
     })
   })
 
-  await polling(() => { 
-      return !agent._assetManager._getFirstPendingChangeAsset() && !agent._assetManager._processingChanges
-  }, 0, 1000, assetsCount * 2000)
+  await waitAssetProcessing(0, assetsCount * 2000)
 
   const cacheStates = JSON.parse(fs.readFileSync(tmpAssetStatePath, 'utf8'))
   cacheStates.map((state, index) => {
@@ -298,27 +302,14 @@ test.serial('AssetManager.5: Agent deploys new asset via deviceStateChange', asy
 })
 
 test.serial('AssetManager.6: Agent re-deploys existing asset via deviceStateChange', async t => {
-  let tmpAssetDataPath = '/tmp/tmp-asset-data-' + Utils.randomString()
-  let tmpAssetStatePath = '/tmp/tmp-asset-state-' + Utils.randomString()
-  let deviceStates = getEmptyDeviceState(['desired', 'reported', 'status'])
-  let updateReq = []
-  let newAssetId = Utils.randomString()
-  let assetName = 'asset_1.json'
-  const integrity = await Utils.getFileIntegrity(path.join(__dirname, 'data', assetName))
+  let ret = await createAgentWithAssetsDeployed(t, 1, false)
+  let newAssetId = ret.assets[0].id
+  let newAssetName = ret.assets[0].name
 
-  let ret = await initAgent(t, deviceStates, tmpAssetDataPath, tmpAssetStatePath, updateReq, (desiredState) => {
-    addAsset(desiredState, newAssetId, assetName, integrity)
-  })
-
-  await polling(() => { return updateReq.length > 0 }, 0, 100, 10000)
-
-  t.is(updateReq[0].type, 'reported')
-  t.is(updateReq[0].op, 'set')
-  t.is(updateReq[0].state.state, 'deployed')
-
+  ret.reportedStates.length = 0
   // Deplay again
   let updateId = Utils.randomString()
-  let desiredState = modifyAsset(deviceStates[0], newAssetId, 'updateId', updateId)
+  let desiredState = modifyAsset(ret.deviceStates[0], newAssetId, 'updateId', updateId)
   ret.connector.sendMessage('deviceStateChange', {
     type: 'desired',
     op: 'set',
@@ -327,46 +318,36 @@ test.serial('AssetManager.6: Agent re-deploys existing asset via deviceStateChan
     state: desiredState.state.assets.assets[newAssetId]
   })
 
+  await waitAssetProcessing(2000, 5000)
+
   await polling(() => { 
       return !agent._assetManager._getFirstPendingChangeAsset()
   }, 2000, 1000, 5000)
 
-  t.is(updateReq[1].state.state, 'deployPending')
-  t.is(updateReq[2].state.state, 'removing')
-  t.is(updateReq[3].state.state, 'deploying')
-  t.is(updateReq[4].state.state, 'deployed')
-  t.true(fs.existsSync(tmpAssetDataPath + '/dst/asset_1.json'))
-  const state = JSON.parse(fs.readFileSync(tmpAssetStatePath, 'utf8'))
+  t.is(ret.reportedStates[0].state.state, 'deployPending')
+  t.is(ret.reportedStates[1].state.state, 'removing')
+  t.is(ret.reportedStates[2].state.state, 'deploying')
+  t.is(ret.reportedStates[3].state.state, 'deployed')
+  t.true(fs.existsSync(ret.assetDataPath + '/dst/' + newAssetName))
+  const state = JSON.parse(fs.readFileSync(ret.assetStatePath, 'utf8'))
   t.is(state[0].id, newAssetId)
   t.is(state[0].state, 'deployed')
   t.is(state[0].updateId, updateId)
-  t.true(fs.existsSync(tmpAssetDataPath + '/dst/asset_1.json'))
+  t.true(fs.existsSync(ret.assetDataPath + '/dst/' + newAssetName))
 
-  fs.unlinkSync(tmpAssetStatePath)
-  fs.removeSync(tmpAssetDataPath)
+  fs.unlinkSync(ret.assetStatePath)
+  fs.removeSync(ret.assetDataPath)
+  fs.removeSync(ret.randomDataPath)
 })
 
 test.serial('AssetManager.7: Agent removes existing asset via deviceStateChange', async t => {
-  let tmpAssetDataPath = '/tmp/tmp-asset-data-' + Utils.randomString()
-  let tmpAssetStatePath = '/tmp/tmp-asset-state-' + Utils.randomString()
-  let deviceStates = getEmptyDeviceState(['desired', 'reported', 'status'])
-  let updateReq = []
-  let newAssetId = Utils.randomString()
-  let assetName = 'asset_1.json'
-  const integrity = await Utils.getFileIntegrity(path.join(__dirname, 'data', assetName))
+  let ret = await createAgentWithAssetsDeployed(t, 1, false)
+  let newAssetId = ret.assets[0].id
+  let newAssetName = ret.assets[0].name
 
-  let ret = await initAgent(t, deviceStates, tmpAssetDataPath, tmpAssetStatePath, updateReq, (desiredState) => {
-    addAsset(desiredState, newAssetId, assetName, integrity)
-  })
+  ret.reportedStates.length = 0
 
-  await polling(() => { return updateReq.length > 0 }, 0, 100, 10000)
-
-  t.is(updateReq[0].type, 'reported')
-  t.is(updateReq[0].op, 'set')
-  t.is(updateReq[0].state.state, 'deployed')
-
-  let updateId = Utils.randomString()
-  let desiredState = delAsset(deviceStates[0], newAssetId)
+  let desiredState = delAsset(ret.deviceStates[0], newAssetId)
   ret.connector.sendMessage('deviceStateChange', {
     type: 'desired',
     op: 'remove',
@@ -375,50 +356,33 @@ test.serial('AssetManager.7: Agent removes existing asset via deviceStateChange'
     state: desiredState.state.assets.assets[newAssetId]
   })
 
-  await polling(() => { 
-      return !agent._assetManager._getFirstPendingChangeAsset()
-  }, 2000, 1000, 5000)
+  await waitAssetProcessing(2000, 5000)
 
-  console.log(updateReq)
-
-  t.is(updateReq[1].state.state, 'removePending')
-  t.is(updateReq[2].state.state, 'removing')
-  t.is(updateReq[3].op, 'remove')
-  t.false(fs.existsSync(tmpAssetDataPath + '/dst/asset_1.json'))
-  const state = JSON.parse(fs.readFileSync(tmpAssetStatePath, 'utf8'))
+  t.is(ret.reportedStates[0].state.state, 'removePending')
+  t.is(ret.reportedStates[1].state.state, 'removing')
+  t.is(ret.reportedStates[2].op, 'remove')
+  t.false(fs.existsSync(ret.assetDataPath + '/dst/' + newAssetName))
+  const state = JSON.parse(fs.readFileSync(ret.assetStatePath, 'utf8'))
   t.true(state.length == 0)
 
-  fs.unlinkSync(tmpAssetStatePath)
-  fs.removeSync(tmpAssetDataPath)
+  fs.unlinkSync(ret.assetStatePath)
+  fs.removeSync(ret.assetDataPath)
+  fs.removeSync(ret.randomDataPath)
 })
 
 test.serial('AssetManager.8: Agent handles removing asset failure', async t => {
-  let tmpAssetDataPath = '/tmp/tmp-asset-data-' + Utils.randomString()
-  let tmpAssetStatePath = '/tmp/tmp-asset-state-' + Utils.randomString()
-  let deviceStates = getEmptyDeviceState(['desired', 'reported', 'status'])
-  let updateReq = []
-  let newAssetId = Utils.randomString()
-  let assetName = 'asset_1.json'
-  const integrity = await Utils.getFileIntegrity(path.join(__dirname, 'data', assetName))
+  let ret = await createAgentWithAssetsDeployed(t, 1, false)
+  let newAssetId = ret.assets[0].id
+  let newAssetName = ret.assets[0].name
+  let newAssetPath = ret.assetDataPath + '/dst/' + newAssetName
 
-  let ret = await initAgent(t, deviceStates, tmpAssetDataPath, tmpAssetStatePath, updateReq, (desiredState) => {
-    addAsset(desiredState, newAssetId, assetName, integrity)
-    // addAsset(desiredState, Utils.randomString(), 'asset_2.json', integrity)
-  })
-
-  await polling(() => { 
-      return !agent._assetManager._getFirstPendingChangeAsset()
-  }, 2000, 1000, 5000)
-
-  t.is(updateReq[0].type, 'reported')
-  t.is(updateReq[0].op, 'set')
-  t.is(updateReq[0].state.state, 'deployed')
+  ret.reportedStates.length = 0
 
   // change file to directory which fails the removing
-  fs.removeSync(tmpAssetDataPath + '/dst/asset_1.json')
-  fs.mkdirSync(tmpAssetDataPath + '/dst/asset_1.json')
+  fs.removeSync(newAssetPath)
+  fs.mkdirSync(newAssetPath)
 
-  let desiredState = delAsset(deviceStates[0], newAssetId)
+  let desiredState = delAsset(ret.deviceStates[0], newAssetId)
   ret.connector.sendMessage('deviceStateChange', {
     type: 'desired',
     op: 'remove',
@@ -427,23 +391,20 @@ test.serial('AssetManager.8: Agent handles removing asset failure', async t => {
     state: desiredState.state.assets.assets[newAssetId]
   })
 
-  await polling(() => { 
-      return !agent._assetManager._getFirstPendingChangeAsset()
-  }, 2000, 1000, 5000)
+  await waitAssetProcessing(2000, 5000)
 
-  t.is(updateReq[1].state.state, 'removePending')
-  t.is(updateReq[2].state.state, 'removing')
-  t.is(updateReq[3].state.state, 'removeFail')
-  t.true(fs.existsSync(tmpAssetDataPath + '/dst/asset_1.json'))
-  const state = JSON.parse(fs.readFileSync(tmpAssetStatePath, 'utf8'))
-
+  t.is(ret.reportedStates[0].state.state, 'removePending')
+  t.is(ret.reportedStates[1].state.state, 'removing')
+  t.is(ret.reportedStates[2].state.state, 'removeFail')
+  t.true(fs.existsSync(newAssetPath))
+  const state = JSON.parse(fs.readFileSync(ret.assetStatePath, 'utf8'))
   // console.log(JSON.stringify(state, null, 2))
-
   t.is(state[0].id, newAssetId)
   t.is(state[0].state, 'removeFail')
 
-  fs.unlinkSync(tmpAssetStatePath)
-  fs.removeSync(tmpAssetDataPath)
+  fs.unlinkSync(ret.assetStatePath)
+  fs.removeSync(ret.assetDataPath)
+  fs.removeSync(ret.randomDataPath)
 })
 
 test.serial('AssetManager.9: Agent handles multiple assets changes in desired status', async t => {
