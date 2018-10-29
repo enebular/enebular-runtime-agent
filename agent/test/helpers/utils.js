@@ -1,6 +1,7 @@
 import fs from 'fs'
 import DummyServerConfig from './dummy-server-config'
 import objectHash from 'object-hash'
+import crypto from 'crypto'
 
 export default class Utils {
   static randomString() {
@@ -122,24 +123,55 @@ export default class Utils {
     return objectHash(hashObj, { algorithm: 'sha1', encoding: 'base64' })
   }
 
-  static getDummyStatusState(type, v) {
+  static getDummyState(type, state) {
     let new_state = {
       fqDeviceId: 'dummy_connectionId::dummy_deviceId',
-      type: 'status',
+      type: type,
       meta: {
         pHash: '-',
         ts: Date.now(),
         v: 1,
         uId: 1,
       },
-      state: {
+      state: state
+    }
+    new_state.meta.hash = Utils.getMetaHash(new_state)
+    return new_state
+  }
+
+  static getDummyStatusState(type, v) {
+    return Utils.getDummyState('status', {
         agent: {
           type: type,
           v: v
         }
-      }
-    }
-    new_state.meta.hash = Utils.getMetaHash(new_state)
-    return new_state
+    })
+  }
+
+  static getFileIntegrity(path: string) {
+    return new Promise((resolve, reject) => {
+      const hash = crypto.createHash('sha256')
+      const file = fs.createReadStream(path)
+      file.on('data', data => {
+        hash.update(data)
+      })
+      file.on('end', () => {
+        const digest = hash.digest('base64')
+        resolve(digest)
+      })
+      file.on('error', err => {
+        reject(err)
+      })
+    })
+  }
+
+  static createFileOfSize(fileName, size) {
+    return new Promise((resolve, reject) => {
+        let f = fs.openSync(fileName, 'w')
+        for (let i = 0; i < size / 10; i++)
+          fs.writeSync(f, Utils.randomString())
+        fs.closeSync(f)
+        resolve(true)
+    })
   }
 }

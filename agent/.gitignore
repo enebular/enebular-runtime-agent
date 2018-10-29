@@ -21,3 +21,5 @@ node_modules
 .env
 .DS_Store
 .enebular-config.json
+
+test/data/tmp

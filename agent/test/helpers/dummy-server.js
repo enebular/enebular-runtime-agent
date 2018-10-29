@@ -71,21 +71,25 @@ export default class DummyServer extends EventEmitter {
     })
 
     app.post(DummyServerConfig.deviceAssetsFileDataURL, (req, res) => {
-      console.log('get-internal-file-data-url', req.body)
       res.send({
         url: "http://127.0.0.1:" + port + "/test/download-asset?key=" + req.body.key,
       })
     })
 
     app.get(DummyServerConfig.downloadAssetURL, (req, res) => {
-      console.log('download-asset', req.query)
-      const assetPath = path.join(
-        __dirname,
-        '..',
-        'data',
-        req.query.key
-      )
-      res.sendFile(assetPath)
+      if (this.downloadAssetReturnError) {
+        res.status(301).send({})
+      }
+      else {
+        const assetPath = path.join(
+          __dirname,
+          '..',
+          req.query.key.startsWith('random') ? 'data/tmp' : 'data',
+          req.query.key
+        )
+        console.log(assetPath)
+        res.sendFile(assetPath)
+      }
     })
 
     app.get(DummyServerConfig.downloadFlowURL, (req, res) => {
