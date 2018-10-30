@@ -132,7 +132,7 @@ export default class Utils {
         pHash: '-',
         ts: Date.now(),
         v: 1,
-        uId: 1,
+        uId: 1
       },
       state: state
     }
@@ -142,10 +142,10 @@ export default class Utils {
 
   static getDummyStatusState(type, v) {
     return Utils.getDummyState('status', {
-        agent: {
-          type: type,
-          v: v
-        }
+      agent: {
+        type: type,
+        v: v
+      }
     })
   }
 
@@ -159,7 +159,7 @@ export default class Utils {
         type: 'reported',
         state: {}
       },
-      Utils.getDummyStatusState("enebular-agent", agentVer)
+      Utils.getDummyStatusState('enebular-agent', agentVer)
     ]
   }
 
@@ -182,11 +182,10 @@ export default class Utils {
 
   static createFileOfSize(fileName, size) {
     return new Promise((resolve, reject) => {
-        let f = fs.openSync(fileName, 'w')
-        for (let i = 0; i < size / 10; i++)
-          fs.writeSync(f, Utils.randomString())
-        fs.closeSync(f)
-        resolve(true)
+      let f = fs.openSync(fileName, 'w')
+      for (let i = 0; i < size / 10; i++) fs.writeSync(f, Utils.randomString())
+      fs.closeSync(f)
+      resolve(true)
     })
   }
 }

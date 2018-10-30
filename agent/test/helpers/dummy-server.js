@@ -57,30 +57,29 @@ export default class DummyServer extends EventEmitter {
     })
     app.post(DummyServerConfig.deviceStateGetURL, (req, res) => {
       server.emit('deviceStateGet', req.body)
-      if (this.onDeviceStateGet)
-        this.onDeviceStateGet(req, res)
-      else
-        res.status(400).send({})
+      if (this.onDeviceStateGet) this.onDeviceStateGet(req, res)
+      else res.status(400).send({})
     })
     app.post(DummyServerConfig.deviceStateUpdateURL, (req, res) => {
       server.emit('deviceStateUpdate', req.body)
-      if (this.onDeviceStateUpdate)
-        this.onDeviceStateUpdate(req, res)
-      else
-        res.status(400).send({})
+      if (this.onDeviceStateUpdate) this.onDeviceStateUpdate(req, res)
+      else res.status(400).send({})
     })
 
     app.post(DummyServerConfig.deviceAssetsFileDataURL, (req, res) => {
       res.send({
-        url: "http://127.0.0.1:" + port + "/test/download-asset?key=" + req.body.key,
+        url:
+          'http://127.0.0.1:' +
+          port +
+          '/test/download-asset?key=' +
+          req.body.key
       })
     })
 
     app.get(DummyServerConfig.downloadAssetURL, (req, res) => {
       if (this.downloadAssetReturnError) {
         res.status(301).send({})
-      }
-      else {
+      } else {
         const assetPath = path.join(
           __dirname,
           '..',
