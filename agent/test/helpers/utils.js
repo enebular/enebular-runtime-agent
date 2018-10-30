@@ -2,6 +2,7 @@ import fs from 'fs'
 import DummyServerConfig from './dummy-server-config'
 import objectHash from 'object-hash'
 import crypto from 'crypto'
+import { version as agentVer } from '../../package.json'
 
 export default class Utils {
   static randomString() {
@@ -146,6 +147,20 @@ export default class Utils {
           v: v
         }
     })
+  }
+
+  static getEmptyDeviceState() {
+    return [
+      {
+        type: 'desired',
+        state: {}
+      },
+      {
+        type: 'reported',
+        state: {}
+      },
+      Utils.getDummyStatusState("enebular-agent", agentVer)
+    ]
   }
 
   static getFileIntegrity(path: string) {

@@ -228,24 +228,21 @@ test.serial('DeviceState.7: Device should update status if agent version in stat
 })
 
 test.serial('DeviceState.8: Device should NOT update status if status matches', async t => {
-  let deviceStateUpdateReceived = false
+  let deviceStatusStateUpdateReceived = false
   server.onDeviceStateGet = (req, res) => {
-    let _states = req.body.states.map(state => {
-      switch (state.type) {
-      case 'desired':
-      case 'reported':
-        return {
-          type: state.type,
-          state: {}
-        }
-      case 'status':
-        return Utils.getDummyStatusState("enebular-agent", agentVer)
-      }
-    })
-    res.send({ states: _states })
+    res.send({ states: Utils.getEmptyDeviceState()})
   }
   server.onDeviceStateUpdate = (req, res) => {
-    deviceStateUpdateReceived = true
+    const result = req.body.updates.map(update => {
+      if (update.type == 'status') {
+        deviceStatusStateUpdateReceived = true
+      }
+      return {
+        success: true,
+        meta: {}
+      }
+    })
+    res.send({ updates: result })
   }
 
   const ret = await createAuthenticatedAgent(
@@ -256,7 +253,7 @@ test.serial('DeviceState.8: Device should NOT update status if status matches', 
   )
   agent = ret.agent
   const callback = () => {
-    return deviceStateUpdateReceived
+    return deviceStatusStateUpdateReceived
   }
   t.false(await polling(callback, 0, 100, 3000))
 })
@@ -290,5 +287,37 @@ test.serial('DeviceState.9: Device retries if status updates fail', async t => {
   }
   t.true(await polling(callback, 0, 100, 1000 * 65))
 })
+
+test.serial('DeviceState.10: Device should update monitoring state if not existed in reported state', async t => {
+  let monitoringStateUpdateReceived = false
+  server.onDeviceStateGet = (req, res) => {
+    res.send({ states: Utils.getEmptyDeviceState()})
+  }
+  server.onDeviceStateUpdate = (req, res) => {
+    const result = req.body.updates.map(update => {
+      if (update.type == 'reported' && update.path == 'monitoring') {
+        monitoringStateUpdateReceived = true
+      }
+      return {
+        success: true,
+        meta: {}
+      }
+    })
+    res.send({ updates: result })
+  }
+
+  const ret = await createAuthenticatedAgent(
+    t,
+    server,
+    Utils.addNodeRedPortToConfig({}, NodeRedPort),
+    DummyServerPort
+  )
+  agent = ret.agent
+  const callback = () => {
+    return monitoringStateUpdateReceived
+  }
+  t.true(await polling(callback, 0, 100, 3000))
+})
+
 
 

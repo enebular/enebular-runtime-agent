@@ -14,7 +14,6 @@ import { createConnectedAgent,
          polling } from './helpers/agent-helper'
 
 import objectPath from 'object-path'
-import { version as agentVer } from '../package.json'
 
 const DummyServerPort = 3007
 const NodeRedPort = 4007
@@ -52,20 +51,6 @@ test.afterEach.always('cleanup', async t => {
     agent = null
   }
 })
-
-function getEmptyDeviceState(states) {
-  return [
-    {
-      type: 'desired',
-      state: {}
-    },
-    {
-      type: 'reported',
-      state: {}
-    },
-    Utils.getDummyStatusState("enebular-agent", agentVer)
-  ]
-}
 
 function addAsset(desiredState, assetId, fileName, integrity) {
   objectPath.set(desiredState, 'state.assets.assets.' + assetId, {
@@ -139,7 +124,7 @@ async function waitAssetProcessing(initdelay, timeout) {
 async function createAgentWithAssetsDeployed(t, assetCount, cleanup) {
   let tmpAssetDataPath = '/tmp/tmp-asset-data-' + Utils.randomString()
   let tmpAssetStatePath = '/tmp/tmp-asset-state-' + Utils.randomString()
-  let deviceStates = getEmptyDeviceState(['desired', 'reported', 'status'])
+  let deviceStates = Utils.getEmptyDeviceState(['desired', 'reported', 'status'])
   let updateRequests = []
   let assets = []
   let randomDataPath = path.join(__dirname, 'data', 'tmp')
@@ -200,7 +185,7 @@ test.serial('AssetManager.2: Agent handles asset deploy failure(file integrity)'
   let tmpAssetStatePath = '/tmp/tmp-asset-state-' + Utils.randomString()
   let newAssetId = Utils.randomString()
   let updateReq = []
-  let deviceStates = getEmptyDeviceState(['desired', 'reported', 'status'])
+  let deviceStates = Utils.getEmptyDeviceState(['desired', 'reported', 'status'])
   let assetName = 'asset_1.json'
 
   await initAgent(t, deviceStates, tmpAssetDataPath, tmpAssetStatePath, updateReq, (desiredState) => {
@@ -231,7 +216,7 @@ test.serial('AssetManager.3: Agent handles asset deploy failure(download file)',
   let tmpAssetStatePath = '/tmp/tmp-asset-state-' + Utils.randomString()
   let newAssetId = Utils.randomString()
   let updateReq = []
-  let deviceStates = getEmptyDeviceState(['desired', 'reported', 'status'])
+  let deviceStates = Utils.getEmptyDeviceState(['desired', 'reported', 'status'])
   let assetName = 'asset_1.json'
   const integrity = await Utils.getFileIntegrity(path.join(__dirname, 'data', assetName))
 
@@ -264,7 +249,7 @@ test.serial('AssetManager.4: Agent deploys multiple assets according to desired 
 test.serial('AssetManager.5: Agent deploys new asset via deviceStateChange', async t => {
   let tmpAssetDataPath = '/tmp/tmp-asset-data-' + Utils.randomString()
   let tmpAssetStatePath = '/tmp/tmp-asset-state-' + Utils.randomString()
-  let deviceStates = getEmptyDeviceState(['desired', 'reported', 'status'])
+  let deviceStates = Utils.getEmptyDeviceState(['desired', 'reported', 'status'])
   let updateReq = []
 
   let ret = await initAgent(t, deviceStates, tmpAssetDataPath, tmpAssetStatePath,
