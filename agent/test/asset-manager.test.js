@@ -10,7 +10,8 @@ import DummyServer from './helpers/dummy-server'
 import {
   createAgentWithDummyServerAssetHandler,
   createAgentWithAssetsDeployed,
-  waitAssetProcessing
+  waitAssetProcessing,
+  agentCleanup
 } from './helpers/agent-helper'
 
 import objectPath from 'object-path'
@@ -46,15 +47,7 @@ test.afterEach.always('cleanup listener', t => {
 })
 
 test.afterEach.always('cleanup', async t => {
-  if (agent) {
-    console.log('cleanup: agent')
-    await agent.shutdown().catch(error => {
-      // ignore the error, we don't care this
-      // set to null to avoid 'unused' lint error
-      error = null
-    })
-    agent = null
-  }
+  await agentCleanup(agent, NodeRedPort)
 })
 
 test.serial(

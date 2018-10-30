@@ -275,3 +275,29 @@ export function nodeRedIsDead(port) {
     resolve(!settings)
   })
 }
+
+export function waitNodeRedToDie(port) {
+  const callback = async () => {
+    const api = new NodeRedAdminApi('http://127.0.0.1:' + port)
+    const settings = await api.getSettings()
+    return !settings
+  }
+  return polling(callback, 0, 500, 10000)
+}
+
+export async function agentCleanup(agent, nodeRedPort) {
+  if (agent) {
+    console.log('cleanup: agent')
+    await agent.shutdown().catch(error => {
+      // ignore the error, we don't care this
+      // set to null to avoid 'unused' lint error
+      error = null
+    })
+    agent = null
+    if (nodeRedPort) {
+      await waitNodeRedToDie(nodeRedPort)
+    }
+  }
+}
+
+

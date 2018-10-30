@@ -7,7 +7,11 @@ import { Server } from 'net'
 import EnebularAgent from '../src/enebular-agent'
 import Utils from './helpers/utils'
 import DummyServer from './helpers/dummy-server'
-import { createAuthenticatedAgent, polling } from './helpers/agent-helper'
+import { 
+  createAuthenticatedAgent,
+  polling,
+  agentCleanup
+} from './helpers/agent-helper'
 
 const DummyServerPort = 3006
 const NodeRedPort = 4006
@@ -35,16 +39,7 @@ test.afterEach.always('cleanup listener', t => {
 })
 
 test.afterEach.always('cleanup', async t => {
-  if (agent) {
-    console.log('cleanup: agent')
-    await agent.shutdown().catch(error => {
-      // ignore the error, we don't care this
-      // set to null to avoid 'unused' lint error
-      error = null
-    })
-    agent = null
-  }
-
+  await agentCleanup(agent, NodeRedPort)
   server.setLogReturnBadRequest(false)
 })
 

@@ -13,7 +13,8 @@ import DummyServerConfig from './helpers/dummy-server-config'
 import {
   polling,
   createConnectedAgent,
-  createAuthenticatedAgent
+  createAuthenticatedAgent,
+  agentCleanup
 } from './helpers/agent-helper'
 
 const DummyServerPort = 3005
@@ -42,15 +43,7 @@ test.afterEach.always('cleanup listener', t => {
 })
 
 test.afterEach.always('cleanup', async t => {
-  if (agent) {
-    console.log('cleanup: agent')
-    await agent.shutdown().catch(error => {
-      // ignore the error, we don't care this
-      // set to null to avoid 'unused' lint error
-      error = null
-    })
-    agent = null
-  }
+  await agentCleanup(agent, NodeRedPort)
 })
 
 test.serial(
@@ -415,24 +408,24 @@ test.serial(
     }
     server.on('authRequest', authCallback)
 
-    return new Promise(async (resolve, reject) => {
-      setTimeout(() => {
-        // trigger auth request
-        ret.connector.sendMessage('updateAuth', {
-          idToken: '-',
-          accessToken: '-',
-          state: '-'
-        })
-      }, 1000 * 3)
+    await polling(() => {
+      return notifyStatusReceived >= 4
+    }, 0, 500, 10000)
 
-      setTimeout(() => {
-        // within 6 seconds, we should only receive 4(fast period)
-        t.is(notifyStatusReceived, 4)
-        server.removeListener('authRequest', authCallback)
-        t.true(authRequestReceived)
-        t.is(agent._agentState, 'unauthenticated')
-        resolve()
-      }, 1000 * 6)
+    // trigger auth request
+    ret.connector.sendMessage('updateAuth', {
+      idToken: '-',
+      accessToken: '-',
+      state: '-'
     })
+
+    notifyStatusReceived = 0
+    t.false(await polling(() => {
+      return notifyStatusReceived
+    }, 1000, 500, 3000))
+
+    server.removeListener('authRequest', authCallback)
+    t.true(authRequestReceived)
+    t.is(agent._agentState, 'unauthenticated')
   }
 )

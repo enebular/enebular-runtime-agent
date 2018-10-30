@@ -6,7 +6,10 @@ import path from 'path'
 import EnebularAgent from '../src/enebular-agent'
 import ConnectorService from '../src/connector-service'
 import Utils from './helpers/utils'
-import { nodeRedIsAlive } from './helpers/agent-helper'
+import { 
+  nodeRedIsAlive,
+  agentCleanup
+} from './helpers/agent-helper'
 import DummyServerConfig from './helpers/dummy-server-config'
 
 const DummyServerPort = 3001
@@ -20,15 +23,7 @@ test.before(t => {
 })
 
 test.afterEach.always('cleanup', async t => {
-  if (agent) {
-    console.log('cleanup: agent')
-    await agent.shutdown().catch(error => {
-      // ignore the error, we don't care this
-      // set to null to avoid 'unused' lint error
-      error = null
-    })
-    agent = null
-  }
+  await agentCleanup(agent)
 })
 
 test.serial('Env.1: Agent starts if node-red path is valid', async t => {
