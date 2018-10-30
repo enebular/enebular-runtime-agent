@@ -185,7 +185,7 @@ test.serial('DeviceState.5: Device should update status if status state on serve
   await shouldUpdateStatus(t)
 })
 
-test.serial('DeviceState.6: Device should update status if agent type in status mismatches', async t => {
+test.serial('DeviceState.6: Device should update status if agent type in status is NOT identical', async t => {
   let deviceStateUpdateReceived = false
   server.onDeviceStateGet = (req, res) => {
     let _states = req.body.states.map(state => {
@@ -206,7 +206,7 @@ test.serial('DeviceState.6: Device should update status if agent type in status 
   await shouldUpdateStatus(t)
 })
 
-test.serial('DeviceState.7: Device should update status if agent version in status mismatches', async t => {
+test.serial('DeviceState.7: Device should update status if agent version in status is NOT identical', async t => {
   let deviceStateUpdateReceived = false
   server.onDeviceStateGet = (req, res) => {
     let _states = req.body.states.map(state => {
@@ -227,7 +227,7 @@ test.serial('DeviceState.7: Device should update status if agent version in stat
   await shouldUpdateStatus(t)
 })
 
-test.serial('DeviceState.8: Device should NOT update status if status matches', async t => {
+test.serial('DeviceState.8: Device should NOT update status if status is identical', async t => {
   let deviceStatusStateUpdateReceived = false
   server.onDeviceStateGet = (req, res) => {
     res.send({ states: Utils.getEmptyDeviceState()})
