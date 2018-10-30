@@ -10,8 +10,13 @@ let upload = multer()
 
 export default class DummyServer extends EventEmitter {
   _logReturnBadRequest: boolean
+  _tmpAssetFilePath: string
   setLogReturnBadRequest(bad) {
     this._logReturnBadRequest = bad
+  }
+
+  setTmpAssetFilePath(path) {
+    this._tmpAssetFilePath = path
   }
 
   async start(port = process.env.PORT) {
@@ -80,10 +85,12 @@ export default class DummyServer extends EventEmitter {
       if (this.downloadAssetReturnError) {
         res.status(301).send({})
       } else {
-        const assetPath = path.join(
+        const assetPath = req.query.key.startsWith('random') ? 
+        path.join(this._tmpAssetFilePath + req.query.key)
+        : path.join(
           __dirname,
           '..',
-          req.query.key.startsWith('random') ? 'data/tmp' : 'data',
+          'data',
           req.query.key
         )
         console.log(assetPath)

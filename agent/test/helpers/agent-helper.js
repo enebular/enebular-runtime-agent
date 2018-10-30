@@ -182,7 +182,7 @@ export async function createAgentWithAssetsDeployed(t, server, nodeRedPort, dumm
 
   for (let i = 0; i < assetsCount; i++) {
     let id = 'random-' + Utils.randomString()
-    let p = path.join(__dirname, '..', 'data', 'tmp', id)
+    let p =  server._tmpAssetFilePath + id
     await Utils.createFileOfSize(p, 1024 * 10)
     const integrity = await Utils.getFileIntegrity(p)
     assets.push({

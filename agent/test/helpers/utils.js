@@ -214,4 +214,18 @@ export default class Utils {
     Utils.addFileAssetToState(desiredState, assetId, fileName, integrity)
     return Utils.getDummyState('desired', desiredState.state)
   }
+
+  static delDesiredAsset(desiredState, assetId) {
+    objectPath.del(desiredState, 'state.assets.assets.' + assetId)
+    return Utils.getDummyState('desired', desiredState.state)
+  }
+
+  static modifyDesiredAsset(desiredState, assetId, prop, value) {
+    objectPath.set(
+      desiredState,
+      'state.assets.assets.' + assetId + '.' + prop,
+      value
+    )
+    return Utils.getDummyState('desired', desiredState.state)
+  }
 }

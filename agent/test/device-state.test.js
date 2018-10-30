@@ -112,7 +112,7 @@ test.serial(
   }
 )
 
-test.serial('DeviceState.3: Device handle server failure', async t => {
+test.serial('DeviceState.3: Device handles server error respond (http error)', async t => {
   // don't set callback so the dummy server respond 400 error.
   let tmpLogPath = '/tmp/tmp-test-log-' + Utils.randomString()
   const ret = await createAuthenticatedAgent(
@@ -140,7 +140,7 @@ test.serial('DeviceState.3: Device handle server failure', async t => {
 })
 
 test.serial(
-  'DeviceState.4: Device handle server json format error',
+  'DeviceState.4: Device handles server error respond (json format error)',
   async t => {
     let tmpLogPath = '/tmp/tmp-test-log-' + Utils.randomString()
     server.onDeviceStateGet = (req, res) => {
