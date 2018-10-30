@@ -3,6 +3,7 @@ import DummyServerConfig from './dummy-server-config'
 import objectHash from 'object-hash'
 import crypto from 'crypto'
 import { version as agentVer } from '../../package.json'
+import objectPath from 'object-path'
 
 export default class Utils {
   static randomString() {
@@ -187,5 +188,30 @@ export default class Utils {
       fs.closeSync(f)
       resolve(true)
     })
+  }
+
+  static addFileAssetToState(state, assetId, fileName, integrity) {
+    objectPath.set(state, 'state.assets.assets.' + assetId, {
+      updateId: Utils.randomString(),
+      ts: Date.now(),
+      config: {
+        name: fileName,
+        type: 'file',
+        destPath: 'dst',
+        fileTypeConfig: {
+          filename: fileName,
+          integrity: integrity,
+          internalSrcConfig: {
+            key: fileName,
+            stored: true
+          }
+        }
+      }
+    })
+  }
+
+  static addFileAssetToDesiredState(desiredState, assetId, fileName, integrity) {
+    Utils.addFileAssetToState(desiredState, assetId, fileName, integrity)
+    return Utils.getDummyState('desired', desiredState.state)
   }
 }
