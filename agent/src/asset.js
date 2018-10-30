@@ -124,7 +124,7 @@ export default class Asset {
     }
 
     // Exec
-    const cwd = this._assetMan.dataDir()
+    const cwd = this._destDirPath()
     const that = this
     await new Promise((resolve, reject) => {
       const cproc = spawn(cmdPath, args, {
