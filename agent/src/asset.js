@@ -3,6 +3,7 @@
 import fs from 'fs'
 import path from 'path'
 import rimraf from 'rimraf'
+import mkdirp from 'mkdirp'
 import { spawn } from 'child_process'
 import type AssetManager from './asset-manager'
 
@@ -233,7 +234,7 @@ export default class Asset {
       const destDir = this._destDirPath()
       if (!fs.existsSync(destDir)) {
         this._debug('Creating directory for asset: ' + destDir)
-        fs.mkdirSync(destDir)
+        mkdirp.sync(destDir)
       }
 
       // Pre-deploy hooks
