@@ -130,34 +130,19 @@ export default class FileAsset extends Asset {
     this._info('File installed to: ' + this._fileSubPath())
   }
 
-  _fileExecCmd(): string {
-    const envs = this._execEnvs() ? this._execEnvs() : []
-    return envs.concat([this._fileSubPath(), this._execArgs()]).join(' ')
-  }
-
-  _execArgsArray(): Array<string> {
-    let args = this._execArgs()
-    return args ? args.split(/\s+/) : []
-  }
-
-  _execEnvObj(): {} {
-    const envs = this._execEnvs()
-    let env = Object.assign({}, process.env)
-    if (envs) {
-      for (let e of envs) {
-        let eComps = e.split('=')
-        env[eComps[0]] = eComps[1]
-      }
-    }
-    return env
-  }
-
   async _execFile() {
     this._info('Executing file...')
-    this._info('File command: ' + this._fileExecCmd())
+    this._info(
+      'File command: ' +
+        this._execInCmdForm(
+          this._fileSubPath(),
+          this._execArgs(),
+          this._execEnvs()
+        )
+    )
 
-    const args = this._execArgsArray()
-    const env = this._execEnvObj()
+    const args = this._execArgsArray(this._execArgs())
+    const env = this._execEnvObj(this._execEnvs())
     const cwd = this._destDirPath()
     const that = this
     await new Promise((resolve, reject) => {
