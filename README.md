@@ -8,7 +8,9 @@ enebular-agent has the following key functionality.
 
 - IoT device (agent) activation, registration and authentication.
 - Management of a Node-RED instance, and deployment and execution of flows sent from enebular to that.
+- Deployment and execution of files sent from enebular.
 - Status and log reporting to enebular.
+- Support for the enebular editor.
 
 enebular communicates with enebular-agent via a third-party IoT platform connection.
 
@@ -29,6 +31,10 @@ enebular will also automatically update the enebular-agent's authentication info
 
 enebular-agent accepts flows deployed from enebular and manages a Node-RED instance to run them. It will also automatically install any published node modules that are depended on by the flow being deployed.
 
+### File Deploys
+
+enebular-agent installs files deployed from enebular. It supports the execution of those files and also running any command hooks that have been configured.
+
 ### Logging
 
 enebular-agent will periodically send logged messages to enebular. It can also log to its own standard output streams (command-line console), but this is not enabled by default. To have it also log to the console, set the `DEBUG` environment variable. enebular-agent can also optionally log to syslog. See ’Configuration’ below for more information on configuration options.
@@ -41,15 +47,9 @@ To view the logs on enebular, the device must be a 'paid' device.
 
 enebular-agent provides simple reporting on its status to enebular (when it has been made a 'paid' device).
 
-## Desktop Editor Mode
+### enebular editor Support
 
-enebular-agent can be used to connect to a local enebular desktop editor, the editor will need to be installed manually. When launching enebular-agent, it needs to be started in desktop editor mode in order to talk with desktop editor. Desktop Editor runs on port `9017`.
-example:
-
-```sh
-cd ports/awsiot
-DESKTOP_EDITOR_URL=http://192.xxx.xx.xx:9017 ./bin/enebular-awsiot-agent
-```
+enebular-agent supports being used together with the enebular enebular editor. This allows you to deploy flows from the enebular editor directly to the enebular-agent device via the local network.
 
 ## Structure
 
@@ -68,6 +68,15 @@ The current ports are:
 - **AWS IoT** - For use with AWS IoT
 - **Local** - For use together other local programs
   - This is used together with the [enebular-agent Mbed Cloud Connector](https://github.com/enebular/enebular-runtime-agent-mbed-cloud-connector) when using enebular-agent with Mbed Cloud
+
+## Using enebular editor Mode
+
+To use enebular-agent with the enebular editor, you will first need to install enebular-agent manually. For instructions on installing it manually, see the _Manual Setup_ section further below. Then when starting it, the `ENEBULAR_EDITOR_URL` environment variable must be specified. An example of this when using the AWS IoT port is shown below.
+
+```sh
+cd ports/awsiot
+ENEBULAR_EDITOR_URL=http://192.xxx.xx.xx:9017 ./bin/enebular-awsiot-agent
+```
 
 ## Quick Setup
 
@@ -93,7 +102,7 @@ If you are using enebular-agent with AWS IoT and you'd like to automatically add
 The install script can be run on a remote device by using SSH on your development PC with the following command pattern.
 
 ```sh
-ssh -t <user>@<device-ip-address> "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
+ssh -t <user>@<device-ip-address> "wget -qO- https://enebular.com/agent-install | sudo -E bash -s"
 ```
 
 This installs the AWS IoT enebular-agent port by default.
@@ -101,7 +110,7 @@ This installs the AWS IoT enebular-agent port by default.
 For example, to run the script on a remote Raspberry Pi with the default `pi` user and an IP address of `192.168.1.125`, the command would be as follows.
 
 ```sh
-ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s"
 ```
 
 This will install the AWS IoT enebular-agent port, but as it will be missing the required connection info it will not actually run. If you'd like to automatically add a new AWS IoT _thing_ to use, then follow the instructions in the "Automatic AWS IoT Thing Creation and Setup" section below instead.
@@ -122,7 +131,7 @@ To install the AWS IoT enebular-agent port and also add a new AWS IoT _thing_ to
 For example, to install the AWS IoT port and create an AWS IoT thing named `raspberry-pi` on a Raspberry Pi device (with the `pi` user and IP address of `192.168.1.125`), the command would be similar to the following.
 
 ```sh
-ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
 ```
 
 ### Confirmation

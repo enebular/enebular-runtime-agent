@@ -3,8 +3,8 @@ const fs = require('fs')
 const path = require('path')
 const RED = require('@uhuru/enebular-node-red')
 
-const DESKTOP_EDITOR_URL =
-  process.env.DESKTOP_EDITOR_URL || 'http://localhost:9000'
+const ENEBULAR_EDITOR_URL =
+  process.env.ENEBULAR_EDITOR_URL || 'http://localhost:9017'
 
 function getLibraryEntry(type, path) {
   return new Promise((resolve, reject) => resolve([]))
@@ -70,7 +70,7 @@ function mapNodeTypes(flows, credentials) {
 }
 
 function saveEnebularFlow(params) {
-  const saveFlowUrl = `${DESKTOP_EDITOR_URL}/api/v1/agent-editor/flow`
+  const saveFlowUrl = `${ENEBULAR_EDITOR_URL}/api/v1/agent-editor/flow`
   return new Promise((resolve, reject) => {
     return axios
       .post(saveFlowUrl, params)
@@ -97,7 +97,7 @@ function saveFlows(flows, credentials, screenshot) {
 }
 
 function saveCredentials(credentials, flows) {
-  const saveCredUrl = `${DESKTOP_EDITOR_URL}/api/v1/agent-editor/credential`
+  const saveCredUrl = `${ENEBULAR_EDITOR_URL}/api/v1/agent-editor/credential`
   return new Promise((resolve, reject) => {
     return axios
       .post(saveCredUrl, [credentials, flows])

@@ -138,8 +138,8 @@ export default class EnebularAgent extends EventEmitter {
     const nodeRedDataDir = this._config.get('NODE_RED_DATA_DIR')
     const defaultNodeRedCommand =
       './node_modules/.bin/node-red -s .node-red-config/' +
-      (process.env.DESKTOP_EDITOR_URL
-        ? 'desktop-editor-settings.js'
+      (process.env.ENEBULAR_EDITOR_URL
+        ? 'enebular-editor-settings.js'
         : 'settings.js')
     const nodeRedCommand =
       this._config.get('NODE_RED_COMMAND') || defaultNodeRedCommand
