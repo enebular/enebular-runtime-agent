@@ -292,9 +292,9 @@ test.serial(
         () => {
           return agent._monitoringActive
         },
-        MonitoringActiveDelay,
-        500,
-        3000
+        0,
+        100,
+        MonitoringActiveDelay + 3000
       )
     )
 
@@ -400,9 +400,9 @@ test.serial(
         () => {
           return agent._monitoringActive
         },
-        MonitoringActiveDelay,
-        500,
-        3000
+        0,
+        100,
+        MonitoringActiveDelay + 3000
       )
     )
 

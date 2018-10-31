@@ -121,9 +121,9 @@ test.serial('Log.2: Log is sent to server periodically', async t => {
       () => {
         return agent._monitoringActive
       },
-      MonitoringActiveDelay,
-      500,
-      3000
+      0,
+      100,
+      MonitoringActiveDelay + 3000
     )
   )
 
