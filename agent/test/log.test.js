@@ -134,15 +134,46 @@ test.serial('Log.2: Log is sent to server periodically', async t => {
     agent.log.info(data)
   }, 500)
 
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      fs.removeSync(tmpLogCacheDir)
-      server.removeListener('recordLogs', logCallback)
-      clearInterval(intervalObj)
-      t.is(recordLogsReceived, 3)
-      resolve()
-    }, 11000)
-  })
+  const tolerance = 1000
+  recordLogsReceived = 0
+  t.true(
+    await polling(
+      () => {
+        return recordLogsReceived === 1
+      },
+      0,
+      100,
+      interval * 1000 + tolerance
+    )
+  )
+
+  recordLogsReceived = 0
+  t.true(
+    await polling(
+      () => {
+        return recordLogsReceived === 1
+      },
+      0,
+      100,
+      interval * 1000 + tolerance
+    )
+  )
+
+  recordLogsReceived = 0
+  t.true(
+    await polling(
+      () => {
+        return recordLogsReceived === 1
+      },
+      0,
+      100,
+      interval * 1000 + tolerance
+    )
+  )
+
+  fs.removeSync(tmpLogCacheDir)
+  server.removeListener('recordLogs', logCallback)
+  clearInterval(intervalObj)
 })
 
 test.serial('Log.3: Log level is handled correctly', async t => {
