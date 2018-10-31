@@ -643,4 +643,52 @@ test.serial(
   }
 )
 
+test.serial(
+  'FileAsset.11: Agent reports deploy failure if asset execution fail.',
+  async t => {
+    const ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 0, false)
+    agent = ret.agent
+
+    const id = 'random-' + Utils.randomString()
+    const p = path.join(server._tmpAssetFilePath, id)
+    const content =  `#!/bin/bash\n not_a_commnad`
+    fs.writeFileSync(p, content)
+    const integrity = await Utils.getFileIntegrity(p)
+    const asset = {
+      id: id,
+      path: p,
+      integrity: integrity
+    }
+
+    let desiredState = {}
+    let assetState = getDefaultDesiredState(asset.id, asset.integrity)
+    assetState.config.fileTypeConfig.exec = true
+    assetState.config.fileTypeConfig.execConfig = 
+    {
+      maxTime: 3
+    }
+    objectPath.set(desiredState, 'state.assets.assets.' + asset.id, assetState)
+
+    desiredState = Utils.getDummyState('desired', desiredState.state)
+
+    ret.connector.sendMessage('deviceStateChange', {
+      type: 'desired',
+      op: 'set',
+      path: 'assets.assets',
+      meta: desiredState.meta,
+      state: desiredState.state.assets.assets
+    })
+
+    await waitAssetProcessing(ret.agent, 0, 10000)
+
+    t.true(fs.existsSync(path.join(agent._assetManager.dataDir(), asset.id)))
+    const s = ret.reportedStates.state.assets.assets[asset.id]
+    t.is(s.state, 'deployFail')
+    t.true(s.message.includes('post-install operations on asset: Execution ended with failure exit code'))
+
+    fs.unlinkSync(ret.assetStatePath)
+    fs.removeSync(ret.assetDataPath)
+  }
+)
+
 
