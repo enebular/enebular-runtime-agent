@@ -115,7 +115,7 @@ export default class Asset {
     if (envs) {
       for (let e of envs) {
         let eComps = e.split('=')
-        env[eComps[0]] = eComps[1]
+        env[eComps[0]] = eComps.slice(1).join('=')
       }
     }
     return env
