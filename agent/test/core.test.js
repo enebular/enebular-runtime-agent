@@ -298,16 +298,31 @@ test.serial(
       )
     )
 
-    let runningTime = 8
-    return new Promise(async (resolve, reject) => {
-      setTimeout(() => {
-        t.is(
-          notifyStatusReceived,
-          Utils.calcExpectedNumberOfRequestsByInterval(agent, runningTime)
-        )
-        resolve()
-      }, 1000 * runningTime)
-    })
+    const tolerance = 500
+    notifyStatusReceived = 0
+    t.true(await polling(() => {
+      return notifyStatusReceived == 1
+    }, 0, 100, 1000 + tolerance))
+    notifyStatusReceived = 0
+    t.true(await polling(() => {
+      return notifyStatusReceived == 1
+    }, 0, 100, 1000 + tolerance))
+    notifyStatusReceived = 0
+    t.true(await polling(() => {
+      return notifyStatusReceived == 1
+    }, 0, 100, 1000 + tolerance))
+    notifyStatusReceived = 0
+    t.true(await polling(() => {
+      return notifyStatusReceived == 1
+    }, 0, 100, 1000 + tolerance))
+    notifyStatusReceived = 0
+    t.true(await polling(() => {
+      return notifyStatusReceived == 1
+    }, 0, 100, 1000 + tolerance))
+    notifyStatusReceived = 0
+    t.true(await polling(() => {
+      return notifyStatusReceived == 0
+    }, 2000, 100, 1000))
   }
 )
 
@@ -349,16 +364,26 @@ test.serial(
       )
     )
 
-    let runningTime = 19
-    return new Promise(async (resolve, reject) => {
-      setTimeout(() => {
-        t.is(
-          notifyStatusReceived,
-          Utils.calcExpectedNumberOfRequestsByInterval(agent, runningTime)
-        )
-        resolve()
-      }, 1000 * runningTime)
-    })
+    notifyStatusReceived = 0
+    const tolerance = 1000
+    t.true(await polling(() => {
+      return notifyStatusReceived == 1
+    }, 0, 100, 2000 + tolerance))
+
+    notifyStatusReceived = 0
+    t.true(await polling(() => {
+      return notifyStatusReceived == 1
+    }, 0, 100, 2000 + tolerance))
+
+    notifyStatusReceived = 0
+    t.true(await polling(() => {
+      return notifyStatusReceived == 1
+    }, 0, 100, 6000 + tolerance))
+
+    notifyStatusReceived = 0
+    t.true(await polling(() => {
+      return notifyStatusReceived == 1
+    }, 0, 100, 6000 + tolerance))
   }
 )
 

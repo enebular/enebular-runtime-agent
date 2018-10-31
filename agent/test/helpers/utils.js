@@ -79,28 +79,6 @@ export default class Utils {
     )
   }
 
-  static calcExpectedNumberOfRequestsByInterval(agent, runningTime) {
-    const {
-      _monitorIntervalFast,
-      _monitorIntervalFastPeriod,
-      _monitorIntervalNormal
-    } = agent
-
-    let requestsInFastPeriod = Math.floor(
-      _monitorIntervalFastPeriod / _monitorIntervalFast
-    )
-    // the first request happen in zero second
-    requestsInFastPeriod++
-    if (runningTime <= _monitorIntervalFastPeriod) {
-      return requestsInFastPeriod
-    }
-
-    let remain = runningTime - _monitorIntervalFastPeriod
-    let requestsInNormalPeriod = Math.floor(remain / _monitorIntervalNormal)
-
-    return requestsInFastPeriod + requestsInNormalPeriod
-  }
-
   static createDefaultAgentConfig(nodeRedPort) {
     let agentConfig = {}
     agentConfig['NODE_RED_DIR'] = '../node-red'
