@@ -85,7 +85,7 @@ async function createAssets(count) {
 }
 
 test.serial(
-  'Asset.1: Agent deploys asset in specified destination path',
+  'FileAsset.1: Agent deploys asset in specified destination path',
   async t => {
     const ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 0, false)
     agent = ret.agent
@@ -134,7 +134,7 @@ test.serial(
 )
 
 test.serial(
-  'Asset.2: Agent deploys asset with integrity check',
+  'FileAsset.2: Agent deploys asset with integrity check',
   async t => {
     const ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 0, false)
     agent = ret.agent
@@ -190,12 +190,10 @@ test.serial(
 )
 
 test.serial(
-  'Asset.3: Agent runs pre-deploy hooks correctly',
+  'FileAsset.3: Agent runs pre-deploy hooks correctly',
   async t => {
     const ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 0, false)
     agent = ret.agent
-
-    const TEST_OK = 0
 
     const cmdForTest = [
       {
@@ -255,12 +253,10 @@ test.serial(
 )
 
 test.serial(
-  'Asset.4: Agent runs post-deploy hooks correctly',
+  'FileAsset.4: Agent runs post-deploy hooks correctly',
   async t => {
     const ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 0, false)
     agent = ret.agent
-
-    const TEST_OK = 0
 
     const cmdForTest = [
       {
@@ -320,12 +316,10 @@ test.serial(
 )
 
 test.serial(
-  'Asset.5: Agent deploys fail if pre/post-deploy hook specify nonexistent command.',
+  'FileAsset.5: Agent deploys fail if pre/post-deploy hook specify nonexistent command.',
   async t => {
     const ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 0, false)
     agent = ret.agent
-
-    const TEST_OK = 0
 
     const cmdForTest = [
       {
@@ -385,12 +379,10 @@ test.serial(
 )
 
 test.serial(
-  'Asset.6: Agent terminates hook if command run over time limit.',
+  'FileAsset.6: Agent terminates hook if command run over time limit.',
   async t => {
     const ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 0, false)
     agent = ret.agent
-
-    const TEST_OK = 0
 
     const cmdForTest = [
       {
@@ -416,7 +408,7 @@ test.serial(
           type: 'cmd',
           cmdTypeConfig: {
             cmd: cmdForTest[i].cmd,
-            maxTime: 3
+            maxTime: 2
           }
         }
       ]
@@ -449,4 +441,206 @@ test.serial(
     fs.removeSync(ret.assetDataPath)
   }
 )
+
+test.serial(
+  'FileAsset.7: Agent executes asset correctly if exec is specified.',
+  async t => {
+    const ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 0, false)
+    agent = ret.agent
+
+    const id = 'random-' + Utils.randomString()
+    const p = path.join(server._tmpAssetFilePath, id)
+    fs.writeFileSync(p, 'touch asset_is_running')
+    const integrity = await Utils.getFileIntegrity(p)
+    const asset = {
+      id: id,
+      path: p,
+      integrity: integrity
+    }
+
+    let desiredState = {}
+    let assetState = getDefaultDesiredState(asset.id, asset.integrity)
+    assetState.config.fileTypeConfig.exec = true
+    assetState.config.fileTypeConfig.execConfig = 
+    {
+      maxTime: 3
+    }
+    objectPath.set(desiredState, 'state.assets.assets.' + asset.id, assetState)
+
+    desiredState = Utils.getDummyState('desired', desiredState.state)
+
+    ret.connector.sendMessage('deviceStateChange', {
+      type: 'desired',
+      op: 'set',
+      path: 'assets.assets',
+      meta: desiredState.meta,
+      state: desiredState.state.assets.assets
+    })
+
+    await waitAssetProcessing(ret.agent, 0, 10000)
+
+    t.true(fs.existsSync(path.join(agent._assetManager.dataDir(), asset.id)))
+    const s = ret.reportedStates.state.assets.assets[asset.id]
+    t.is(s.state, 'deployed')
+    t.true(fs.existsSync(path.join(agent._assetManager.dataDir(), 'asset_is_running')))
+
+    fs.unlinkSync(ret.assetStatePath)
+    fs.removeSync(ret.assetDataPath)
+  }
+)
+
+test.serial(
+  'FileAsset.8: Agent terminates asset execution if run over time limit.',
+  async t => {
+    const ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 0, false)
+    agent = ret.agent
+
+    const id = 'random-' + Utils.randomString()
+    const p = path.join(server._tmpAssetFilePath, id)
+    fs.writeFileSync(p, 'cat /dev/random')
+    const integrity = await Utils.getFileIntegrity(p)
+    const asset = {
+      id: id,
+      path: p,
+      integrity: integrity
+    }
+
+    let desiredState = {}
+    let assetState = getDefaultDesiredState(asset.id, asset.integrity)
+    assetState.config.fileTypeConfig.exec = true
+    assetState.config.fileTypeConfig.execConfig = 
+    {
+      maxTime: 2
+    }
+    objectPath.set(desiredState, 'state.assets.assets.' + asset.id, assetState)
+
+    desiredState = Utils.getDummyState('desired', desiredState.state)
+
+    ret.connector.sendMessage('deviceStateChange', {
+      type: 'desired',
+      op: 'set',
+      path: 'assets.assets',
+      meta: desiredState.meta,
+      state: desiredState.state.assets.assets
+    })
+
+    await waitAssetProcessing(ret.agent, 0, 15000)
+
+    t.true(fs.existsSync(path.join(agent._assetManager.dataDir(), asset.id)))
+    const s = ret.reportedStates.state.assets.assets[asset.id]
+    t.is(s.state, 'deployFail')
+    t.true(s.message.includes('post-install operations on asset: Execution ended with signal: SIGTERM'))
+
+    fs.unlinkSync(ret.assetStatePath)
+    fs.removeSync(ret.assetDataPath)
+  }
+)
+
+test.serial(
+  'FileAsset.9: Agent executes asset with correct arguments.',
+  async t => {
+    const ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 0, false)
+    agent = ret.agent
+
+    const args = 'test args --fix -gc'
+    const id = 'random-' + Utils.randomString()
+    const p = path.join(server._tmpAssetFilePath, id)
+    const content =  `#!/bin/bash\n arg="$*"\n echo "$arg" > asset_args`
+    fs.writeFileSync(p, content)
+    const integrity = await Utils.getFileIntegrity(p)
+    const asset = {
+      id: id,
+      path: p,
+      integrity: integrity
+    }
+
+    let desiredState = {}
+    let assetState = getDefaultDesiredState(asset.id, asset.integrity)
+    assetState.config.fileTypeConfig.exec = true
+    assetState.config.fileTypeConfig.execConfig = 
+    {
+      args: args,
+      maxTime: 3
+    }
+    objectPath.set(desiredState, 'state.assets.assets.' + asset.id, assetState)
+
+    desiredState = Utils.getDummyState('desired', desiredState.state)
+
+    ret.connector.sendMessage('deviceStateChange', {
+      type: 'desired',
+      op: 'set',
+      path: 'assets.assets',
+      meta: desiredState.meta,
+      state: desiredState.state.assets.assets
+    })
+
+    await waitAssetProcessing(ret.agent, 0, 10000)
+
+    t.true(fs.existsSync(path.join(agent._assetManager.dataDir(), asset.id)))
+    const s = ret.reportedStates.state.assets.assets[asset.id]
+    t.is(s.state, 'deployed')
+    t.true(fs.existsSync(path.join(agent._assetManager.dataDir(), 'asset_args')))
+    t.is(fs.readFileSync(path.join(agent._assetManager.dataDir(), 'asset_args')).toString().trim(), args)
+
+    fs.unlinkSync(ret.assetStatePath)
+    fs.removeSync(ret.assetDataPath)
+  }
+)
+
+test.serial(
+  'FileAsset.10: Agent executes asset with correct environment variables.',
+  async t => {
+    const ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 0, false)
+    agent = ret.agent
+
+    const envs = [
+      'TEST_ENV1=abc',
+      'TEST_ENV2=cba',
+    ]
+    const id = 'random-' + Utils.randomString()
+    const p = path.join(server._tmpAssetFilePath, id)
+    const content =  `#!/bin/bash\n echo "$TEST_ENV1" > asset_env1\n echo "$TEST_ENV2" > asset_env2\n`
+    fs.writeFileSync(p, content)
+    const integrity = await Utils.getFileIntegrity(p)
+    const asset = {
+      id: id,
+      path: p,
+      integrity: integrity
+    }
+
+    let desiredState = {}
+    let assetState = getDefaultDesiredState(asset.id, asset.integrity)
+    assetState.config.fileTypeConfig.exec = true
+    assetState.config.fileTypeConfig.execConfig = 
+    {
+      envs: envs,
+      maxTime: 3
+    }
+    objectPath.set(desiredState, 'state.assets.assets.' + asset.id, assetState)
+
+    desiredState = Utils.getDummyState('desired', desiredState.state)
+
+    ret.connector.sendMessage('deviceStateChange', {
+      type: 'desired',
+      op: 'set',
+      path: 'assets.assets',
+      meta: desiredState.meta,
+      state: desiredState.state.assets.assets
+    })
+
+    await waitAssetProcessing(ret.agent, 0, 10000)
+
+    t.true(fs.existsSync(path.join(agent._assetManager.dataDir(), asset.id)))
+    const s = ret.reportedStates.state.assets.assets[asset.id]
+    t.is(s.state, 'deployed')
+    t.true(fs.existsSync(path.join(agent._assetManager.dataDir(), 'asset_env1')))
+    t.is(fs.readFileSync(path.join(agent._assetManager.dataDir(), 'asset_env1')).toString().trim(), 'abc')
+    t.true(fs.existsSync(path.join(agent._assetManager.dataDir(), 'asset_env2')))
+    t.is(fs.readFileSync(path.join(agent._assetManager.dataDir(), 'asset_env2')).toString().trim(), 'cba')
+
+    fs.unlinkSync(ret.assetStatePath)
+    fs.removeSync(ret.assetDataPath)
+  }
+)
+
 
