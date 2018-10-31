@@ -219,11 +219,11 @@ test.serial(
       assetState.config.hooks = [
         {
           stage: 'preDeploy',
-          type: 'cmd',
-          cmdTypeConfig: {
-            cmd: cmdForTest[i].cmd,
-            maxTime: 5
-          }
+          type: 'asset',
+          assetTypeConfig: {
+            assetPath: cmdForTest[i].cmd,
+          },
+          maxTime: 5
         }
       ]
       objectPath.set(desiredState, 'state.assets.assets.' + assets[i].id, assetState)
@@ -248,7 +248,7 @@ test.serial(
     }
 
     fs.unlinkSync(ret.assetStatePath)
-    fs.removeSync(ret.assetDataPath)
+    // fs.removeSync(ret.assetDataPath)
   }
 )
 
@@ -282,11 +282,11 @@ test.serial(
       assetState.config.hooks = [
         {
           stage: 'postDeploy',
-          type: 'cmd',
-          cmdTypeConfig: {
-            cmd: cmdForTest[i].cmd,
-            maxTime: 5
-          }
+          type: 'asset',
+          assetTypeConfig: {
+            assetPath: cmdForTest[i].cmd,
+          },
+          maxTime: 5
         }
       ]
       objectPath.set(desiredState, 'state.assets.assets.' + assets[i].id, assetState)
@@ -345,11 +345,11 @@ test.serial(
       assetState.config.hooks = [
         {
           stage: cmdForTest[i].stage,
-          type: 'cmd',
-          cmdTypeConfig: {
-            cmd: cmdForTest[i].cmd,
-            maxTime: 5
-          }
+          type: 'asset',
+          assetTypeConfig: {
+            assetPath: cmdForTest[i].cmd,
+          },
+          maxTime: 5
         }
       ]
       objectPath.set(desiredState, 'state.assets.assets.' + assets[i].id, assetState)
@@ -370,7 +370,7 @@ test.serial(
     for (let i = 0; i < cmdForTest.length; i++) {
       const s = ret.reportedStates.state.assets.assets[assets[i].id]
       t.is(s.state, 'deployFail')
-      t.true(s.message.includes('deploy hooks: Command doesn\'t exist'))
+      t.true(s.message.includes('deploy hooks: Asset doesn\'t exist'))
     }
 
     fs.unlinkSync(ret.assetStatePath)
@@ -405,11 +405,11 @@ test.serial(
       assetState.config.hooks = [
         {
           stage: cmdForTest[i].stage,
-          type: 'cmd',
-          cmdTypeConfig: {
-            cmd: cmdForTest[i].cmd,
-            maxTime: 2
-          }
+          type: 'asset',
+          assetTypeConfig: {
+            assetPath: cmdForTest[i].cmd,
+          },
+          maxTime: 2
         }
       ]
       objectPath.set(desiredState, 'state.assets.assets.' + assets[i].id, assetState)
@@ -434,7 +434,7 @@ test.serial(
       }
       const s = ret.reportedStates.state.assets.assets[assets[i].id]
       t.is(s.state, 'deployFail')
-      t.true(s.message.includes('deploy hooks: Execution ended with signal: SIGTERM'))
+      t.true(s.message.includes('deploy hooks: Asset execution ended with signal: SIGTERM'))
     }
 
     fs.unlinkSync(ret.assetStatePath)
