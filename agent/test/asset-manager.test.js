@@ -14,8 +14,6 @@ import {
   agentCleanup
 } from './helpers/agent-helper'
 
-import objectPath from 'object-path'
-
 const DummyServerPort = 3010
 const NodeRedPort = 4010
 
@@ -53,7 +51,14 @@ test.afterEach.always('cleanup', async t => {
 test.serial(
   'AssetManager.1: Agent deploys asset according to desired state',
   async t => {
-    const ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 1, true)
+    const ret = await createAgentWithAssetsDeployed(
+      t,
+      server,
+      NodeRedPort,
+      DummyServerPort,
+      1,
+      true
+    )
     agent = ret.agent
   }
 )
@@ -79,7 +84,12 @@ test.serial(
       updateReq,
       [],
       desiredState => {
-        Utils.addFileAssetToDesiredState(desiredState, newAssetId, assetName, 'wrong integrity')
+        Utils.addFileAssetToDesiredState(
+          desiredState,
+          newAssetId,
+          assetName,
+          'wrong integrity'
+        )
       }
     )
     agent = ret.agent
@@ -128,7 +138,12 @@ test.serial(
       updateReq,
       [],
       desiredState => {
-        Utils.addFileAssetToDesiredState(desiredState, newAssetId, 'wrong file name', integrity)
+        Utils.addFileAssetToDesiredState(
+          desiredState,
+          newAssetId,
+          'wrong file name',
+          integrity
+        )
       }
     )
     agent = ret.agent
@@ -155,7 +170,14 @@ test.serial(
 test.serial(
   'AssetManager.4: Agent deploys multiple assets according to desired state',
   async t => {
-    const ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 20, true)
+    const ret = await createAgentWithAssetsDeployed(
+      t,
+      server,
+      NodeRedPort,
+      DummyServerPort,
+      20,
+      true
+    )
     agent = ret.agent
   }
 )
@@ -163,7 +185,14 @@ test.serial(
 test.serial(
   'AssetManager.5: Agent deploys new asset via deviceStateChange',
   async t => {
-    let ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 0, false)
+    let ret = await createAgentWithAssetsDeployed(
+      t,
+      server,
+      NodeRedPort,
+      DummyServerPort,
+      0,
+      false
+    )
     agent = ret.agent
 
     let newAssetId = Utils.randomString()
@@ -202,7 +231,14 @@ test.serial(
 test.serial(
   'AssetManager.6: Agent re-deploys existing asset via deviceStateChange',
   async t => {
-    let ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 1, false)
+    let ret = await createAgentWithAssetsDeployed(
+      t,
+      server,
+      NodeRedPort,
+      DummyServerPort,
+      1,
+      false
+    )
     agent = ret.agent
     let newAssetId = ret.assets[0].id
     let newAssetName = ret.assets[0].name
@@ -245,7 +281,14 @@ test.serial(
 test.serial(
   'AssetManager.7: Agent removes existing asset via deviceStateChange',
   async t => {
-    let ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 1, false)
+    let ret = await createAgentWithAssetsDeployed(
+      t,
+      server,
+      NodeRedPort,
+      DummyServerPort,
+      1,
+      false
+    )
     agent = ret.agent
     let newAssetId = ret.assets[0].id
     let newAssetName = ret.assets[0].name
@@ -268,7 +311,7 @@ test.serial(
     t.is(ret.updateRequests[2].op, 'remove')
     t.false(fs.existsSync(ret.assetDataPath + '/dst/' + newAssetName))
     const state = JSON.parse(fs.readFileSync(ret.assetStatePath, 'utf8'))
-    t.true(state.length == 0)
+    t.true(state.length === 0)
 
     fs.unlinkSync(ret.assetStatePath)
     fs.removeSync(ret.assetDataPath)
@@ -276,7 +319,14 @@ test.serial(
 )
 
 test.serial('AssetManager.8: Agent handles removing asset failure', async t => {
-  let ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 1, false)
+  let ret = await createAgentWithAssetsDeployed(
+    t,
+    server,
+    NodeRedPort,
+    DummyServerPort,
+    1,
+    false
+  )
   agent = ret.agent
   let newAssetId = ret.assets[0].id
   let newAssetName = ret.assets[0].name
@@ -315,11 +365,19 @@ test.serial('AssetManager.8: Agent handles removing asset failure', async t => {
 test.serial(
   'AssetManager.9: Agent removes absent asset via deviceStateChange',
   async t => {
-    let ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 1, false)
+    let ret = await createAgentWithAssetsDeployed(
+      t,
+      server,
+      NodeRedPort,
+      DummyServerPort,
+      1,
+      false
+    )
     agent = ret.agent
     const newAssetId = ret.assets[0].id
     const newAssetName = ret.assets[0].name
-    const oldUpdateId = ret.reportedStates.state.assets.assets[newAssetId].updateId
+    const oldUpdateId =
+      ret.reportedStates.state.assets.assets[newAssetId].updateId
 
     ret.updateRequests.length = 0
 
@@ -337,10 +395,13 @@ test.serial(
     console.log(JSON.stringify(ret.reportedStates, null, 2))
     // causing server side hash mismatch which triggers full state refresh.
     t.is(ret.reportedStates.state.assets.assets[newAssetId].state, 'deployed')
-    t.not(ret.reportedStates.state.assets.assets[newAssetId].updateId, oldUpdateId)
+    t.not(
+      ret.reportedStates.state.assets.assets[newAssetId].updateId,
+      oldUpdateId
+    )
     t.true(fs.existsSync(ret.assetDataPath + '/dst/' + newAssetName))
     const state = JSON.parse(fs.readFileSync(ret.assetStatePath, 'utf8'))
-    t.true(state.length == 1)
+    t.true(state.length === 1)
 
     fs.unlinkSync(ret.assetStatePath)
     fs.removeSync(ret.assetDataPath)
@@ -350,7 +411,14 @@ test.serial(
 test.serial(
   'AssetManager.10: Agent handles multiple re-deploy requests',
   async t => {
-    let ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 1, false)
+    let ret = await createAgentWithAssetsDeployed(
+      t,
+      server,
+      NodeRedPort,
+      DummyServerPort,
+      1,
+      false
+    )
     agent = ret.agent
     let newAssetId = ret.assets[0].id
     let newAssetName = ret.assets[0].name

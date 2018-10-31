@@ -85,14 +85,9 @@ export default class DummyServer extends EventEmitter {
       if (this.downloadAssetReturnError) {
         res.status(301).send({})
       } else {
-        const assetPath = req.query.key.startsWith('random') ? 
-        path.join(this._tmpAssetFilePath, req.query.key)
-        : path.join(
-          __dirname,
-          '..',
-          'data',
-          req.query.key
-        )
+        const assetPath = req.query.key.startsWith('random')
+          ? path.join(this._tmpAssetFilePath, req.query.key)
+          : path.join(__dirname, '..', 'data', req.query.key)
         console.log(assetPath)
         res.sendFile(assetPath)
       }

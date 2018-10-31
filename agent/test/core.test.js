@@ -300,29 +300,71 @@ test.serial(
 
     const tolerance = 500
     notifyStatusReceived = 0
-    t.true(await polling(() => {
-      return notifyStatusReceived == 1
-    }, 0, 100, 1000 + tolerance))
+    t.true(
+      await polling(
+        () => {
+          return notifyStatusReceived === 1
+        },
+        0,
+        100,
+        1000 + tolerance
+      )
+    )
     notifyStatusReceived = 0
-    t.true(await polling(() => {
-      return notifyStatusReceived == 1
-    }, 0, 100, 1000 + tolerance))
+    t.true(
+      await polling(
+        () => {
+          return notifyStatusReceived === 1
+        },
+        0,
+        100,
+        1000 + tolerance
+      )
+    )
     notifyStatusReceived = 0
-    t.true(await polling(() => {
-      return notifyStatusReceived == 1
-    }, 0, 100, 1000 + tolerance))
+    t.true(
+      await polling(
+        () => {
+          return notifyStatusReceived === 1
+        },
+        0,
+        100,
+        1000 + tolerance
+      )
+    )
     notifyStatusReceived = 0
-    t.true(await polling(() => {
-      return notifyStatusReceived == 1
-    }, 0, 100, 1000 + tolerance))
+    t.true(
+      await polling(
+        () => {
+          return notifyStatusReceived === 1
+        },
+        0,
+        100,
+        1000 + tolerance
+      )
+    )
     notifyStatusReceived = 0
-    t.true(await polling(() => {
-      return notifyStatusReceived == 1
-    }, 0, 100, 1000 + tolerance))
+    t.true(
+      await polling(
+        () => {
+          return notifyStatusReceived === 1
+        },
+        0,
+        100,
+        1000 + tolerance
+      )
+    )
     notifyStatusReceived = 0
-    t.true(await polling(() => {
-      return notifyStatusReceived == 0
-    }, 2000, 100, 1000))
+    t.true(
+      await polling(
+        () => {
+          return notifyStatusReceived === 0
+        },
+        2000,
+        100,
+        1000
+      )
+    )
   }
 )
 
@@ -366,24 +408,52 @@ test.serial(
 
     notifyStatusReceived = 0
     const tolerance = 1000
-    t.true(await polling(() => {
-      return notifyStatusReceived == 1
-    }, 0, 100, 2000 + tolerance))
+    t.true(
+      await polling(
+        () => {
+          return notifyStatusReceived === 1
+        },
+        0,
+        100,
+        2000 + tolerance
+      )
+    )
 
     notifyStatusReceived = 0
-    t.true(await polling(() => {
-      return notifyStatusReceived == 1
-    }, 0, 100, 2000 + tolerance))
+    t.true(
+      await polling(
+        () => {
+          return notifyStatusReceived === 1
+        },
+        0,
+        100,
+        2000 + tolerance
+      )
+    )
 
     notifyStatusReceived = 0
-    t.true(await polling(() => {
-      return notifyStatusReceived == 1
-    }, 0, 100, 6000 + tolerance))
+    t.true(
+      await polling(
+        () => {
+          return notifyStatusReceived === 1
+        },
+        0,
+        100,
+        6000 + tolerance
+      )
+    )
 
     notifyStatusReceived = 0
-    t.true(await polling(() => {
-      return notifyStatusReceived == 1
-    }, 0, 100, 6000 + tolerance))
+    t.true(
+      await polling(
+        () => {
+          return notifyStatusReceived === 1
+        },
+        0,
+        100,
+        6000 + tolerance
+      )
+    )
   }
 )
 
@@ -433,9 +503,14 @@ test.serial(
     }
     server.on('authRequest', authCallback)
 
-    await polling(() => {
-      return notifyStatusReceived >= 4
-    }, 0, 500, 10000)
+    await polling(
+      () => {
+        return notifyStatusReceived >= 4
+      },
+      0,
+      500,
+      10000
+    )
 
     // trigger auth request
     ret.connector.sendMessage('updateAuth', {
@@ -445,9 +520,16 @@ test.serial(
     })
 
     notifyStatusReceived = 0
-    t.false(await polling(() => {
-      return notifyStatusReceived
-    }, 1000, 500, 3000))
+    t.false(
+      await polling(
+        () => {
+          return notifyStatusReceived
+        },
+        1000,
+        500,
+        3000
+      )
+    )
 
     server.removeListener('authRequest', authCallback)
     t.true(authRequestReceived)

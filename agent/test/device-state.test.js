@@ -2,6 +2,7 @@
 import test from 'ava'
 import fs from 'fs'
 import { Server } from 'net'
+import objectPath from 'object-path'
 
 import EnebularAgent from '../src/enebular-agent'
 import Utils from './helpers/utils'
@@ -9,7 +10,6 @@ import DummyServer from './helpers/dummy-server'
 import {
   createConnectedAgent,
   createAuthenticatedAgent,
-  createUnauthenticatedAgent,
   polling,
   agentCleanup
 } from './helpers/agent-helper'
@@ -72,7 +72,7 @@ test.serial(
     let reportedGetReceived = false
     let statusGetReceived = false
     server.onDeviceStateGet = (req, res) => {
-      let _states = req.body.states.map(state => {
+      req.body.states.map(state => {
         switch (state.type) {
           case 'desired':
             desiredGetReceived = true
@@ -105,39 +105,42 @@ test.serial(
   }
 )
 
-test.serial('DeviceState.3: Device handles server error respond (http error)', async t => {
-  // don't set callback so the dummy server respond 400 error.
-  let tmpLogPath = '/tmp/tmp-test-log-' + Utils.randomString()
-  const ret = await createAuthenticatedAgent(
-    t,
-    server,
-    Utils.addNodeRedPortToConfig(
-      {
-        ENEBULAR_ENABLE_FILE_LOG: true,
-        ENEBULAR_LOG_FILE_PATH: tmpLogPath
-      },
-      NodeRedPort
-    ),
-    DummyServerPort
-  )
-  agent = ret.agent
-
-  const log = fs.readFileSync(tmpLogPath, 'utf8')
-  t.true(
-    log.includes(
-      'Failed to get device state: Failed to fetch device state: 400'
+test.serial(
+  'DeviceState.3: Device handles server error respond (http error)',
+  async t => {
+    // don't set callback so the dummy server respond 400 error.
+    let tmpLogPath = '/tmp/tmp-test-log-' + Utils.randomString()
+    const ret = await createAuthenticatedAgent(
+      t,
+      server,
+      Utils.addNodeRedPortToConfig(
+        {
+          ENEBULAR_ENABLE_FILE_LOG: true,
+          ENEBULAR_LOG_FILE_PATH: tmpLogPath
+        },
+        NodeRedPort
+      ),
+      DummyServerPort
     )
-  )
-  fs.unlinkSync(tmpLogPath)
-  t.pass()
-})
+    agent = ret.agent
+
+    const log = fs.readFileSync(tmpLogPath, 'utf8')
+    t.true(
+      log.includes(
+        'Failed to get device state: Failed to fetch device state: 400'
+      )
+    )
+    fs.unlinkSync(tmpLogPath)
+    t.pass()
+  }
+)
 
 test.serial(
   'DeviceState.4: Device handles server error respond (json format error)',
   async t => {
     let tmpLogPath = '/tmp/tmp-test-log-' + Utils.randomString()
     server.onDeviceStateGet = (req, res) => {
-      res.send(new Buffer('bad json string'))
+      res.send(Buffer.from('bad json string'))
     }
     const ret = await createAuthenticatedAgent(
       t,
@@ -162,15 +165,23 @@ test.serial(
   }
 )
 
-async function shouldUpdateStatus(t) {
+async function agentShouldUpdateStatus(t) {
   let deviceStateUpdateReceived = false
+  let reportedStates = {}
   server.onDeviceStateUpdate = (req, res) => {
-    deviceStateUpdateReceived = true
-    t.true(updates.type === 'status')
-    t.true(updates.op === 'set')
-    t.true(updates.path === 'agent')
-    t.true(updates.state.type === 'enebular-agent')
-    t.true(updates.state.v === agentVer)
+    const result = req.body.updates.map(update => {
+      if (update.op === 'set') {
+        objectPath.set(reportedStates, 'state.' + update.path, update.state)
+      } else if (update.op === 'remove') {
+        objectPath.del(reportedStates, 'state.' + update.path)
+      }
+      if (update.type === 'status') deviceStateUpdateReceived = true
+      return {
+        success: true,
+        meta: {}
+      }
+    })
+    res.send({ updates: result })
   }
 
   const ret = await createAuthenticatedAgent(
@@ -184,12 +195,14 @@ async function shouldUpdateStatus(t) {
     return deviceStateUpdateReceived
   }
   t.true(await polling(callback, 0, 100, 3000))
+
+  t.true(reportedStates.state.agent.type === 'enebular-agent')
+  t.true(reportedStates.state.agent.v === agentVer)
 }
 
 test.serial(
   'DeviceState.5: Device should update status if status state on server is empty',
   async t => {
-    let deviceStateUpdateReceived = false
     server.onDeviceStateGet = (req, res) => {
       let _states = req.body.states.map(state => {
         return {
@@ -200,14 +213,13 @@ test.serial(
       res.send({ states: _states })
     }
 
-    await shouldUpdateStatus(t)
+    await agentShouldUpdateStatus(t)
   }
 )
 
 test.serial(
   'DeviceState.6: Device should update status if agent type in status is NOT identical',
   async t => {
-    let deviceStateUpdateReceived = false
     server.onDeviceStateGet = (req, res) => {
       let _states = req.body.states.map(state => {
         switch (state.type) {
@@ -227,14 +239,13 @@ test.serial(
       res.send({ states: _states })
     }
 
-    await shouldUpdateStatus(t)
+    await agentShouldUpdateStatus(t)
   }
 )
 
 test.serial(
   'DeviceState.7: Device should update status if agent version in status is NOT identical',
   async t => {
-    let deviceStateUpdateReceived = false
     server.onDeviceStateGet = (req, res) => {
       let _states = req.body.states.map(state => {
         switch (state.type) {
@@ -251,7 +262,7 @@ test.serial(
       res.send({ states: _states })
     }
 
-    await shouldUpdateStatus(t)
+    await agentShouldUpdateStatus(t)
   }
 )
 
@@ -264,7 +275,7 @@ test.serial(
     }
     server.onDeviceStateUpdate = (req, res) => {
       const result = req.body.updates.map(update => {
-        if (update.type == 'status') {
+        if (update.type === 'status') {
           deviceStatusStateUpdateReceived = true
         }
         return {
@@ -314,7 +325,7 @@ test.serial('DeviceState.9: Device retries if status updates fail', async t => {
   )
   agent = ret.agent
   const callback = () => {
-    return deviceStateUpdateReceived == 2
+    return deviceStateUpdateReceived === 2
   }
   t.true(await polling(callback, 0, 100, 1000 * 65))
 })
@@ -328,7 +339,7 @@ test.serial(
     }
     server.onDeviceStateUpdate = (req, res) => {
       const result = req.body.updates.map(update => {
-        if (update.type == 'reported' && update.path == 'monitoring') {
+        if (update.type === 'reported' && update.path === 'monitoring') {
           monitoringStateUpdateReceived = true
         }
         return {

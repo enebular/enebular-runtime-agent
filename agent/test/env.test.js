@@ -6,10 +6,7 @@ import path from 'path'
 import EnebularAgent from '../src/enebular-agent'
 import ConnectorService from '../src/connector-service'
 import Utils from './helpers/utils'
-import { 
-  nodeRedIsAlive,
-  agentCleanup
-} from './helpers/agent-helper'
+import { nodeRedIsAlive, agentCleanup } from './helpers/agent-helper'
 import DummyServerConfig from './helpers/dummy-server-config'
 
 const DummyServerPort = 3001

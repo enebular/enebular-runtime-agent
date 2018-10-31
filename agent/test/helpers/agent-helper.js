@@ -143,9 +143,9 @@ export async function createAgentWithDummyServerAssetHandler(
   dummyServer.onDeviceStateUpdate = (req, res) => {
     const result = req.body.updates.map(update => {
       updateReq.push(update)
-      if (update.op == 'set') {
+      if (update.op === 'set') {
         objectPath.set(reportedStates, 'state.' + update.path, update.state)
-      } else if (update.op == 'remove') {
+      } else if (update.op === 'remove') {
         objectPath.del(reportedStates, 'state.' + update.path)
       }
       return {
@@ -171,7 +171,14 @@ export async function createAgentWithDummyServerAssetHandler(
   return ret
 }
 
-export async function createAgentWithAssetsDeployed(t, server, nodeRedPort, dummyServerPort, assetCount, cleanup) {
+export async function createAgentWithAssetsDeployed(
+  t,
+  server,
+  nodeRedPort,
+  dummyServerPort,
+  assetCount,
+  cleanup
+) {
   let tmpAssetDataPath = '/tmp/tmp-asset-data-' + Utils.randomString()
   let tmpAssetStatePath = '/tmp/tmp-asset-state-' + Utils.randomString()
   let deviceStates = Utils.getEmptyDeviceState()
@@ -203,7 +210,12 @@ export async function createAgentWithAssetsDeployed(t, server, nodeRedPort, dumm
     reportedStates,
     desiredState => {
       assets.map(asset => {
-        Utils.addFileAssetToDesiredState(desiredState, asset.id, asset.name, asset.integrity)
+        Utils.addFileAssetToDesiredState(
+          desiredState,
+          asset.id,
+          asset.name,
+          asset.integrity
+        )
       })
     }
   )
@@ -299,5 +311,3 @@ export async function agentCleanup(agent, nodeRedPort) {
     }
   }
 }
-
-

@@ -7,7 +7,7 @@ import { Server } from 'net'
 import EnebularAgent from '../src/enebular-agent'
 import Utils from './helpers/utils'
 import DummyServer from './helpers/dummy-server'
-import { 
+import {
   createAuthenticatedAgent,
   polling,
   agentCleanup

@@ -52,7 +52,14 @@ test.afterEach.always('cleanup', async t => {
 test.serial(
   'AssetManagerState.1: Agent handles multiple assets changes in desired status',
   async t => {
-    let ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 3, false)
+    let ret = await createAgentWithAssetsDeployed(
+      t,
+      server,
+      NodeRedPort,
+      DummyServerPort,
+      3,
+      false
+    )
     agent = ret.agent
     let newAssetId = Utils.randomString()
     let assetName = 'asset_1.json'
@@ -62,7 +69,10 @@ test.serial(
 
     ret.updateRequests.length = 0
     // remove
-    let desiredState = Utils.delDesiredAsset(ret.deviceStates[0], ret.assets[0].id)
+    let desiredState = Utils.delDesiredAsset(
+      ret.deviceStates[0],
+      ret.assets[0].id
+    )
     // modify
     let updateId = Utils.randomString()
     desiredState = Utils.modifyDesiredAsset(
@@ -117,7 +127,14 @@ test.serial(
 test.serial(
   'AssetManagerState.2: Agent should NOT update reported state if state is identical',
   async t => {
-    let ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 2, false)
+    let ret = await createAgentWithAssetsDeployed(
+      t,
+      server,
+      NodeRedPort,
+      DummyServerPort,
+      2,
+      false
+    )
     agent = ret.agent
 
     ret.updateRequests.length = 0
@@ -145,7 +162,14 @@ test.serial(
 test.serial(
   'AssetManagerState.3: Agent updates reported state if state is different #1',
   async t => {
-    let ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 2, false)
+    let ret = await createAgentWithAssetsDeployed(
+      t,
+      server,
+      NodeRedPort,
+      DummyServerPort,
+      2,
+      false
+    )
     agent = ret.agent
     // empty reported state
     let reported = {
@@ -190,7 +214,14 @@ test.serial(
 test.serial(
   'AssetManagerState.4: Agent updates reported state if state is different #2',
   async t => {
-    let ret = await createAgentWithAssetsDeployed(t, server, NodeRedPort, DummyServerPort, 2, false)
+    let ret = await createAgentWithAssetsDeployed(
+      t,
+      server,
+      NodeRedPort,
+      DummyServerPort,
+      2,
+      false
+    )
     agent = ret.agent
 
     ret.updateRequests.length = 0

@@ -1,3 +1,4 @@
+/* @flow */
 import fs from 'fs'
 import DummyServerConfig from './dummy-server-config'
 import objectHash from 'object-hash'
@@ -104,7 +105,7 @@ export default class Utils {
   }
 
   static getDummyState(type, state) {
-    let new_state = {
+    let newState = {
       fqDeviceId: 'dummy_connectionId::dummy_deviceId',
       type: type,
       meta: {
@@ -115,8 +116,8 @@ export default class Utils {
       },
       state: state
     }
-    new_state.meta.hash = Utils.getMetaHash(new_state)
-    return new_state
+    newState.meta.hash = Utils.getMetaHash(newState)
+    return newState
   }
 
   static getDummyStatusState(type, v) {
@@ -188,7 +189,12 @@ export default class Utils {
     })
   }
 
-  static addFileAssetToDesiredState(desiredState, assetId, fileName, integrity) {
+  static addFileAssetToDesiredState(
+    desiredState,
+    assetId,
+    fileName,
+    integrity
+  ) {
     Utils.addFileAssetToState(desiredState, assetId, fileName, integrity)
     return Utils.getDummyState('desired', desiredState.state)
   }
