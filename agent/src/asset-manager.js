@@ -2,6 +2,7 @@
 
 import fs from 'fs'
 import path from 'path'
+import mkdirp from 'mkdirp'
 import objectHash from 'object-hash'
 import Asset from './asset'
 import FileAsset from './file-asset'
@@ -85,7 +86,7 @@ export default class AssetManager {
     this.debug('Asset state file path: ' + this._stateFilePath)
 
     if (!fs.existsSync(this._dataDir)) {
-      fs.mkdirSync(this._dataDir)
+      mkdirp.sync(this._dataDir)
     }
 
     await this._initAssets()
