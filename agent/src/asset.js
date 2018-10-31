@@ -106,42 +106,44 @@ export default class Asset {
     }
   }
 
-  async _runCommandHook(hook: Object) {
-    const [cmd, ...args] = hook.cmdTypeConfig.cmd.split(/\s+/)
-    const cmdPath = path.join(this._assetMan.dataDir(), cmd)
-    this._info('Command: ' + [cmdPath].concat(args).join(' '))
+  async _runAssetHook(hook: Object) {
+    const assetPath = path.join(
+      this._assetMan.dataDir(),
+      hook.assetTypeConfig.assetPath
+    )
+    this._info('Asset path: ' + hook.assetTypeConfig.assetPath)
 
-    if (!fs.existsSync(cmdPath)) {
-      throw new Error("Command doesn't exist")
+    // Check assetPath exists and chmod if necessary
+    if (!fs.existsSync(assetPath)) {
+      throw new Error("Asset doesn't exist")
     }
-
-    // Check cmdPath exists and chmod if necessary
-    const stats = fs.lstatSync(cmdPath)
+    const stats = fs.lstatSync(assetPath)
     const desiredPerm = 0o740
     if (stats.mode !== desiredPerm) {
-      this._info('Changing command file permissions to 740...')
-      fs.chmodSync(cmdPath, desiredPerm)
+      this._info('Changing asset file permissions to 740...')
+      fs.chmodSync(assetPath, desiredPerm)
     }
 
     // Exec
-    const cwd = this._assetMan.dataDir()
+    const args = []
+    const cwd = this._destDirPath()
     const that = this
     await new Promise((resolve, reject) => {
-      const cproc = spawn(cmdPath, args, {
+      const cproc = spawn(assetPath, args, {
         stdio: 'pipe',
         cwd: cwd
       })
       const timeoutID = setTimeout(() => {
-        that._info('Execution went over time limit')
+        that._info('Asset execution went over time limit')
         cproc.kill()
-      }, hook.cmdTypeConfig.maxTime * 1000)
+      }, hook.maxTime * 1000)
       cproc.stdout.on('data', data => {
         let str = data.toString().replace(/(\n|\r)+$/, '')
-        that._info('Command output: ' + str)
+        that._info('Asset output: ' + str)
       })
       cproc.stderr.on('data', data => {
         let str = data.toString().replace(/(\n|\r)+$/, '')
-        that._info('Command output: ' + str)
+        that._info('Asset output: ' + str)
       })
       cproc.on('error', err => {
         clearTimeout(timeoutID)
@@ -153,23 +155,25 @@ export default class Asset {
           if (code === 0) {
             resolve()
           } else {
-            reject(new Error('Execution ended with failure exit code: ' + code))
+            reject(
+              new Error('Asset execution ended with failure exit code: ' + code)
+            )
           }
         } else {
-          reject(new Error('Execution ended with signal: ' + signal))
+          reject(new Error('Asset execution ended with signal: ' + signal))
         }
       })
     })
 
-    this._debug('Command executed')
+    this._debug('Asset executed')
   }
 
   async _runHook(hook: Object) {
-    this._info('Running hook...')
+    this._info(`Running '${hook.type}' hook...`)
 
     switch (hook.type) {
-      case 'cmd':
-        await this._runCommandHook(hook)
+      case 'asset':
+        await this._runAssetHook(hook)
         break
       default:
         throw new Error('Unsupported hook type: ' + hook.type)
