@@ -46,7 +46,7 @@ test.afterEach.always('cleanup listener', t => {
 })
 
 test.afterEach.always('cleanup', async t => {
-  agentCleanup(agent, NodeRedPort)
+  await agentCleanup(agent, NodeRedPort)
 })
 
 test.serial(
@@ -235,7 +235,7 @@ test.serial(
 
     await waitAssetProcessing(agent, 1000, 10000)
 
-    console.log(JSON.stringify(ret.updateRequests, null, 2))
+    // console.log(JSON.stringify(ret.updateRequests, null, 2))
     t.is(ret.updateRequests[0].path, 'monitoring')
     t.is(ret.updateRequests[1].op, 'remove')
     t.is(ret.updateRequests[1].path, removeStatePath)

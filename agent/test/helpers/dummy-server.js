@@ -86,7 +86,7 @@ export default class DummyServer extends EventEmitter {
         res.status(301).send({})
       } else {
         const assetPath = req.query.key.startsWith('random') ? 
-        path.join(this._tmpAssetFilePath + req.query.key)
+        path.join(this._tmpAssetFilePath, req.query.key)
         : path.join(
           __dirname,
           '..',
