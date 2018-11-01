@@ -106,13 +106,40 @@ export default class Asset {
     }
   }
 
+  _execArgsArray(argsString: string): Array<string> {
+    return argsString ? argsString.split(/\s+/) : []
+  }
+
+  _execEnvObj(envs: Array<string>): {} {
+    let env = Object.assign({}, process.env)
+    if (envs) {
+      for (let e of envs) {
+        let eComps = e.split('=')
+        env[eComps[0]] = eComps[1]
+      }
+    }
+    return env
+  }
+
+  _execInCmdForm(cmd: string, args: string, envs: Array<string>): string {
+    envs = envs || []
+    return envs.concat([cmd, args]).join(' ')
+  }
+
   async _runAssetHook(hook: Object) {
+    this._info(
+      'Asset command: ' +
+        this._execInCmdForm(
+          hook.assetTypeConfig.assetPath,
+          hook.assetTypeConfig.args,
+          hook.assetTypeConfig.envs
+        )
+    )
+
     const assetPath = path.join(
       this._assetMan.dataDir(),
       hook.assetTypeConfig.assetPath
     )
-    this._info('Asset path: ' + hook.assetTypeConfig.assetPath)
-
     // Check assetPath exists and chmod if necessary
     if (!fs.existsSync(assetPath)) {
       throw new Error("Asset doesn't exist")
@@ -125,12 +152,14 @@ export default class Asset {
     }
 
     // Exec
-    const args = []
+    const args = this._execArgsArray(hook.assetTypeConfig.args)
+    const env = this._execEnvObj(hook.assetTypeConfig.envs)
     const cwd = this._destDirPath()
     const that = this
     await new Promise((resolve, reject) => {
       const cproc = spawn(assetPath, args, {
         stdio: 'pipe',
+        env: env,
         cwd: cwd
       })
       const timeoutID = setTimeout(() => {
