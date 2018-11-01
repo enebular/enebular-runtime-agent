@@ -2,6 +2,7 @@
 
 import fs from 'fs'
 import path from 'path'
+import mkdirp from 'mkdirp'
 import objectHash from 'object-hash'
 import Asset from './asset'
 import FileAsset from './file-asset'
@@ -14,14 +15,78 @@ import type Config from './config'
 const moduleName = 'asset-man'
 
 /**
- * Asset states:
- *   - notDeployed | deployed
- *   - deploying | deployFail
- *   - removing | removeFail
+ * Asset 'State' Management and Representation
  *
- * Reported asset states:
- *   - deployPending | deploying | deployed | deployFail
- *   - removePending | removing | removeFail
+ * The state of a single asset is chiefly managed through two properties:
+ *
+ *   - Its current acutal state (asset.state)
+ *   - Its current pending change (asset.pendingChange)
+ *
+ * On top of that, those two properties are then combined into a single overall
+ * current 'state' for use in the 'reported' device state.
+ *
+ * An asset's configuration details are maintained in the following two
+ * properties:
+ *
+ *   - Its current config (asset.config)
+ *   - Its pending config (asset.pendingConfig)
+ *
+ * The asset 'current actual' states are:
+ *
+ *   - notDeployed - Asset is not deployed (is new / never been deployed before)
+ *   - deployed -  Asset is fully / successfully deployed
+ *   - deploying -  Asset is being deployed
+ *   - deployFail -  Asset deploy failed
+ *   - removing -  Asset is being removed
+ *   - removeFail - Asset remove failed
+ *
+ * Note that the initial state of a newly added (deployed for the first time)
+ * asset will be 'notDeployed'. However, on removal, after the asset has been
+ * successfully removed it is just cleared from the state completely, and so
+ * doesn't go back to the 'notDeployed' state.
+ *
+ * The asset 'pending change' types are:
+ *
+ *   - deploy - Asset will be (re)deployed
+ *   - remove - Asset will be removed
+ *
+ * The overall 'combined' asset states (as used in 'reported') are:
+ *
+ *   - deployPending - Asset will be (re)deployed
+ *     - config: Current config if asset.state is not 'notDeployed'
+ *     - pendingConfig: Config to be deployed
+ *     - config in 'reported': if asset.state is 'notDeployed' it is
+ *       pendingConfig, otherwise it is config.
+ *
+ *   - deploying - Asset is being deployed
+ *     - config: Config being deployed
+ *     - pendingConfig: null
+ *     - config in 'reported': config
+ *
+ *   - deployed - Asset is fully / successfully deployed
+ *     - config: Config deployed
+ *     - pendingConfig: null
+ *     - config in 'reported': config
+ *
+ *   - deployFail - Asset deploy failed
+ *     - config: Config for the deploy that failed
+ *     - pendingConfig: null
+ *     - config in 'reported': config
+ *
+ *   - removePending - Asset will be removed
+ *     - config: Config deployed
+ *     - pendingConfig: null
+ *     - config in 'reported': config
+ *
+ *   - removing - Asset is being removed
+ *     - config: Config deployed
+ *     - pendingConfig: null
+ *     - config in 'reported': config
+ *
+ *   - removeFail - Asset remove failed
+ *     - config: Config deployed (before remove failure)
+ *     - pendingConfig: null
+ *     - config in 'reported': config
  */
 
 export default class AssetManager {
@@ -85,7 +150,7 @@ export default class AssetManager {
     this.debug('Asset state file path: ' + this._stateFilePath)
 
     if (!fs.existsSync(this._dataDir)) {
-      fs.mkdirSync(this._dataDir)
+      mkdirp.sync(this._dataDir)
     }
 
     await this._initAssets()
