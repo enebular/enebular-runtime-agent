@@ -1,16 +1,16 @@
-# enebular-agent - Mbed Cloud Connector
+﻿# enebular-agent - Mbed Cloud Connector
 
 *Read this in other languages: [English](README.md), [日本語](README.ja.md)*
 
-このアプリケーションはMbed Cloudのクライアントです。enebular-agentと併せて利用し、Mbed Cloudを経由したenebularとの通信をサポートします。
+このアプリケーションはPelion Device Managementのクライアントです。enebular-agentと併せて利用し、Pelion Device Managementを経由したenebularとの通信をサポートします。
 
-この「Connector Service」は、Mbed Cloudリソース更新のデータをUnixソケット経由でenebular-agentに送信し実装しています。
+この「Connector Service」は、Pelion Device Managementリソース更新のデータをUnixソケット経由でenebular-agentに送信し実装しています。
 
 このプロジェクトは現在、[mbed-cloud-client-example](https://github.com/ARMmbed/mbed-cloud-client-example)のプロジェクトに含まれているビルドシステムをそのまま採用しています。
 
 ## デベロッパーモードとファクトリーモード
 
-mbed-cloud-client-exampleのプロジェクトと同様に、デフォルトではMbed Cloudへの接続にデベロッパーモードのクレデンシャル情報が使われるように設定されています。ファクトリーモードのクレデンシャル情報を利用して実行させたい場合、アプリケーションをビルドする前に以下の例のように`define.txt`ファイルで定義されている`MBED_CONF_APP_DEVELOPER_MODE`項目を`0`に変更してモードを無効にしてください。
+mbed-cloud-client-exampleのプロジェクトと同様に、デフォルトではPelion Device Managementへの接続にデベロッパーモードのクレデンシャル情報が使われるように設定されています。ファクトリーモードのクレデンシャル情報を利用して実行させたい場合、アプリケーションをビルドする前に以下の例のように`define.txt`ファイルで定義されている`MBED_CONF_APP_DEVELOPER_MODE`項目を`0`に変更してモードを無効にしてください。
 
 ```
 add_definitions(-DMBED_CONF_APP_DEVELOPER_MODE=0)
@@ -30,9 +30,9 @@ add_definitions(-DMBED_CONF_APP_DEVELOPER_MODE=0)
 
 4 . プロジェクトをgit cloneコマンドで取得した場合、Mbed CLIツールの`mbed deploy`コマンドを利用して依存するライブラリを追加する必要があります
 
-デベロッパーモードを利用する場合、Mbed Cloudのクレデンシャル情報を以下の手順で設定します。
+デベロッパーモードを利用する場合、Pelion Device Managementのクレデンシャル情報を以下の手順で設定します。
 
-5 . [Mbed Cloud portal](https://portal.mbedcloud.com/login)にログインします
+5 . [Pelion Device Management portal](https://portal.mbedcloud.com/login)にログインします
 
 6 . "Device identity > Certificates"に移動します
 
@@ -48,7 +48,7 @@ add_definitions(-DMBED_CONF_APP_DEVELOPER_MODE=0)
 python pal-platform/pal-platform.py fullbuild --target x86_x64_NativeLinux_mbedtls --toolchain GCC --external ./../define.txt --name enebular-agent-mbed-cloud-connector.elf
 ```
 
-ビルド時のオプションの詳細情報については、以下のMbed Cloudのドキュメントを参照してください。
+ビルド時のオプションの詳細情報については、以下のPelion Device Managementのドキュメントを参照してください。
 
 - [Connect a Linux device](https://cloud.mbed.com/docs/current/connecting/linux-on-pc.html)
 - [pal-platform utility](https://cloud.mbed.com/docs/current/porting/using-the-pal-platform-utility.html)
@@ -58,9 +58,9 @@ python pal-platform/pal-platform.py fullbuild --target x86_x64_NativeLinux_mbedt
 ## 実行方法
 
 このアプリケーションはenebular-agentと通信するため、enebular-agentを先に起動させないといけません。具体的には、enebular-agentのlocalポート(※)を実行する必要があります。enebular-agentの設定や実行方法の詳細情報については、プロジェクトのreadmeファイルを参照してください。
-(※) ここでのポートとは、enebular-agentをAWS IoTやMbed Cloudなどの外部サービスと連携するために個別に準備されたenebular-agentのエディションのことを指します。
+(※) ここでのポートとは、enebular-agentをAWS IoTやPelion Device Managementなどの外部サービスと連携するために個別に準備されたenebular-agentのエディションのことを指します。
 
-enebular-agentが実行状態になってから、`enebular-agent-mbed-cloud-connector.elf`という名前の実行ファイルを実行します。Mbed Cloudへの接続が確立するとenebularのエージェントとして利用することが出来ます。
+enebular-agentが実行状態になってから、`enebular-agent-mbed-cloud-connector.elf`という名前の実行ファイルを実行します。Pelion Device Managementへの接続が確立するとenebularのエージェントとして利用することが出来ます。
 
 デフォルトではログメッセージはコンソールに出力されませんが、`-c`オプションを指定することによって出力することが出来ます。サポートされているオプションの情報は下記のように`-h`オプションを指定して表示することが出来ます。
 
