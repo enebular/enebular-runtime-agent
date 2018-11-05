@@ -5,6 +5,8 @@ import path from 'path'
 import { spawn, type ChildProcess } from 'child_process'
 import ProcessUtil from './process-util'
 import fetch from 'isomorphic-fetch'
+import ip from 'ip'
+import axios from 'axios'
 import type { Logger } from 'winston'
 import type LogManager from './log-manager'
 
@@ -24,7 +26,8 @@ const maxRetryCountResetInterval = 5
 type NodeRedFlowPackage = {
   flows: Object[],
   creds: Object,
-  packages: Object
+  packages: Object,
+  ipAddress?: ?string
 }
 
 export default class NodeREDController {
@@ -92,6 +95,7 @@ export default class NodeREDController {
   }
 
   _registerHandler(emitter: EventEmitter) {
+    console.log('******* _registerHandler *******')
     emitter.on('update-flow', params => this.fetchAndUpdateFlow(params))
     emitter.on('deploy', params => this.fetchAndUpdateFlow(params))
     emitter.on('start', () => this.startService())
@@ -129,8 +133,25 @@ export default class NodeREDController {
 
   async _fetchAndUpdateFlow(params: { downloadUrl: string }) {
     this.info('Updating flow')
-    await this._downloadAndUpdatePackage(params.downloadUrl)
-    await this._restartService()
+    const flowPackage = await this._downloadAndUpdatePackage(params.downloadUrl)
+    console.log(
+      flowPackage,
+      '******* flowPackage in fetchAndUpdateFlow *******'
+    )
+    if (this._ipAddressExist(flowPackage)) {
+      console.log('******* got IP *******')
+      const editorIPAddress = flowPackage.ipAddress
+      await this._restartInEditorMode(editorIPAddress)
+    } else {
+      await this._restartService()
+    }
+  }
+
+  _ipAddressExist(flowPackage: NodeRedFlowPackage) {
+    if (flowPackage && flowPackage.ipAddress) {
+      return true
+    }
+    return false
   }
 
   async _downloadAndUpdatePackage(downloadUrl: string) {
@@ -199,6 +220,7 @@ export default class NodeREDController {
     }
     await Promise.all(updates)
     await this._resolveDependency()
+    return flowPackage
   }
 
   async _resolveDependency() {
@@ -231,17 +253,27 @@ export default class NodeREDController {
   }
 
   async startService() {
+    console.log('******* startService *******')
     return this._queueAction(() => this._startService())
   }
 
+  async startEditorService(editorIPAddress: string) {
+    console.log('******* startEditorService *******')
+    return this._queueAction(() =>
+      this._startEditorModeService(editorIPAddress)
+    )
+  }
+
   async _startService() {
-    this.info('Staring service...')
+    this.info('Starting service...')
     return new Promise((resolve, reject) => {
       if (fs.existsSync(this._pidFile)) {
         ProcessUtil.killProcessByPIDFile(this._pidFile)
       }
-
+      const pathYo = path.resolve(this._dir)
+      console.log(pathYo, '******* pathYo start service *******')
       const [command, ...args] = this._command.split(/\s+/)
+      console.log(args, '******* args *******')
       const cproc = spawn(command, args, {
         stdio: 'pipe',
         cwd: this._dir,
@@ -294,6 +326,81 @@ export default class NodeREDController {
       })
       this._cproc = cproc
       if (this._cproc.pid) this._createPIDFile(this._cproc.pid.toString())
+<<<<<<< HEAD
+=======
+      setTimeout(() => resolve(), 1000)
+    })
+  }
+
+  async _startEditorModeService(editorIPAddress: string) {
+    this.info('Staring Editor Mode service...', editorIPAddress)
+    return new Promise((resolve, reject) => {
+      if (fs.existsSync(this._pidFile)) {
+        ProcessUtil.killProcessByPIDFile(this._pidFile)
+      }
+
+      const [command, ...args] = this._command.split(/\s+/)
+      const pathYo = path.resolve(this._dir)
+      console.log(pathYo, '******* pathYo start editor service *******')
+      console.log(command, '******* command *******')
+      const cproc = spawn(
+        command,
+        ['-s', '.node-red-config/enebular-editor-settings.js'],
+        {
+          stdio: 'pipe',
+          cwd: this._dir,
+          env: Object.assign(process.env, {
+            ENEBULAR_ASSETS_DATA_PATH: this._assetsDataPath,
+            ENEBULAR_EDITOR_URL: editorIPAddress
+          })
+        }
+      )
+      cproc.stdout.on('data', data => {
+        let str = data.toString().replace(/(\n|\r)+$/, '')
+        this._nodeRedLog.info(str)
+      })
+      cproc.stderr.on('data', data => {
+        let str = data.toString().replace(/(\n|\r)+$/, '')
+        this._nodeRedLog.error(str)
+      })
+      cproc.once('exit', (code, signal) => {
+        this.info(`Service exited (${code !== null ? code : signal})`)
+        this._cproc = null
+        /* Restart automatically on an abnormal exit. */
+        if (code !== 0) {
+          const now = Date.now()
+          /* Detect continuous crashes (exceptions happen within 5 seconds). */
+          this._exceptionRetryCount =
+            this._lastRetryTimestamp + maxRetryCountResetInterval * 1000 > now
+              ? this._exceptionRetryCount + 1
+              : 0
+          this._lastRetryTimestamp = now
+          if (this._exceptionRetryCount < maxRetryCount) {
+            this.info(
+              'Unexpected exit, restarting service in 1 second. Retry count:' +
+                this._exceptionRetryCount
+            )
+            setTimeout(() => {
+              this.startEditorService(editorIPAddress)
+            }, 1000)
+          } else {
+            this.info(
+              `Unexpected exit, but retry count(${
+                this._exceptionRetryCount
+              }) exceed max.`
+            )
+            /* Other restart strategies (change port, etc.) could be tried here. */
+          }
+        }
+        this._removePIDFile()
+      })
+      cproc.once('error', err => {
+        this._cproc = null
+        reject(err)
+      })
+      this._cproc = cproc
+      if (this._cproc.pid) this._createPIDFile(this._cproc.pid.toString())
+>>>>>>> test ip playing
       setTimeout(() => resolve(), 1000)
     })
   }
@@ -320,8 +427,34 @@ export default class NodeREDController {
     })
   }
 
+  async _sendEditorAgentIPAddress(editorIPAddress: string) {
+    const ipAddress = ip.address()
+    console.log(ipAddress, '******* send editor ipAddress *******')
+    try {
+      axios
+        .post(`http://${editorIPAddress}:9017/api/v1/agent-editor/ip`, {
+          agentIPAddress: ipAddress
+        })
+        .then(res => {
+          console.log(res, '******* res *******')
+        })
+        .catch(err => {
+          console.log(err.response, '******* err.response *******')
+        })
+    } catch (err) {
+      console.error('send editor error', err)
+    }
+  }
+
   async restartService() {
     return this._queueAction(() => this._restartService())
+  }
+
+  async _restartInEditorMode(editorIPAddress: string) {
+    this.info('Restarting Editor Mode service...', editorIPAddress)
+    await this._shutdownService()
+    await this._startEditorModeService(editorIPAddress)
+    await this._sendEditorAgentIPAddress(editorIPAddress)
   }
 
   async _restartService() {
