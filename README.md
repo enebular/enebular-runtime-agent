@@ -59,7 +59,7 @@ Node-RED is also installed as a Node.js module.
 
 ## Ports
 
-A 'port' refers to the individual enebular-agent editions created to allow it to work with external connection services such as AWS IoT and Mbed Cloud.
+A 'port' refers to the individual enebular-agent editions created to allow it to work with external connection services such as AWS IoT and Pelion Device Management.
 
 To use enebular-agent you select the appropriate port for the IoT platform connection type you want to use, install and configure the port, and then run it using the executable under its `bin` directory.
 
@@ -67,7 +67,7 @@ The current ports are:
 
 - **AWS IoT** - For use with AWS IoT
 - **Local** - For use together other local programs
-  - This is used together with the [enebular-agent Mbed Cloud Connector](https://github.com/enebular/enebular-runtime-agent-mbed-cloud-connector) when using enebular-agent with Mbed Cloud
+  - This is used together with the [enebular-agent Mbed Cloud Connector](https://github.com/enebular/enebular-runtime-agent-mbed-cloud-connector) when using enebular-agent with Pelion Device Management
 
 ## Using enebular editor Mode
 
