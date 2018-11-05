@@ -462,7 +462,7 @@ test.serial(
       }
     ]
 
-    fs.writeFileSync(path.join(ret.assetDataPath, 'go.sh'), 'cat /dev/random')
+    fs.writeFileSync(path.join(ret.assetDataPath, 'go.sh'), 'sleep 10')
     const assets = await createAssets(cmdForTest.length)
 
     let desiredState = {}
@@ -591,7 +591,7 @@ test.serial(
 
     const id = 'random-' + Utils.randomString()
     const p = path.join(server._tmpAssetFilePath, id)
-    fs.writeFileSync(p, 'cat /dev/random')
+    fs.writeFileSync(p, 'sleep 10')
     const integrity = await Utils.getFileIntegrity(p)
     const asset = {
       id: id,
