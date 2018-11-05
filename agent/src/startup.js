@@ -19,6 +19,8 @@ const systemdTemplate =
   '\n' +
   'ExecStart=%START_AGENT%\n' +
   'ExecStop=%STOP_AGENT%\n' +
+  'Restart=on-failure\n' +
+  'RestartSec=60s\n' +
   '\n' +
   '[Install]\n' +
   'WantedBy=multi-user.target network-online.target\n'
