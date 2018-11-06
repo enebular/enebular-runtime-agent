@@ -95,7 +95,6 @@ export default class NodeREDController {
   }
 
   _registerHandler(emitter: EventEmitter) {
-    console.log('******* _registerHandler *******')
     emitter.on('update-flow', params => this.fetchAndUpdateFlow(params))
     emitter.on('deploy', params => this.fetchAndUpdateFlow(params))
     emitter.on('start', () => this.startService())
@@ -134,12 +133,7 @@ export default class NodeREDController {
   async _fetchAndUpdateFlow(params: { downloadUrl: string }) {
     this.info('Updating flow')
     const flowPackage = await this._downloadAndUpdatePackage(params.downloadUrl)
-    console.log(
-      flowPackage,
-      '******* flowPackage in fetchAndUpdateFlow *******'
-    )
     if (this._ipAddressExist(flowPackage)) {
-      console.log('******* got IP *******')
       const editorIPAddress = flowPackage.ipAddress
       await this._restartInEditorMode(editorIPAddress)
     } else {
@@ -253,12 +247,10 @@ export default class NodeREDController {
   }
 
   async startService() {
-    console.log('******* startService *******')
     return this._queueAction(() => this._startService())
   }
 
   async startEditorService(editorIPAddress: string) {
-    console.log('******* startEditorService *******')
     return this._queueAction(() =>
       this._startEditorModeService(editorIPAddress)
     )
@@ -270,10 +262,7 @@ export default class NodeREDController {
       if (fs.existsSync(this._pidFile)) {
         ProcessUtil.killProcessByPIDFile(this._pidFile)
       }
-      const pathYo = path.resolve(this._dir)
-      console.log(pathYo, '******* pathYo start service *******')
       const [command, ...args] = this._command.split(/\s+/)
-      console.log(args, '******* args *******')
       const cproc = spawn(command, args, {
         stdio: 'pipe',
         cwd: this._dir,
@@ -340,9 +329,7 @@ export default class NodeREDController {
       }
 
       const [command, ...args] = this._command.split(/\s+/)
-      const pathYo = path.resolve(this._dir)
-      console.log(pathYo, '******* pathYo start editor service *******')
-      console.log(command, '******* command *******')
+
       const cproc = spawn(
         command,
         ['-s', '.node-red-config/enebular-editor-settings.js'],
@@ -429,7 +416,6 @@ export default class NodeREDController {
 
   async _sendEditorAgentIPAddress(editorIPAddress: string) {
     const ipAddress = ip.address()
-    console.log(ipAddress, '******* send editor ipAddress *******')
     try {
       axios
         .post(`http://${editorIPAddress}:9017/api/v1/agent-editor/ip`, {

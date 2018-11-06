@@ -278,7 +278,6 @@ export default class EnebularAgent extends EventEmitter {
   }
 
   async startup() {
-    console.log('******* w0000tttt *******')
     if (this._connector.registerConfig) {
       this._connector.registerConfig()
     }
