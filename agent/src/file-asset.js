@@ -81,6 +81,10 @@ export default class FileAsset extends Asset {
     this._debug(`Downloading ${url} to ${path} ...`)
     const that = this
     await new Promise(function(resolve, reject) {
+      const fileStream = fs.createWriteStream(path)
+      fileStream.on('error', err => {
+        reject(err)
+      })
       progress(request(url), {
         delay: 5000,
         throttle: 5000
@@ -106,7 +110,7 @@ export default class FileAsset extends Asset {
         .on('end', () => {
           resolve()
         })
-        .pipe(fs.createWriteStream(path))
+        .pipe(fileStream)
     })
   }
 
