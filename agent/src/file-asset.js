@@ -7,11 +7,16 @@ import crypto from 'crypto'
 import { spawn } from 'child_process'
 import request from 'request'
 import progress from 'request-progress'
+import diskusage from 'diskusage'
 import Asset from './asset'
 
 export default class FileAsset extends Asset {
   _fileName(): string {
     return this.config.fileTypeConfig.filename
+  }
+
+  _size(): string {
+    return this.config.fileTypeConfig.size
   }
 
   _fileSubPath(): string {
@@ -59,6 +64,22 @@ export default class FileAsset extends Asset {
   }
 
   async _acquire() {
+    // Check FS free space
+    this._debug('Checking free space...')
+    let usageInfo
+    try {
+      usageInfo = diskusage.checkSync(this._destDirPath())
+    } catch (err) {
+      throw new Error('Failed to get free space: ' + err.message)
+    }
+    if (usageInfo.free < this._size()) {
+      throw new Error(
+        `Not enough storage space (available: ${
+          usageInfo.free
+        }B, required: ${this._size()}B)`
+      )
+    }
+
     // Get asset file data download URL
     this._debug('Getting file download URL...')
     const url = await this._assetMan.agentMan.getInternalFileAssetDataUrl(
