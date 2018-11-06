@@ -14,7 +14,8 @@ import {
   createConnectedAgent,
   nodeRedIsAlive,
   nodeRedIsDead,
-  polling
+  polling,
+  agentCleanup
 } from './helpers/agent-helper'
 
 const DummyServerPort = 3004
@@ -38,15 +39,8 @@ test.after(t => {
 })
 
 test.afterEach.always('cleanup', async t => {
-  if (agent) {
-    console.log('cleanup: agent')
-    await agent.shutdown().catch(error => {
-      // ignore the error, we don't care this
-      // set to null to avoid 'unused' lint error
-      error = null
-    })
-    agent = null
-  }
+  await agentCleanup(agent, NodeRedPort)
+
   if (tmpNodeRedDataDir) {
     fs.removeSync(tmpNodeRedDataDir)
     tmpNodeRedDataDir = null

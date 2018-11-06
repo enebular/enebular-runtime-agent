@@ -10,8 +10,13 @@ let upload = multer()
 
 export default class DummyServer extends EventEmitter {
   _logReturnBadRequest: boolean
+  _tmpAssetFilePath: string
   setLogReturnBadRequest(bad) {
     this._logReturnBadRequest = bad
+  }
+
+  setTmpAssetFilePath(path) {
+    this._tmpAssetFilePath = path
   }
 
   async start(port = process.env.PORT) {
@@ -55,6 +60,39 @@ export default class DummyServer extends EventEmitter {
       server.emit('notifyStatus', req.body)
       res.sendStatus(200)
     })
+    app.post(DummyServerConfig.deviceStateGetURL, (req, res) => {
+      server.emit('deviceStateGet', req.body)
+      if (this.onDeviceStateGet) this.onDeviceStateGet(req, res)
+      else res.status(400).send({})
+    })
+    app.post(DummyServerConfig.deviceStateUpdateURL, (req, res) => {
+      server.emit('deviceStateUpdate', req.body)
+      if (this.onDeviceStateUpdate) this.onDeviceStateUpdate(req, res)
+      else res.status(400).send({})
+    })
+
+    app.post(DummyServerConfig.deviceAssetsFileDataURL, (req, res) => {
+      res.send({
+        url:
+          'http://127.0.0.1:' +
+          port +
+          '/test/download-asset?key=' +
+          req.body.key
+      })
+    })
+
+    app.get(DummyServerConfig.downloadAssetURL, (req, res) => {
+      if (this.downloadAssetReturnError) {
+        res.status(301).send({})
+      } else {
+        const assetPath = req.query.key.startsWith('random')
+          ? path.join(this._tmpAssetFilePath, req.query.key)
+          : path.join(__dirname, '..', 'data', req.query.key)
+        console.log(assetPath)
+        res.sendFile(assetPath)
+      }
+    })
+
     app.get(DummyServerConfig.downloadFlowURL, (req, res) => {
       console.log('download', req.query)
       const flowName = req.query.flow
