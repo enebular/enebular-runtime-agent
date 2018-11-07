@@ -329,10 +329,6 @@ export default class NodeREDController {
       }
 
       const [command, ...args] = this._command.split(/\s+/)
-      console.log(
-        `http://${editorIPAddress}:9017`,
-        '******* ENEBULAR EDITOR FULL URL *******'
-      )
       const cproc = spawn(
         command,
         ['-s', '.node-red-config/enebular-editor-settings.js'],
@@ -420,16 +416,9 @@ export default class NodeREDController {
   async _sendEditorAgentIPAddress(editorIPAddress: string) {
     const ipAddress = ip.address()
     try {
-      axios
-        .post(`http://${editorIPAddress}:9017/api/v1/agent-editor/ip`, {
-          agentIPAddress: ipAddress
-        })
-        .then(res => {
-          console.log(res, '******* res *******')
-        })
-        .catch(err => {
-          console.log(err.response, '******* err.response *******')
-        })
+      axios.post(`http://${editorIPAddress}:9017/api/v1/agent-editor/ip`, {
+        agentIPAddress: ipAddress
+      })
     } catch (err) {
       console.error('send editor error', err)
     }
@@ -443,7 +432,7 @@ export default class NodeREDController {
     this.info('Restarting Editor Mode service...', editorIPAddress)
     await this._shutdownService()
     await this._startEditorModeService(editorIPAddress)
-    await this._sendEditorAgentIPAddress(editorIPAddress)
+    setTimeout(() => this._sendEditorAgentIPAddress(editorIPAddress), 3000)
   }
 
   async _restartService() {
