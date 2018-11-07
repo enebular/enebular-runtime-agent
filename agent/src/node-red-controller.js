@@ -329,7 +329,10 @@ export default class NodeREDController {
       }
 
       const [command, ...args] = this._command.split(/\s+/)
-
+      console.log(
+        `http://${editorIPAddress}:9017`,
+        '******* ENEBULAR EDITOR FULL URL *******'
+      )
       const cproc = spawn(
         command,
         ['-s', '.node-red-config/enebular-editor-settings.js'],
@@ -338,7 +341,7 @@ export default class NodeREDController {
           cwd: this._dir,
           env: Object.assign(process.env, {
             ENEBULAR_ASSETS_DATA_PATH: this._assetsDataPath,
-            ENEBULAR_EDITOR_URL: editorIPAddress
+            ENEBULAR_EDITOR_URL: `http://${editorIPAddress}:9017`
           })
         }
       )
