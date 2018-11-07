@@ -2,7 +2,7 @@
 import fs from 'fs'
 import EventEmitter from 'events'
 import path from 'path'
-import { spawn, type ChildProcess } from 'child_process'
+import { spawn, type ChildProcess, exec } from 'child_process'
 import ProcessUtil from './process-util'
 import fetch from 'isomorphic-fetch'
 import ip from 'ip'
@@ -322,6 +322,7 @@ export default class NodeREDController {
   }
 
   async _startEditorModeService(editorIPAddress: string) {
+    let executedLoadURL = false
     this.info('Staring Editor Mode service...', editorIPAddress)
     return new Promise((resolve, reject) => {
       if (fs.existsSync(this._pidFile)) {
@@ -344,6 +345,11 @@ export default class NodeREDController {
       cproc.stdout.on('data', data => {
         let str = data.toString().replace(/(\n|\r)+$/, '')
         this._nodeRedLog.info(str)
+        if (str.includes('Started flows') && !executedLoadURL) {
+          console.log('******* execute load window *******')
+          this._sendEditorAgentIPAddress(editorIPAddress)
+          executedLoadURL = true
+        }
       })
       cproc.stderr.on('data', data => {
         let str = data.toString().replace(/(\n|\r)+$/, '')
@@ -432,7 +438,6 @@ export default class NodeREDController {
     this.info('Restarting Editor Mode service...', editorIPAddress)
     await this._shutdownService()
     await this._startEditorModeService(editorIPAddress)
-    setTimeout(() => this._sendEditorAgentIPAddress(editorIPAddress), 3000)
   }
 
   async _restartService() {
