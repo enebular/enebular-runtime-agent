@@ -345,8 +345,8 @@ export default class NodeREDController {
       cproc.stdout.on('data', data => {
         let str = data.toString().replace(/(\n|\r)+$/, '')
         this._nodeRedLog.info(str)
-        if (str.includes('Started flows') && !executedLoadURL) {
-          console.log('******* execute load window *******')
+        if (!executedLoadURL && str.includes('Started flows')) {
+          this._nodeRedLog.info('Opening enebular editor...')
           this._sendEditorAgentIPAddress(editorIPAddress)
           executedLoadURL = true
         }
