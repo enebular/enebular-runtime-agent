@@ -315,8 +315,6 @@ export default class NodeREDController {
       })
       this._cproc = cproc
       if (this._cproc.pid) this._createPIDFile(this._cproc.pid.toString())
-<<<<<<< HEAD
-=======
       setTimeout(() => resolve(), 1000)
     })
   }
@@ -392,7 +390,6 @@ export default class NodeREDController {
       })
       this._cproc = cproc
       if (this._cproc.pid) this._createPIDFile(this._cproc.pid.toString())
->>>>>>> test ip playing
       setTimeout(() => resolve(), 1000)
     })
   }
