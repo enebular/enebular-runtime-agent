@@ -408,6 +408,7 @@ do_install() {
 
   _echo ---------
   _echo Install user set to ${USER}
+  _echo Agent type set to ${AGENT_TYPE}
   _echo Agent port set to ${PORT}
   _echo Install destination set to ${INSTALL_DIR}
   _echo Version to be installed set to ${RELEASE_VERSION}
@@ -540,7 +541,7 @@ post_install() {
 }
 
 USER=enebular
-PORT=awsiot
+AGENT_TYPE=awsiot
 RELEASE_VERSION="latest-release"
 AGENT_DOWNLOAD_PATH="https://api.github.com/repos/enebular/enebular-runtime-agent/"
 SUPPORTED_NODE_VERSION="v9.2.1"
@@ -549,8 +550,8 @@ ENEBULAR_BASE_URL="https://enebular.com/api/v1"
 for i in "$@"
 do
 case $i in
-  -p=*|--port=*)
-  PORT="${i#*=}"
+  -p=*|--type=*)
+  AGENT_TYPE="${i#*=}"
   shift
   ;;
   -u=*|--user=*)
@@ -617,10 +618,16 @@ fi
 if [ -z ${INSTALL_DIR} ]; then
   INSTALL_DIR=/home/${USER}/enebular-runtime-agent
 fi
-case "${PORT}" in
-  awsiot | local);;
+
+case "${AGENT_TYPE}" in
+  awsiot)
+  PORT=awsiot
+  ;;
+  mbed)
+  PORT=local
+  ;;
   *)
-    _err 'Unknown port, supported ports: awsiot, local'
+    _err 'Unknown port, supported ports: awsiot, mbed'
     exit 1
   ;;
 esac
