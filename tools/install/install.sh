@@ -146,8 +146,8 @@ get_node_download_file_name() {
   fi
 }
 
-# args: destination, kind
-download_enebular_agent() {
+# args: url, destination
+download_tarball() {
   local DOWNLOAD_URL
   DOWNLOAD_URL="${1-}"
 
@@ -178,7 +178,7 @@ download_enebular_agent() {
 }
 
 # args: file, destination
-install_enebular_agent() {
+install_tarball() {
   local TAR_FILE
   TAR_FILE="${1-}"
   if [ -z "${TAR_FILE}" ]; then
@@ -444,10 +444,10 @@ do_install() {
   local INSTALL_KIND
   if [ -z "${PREBUILT_URL}" ]; then
     INSTALL_KIND="source"
-    download_enebular_agent "${AGENT_DOWNLOAD_PATH}tarball/${RELEASE_VERSION}" "${TEMP_GZ}"
+    download_tarball "${AGENT_DOWNLOAD_PATH}tarball/${RELEASE_VERSION}" "${TEMP_GZ}"
   else
     INSTALL_KIND="prebuilt"
-    download_enebular_agent "${PREBUILT_URL}" "${TEMP_GZ}"
+    download_tarball "${PREBUILT_URL}" "${TEMP_GZ}"
   fi
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
@@ -457,7 +457,7 @@ do_install() {
 
   _echo Installing enebular-agent...
   _echo ---------
-  install_enebular_agent "${TEMP_GZ}" "${INSTALL_DIR}"
+  install_tarball "${TEMP_GZ}" "${INSTALL_DIR}"
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
     _err "Install enebular agent failed."
@@ -484,7 +484,60 @@ do_install() {
     exit 1
   fi
 
+  if [ "${AGENT_TYPE}" == "mbed" ]; then
+    install_mbed_cloud_connector "${INSTALL_DIR}/tools/mbed-cloud-connector"
+    EXIT_CODE=$?
+    if [ "$EXIT_CODE" -ne 0 ]; then
+      _err "Install mbed cloud connector failed."
+      exit 1
+    fi
+  fi
+
   eval "$5='${NODE_ENV}'"
+}
+
+install_mbed_cloud_connector() {
+  local INSTALL_DIR
+  INSTALL_DIR="${1-}"
+  if [ -z "${INSTALL_DIR}" ]; then
+    _err "Missing install directory."
+    exit 1
+  fi
+
+  _echo Downloading mbed-cloud-connector...
+  _echo ---------
+  local EXIT_CODE
+  local TEMP_GZ
+  TEMP_GZ=`mktemp --dry-run /tmp/mbed-cloud-connector.XXXXXXXXX`
+  local VERSION_INFO
+  local PREBUILT_URL
+  VERSION_INFO="$(get_enebular_agent_version_info ${MBED_CLOUD_CONNECTOR_DOWNLOAD_PATH}releases/latest)"
+  if [ -z "${VERSION_INFO}" ]; then
+    _echo "Failed to get latest version."
+    exit 1
+  else
+    _echo "Version info: ${VERSION_INFO}"
+    VERSION_INFO=($VERSION_INFO)
+    RELEASE_VERSION="${VERSION_INFO[0]}"
+  fi
+
+  download_tarball "${MBED_CLOUD_CONNECTOR_DOWNLOAD_PATH}tarball/${RELEASE_VERSION}" "${TEMP_GZ}"
+  EXIT_CODE=$?
+  if [ "$EXIT_CODE" -ne 0 ]; then
+    _echo "Can't find available release for latest version."
+    exit 1
+  fi
+
+  _echo Installing mbed-cloud-connector...
+  _echo ---------
+  install_tarball "${TEMP_GZ}" "${INSTALL_DIR}"
+  EXIT_CODE=$?
+  if [ "$EXIT_CODE" -ne 0 ]; then
+    _err "Install enebular agent failed."
+    rm ${TEMP_GZ}
+    exit 1
+  fi
+  rm ${TEMP_GZ}
 }
 
 post_install() {
@@ -544,6 +597,7 @@ USER=enebular
 AGENT_TYPE=awsiot
 RELEASE_VERSION="latest-release"
 AGENT_DOWNLOAD_PATH="https://api.github.com/repos/enebular/enebular-runtime-agent/"
+MBED_CLOUD_CONNECTOR_DOWNLOAD_PATH="https://api.github.com/repos/enebular/enebular-runtime-agent-mbed-cloud-connector/"
 SUPPORTED_NODE_VERSION="v9.2.1"
 ENEBULAR_BASE_URL="https://enebular.com/api/v1"
 
