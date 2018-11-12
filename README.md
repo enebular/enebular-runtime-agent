@@ -10,7 +10,6 @@ enebular-agent has the following key functionality.
 - Management of a Node-RED instance, and deployment and execution of flows sent from enebular to that.
 - Deployment and execution of files sent from enebular.
 - Status and log reporting to enebular.
-- Support for the enebular editor.
 
 enebular communicates with enebular-agent via a third-party IoT platform connection.
 
@@ -47,10 +46,6 @@ To view the logs on enebular, the device must be a 'paid' device.
 
 enebular-agent provides simple reporting on its status to enebular (when it has been made a 'paid' device).
 
-### enebular editor Support
-
-enebular-agent supports being used together with the enebular enebular editor. This allows you to deploy flows from the enebular editor directly to the enebular-agent device via the local network.
-
 ## Structure
 
 enebular-agent is implemented as a collection of Node.js modules. Its core runtime functionality is implemented as the `enebular-runtime-agent` module (under the `agent` directory). On top of this, there is a module for each of the supported IoT platform connection types (under the `ports` directory). Each of the ports includes the enebular-runtime-agent core module as a dependency. See below for more information on the ports.
@@ -68,15 +63,6 @@ The current ports are:
 - **AWS IoT** - For use with AWS IoT
 - **Local** - For use together other local programs
   - This is used together with the [enebular-agent Mbed Cloud Connector](https://github.com/enebular/enebular-runtime-agent-mbed-cloud-connector) when using enebular-agent with Pelion Device Management
-
-## Using enebular editor Mode
-
-To use enebular-agent with the enebular editor, you will first need to install enebular-agent manually. For instructions on installing it manually, see the _Manual Setup_ section further below. Then when starting it, the `ENEBULAR_EDITOR_URL` environment variable must be specified. An example of this when using the AWS IoT port is shown below.
-
-```sh
-cd ports/awsiot
-ENEBULAR_EDITOR_URL=http://192.xxx.xx.xx:9017 ./bin/enebular-awsiot-agent
-```
 
 ## Quick Setup
 
