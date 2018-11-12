@@ -53,6 +53,7 @@ is_raspberry_pi() {
   local OUT
   OUT=`uname -n | grep -o "raspberrypi" | wc -l`
   if [ $OUT -eq 0 ]; then
+    [ ! -f '/proc/device-tree/model' ] && return 1
     OUT=`cat /proc/device-tree/model | grep -o "Raspberry Pi" | wc -l`
     [ $OUT -eq 0 ] || return 0
     return 1
@@ -207,7 +208,7 @@ install_tarball() {
   fi
 # TODO: handle update gracefully
   run_as_user ${USER} "mkdir -p ${DST}"
-  _echo Installing enebular-agent to ${DST}...
+  _echo Installing ${TAR_FILE} to ${DST}...
   run_as_user ${USER} "tar --extract --file=${TAR_FILE} \
     --strip-components=1 --directory=${DST}"
   EXIT_CODE=$?
@@ -415,7 +416,7 @@ do_install() {
   _echo ---------
 
   _echo Checking for build-essential package...
-  if ! dpkg -l build-essential >/dev/null 2>&1; then
+  if ! dpkg -s build-essential >/dev/null 2>&1; then
     apt-get -y install build-essential
   fi
 
@@ -485,10 +486,17 @@ do_install() {
   fi
 
   if [ "${AGENT_TYPE}" == "mbed" ]; then
+    # once we merged the connector into agent we will remove the install part.
     install_mbed_cloud_connector "${INSTALL_DIR}/tools/mbed-cloud-connector"
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
       _err "Install mbed cloud connector failed."
+      exit 1
+    fi
+    setup_mbed_cloud_connector "${INSTALL_DIR}/tools/mbed-cloud-connector"
+    EXIT_CODE=$?
+    if [ "$EXIT_CODE" -ne 0 ]; then
+      _err "Setup mbed cloud connector failed."
       exit 1
     fi
   fi
@@ -496,6 +504,55 @@ do_install() {
   eval "$5='${NODE_ENV}'"
 }
 
+#args: install_dir
+setup_mbed_cloud_connector() {
+  _echo Checking for dependencies...
+  if ! dpkg -s git >/dev/null 2>&1; then
+    apt-get -y install git
+  fi
+  if ! dpkg -s cmake >/dev/null 2>&1; then
+    apt-get -y install cmake
+  fi
+  if ! dpkg -s python-pip >/dev/null 2>&1; then
+    apt-get -y install python-pip
+  fi
+  if ! pip show mbed-cli >/dev/null 2>&1; then
+    _echo Installing mbed-cli package...
+    pip install mbed-cli
+  fi
+
+  run_as_user ${USER} "(pip install click requests)"
+  EXIT_CODE=$?
+  if [ "$EXIT_CODE" -ne 0 ]; then
+    _err "Python dependencies install failed."
+    exit 1
+  fi
+
+  run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector && mbed config root . && mbed deploy)"
+  EXIT_CODE=$?
+  if [ "$EXIT_CODE" -ne 0 ]; then
+    _err "mbed deploy failed."
+    exit 1
+  fi
+
+  run_as_user ${USER} "cp ${MBED_CLOUD_DEV_CRET} ${INSTALL_DIR}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c"
+  EXIT_CODE=$?
+  if [ "$EXIT_CODE" -ne 0 ]; then
+    _err "Failed to copy mbed cloud developer credentials."
+    exit 1
+  fi
+
+  run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector && \
+    python pal-platform/pal-platform.py fullbuild --target x86_x64_NativeLinux_mbedtls --toolchain GCC --external \
+    ./../define.txt --name enebular-agent-mbed-cloud-connector.elf)"
+  EXIT_CODE=$?
+  if [ "$EXIT_CODE" -ne 0 ]; then
+    _err "Failed to complie mbed cloud connector."
+    exit 1
+  fi
+}
+
+#args: install_dir
 install_mbed_cloud_connector() {
   local INSTALL_DIR
   INSTALL_DIR="${1-}"
@@ -598,6 +655,7 @@ AGENT_TYPE=awsiot
 RELEASE_VERSION="latest-release"
 AGENT_DOWNLOAD_PATH="https://api.github.com/repos/enebular/enebular-runtime-agent/"
 MBED_CLOUD_CONNECTOR_DOWNLOAD_PATH="https://api.github.com/repos/enebular/enebular-runtime-agent-mbed-cloud-connector/"
+MBED_CLOUD_DEV_CRET="/tmp/mbed_cloud_dev_credentials.c"
 SUPPORTED_NODE_VERSION="v9.2.1"
 ENEBULAR_BASE_URL="https://enebular.com/api/v1"
 
