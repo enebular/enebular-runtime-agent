@@ -6,14 +6,30 @@ import { LocalPort } from 'enebular-runtime-agent'
 
 class MbedPort extends LocalPort {
   _pidFile: string
-  _command: string
   _cproc: ?ChildProcess
 
   constructor() {
     super()
     this._cproc = null
     this._pidFile = './.mbed_clould_connector.pid'
-    this._command = '../../tools/mbed_cloud_connector/out/Release/enebular-agent-mbed-cloud-connector.elf -c -d'
+  }
+
+  onConnectorRegisterConfig() {
+    const mbedCloudConnectorStartupCommand =
+      'ENEBULAR_MBED_CLOUD_CONNECTOR_STARTUP_COMMAND'
+    const defaultMbedCloudConnectorStartupCommand =
+      path.resolve(
+        process.argv[1],
+        '../../../../',
+        'tools/mbed_cloud_connector/out/Release/enebular-agent-mbed-cloud-connector.elf'
+      ) + ' -c -d'
+
+    this._agent.config.addItem(
+      mbedCloudConnectorStartupCommand,
+      defaultMbedCloudConnectorStartupCommand,
+      'Mbed cloud connector startup command',
+      true
+    )
   }
 
   _createPIDFile(pid: string) {
@@ -41,9 +57,12 @@ class MbedPort extends LocalPort {
         // ProcessUtil.killProcessByPIDFile(this._pidFile)
       }
 
-      const [command, ...args] = this._command.split(/\s+/)
+      const startupCommand = this._agent.config.get(
+        'ENEBULAR_MBED_CLOUD_CONNECTOR_STARTUP_COMMAND'
+      )
+      const [command, ...args] = startupCommand.split(/\s+/)
       const cproc = spawn(command, args, {
-        stdio: 'pipe',
+        stdio: 'pipe'
       })
       cproc.stdout.on('data', data => {
         let str = data.toString().replace(/(\n|\r)+$/, '')
@@ -54,7 +73,9 @@ class MbedPort extends LocalPort {
         this._error(str)
       })
       cproc.once('exit', (code, signal) => {
-        this._info(`mbed cloud connector exited (${code !== null ? code : signal})`)
+        this._info(
+          `mbed cloud connector exited (${code !== null ? code : signal})`
+        )
         this._cproc = null
         this._removePIDFile()
       })
@@ -87,11 +108,19 @@ class MbedPort extends LocalPort {
 
   async startup() {
     await super.startup(path.resolve(__dirname, '../'))
-    await this._startMbedCloudConnector()
+    try {
+      await this._startMbedCloudConnector()
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   async shutdown() {
-    await this._stopMbedCloudConnector()
+    try {
+      await this._stopMbedCloudConnector()
+    } catch (err) {
+      console.error(err)
+    }
     await super.shutdown()
   }
 }

@@ -13,6 +13,7 @@ const SOCKET_PATH =
 
 export default class LocalPort {
   _agent: EnebularAgent
+  _connector: ConnectorService
   _localServer: net.Server
   _clientSocket: ?net.Socket
 
@@ -151,25 +152,34 @@ export default class LocalPort {
     return server
   }
 
-  async startup(portBasePath: string) {
-    const connector = new ConnectorService(async () => {
-      this._agent.on('connectorRegister', () => {
-        this._clientSendMessage('register')
-      })
+  onConnectorRegisterConfig() {
+    // default with no extra config
+  }
 
-      this._agent.on('connectorConnect', () => {
-        this._clientSendMessage('connect')
-      })
-
-      this._agent.on('connectorDisconnect', () => {
-        this._clientSendMessage('disconnect')
-      })
-
-      this._localServer = await this._startLocalServer(connector)
+  async onConnectorInit() {
+    this._agent.on('connectorRegister', () => {
+      this._clientSendMessage('register')
     })
+
+    this._agent.on('connectorConnect', () => {
+      this._clientSendMessage('connect')
+    })
+
+    this._agent.on('connectorDisconnect', () => {
+      this._clientSendMessage('disconnect')
+    })
+
+    this._localServer = await this._startLocalServer(this._connector)
+  }
+
+  async startup(portBasePath: string) {
+    this._connector = new ConnectorService(
+      this.onConnectorInit.bind(this),
+      this.onConnectorRegisterConfig.bind(this)
+    )
     this._agent = new EnebularAgent({
       portBasePath: portBasePath,
-      connector: connector
+      connector: this._connector
     })
 
     await this._agent.startup()

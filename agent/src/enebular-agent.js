@@ -279,7 +279,7 @@ export default class EnebularAgent extends EventEmitter {
 
   async startup() {
     if (this._connector.registerConfig) {
-      this._connector.registerConfig()
+      await this._connector.registerConfig()
     }
     this._config.importEnvironmentVariables()
     this._commandLine.parse()
@@ -302,7 +302,7 @@ export default class EnebularAgent extends EventEmitter {
     this._updateMonitoringFromDesiredState()
 
     if (this._connector.init) {
-      this._connector.init()
+      await this._connector.init()
     }
     return this._nodeRed.startService()
   }
