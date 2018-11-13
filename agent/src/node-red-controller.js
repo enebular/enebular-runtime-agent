@@ -27,8 +27,12 @@ type NodeRedFlowPackage = {
   flows: Object[],
   creds: Object,
   packages: Object,
-  ipAddress?: string,
-  sessionToken?: string
+  editSession?: EditSession
+}
+
+type EditSession = {
+  ipAddress: string,
+  sessionToken: string
 }
 
 export default class NodeREDController {
@@ -135,16 +139,20 @@ export default class NodeREDController {
     this.info('Updating flow')
     const flowPackage = await this._downloadAndUpdatePackage(params.downloadUrl)
     if (this._ipAddressAndSessionTokenExist(flowPackage)) {
-      const editorIPAddress = flowPackage.ipAddress
-      const sessionToken = flowPackage.sessionToken
-      await this._restartInEditorMode(editorIPAddress, sessionToken)
+      const { editSession } = flowPackage
+      await this._restartInEditorMode(editSession)
     } else {
       await this._restartService()
     }
   }
 
   _ipAddressAndSessionTokenExist(flowPackage: NodeRedFlowPackage) {
-    if (flowPackage && flowPackage.ipAddress && flowPackage.sessionToken) {
+    if (
+      flowPackage &&
+      flowPackage.editSession &&
+      flowPackage.editSession.ipAddress &&
+      flowPackage.editSession.sessionToken
+    ) {
       return true
     }
     return false
@@ -252,10 +260,8 @@ export default class NodeREDController {
     return this._queueAction(() => this._startService())
   }
 
-  async startEditorService(editorIPAddress: string, sessionToken: string) {
-    return this._queueAction(() =>
-      this._startEditorModeService(editorIPAddress, sessionToken)
-    )
+  async startEditorService(editSession: EditSession) {
+    return this._queueAction(() => this._startEditorModeService(editSession))
   }
 
   async _startService() {
@@ -321,9 +327,10 @@ export default class NodeREDController {
     })
   }
 
-  async _startEditorModeService(editorIPAddress: string, sessionToken: string) {
+  async _startEditorModeService(editSession: EditSession) {
     let executedLoadURL = false
-    this.info('Staring Editor Mode service...', editorIPAddress)
+    const { ipAddress, sessionToken } = editSession
+    this.info('Staring Editor Mode service...')
     return new Promise((resolve, reject) => {
       if (fs.existsSync(this._pidFile)) {
         ProcessUtil.killProcessByPIDFile(this._pidFile)
@@ -338,7 +345,7 @@ export default class NodeREDController {
           cwd: this._dir,
           env: Object.assign(process.env, {
             ENEBULAR_ASSETS_DATA_PATH: this._assetsDataPath,
-            ENEBULAR_EDITOR_URL: `http://${editorIPAddress}:9017`,
+            ENEBULAR_EDITOR_URL: `http://${ipAddress}:9017`,
             ENEBULAR_EDITOR_SESSION_TOKEN: sessionToken
           })
         }
@@ -348,7 +355,7 @@ export default class NodeREDController {
         this._nodeRedLog.info(str)
         if (!executedLoadURL && str.includes('Started flows')) {
           this._nodeRedLog.info('Opening enebular editor...')
-          this._sendEditorAgentIPAddress(editorIPAddress, sessionToken)
+          this._sendEditorAgentIPAddress(editSession)
           executedLoadURL = true
         }
       })
@@ -374,7 +381,7 @@ export default class NodeREDController {
                 this._exceptionRetryCount
             )
             setTimeout(() => {
-              this.startEditorService(editorIPAddress, sessionToken)
+              this.startEditorService(editSession)
             }, 1000)
           } else {
             this.info(
@@ -419,16 +426,14 @@ export default class NodeREDController {
     })
   }
 
-  async _sendEditorAgentIPAddress(
-    editorIPAddress: string,
-    sessionToken: string
-  ) {
-    const ipAddress = ip.address()
+  async _sendEditorAgentIPAddress(editSession: EditSession) {
+    const { ipAddress, sessionToken } = editSession
+    const agentIpAddress = ip.address()
     try {
       axios.post(
-        `http://${editorIPAddress}:9017/api/v1/agent-editor/ip`,
+        `http://${ipAddress}:9017/api/v1/agent-editor/ip`,
         {
-          agentIPAddress: ipAddress
+          agentIPAddress: agentIpAddress
         },
         {
           headers: {
@@ -445,10 +450,11 @@ export default class NodeREDController {
     return this._queueAction(() => this._restartService())
   }
 
-  async _restartInEditorMode(editorIPAddress: string, sessionToken: string) {
-    this.info('Restarting Editor Mode service...', editorIPAddress)
+  async _restartInEditorMode(editSession: EditSession) {
+    this.info('Restarting Editor Mode service...')
+    this.info(`enebular editor IP Address: ${editSession.ipAddress}`)
     await this._shutdownService()
-    await this._startEditorModeService(editorIPAddress, sessionToken)
+    await this._startEditorModeService(editSession)
   }
 
   async _restartService() {
