@@ -31,7 +31,7 @@ class MbedPort extends LocalPort {
       path.resolve(
         process.argv[1],
         '../../../../',
-        'tools/mbed_cloud_connector/out/Release/enebular-agent-mbed-cloud-connector.elf'
+        'tools/mbed-cloud-connector/out/Release/enebular-agent-mbed-cloud-connector.elf'
       ) + ' -c -d'
 
     this._agent.config.addItem(
