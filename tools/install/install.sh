@@ -702,6 +702,10 @@ case $i in
   AGENT_DOWNLOAD_PATH="${i#*=}"
   shift
   ;;
+  --mbed-cloud-connector-download-path=*)
+  MBED_CLOUD_CONNECTOR_DOWNLOAD_PATH="${i#*=}"
+  shift
+  ;;
   --license-key=*)
   LICENSE_KEY="${i#*=}"
   shift
