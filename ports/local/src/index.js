@@ -14,6 +14,15 @@ class MbedPort extends LocalPort {
     this._pidFile = './.mbed_clould_connector.pid'
   }
 
+  async onConnectorInit() {
+    super.onConnectorInit()
+    try {
+      await this._startMbedCloudConnector()
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
   onConnectorRegisterConfig() {
     super.onConnectorRegisterConfig()
     const mbedCloudConnectorStartupCommand =
@@ -115,11 +124,6 @@ class MbedPort extends LocalPort {
 
   async startup() {
     await super.startup(path.resolve(__dirname, '../'))
-    try {
-      await this._startMbedCloudConnector()
-    } catch (err) {
-      console.error(err)
-    }
   }
 
   async shutdown() {
