@@ -27,7 +27,8 @@ type NodeRedFlowPackage = {
   flows: Object[],
   creds: Object,
   packages: Object,
-  ipAddress?: ?string
+  ipAddress?: string,
+  sessionToken?: string
 }
 
 export default class NodeREDController {
@@ -133,16 +134,17 @@ export default class NodeREDController {
   async _fetchAndUpdateFlow(params: { downloadUrl: string }) {
     this.info('Updating flow')
     const flowPackage = await this._downloadAndUpdatePackage(params.downloadUrl)
-    if (this._ipAddressExist(flowPackage)) {
+    if (this._ipAddressAndSessionTokenExist(flowPackage)) {
       const editorIPAddress = flowPackage.ipAddress
-      await this._restartInEditorMode(editorIPAddress)
+      const sessionToken = flowPackage.sessionToken
+      await this._restartInEditorMode(editorIPAddress, sessionToken)
     } else {
       await this._restartService()
     }
   }
 
-  _ipAddressExist(flowPackage: NodeRedFlowPackage) {
-    if (flowPackage && flowPackage.ipAddress) {
+  _ipAddressAndSessionTokenExist(flowPackage: NodeRedFlowPackage) {
+    if (flowPackage && flowPackage.ipAddress && flowPackage.sessionToken) {
       return true
     }
     return false
@@ -250,9 +252,9 @@ export default class NodeREDController {
     return this._queueAction(() => this._startService())
   }
 
-  async startEditorService(editorIPAddress: string) {
+  async startEditorService(editorIPAddress: string, sessionToken: string) {
     return this._queueAction(() =>
-      this._startEditorModeService(editorIPAddress)
+      this._startEditorModeService(editorIPAddress, sessionToken)
     )
   }
 
@@ -319,7 +321,7 @@ export default class NodeREDController {
     })
   }
 
-  async _startEditorModeService(editorIPAddress: string) {
+  async _startEditorModeService(editorIPAddress: string, sessionToken: string) {
     let executedLoadURL = false
     this.info('Staring Editor Mode service...', editorIPAddress)
     return new Promise((resolve, reject) => {
@@ -336,7 +338,8 @@ export default class NodeREDController {
           cwd: this._dir,
           env: Object.assign(process.env, {
             ENEBULAR_ASSETS_DATA_PATH: this._assetsDataPath,
-            ENEBULAR_EDITOR_URL: `http://${editorIPAddress}:9017`
+            ENEBULAR_EDITOR_URL: `http://${editorIPAddress}:9017`,
+            ENEBULAR_EDITOR_SESSION_TOKEN: sessionToken
           })
         }
       )
@@ -345,7 +348,7 @@ export default class NodeREDController {
         this._nodeRedLog.info(str)
         if (!executedLoadURL && str.includes('Started flows')) {
           this._nodeRedLog.info('Opening enebular editor...')
-          this._sendEditorAgentIPAddress(editorIPAddress)
+          this._sendEditorAgentIPAddress(editorIPAddress, sessionToken)
           executedLoadURL = true
         }
       })
@@ -371,7 +374,7 @@ export default class NodeREDController {
                 this._exceptionRetryCount
             )
             setTimeout(() => {
-              this.startEditorService(editorIPAddress)
+              this.startEditorService(editorIPAddress, sessionToken)
             }, 1000)
           } else {
             this.info(
@@ -416,12 +419,23 @@ export default class NodeREDController {
     })
   }
 
-  async _sendEditorAgentIPAddress(editorIPAddress: string) {
+  async _sendEditorAgentIPAddress(
+    editorIPAddress: string,
+    sessionToken: string
+  ) {
     const ipAddress = ip.address()
     try {
-      axios.post(`http://${editorIPAddress}:9017/api/v1/agent-editor/ip`, {
-        agentIPAddress: ipAddress
-      })
+      axios.post(
+        `http://${editorIPAddress}:9017/api/v1/agent-editor/ip`,
+        {
+          agentIPAddress: ipAddress
+        },
+        {
+          headers: {
+            'x-ee-session': sessionToken
+          }
+        }
+      )
     } catch (err) {
       console.error('send editor error', err)
     }
@@ -431,10 +445,10 @@ export default class NodeREDController {
     return this._queueAction(() => this._restartService())
   }
 
-  async _restartInEditorMode(editorIPAddress: string) {
+  async _restartInEditorMode(editorIPAddress: string, sessionToken: string) {
     this.info('Restarting Editor Mode service...', editorIPAddress)
     await this._shutdownService()
-    await this._startEditorModeService(editorIPAddress)
+    await this._startEditorModeService(editorIPAddress, sessionToken)
   }
 
   async _restartService() {
