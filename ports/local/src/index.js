@@ -15,6 +15,7 @@ class MbedPort extends LocalPort {
   }
 
   onConnectorRegisterConfig() {
+    super.onConnectorRegisterConfig()
     const mbedCloudConnectorStartupCommand =
       'ENEBULAR_MBED_CLOUD_CONNECTOR_STARTUP_COMMAND'
     const defaultMbedCloudConnectorStartupCommand =
@@ -51,15 +52,21 @@ class MbedPort extends LocalPort {
   }
 
   async _startMbedCloudConnector() {
-    this._info('Staring mbed cloud connector...')
+    this._info('Starting mbed cloud connector...')
     return new Promise((resolve, reject) => {
       if (fs.existsSync(this._pidFile)) {
         // ProcessUtil.killProcessByPIDFile(this._pidFile)
       }
 
-      const startupCommand = this._agent.config.get(
-        'ENEBULAR_MBED_CLOUD_CONNECTOR_STARTUP_COMMAND'
-      )
+      const startupCommand =
+        this._agent.config.get(
+          'ENEBULAR_MBED_CLOUD_CONNECTOR_STARTUP_COMMAND'
+        ) +
+        ' -s ' +
+        this._agent.config.get('ENEBULAR_LOCAL_PORT_SOCKET_PATH')
+
+      this._info('Mbed cloud connector startup command: ' + startupCommand)
+
       const [command, ...args] = startupCommand.split(/\s+/)
       const cproc = spawn(command, args, {
         stdio: 'pipe'

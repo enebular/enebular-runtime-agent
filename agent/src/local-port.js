@@ -8,9 +8,6 @@ import ConnectorService from './connector-service'
 const MODULE_NAME = 'local'
 const END_OF_MSG_MARKER = 0x1e // RS (Record Separator)
 
-const SOCKET_PATH =
-  process.env.SOCKET_PATH || '/tmp/enebular-local-agent.socket'
-
 export default class LocalPort {
   _agent: EnebularAgent
   _connector: ConnectorService
@@ -36,7 +33,7 @@ export default class LocalPort {
 
   _attemptSocketRemove() {
     try {
-      fs.unlinkSync(SOCKET_PATH)
+      fs.unlinkSync(this._agent.config.get('ENEBULAR_LOCAL_PORT_SOCKET_PATH'))
     } catch (err) {
       // ignore any errors
     }
@@ -147,13 +144,18 @@ export default class LocalPort {
     })
 
     this._attemptSocketRemove()
-    server.listen(SOCKET_PATH)
+    server.listen(this._agent.config.get('ENEBULAR_LOCAL_PORT_SOCKET_PATH'))
 
     return server
   }
 
   onConnectorRegisterConfig() {
-    // default with no extra config
+    this._agent.config.addItem(
+      'ENEBULAR_LOCAL_PORT_SOCKET_PATH',
+      `/tmp/enebular-local-agent.socket.${process.pid}`,
+      'Local port socket path',
+      true
+    )
   }
 
   async onConnectorInit() {
