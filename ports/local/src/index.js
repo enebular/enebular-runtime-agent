@@ -7,11 +7,13 @@ import { LocalPort } from 'enebular-runtime-agent'
 class MbedPort extends LocalPort {
   _pidFile: string
   _cproc: ?ChildProcess
+  _portBasePath: string
 
   constructor() {
     super()
     this._cproc = null
-    this._pidFile = './.mbed_clould_connector.pid'
+    this._portBasePath = path.resolve(__dirname, '../')
+    this._pidFile = path.resolve(this._portBasePath, './.mbed_cloud_connector.pid')
   }
 
   async onConnectorInit() {
@@ -25,19 +27,24 @@ class MbedPort extends LocalPort {
 
   onConnectorRegisterConfig() {
     super.onConnectorRegisterConfig()
-    const mbedCloudConnectorStartupCommand =
-      'ENEBULAR_MBED_CLOUD_CONNECTOR_STARTUP_COMMAND'
-    const defaultMbedCloudConnectorStartupCommand =
-      path.resolve(
-        process.argv[1],
-        '../../../../',
-        'tools/mbed-cloud-connector/out/Release/enebular-agent-mbed-cloud-connector.elf'
-      ) + ' -c -d'
-
     this._agent.config.addItem(
-      mbedCloudConnectorStartupCommand,
-      defaultMbedCloudConnectorStartupCommand,
+      'ENEBULAR_MBED_CLOUD_CONNECTOR_STARTUP_COMMAND',
+      path.resolve(
+        this._portBasePath,
+        '../../',
+        'tools/mbed-cloud-connector/out/Release/enebular-agent-mbed-cloud-connector.elf'
+      ),
       'Mbed cloud connector startup command',
+      true
+    )
+    this._agent.config.addItem(
+      'ENEBULAR_MBED_CLOUD_CONNECTOR_DATA_PATH',
+      path.resolve(
+        this._portBasePath,
+        '../../',
+        'tools/mbed-cloud-connector'
+      ),
+      'Mbed cloud connector data path',
       true
     )
   }
@@ -71,14 +78,17 @@ class MbedPort extends LocalPort {
         this._agent.config.get(
           'ENEBULAR_MBED_CLOUD_CONNECTOR_STARTUP_COMMAND'
         ) +
-        ' -s ' +
+        ' -c -d -s ' +
         this._agent.config.get('ENEBULAR_LOCAL_PORT_SOCKET_PATH')
 
       this._info('Mbed cloud connector startup command: ' + startupCommand)
 
       const [command, ...args] = startupCommand.split(/\s+/)
       const cproc = spawn(command, args, {
-        stdio: 'pipe'
+        stdio: 'pipe',
+        cwd: this._agent.config.get(
+          'ENEBULAR_MBED_CLOUD_CONNECTOR_DATA_PATH'
+        )
       })
       cproc.stdout.on('data', data => {
         let str = data.toString().replace(/(\n|\r)+$/, '')
@@ -123,7 +133,7 @@ class MbedPort extends LocalPort {
   }
 
   async startup() {
-    await super.startup(path.resolve(__dirname, '../'))
+    await super.startup(this._portBasePath)
   }
 
   async shutdown() {
