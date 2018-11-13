@@ -10,7 +10,7 @@
 #include "enebular_agent_mbed_cloud_connector.h"
 #include "enebular_agent_interface.h"
 
-#define SERVER_SOCKET_PATH      "/tmp/enebular-local-agent.socket"
+#define DEFAULT_SERVER_SOCKET_PATH      "/tmp/enebular-local-agent.socket"
 #define CLIENT_SOCKET_PATH_BASE "/tmp/enebular-local-agent-client.socket-"
 
 #define END_OF_MSG_MARKER       (0x1E) // RS (Record Separator)
@@ -19,11 +19,12 @@
 #define SEND_BUF_SIZE           (100 * 1024)
 #define RECV_BUF_SIZE           (1024 * 1024)
 
-EnebularAgentInterface::EnebularAgentInterface(EnebularAgentMbedCloudConnector * connector):
+EnebularAgentInterface::EnebularAgentInterface(EnebularAgentMbedCloudConnector * connector,
+    const char* server_socket):
+    _server_socket(server_socket[0] == '\0' ? DEFAULT_SERVER_SOCKET_PATH : server_socket),
     _connector(connector),
     _logger(Logger::get_instance()),
     _is_connected(false)
-
 {
 }
 
@@ -183,7 +184,7 @@ bool EnebularAgentInterface::connect_agent()
 
         memset(&addr, 0, sizeof(addr));
         addr.sun_family = AF_UNIX;
-        strcpy(addr.sun_path, SERVER_SOCKET_PATH);
+        strcpy(addr.sun_path, _server_socket);
         ret = ::connect(fd, (struct sockaddr *)&addr, sizeof(addr));
         if (ret == 0) {
             break;
@@ -236,7 +237,7 @@ void EnebularAgentInterface::disconnect_agent()
 
 bool EnebularAgentInterface::connect()
 {
-    _logger->log_console(DEBUG, "Agent: connect...");
+    _logger->log_console(DEBUG, "Agent: connect to %s...", _server_socket);
 
     if (_is_connected || _waiting_for_connect_ok) {
         return true;
