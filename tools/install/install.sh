@@ -507,6 +507,7 @@ do_install() {
 #args: install_dir
 setup_mbed_cloud_connector() {
   _echo Checking for dependencies...
+  apt-get update
   if ! dpkg -s git >/dev/null 2>&1; then
     apt-get -y install git
   fi
