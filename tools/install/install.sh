@@ -419,6 +419,10 @@ do_install() {
   if ! dpkg -s build-essential >/dev/null 2>&1; then
     apt-get -y install build-essential
   fi
+  _echo Checking for python package...
+  if ! dpkg -s python >/dev/null 2>&1; then
+    apt-get -y install python
+  fi
 
   _echo Downloading enebular-agent...
   _echo ---------
