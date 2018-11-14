@@ -50,6 +50,7 @@ export default class NodeREDController {
   _nodeRedLog: Logger
   _exceptionRetryCount: number = 0
   _lastRetryTimestamp: number = Date.now()
+  _allowEditSessions: boolean = false
 
   constructor(
     emitter: EventEmitter,
@@ -63,6 +64,7 @@ export default class NodeREDController {
     this._killSignal = config.killSignal
     this._pidFile = config.pidFile
     this._assetsDataPath = config.assetsDataPath
+    this._allowEditSessions = config.allowEditSessions
 
     if (!fs.existsSync(this._dir)) {
       throw new Error(`The Node-RED directory was not found: ${this._dir}`)
@@ -137,8 +139,16 @@ export default class NodeREDController {
 
   async _fetchAndUpdateFlow(params: { downloadUrl: string }) {
     this.info('Updating flow')
-    const flowPackage = await this._downloadAndUpdatePackage(params.downloadUrl)
-    if (this._ipAddressAndSessionTokenExist(flowPackage)) {
+
+    const flowPackage = await this._downloadPackage(params.downloadUrl)
+    let editSessionRequested = this._ipAddressAndSessionTokenExist(flowPackage)
+    if (editSessionRequested && !this._allowEditSessions) {
+      this.info('Edit session flow deploy requested but not allowed')
+      return
+    }
+
+    await this._updatePackage(flowPackage)
+    if (editSessionRequested) {
       const { editSession } = flowPackage
       await this._restartInEditorMode(editSession)
     } else {
@@ -158,14 +168,13 @@ export default class NodeREDController {
     return false
   }
 
-  async _downloadAndUpdatePackage(downloadUrl: string) {
+  async _downloadPackage(downloadUrl: string): NodeRedFlowPackage {
     this.info('Downloading flow:', downloadUrl)
     const res = await fetch(downloadUrl)
     if (res.status >= 400) {
       throw new Error('invalid url')
     }
-    const body = await res.json()
-    return this._updatePackage(body)
+    return res.json()
   }
 
   async _updatePackage(flowPackage: NodeRedFlowPackage) {
@@ -224,7 +233,6 @@ export default class NodeREDController {
     }
     await Promise.all(updates)
     await this._resolveDependency()
-    return flowPackage
   }
 
   async _resolveDependency() {
