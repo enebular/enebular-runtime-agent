@@ -141,7 +141,7 @@ export default class NodeREDController {
     this.info('Updating flow')
 
     const flowPackage = await this._downloadPackage(params.downloadUrl)
-    let editSessionRequested = this._ipAddressAndSessionTokenExist(flowPackage)
+    let editSessionRequested = this._flowPackageContainsEditSession(flowPackage)
     if (editSessionRequested && !this._allowEditSessions) {
       this.info('Edit session flow deploy requested but not allowed')
       return
@@ -156,7 +156,7 @@ export default class NodeREDController {
     }
   }
 
-  _ipAddressAndSessionTokenExist(flowPackage: NodeRedFlowPackage) {
+  _flowPackageContainsEditSession(flowPackage: NodeRedFlowPackage) {
     if (
       flowPackage &&
       flowPackage.editSession &&
