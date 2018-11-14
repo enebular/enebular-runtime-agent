@@ -1,6 +1,6 @@
 /* @flow */
 import EnebularAgent from './enebular-agent'
 import ConnectorService from './connector-service'
-import LocalPort from './local-port'
+import LocalConnector from './local-connector'
 
-export { EnebularAgent, ConnectorService, LocalPort }
+export { EnebularAgent, ConnectorService, LocalConnector }

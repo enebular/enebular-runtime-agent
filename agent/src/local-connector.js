@@ -8,7 +8,7 @@ import ConnectorService from './connector-service'
 const MODULE_NAME = 'local'
 const END_OF_MSG_MARKER = 0x1e // RS (Record Separator)
 
-export default class LocalPort {
+export default class LocalConnector {
   _agent: EnebularAgent
   _connector: ConnectorService
   _localServer: net.Server

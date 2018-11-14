@@ -2,9 +2,9 @@
 import fs from 'fs'
 import path from 'path'
 import { spawn, type ChildProcess } from 'child_process'
-import { LocalPort } from 'enebular-runtime-agent'
+import { LocalConnector } from 'enebular-runtime-agent'
 
-class MbedPort extends LocalPort {
+class MbedConnector extends LocalConnector {
   _pidFile: string
   _cproc: ?ChildProcess
   _portBasePath: string
@@ -146,14 +146,14 @@ class MbedPort extends LocalPort {
   }
 }
 
-const mbedPort = new MbedPort()
+const mbedConnector = new MbedConnector()
 
 async function startup() {
-  await mbedPort.startup()
+  await mbedConnector.startup()
 }
 
 async function shutdown() {
-  await mbedPort.shutdown()
+  await mbedConnector.shutdown()
 }
 
 async function exit() {
