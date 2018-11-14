@@ -3,6 +3,17 @@ _echo() {
   printf %s\\n "$*" 2>/dev/null
 }
 
+_echo_g() {
+  echo -e "\033[32m"$@"\033[0m"
+}
+
+_task() {
+  local var="$*"
+  local padding=`expr $(tput cols) - ${#var} - 8`
+  printf "[TASK] %s " "$*" 2>/dev/null
+  printf '%*s\n' "${COLUMNS:-${padding}}" '' | tr ' ' =
+}
+
 _err() {
   >&2 echo -e "\033[31mERROR: $@\033[0m"
 }
@@ -10,6 +21,21 @@ _err() {
 has() {
   type "$1" > /dev/null 2>&1
   return $?
+}
+
+setval() {
+  printf -v "$1" "%s" "$(cat | base64 -w0)"; declare -p "$1"; 
+}
+
+cmd_wrapper() {
+  eval "$( "$@" 2> >(setval err) > >(setval out); ret=$?; declare -p ret; )"
+  if [ $ret -ne 0 ]; then
+    _echo "cmd: "$@""
+    _echo "stdout: $(echo $out | base64 -w0 -d)"
+    _err "stderr: $(echo $err| base64 -w0 -d)"
+    _echo "cmd returns: |$ret|"
+  fi 
+  return $ret
 }
 
 download() {
@@ -69,7 +95,7 @@ get_node_checksum() {
 
 #args: url, release_version, prebuilt_url
 get_enebular_agent_version_info() {
-  download "${1-}" "-" | grep -e tag_name -e browser_download_url | sed -E 's/.*"([^"]+)".*/\1/' | xargs 
+  download "${1-}" "-" | grep -e tag_name -e browser_download_url | sed -E 's/.*"([^"]+)".*/\1/' | xargs
 }
 
 #args: install path
@@ -108,7 +134,6 @@ compare_checksum() {
     _err "Checksums do not match: ${COMPUTED_SUM} found, ${CHECKSUM} expected."
     return 1
   fi
-  _echo 'Checksums matched!'
 }
 
 # args: kind, version
@@ -208,7 +233,6 @@ install_tarball() {
   fi
 # TODO: handle update gracefully
   run_as_user ${USER} "mkdir -p ${DST}"
-  _echo Installing ${TAR_FILE} to ${DST}...
   run_as_user ${USER} "tar --extract --file=${TAR_FILE} \
     --strip-components=1 --directory=${DST}"
   EXIT_CODE=$?
@@ -251,39 +275,55 @@ setup_enebular_agent() {
     return 5
   fi
 
-  _echo Setting up enebular-agent ${INSTALL_KIND} package
-  _echo ---------
+  _task Checking build environment for enebular-agent ${INSTALL_KIND} package
   run_as_user ${USER} 'echo Build environment nodejs: `node -v` \(npm `npm -v`\)' ${NODE_ENV}
+  _echo_g "OK"
 
   local EXIT_CODE
   case "${INSTALL_KIND}" in
     source)
     local NPM_BUILD_AND_INSTALL
     NPM_BUILD_AND_INSTALL="npm install && rm -rf node_modules && npm install --production"
-    if [ -d "${INSTALL_DIR}/tools/awsiot-thing-creator" ]; then
-      run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/awsiot-thing-creator && ${NPM_BUILD_AND_INSTALL})" \
+    if [ -d "${INSTALL_DIR}/tools/awsiot-thing-creator" ] && [ ${PORT} == 'awsiot' ]; then
+      _task "Building AWSIoT thing creator (source)"
+      cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/awsiot-thing-creator && ${NPM_BUILD_AND_INSTALL})" \
         ${NODE_ENV}
       EXIT_CODE=$?
       if [ "$EXIT_CODE" -ne 0 ]; then
         return 6
       fi
+      _echo_g "OK"
     fi
-    run_as_user ${USER} "(cd ${INSTALL_DIR}/agent && ${NPM_BUILD_AND_INSTALL}) \
+    _task "Building enebular-agent (source)"
+    cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/agent && ${NPM_BUILD_AND_INSTALL}) \
       && (cd ${INSTALL_DIR}/node-red && ${NPM_BUILD_AND_INSTALL}) \
       && (cd ${INSTALL_DIR}/ports/${PORT} && ${NPM_BUILD_AND_INSTALL})" ${NODE_ENV}
+    EXIT_CODE=$?
+    if [ "$EXIT_CODE" -ne 0 ]; then
+      return 6
+    fi
+    _echo_g "OK"
     ;;
     prebuilt)
-    if [ -d "${INSTALL_DIR}/tools/awsiot-thing-creator" ]; then
-      run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/awsiot-thing-creator && npm install --production)" \
+    if [ -d "${INSTALL_DIR}/tools/awsiot-thing-creator" ] && [ ${PORT} == 'awsiot' ]; then
+      _task "Building AWSIoT thing creator"
+      cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/awsiot-thing-creator && npm install --production)" \
         ${NODE_ENV}
       EXIT_CODE=$?
       if [ "$EXIT_CODE" -ne 0 ]; then
         return 6
       fi
+      _echo_g "OK"
     fi
-    run_as_user ${USER} "(cd ${INSTALL_DIR}/agent && npm install --production) \
+    _task "Building enebular-agent"
+    cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/agent && npm install --production) \
       && (cd ${INSTALL_DIR}/node-red && npm install --production) \
       && (cd ${INSTALL_DIR}/ports/${PORT} && npm install --production)" ${NODE_ENV}
+    EXIT_CODE=$?
+    if [ "$EXIT_CODE" -ne 0 ]; then
+      return 6
+    fi
+    _echo_g "OK"
     ;;
   esac
 }
@@ -307,7 +347,7 @@ install_nodejs() {
   fi
 
   if [ -d "${DST}" ]; then
-    _echo "Node.js ${VERSION} already installed"
+    _echo "Node.js ${VERSION} is already installed"
     return 0
   fi
 
@@ -323,30 +363,35 @@ install_nodejs() {
     return 3
   fi
 
-  _echo "Downloading ${DOWNLOAD_URL}..."
+  _task "Downloading ${DOWNLOAD_URL}"
   if ! download ${DOWNLOAD_URL} ${TEMP_NODE_GZ}; then 
     _err "Download ${DOWNLOAD_URL} failed"
     return 4
   fi
+  _echo_g "OK"
 
+  _task "Checking integrity"
   local CHECKSUM
   CHECKSUM="$(get_node_checksum "${DOWNLOAD_PATH}SHASUMS256.txt" "${DOWNLOAD_FILE_NAME}")"
   if ! compare_checksum "${TEMP_NODE_GZ}" "${CHECKSUM}"; then 
     return 5
   fi
+  _echo_g "OK"
 
-  _echo "Installing Node.js ${VERSION} to ${DST}..."
+  _task "Installing Node.js ${VERSION} to ${DST}..."
   if (
     run_as_user ${USER} "mkdir -p "${DST}"" && \
     run_as_user ${USER} "tar -xzf "${TEMP_NODE_GZ}" -C "${DST}" --strip-components 1" && \
     rm -f "${TEMP_NODE_GZ}"
   ); then
+    _echo_g "OK"
     return 0
   fi 
 }
 
 # args: node_path_to_return
 ensure_nodejs_version() {
+  _task "Checking node.js version"
   if has "node" && has "npm"; then
     local VERSION_ALLOWED
     VERSION_ALLOWED="${SUPPORTED_NODE_VERSION}"
@@ -360,10 +405,9 @@ ensure_nodejs_version() {
           "but "${VERSION_ALLOWED}" is required."
     fi
   fi
+  _echo_g "OK"
 
   if [ -z "${NODE_PATH}" ]; then
-    _echo Installing Node.js...
-    _echo ---------
     local NODE_VERSION
     NODE_VERSION="${SUPPORTED_NODE_VERSION}"
     local NODE_VERSION_PATH
@@ -376,7 +420,6 @@ ensure_nodejs_version() {
     fi
     NODE_PATH="${NODE_VERSION_PATH}/bin"
   fi
-  _echo "Node.js path is ${NODE_PATH}"
   eval "$1='${NODE_PATH}'"
 }
 
@@ -407,25 +450,23 @@ do_install() {
     exit 1
   fi
 
-  _echo ---------
-  _echo Install user set to ${USER}
-  _echo Agent type set to ${AGENT_TYPE}
-  _echo Agent port set to ${PORT}
-  _echo Install destination set to ${INSTALL_DIR}
-  _echo Version to be installed set to ${RELEASE_VERSION}
-  _echo ---------
+  _echo_g "**************************************************"
+  _echo "$(_echo_g "*") Install user:             $(_echo_g ${USER})"
+  _echo "$(_echo_g "*") Agent type:               $(_echo_g ${AGENT_TYPE})"
+  _echo "$(_echo_g "*") Install destination:      $(_echo_g ${INSTALL_DIR})"
+  _echo "$(_echo_g "*") Version to be installed:  $(_echo_g ${RELEASE_VERSION})"
+  _echo_g "**************************************************"
 
-  _echo Checking for build-essential package...
+  _task "Checking dependencies"
   if ! dpkg -s build-essential >/dev/null 2>&1; then
     apt-get -y install build-essential
   fi
-  _echo Checking for python package...
   if ! dpkg -s python >/dev/null 2>&1; then
     apt-get -y install python
   fi
+  _echo_g OK
 
-  _echo Downloading enebular-agent...
-  _echo ---------
+  _task "Downloading enebular-agent"
   local EXIT_CODE
   local TEMP_GZ
   TEMP_GZ=`mktemp --dry-run /tmp/enebular-agent.XXXXXXXXX`
@@ -440,7 +481,6 @@ do_install() {
     _echo "Failed to get version ${RELEASE_VERSION}."
     exit 1
   else
-    _echo "Version info: ${VERSION_INFO}"
     VERSION_INFO=($VERSION_INFO)
     RELEASE_VERSION="${VERSION_INFO[0]}"
     PREBUILT_URL=${VERSION_INFO[1]}
@@ -449,19 +489,19 @@ do_install() {
   local INSTALL_KIND
   if [ -z "${PREBUILT_URL}" ]; then
     INSTALL_KIND="source"
-    download_tarball "${AGENT_DOWNLOAD_PATH}tarball/${RELEASE_VERSION}" "${TEMP_GZ}"
+    cmd_wrapper download_tarball "${AGENT_DOWNLOAD_PATH}tarball/${RELEASE_VERSION}" "${TEMP_GZ}"
   else
     INSTALL_KIND="prebuilt"
-    download_tarball "${PREBUILT_URL}" "${TEMP_GZ}"
+    cmd_wrapper download_tarball "${PREBUILT_URL}" "${TEMP_GZ}"
   fi
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
     _echo "Can't find available release for ${RELEASE_VERSION}"
     exit 1
   fi
+  _echo_g OK
 
-  _echo Installing enebular-agent...
-  _echo ---------
+  _task "Installing enebular-agent ${VERSION_INFO}"
   install_tarball "${TEMP_GZ}" "${INSTALL_DIR}"
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
@@ -470,6 +510,7 @@ do_install() {
     exit 1
   fi
   rm ${TEMP_GZ}
+  _echo_g OK
 
   local NODE_PATH
   ensure_nodejs_version NODE_PATH
@@ -510,44 +551,48 @@ do_install() {
 
 #args: install_dir
 setup_mbed_cloud_connector() {
-  _echo Checking for dependencies...
-  apt-get update
+  _task "Checking dependencies for mbed cloud connector"
+  cmd_wrapper apt-get update
   if ! dpkg -s git >/dev/null 2>&1; then
-    apt-get -y install git
+    cmd_wrapper apt-get -y install git
   fi
   if ! dpkg -s cmake >/dev/null 2>&1; then
-    apt-get -y install cmake
+    cmd_wrapper apt-get -y install cmake
   fi
   if ! dpkg -s python-pip >/dev/null 2>&1; then
-    apt-get -y install python-pip
+    cmd_wrapper apt-get -y install python-pip
   fi
-  if ! pip show mbed-cli >/dev/null 2>&1; then
-    _echo Installing mbed-cli package...
-    pip install mbed-cli
-  fi
+  _echo_g "OK"
 
-  run_as_user ${USER} "(pip install click requests)"
+  _task "Checking python dependencies for mbed cloud connector"
+  cmd_wrapper run_as_user ${USER} "(pip install mbed-cli click requests)"
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
     _err "Python dependencies install failed."
     exit 1
   fi
+  _echo_g "OK"
 
-  run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector && mbed config root . && mbed deploy)"
+  _task "Deploying mbed project"
+  cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector && mbed config root . && mbed deploy)"
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
     _err "mbed deploy failed."
     exit 1
   fi
+  _echo_g "OK"
 
-  run_as_user ${USER} "cp ${MBED_CLOUD_DEV_CRET} ${INSTALL_DIR}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c"
+  _task "Copying mbed cloud dev credentials"
+  cmd_wrapper run_as_user ${USER} "cp ${MBED_CLOUD_DEV_CRET} ${INSTALL_DIR}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c"
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
     _err "Failed to copy mbed cloud developer credentials."
     exit 1
   fi
+  _echo_g "OK"
 
-  run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector && \
+  _task "Building mbed cloud connector"
+  cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector && \
     python pal-platform/pal-platform.py fullbuild --target x86_x64_NativeLinux_mbedtls --toolchain GCC --external \
     ./../define.txt --name enebular-agent-mbed-cloud-connector.elf)"
   EXIT_CODE=$?
@@ -555,6 +600,7 @@ setup_mbed_cloud_connector() {
     _err "Failed to complie mbed cloud connector."
     exit 1
   fi
+  _echo_g "OK"
 }
 
 #args: install_dir
@@ -566,8 +612,7 @@ install_mbed_cloud_connector() {
     exit 1
   fi
 
-  _echo Downloading mbed-cloud-connector...
-  _echo ---------
+  _task Downloading mbed-cloud-connector...
   local EXIT_CODE
   local TEMP_GZ
   TEMP_GZ=`mktemp --dry-run /tmp/mbed-cloud-connector.XXXXXXXXX`
@@ -578,20 +623,19 @@ install_mbed_cloud_connector() {
     _echo "Failed to get latest version."
     exit 1
   else
-    _echo "Version info: ${VERSION_INFO}"
     VERSION_INFO=($VERSION_INFO)
     RELEASE_VERSION="${VERSION_INFO[0]}"
   fi
 
-  download_tarball "${MBED_CLOUD_CONNECTOR_DOWNLOAD_PATH}tarball/${RELEASE_VERSION}" "${TEMP_GZ}"
+  cmd_wrapper download_tarball "${MBED_CLOUD_CONNECTOR_DOWNLOAD_PATH}tarball/${RELEASE_VERSION}" "${TEMP_GZ}"
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
     _echo "Can't find available release for latest version."
     exit 1
   fi
+  _echo_g "OK"
 
-  _echo Installing mbed-cloud-connector...
-  _echo ---------
+  _task Installing mbed-cloud-connector ${VERSION_INFO}...
   install_tarball "${TEMP_GZ}" "${INSTALL_DIR}"
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
@@ -600,12 +644,12 @@ install_mbed_cloud_connector() {
     exit 1
   fi
   rm ${TEMP_GZ}
+  _echo_g "OK"
 }
 
 post_install() {
   if is_raspberry_pi; then
-    _echo Adding ${USER} to gpio group...
-    _echo ---------
+    _task "Adding ${USER} to gpio group"
     local GROUP_OUT
     local GROUP_EXISTS
     local USER_ADDED
@@ -621,10 +665,10 @@ post_install() {
         _echo "Added ${USER} to gpio group."
       fi
     fi
+    _echo_g "OK"
   fi
   if [ ! -z ${AWS_IOT_THING_NAME} ]; then
-    _echo Creating AWS IoT thing...
-    _echo ---------
+    _task Creating AWS IoT thing
       run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/awsiot-thing-creator && npm run start)" "${NODE_ENV_PATH} \
         AWS_IOT_THING_NAME=${AWS_IOT_THING_NAME} AWS_IOT_REGION=${AWS_IOT_REGION} \
         AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}"
@@ -633,18 +677,18 @@ post_install() {
       _err "Creating AWS IoT thing failed."
       exit 1
     fi
+    _echo_g "OK"
   fi
 
   if [ ! -z ${LICENSE_KEY} ]; then
-    _echo Creating activation configuration file...
-    _echo ---------
+    _task Creating activation configuration file...
     run_as_user ${USER} 'echo "{\"enebularBaseURL\": \"'${ENEBULAR_BASE_URL}'\",\"licenseKey\": \"'${LICENSE_KEY}'\"}" \
       > "'${INSTALL_DIR}'/ports/awsiot/.enebular-activation-config.json"'
+    _echo_g "OK"
   fi
 
   if [ -z ${NO_STARTUP_REGISTER} ]; then
-    _echo Registering startup service...
-    _echo ---------
+    _task Registering startup service...
     bash -c "${NODE_ENV_PATH} ${INSTALL_DIR}/ports/${PORT}/bin/enebular-${PORT}-agent \
       startup-register -u ${USER}"
     EXIT_CODE=$?
@@ -652,6 +696,7 @@ post_install() {
       _err "Registering startup service failed."
       exit 1
     fi
+    _echo_g "OK"
   fi
 }
 
