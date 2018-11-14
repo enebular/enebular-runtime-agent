@@ -7,11 +7,15 @@ _echo_g() {
   echo -e "\033[32m"$@"\033[0m"
 }
 
-_task() {
+_horizontal_bar() {
   local var="$*"
-  local padding=`expr $(tput cols) - ${#var} - 8`
-  printf "[TASK] %s " "$*" 2>/dev/null
+  local padding=`expr $(tput cols) - ${#var}`
+  printf "%s" "$*" 2>/dev/null
   printf '%*s\n' "${COLUMNS:-${padding}}" '' | tr ' ' =
+}
+
+_task() {
+  _horizontal_bar "[TASK] "$*" "
 }
 
 _err() {
@@ -28,14 +32,17 @@ setval() {
 }
 
 cmd_wrapper() {
-  eval "$( "$@" 2> >(setval err) > >(setval out); ret=$?; declare -p ret; )"
-  if [ $ret -ne 0 ]; then
-    _echo "cmd: "$@""
-    _echo "stdout: $(echo $out | base64 -w0 -d)"
-    _err "stderr: $(echo $err| base64 -w0 -d)"
-    _echo "cmd returns: |$ret|"
-  fi 
-  return $ret
+  if [ -z ${VERBOSE} ]; then
+    eval "$( "$@" 2> >(setval err) > >(setval out); ret=$?; declare -p ret; )"
+    if [ $ret -ne 0 ]; then
+      _err  "  Command return error($ret): "$@""
+      _err  "  Stdout: $(echo $out | base64 -w0 -d)"
+      _err  "  Stderr: $(echo $err| base64 -w0 -d)"
+    fi 
+    return $ret
+  else
+    "$@"
+  fi
 }
 
 download() {
@@ -94,7 +101,7 @@ get_node_checksum() {
 }
 
 #args: url, release_version, prebuilt_url
-get_enebular_agent_version_info() {
+get_version_info_from_github() {
   download "${1-}" "-" | grep -e tag_name -e browser_download_url | sed -E 's/.*"([^"]+)".*/\1/' | xargs
 }
 
@@ -190,7 +197,7 @@ download_tarball() {
     return 2
   fi
 
-  _echo "Downloading ${DOWNLOAD_URL}..."
+  _echo "Downloading ${DOWNLOAD_URL}"
   if ! download ${DOWNLOAD_URL} ${DST}; then 
     return 3
   fi
@@ -220,17 +227,6 @@ install_tarball() {
     return 2
   fi
 
-  local EXIT_CODE
-  if ! id -u ${USER} > /dev/null 2>&1; then
-    _echo "Creating user ${USER}..."
-    _echo ---------
-    useradd -m ${USER}
-    EXIT_CODE=$?
-    if [ "$EXIT_CODE" -ne 0 ]; then
-      _err "Can't create user: ${USER}"
-      return 3
-    fi
-  fi
 # TODO: handle update gracefully
   run_as_user ${USER} "mkdir -p ${DST}"
   run_as_user ${USER} "tar --extract --file=${TAR_FILE} \
@@ -285,7 +281,7 @@ setup_enebular_agent() {
     local NPM_BUILD_AND_INSTALL
     NPM_BUILD_AND_INSTALL="npm install && rm -rf node_modules && npm install --production"
     if [ -d "${INSTALL_DIR}/tools/awsiot-thing-creator" ] && [ ${PORT} == 'awsiot' ]; then
-      _task "Building AWSIoT thing creator (source)"
+      _task "Building AWSIoT thing creator from source"
       cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/awsiot-thing-creator && ${NPM_BUILD_AND_INSTALL})" \
         ${NODE_ENV}
       EXIT_CODE=$?
@@ -294,7 +290,7 @@ setup_enebular_agent() {
       fi
       _echo_g "OK"
     fi
-    _task "Building enebular-agent (source)"
+    _task "Building enebular-agent from source(It may take a few minutes)"
     cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/agent && ${NPM_BUILD_AND_INSTALL}) \
       && (cd ${INSTALL_DIR}/node-red && ${NPM_BUILD_AND_INSTALL}) \
       && (cd ${INSTALL_DIR}/ports/${PORT} && ${NPM_BUILD_AND_INSTALL})" ${NODE_ENV}
@@ -315,7 +311,7 @@ setup_enebular_agent() {
       fi
       _echo_g "OK"
     fi
-    _task "Building enebular-agent"
+    _task "Building enebular-agent(It may take a few minutes)"
     cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/agent && npm install --production) \
       && (cd ${INSTALL_DIR}/node-red && npm install --production) \
       && (cd ${INSTALL_DIR}/ports/${PORT} && npm install --production)" ${NODE_ENV}
@@ -378,7 +374,7 @@ install_nodejs() {
   fi
   _echo_g "OK"
 
-  _task "Installing Node.js ${VERSION} to ${DST}..."
+  _task "Installing Node.js ${VERSION} to ${DST}"
   if (
     run_as_user ${USER} "mkdir -p "${DST}"" && \
     run_as_user ${USER} "tar -xzf "${TEMP_NODE_GZ}" -C "${DST}" --strip-components 1" && \
@@ -450,12 +446,15 @@ do_install() {
     exit 1
   fi
 
-  _echo_g "**************************************************"
-  _echo "$(_echo_g "*") Install user:             $(_echo_g ${USER})"
-  _echo "$(_echo_g "*") Agent type:               $(_echo_g ${AGENT_TYPE})"
-  _echo "$(_echo_g "*") Install destination:      $(_echo_g ${INSTALL_DIR})"
-  _echo "$(_echo_g "*") Version to be installed:  $(_echo_g ${RELEASE_VERSION})"
-  _echo_g "**************************************************"
+  _horizontal_bar
+  _echo "$(_echo_g "*")           Enebular-agent installation"
+  _echo "$(_echo_g "*") Device Name:              $(_echo_g $(uname -n))"
+  _echo "$(_echo_g "*") System:                   $(_echo_g $(uname -srmo))"
+  _echo "$(_echo_g "*") Install User:             $(_echo_g ${USER})"
+  _echo "$(_echo_g "*") Agent Port Type:          $(_echo_g ${AGENT_TYPE})"
+  _echo "$(_echo_g "*") Install Destination:      $(_echo_g ${INSTALL_DIR})"
+  _echo "$(_echo_g "*") Version To Be Installed:  $(_echo_g ${RELEASE_VERSION})"
+  _horizontal_bar
 
   _task "Checking dependencies"
   if ! dpkg -s build-essential >/dev/null 2>&1; then
@@ -466,19 +465,30 @@ do_install() {
   fi
   _echo_g OK
 
-  _task "Downloading enebular-agent"
   local EXIT_CODE
+  if ! id -u ${USER} > /dev/null 2>&1; then
+    _task "Creating user ${USER}"
+    useradd -m ${USER}
+    EXIT_CODE=$?
+    if [ "$EXIT_CODE" -ne 0 ]; then
+      _err "Can't create user: ${USER}"
+      exit 1
+    fi
+    _echo_g OK
+  fi
+
+  _task "Downloading enebular-agent"
   local TEMP_GZ
   TEMP_GZ=`mktemp --dry-run /tmp/enebular-agent.XXXXXXXXX`
   local VERSION_INFO
   local PREBUILT_URL
   if [ "${RELEASE_VERSION}" == "latest-release" ]; then
-    VERSION_INFO="$(get_enebular_agent_version_info ${AGENT_DOWNLOAD_PATH}releases/latest)"
+    VERSION_INFO="$(get_version_info_from_github ${AGENT_DOWNLOAD_PATH}releases/latest)"
   else
-    VERSION_INFO="$(get_enebular_agent_version_info ${AGENT_DOWNLOAD_PATH}releases/tags/${RELEASE_VERSION})"
+    VERSION_INFO="$(get_version_info_from_github ${AGENT_DOWNLOAD_PATH}releases/tags/${RELEASE_VERSION})"
   fi
   if [ -z "${VERSION_INFO}" ]; then
-    _echo "Failed to get version ${RELEASE_VERSION}."
+    _err "Failed to get version ${RELEASE_VERSION} from github."
     exit 1
   else
     VERSION_INFO=($VERSION_INFO)
@@ -496,7 +506,7 @@ do_install() {
   fi
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
-    _echo "Can't find available release for ${RELEASE_VERSION}"
+    _err "Can't find available release for ${RELEASE_VERSION}"
     exit 1
   fi
   _echo_g OK
@@ -591,7 +601,7 @@ setup_mbed_cloud_connector() {
   fi
   _echo_g "OK"
 
-  _task "Building mbed cloud connector"
+  _task "Building mbed cloud connector(It may take a few minutes)"
   cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector && \
     python pal-platform/pal-platform.py fullbuild --target x86_x64_NativeLinux_mbedtls --toolchain GCC --external \
     ./../define.txt --name enebular-agent-mbed-cloud-connector.elf)"
@@ -612,15 +622,15 @@ install_mbed_cloud_connector() {
     exit 1
   fi
 
-  _task Downloading mbed-cloud-connector...
+  _task "Downloading mbed-cloud-connector"
   local EXIT_CODE
   local TEMP_GZ
   TEMP_GZ=`mktemp --dry-run /tmp/mbed-cloud-connector.XXXXXXXXX`
   local VERSION_INFO
   local PREBUILT_URL
-  VERSION_INFO="$(get_enebular_agent_version_info ${MBED_CLOUD_CONNECTOR_DOWNLOAD_PATH}releases/latest)"
+  VERSION_INFO="$(get_version_info_from_github ${MBED_CLOUD_CONNECTOR_DOWNLOAD_PATH}releases/latest)"
   if [ -z "${VERSION_INFO}" ]; then
-    _echo "Failed to get latest version."
+    _echo "Failed to get latest version from github."
     exit 1
   else
     VERSION_INFO=($VERSION_INFO)
@@ -635,7 +645,7 @@ install_mbed_cloud_connector() {
   fi
   _echo_g "OK"
 
-  _task Installing mbed-cloud-connector ${VERSION_INFO}...
+  _task "Installing mbed-cloud-connector ${VERSION_INFO}"
   install_tarball "${TEMP_GZ}" "${INSTALL_DIR}"
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
@@ -661,15 +671,13 @@ post_install() {
       EXIT_CODE=$?
       if [ "$EXIT_CODE" -ne 0 ]; then
         _err "Adding ${USER} to gpio group failed."
-      else
-        _echo "Added ${USER} to gpio group."
       fi
     fi
     _echo_g "OK"
   fi
-  if [ ! -z ${AWS_IOT_THING_NAME} ]; then
+  if [ ! -z ${AWS_IOT_THING_NAME} ] && [ ${PORT} == 'awsiot' ]; then
     _task Creating AWS IoT thing
-      run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/awsiot-thing-creator && npm run start)" "${NODE_ENV_PATH} \
+      cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/awsiot-thing-creator && npm run start)" "${NODE_ENV_PATH} \
         AWS_IOT_THING_NAME=${AWS_IOT_THING_NAME} AWS_IOT_REGION=${AWS_IOT_REGION} \
         AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}"
     EXIT_CODE=$?
@@ -681,14 +689,14 @@ post_install() {
   fi
 
   if [ ! -z ${LICENSE_KEY} ]; then
-    _task Creating activation configuration file...
-    run_as_user ${USER} 'echo "{\"enebularBaseURL\": \"'${ENEBULAR_BASE_URL}'\",\"licenseKey\": \"'${LICENSE_KEY}'\"}" \
+    _task "Creating activation configuration file"
+    cmd_wrapper run_as_user ${USER} 'echo "{\"enebularBaseURL\": \"'${ENEBULAR_BASE_URL}'\",\"licenseKey\": \"'${LICENSE_KEY}'\"}" \
       > "'${INSTALL_DIR}'/ports/awsiot/.enebular-activation-config.json"'
     _echo_g "OK"
   fi
 
   if [ -z ${NO_STARTUP_REGISTER} ]; then
-    _task Registering startup service...
+    _task "Registering startup service"
     bash -c "${NODE_ENV_PATH} ${INSTALL_DIR}/ports/${PORT}/bin/enebular-${PORT}-agent \
       startup-register -u ${USER}"
     EXIT_CODE=$?
@@ -726,6 +734,10 @@ case $i in
   ;;
   -v=*|--release-version=*)
   RELEASE_VERSION="${i#*=}"
+  shift
+  ;;
+  --verbose)
+  VERBOSE=yes
   shift
   ;;
   --no-startup-register)
@@ -818,7 +830,7 @@ do_install "${PORT}" "${USER}" "${INSTALL_DIR}" "${RELEASE_VERSION}" NODE_ENV_PA
 
 post_install
 
-_echo ---------
+_horizontal_bar
 echo -e "\033[32m enebular-agent has been successfully installed ✔\033[0m"
 _echo " Version: $(get_enebular_agent_package_version ${INSTALL_DIR})"
 _echo " Location: ${INSTALL_DIR}"
@@ -831,5 +843,5 @@ if [ -z ${NO_STARTUP_REGISTER} ]; then
   _echo " To check the status of agent, run the following command on the target device:"
   _echo "   sudo journalctl -ex -u enebular-agent-${USER}.service"
 fi
-_echo ---------
+_horizontal_bar
 
