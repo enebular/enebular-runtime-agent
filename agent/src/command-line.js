@@ -118,7 +118,7 @@ export default class CommandLine {
     return !!this._command
   }
 
-  processCommand() {
+  async processCommand() {
     switch (this._command) {
       case 'startup-register':
       case 'startup-unregister':

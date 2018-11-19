@@ -168,7 +168,7 @@ async function startup() {
     connector: connector
   })
 
-  await agent.startup()
+  return await agent.startup()
 }
 
 async function shutdown() {
@@ -183,7 +183,6 @@ async function exit() {
 }
 
 if (require.main === module) {
-  startup()
   process.on('SIGINT', () => {
     exit()
   })
@@ -193,6 +192,12 @@ if (require.main === module) {
   process.on('uncaughtException', err => {
     console.error(`Uncaught exception: ${err.stack}`)
     process.exit(1)
+  })
+
+  startup().then((ret) => {
+    if (!ret) {
+      process.exit(1)
+    }
   })
 }
 
