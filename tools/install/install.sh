@@ -529,7 +529,12 @@ post_install() {
   if [ -z ${NO_STARTUP_REGISTER} ]; then
     _echo Registering startup service...
     _echo ---------
-    bash -c "${NODE_ENV_PATH} ${INSTALL_DIR}/ports/${PORT}/bin/enebular-${PORT}-agent \
+    local LAUNCH_ENV
+    LAUNCH_ENV=${NODE_ENV_PATH}
+    if [ ! -z ${ENEBULAR_DEV_MODE} ]; then
+      LAUNCH_ENV="${LAUNCH_ENV} ENEBULAR_DEV_MODE=true"
+    fi
+    bash -c "${LAUNCH_ENV} ${INSTALL_DIR}/ports/${PORT}/bin/enebular-${PORT}-agent \
       startup-register -u ${USER}"
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
@@ -595,6 +600,10 @@ case $i in
   ;;
   --enebular-base-url=*)
   ENEBULAR_BASE_URL="${i#*=}"
+  shift
+  ;;
+  --dev-mode)
+  ENEBULAR_DEV_MODE=yes
   shift
   ;;
   *)
