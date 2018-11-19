@@ -322,7 +322,7 @@ async function startup() {
     connector: connector
   })
 
-  return await agent.startup()
+  return agent.startup()
 }
 
 async function shutdown() {
