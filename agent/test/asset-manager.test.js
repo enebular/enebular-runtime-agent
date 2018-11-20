@@ -262,11 +262,11 @@ test.serial(
 
     await waitAssetProcessing(agent, 2000, 5000)
 
-    t.is(ret.updateRequests[0].state.state, 'deployPending')
-    t.is(ret.updateRequests[1].state.state, 'removing')
-    t.is(ret.updateRequests[2].state.state, 'deploying')
-    t.is(ret.updateRequests[3].state.state, 'deployed')
-    t.true(fs.existsSync(ret.assetDataPath + '/dst/' + newAssetName))
+    t.is(ret.reportedStates.state.assets.assets[newAssetId].state, 'deployed')
+    t.is(
+      ret.reportedStates.state.assets.assets[newAssetId].updateId,
+      updateId
+    )
     const state = JSON.parse(fs.readFileSync(ret.assetStatePath, 'utf8'))
     t.is(state[0].id, newAssetId)
     t.is(state[0].state, 'deployed')
