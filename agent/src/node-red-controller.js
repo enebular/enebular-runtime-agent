@@ -370,7 +370,7 @@ export default class NodeREDController {
   async _sendEditorAgentIPAddress(editSession: EditSession) {
     const { ipAddress, sessionToken } = editSession
     try {
-      fetch(`http://${ipAddress}:9017/api/v1/agent-editor/ip`, {
+      fetch(`http://${ipAddress}:9017/api/v1/agent-editor/ping`, {
         method: 'POST',
         headers: {
           'x-ee-session': sessionToken
