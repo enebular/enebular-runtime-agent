@@ -5,8 +5,6 @@ import path from 'path'
 import { spawn, type ChildProcess, exec } from 'child_process'
 import ProcessUtil from './process-util'
 import fetch from 'isomorphic-fetch'
-import ip from 'ip'
-import axios from 'axios'
 import type { Logger } from 'winston'
 import type LogManager from './log-manager'
 
@@ -371,17 +369,13 @@ export default class NodeREDController {
 
   async _sendEditorAgentIPAddress(editSession: EditSession) {
     const { ipAddress, sessionToken } = editSession
-    // const agentIpAddress = ip.address()
     try {
-      axios.post(
-        `http://${ipAddress}:9017/api/v1/agent-editor/ip`,
-        {},
-        {
-          headers: {
-            'x-ee-session': sessionToken
-          }
+      fetch(`http://${ipAddress}:9017/api/v1/agent-editor/ip`, {
+        method: 'POST',
+        headers: {
+          'x-ee-session': sessionToken
         }
-      )
+      })
     } catch (err) {
       console.error('send editor error', err)
     }
