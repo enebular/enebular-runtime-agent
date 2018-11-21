@@ -71,11 +71,11 @@ The current ports are:
 
 ## Using enebular editor Mode
 
-To use enebular-agent with the enebular editor, you will first need to install enebular-agent manually. For instructions on installing it manually, see the _Manual Setup_ section further below. Then when starting it, the `ENEBULAR_EDITOR_URL` environment variable must be specified. An example of this when using the AWS IoT port is shown below.
+To use enebular-agent with the enebular editor, you will first need to install enebular-agent manually. For instructions on installing it manually, see the _Manual Setup_ section further below.
 
 ```sh
 cd ports/awsiot
-ENEBULAR_EDITOR_URL=http://192.xxx.xx.xx:9017 ./bin/enebular-awsiot-agent
+./bin/enebular-awsiot-agent --dev-mode
 ```
 
 ## Quick Setup

@@ -71,11 +71,11 @@ enebular-agent を利用するには、利用する外部サービスに合わ�
 
 ## enebular editor モードの利用
 
-enebular-agent を enebular editor と連携して利用するには、enebular-agent を手動でセットアップする必要があります。手動セットアップの詳細については、下記「手動セットアップ」の項を参照してください。enebular-agent を起動する際に環境変数 `ENEBULAR_EDITOR_URL` が設定されている必要があります。AWS IoT ポートを利用する場合の実行例を以下に示します。
+enebular-agent を enebular editor と連携して利用するには、enebular-agent を手動でセットアップする必要があります。手動セットアップの詳細については、下記「手動セットアップ」の項を参照してください。
 
 ```sh
 cd ports/awsiot
-ENEBULAR_EDITOR_URL=http://192.xxx.xx.xx:9017 ./bin/enebular-awsiot-agent
+./bin/enebular-awsiot-agent --dev-mode
 ```
 
 ## クイックセットアップ

@@ -156,7 +156,7 @@ export default class EnebularAgent extends EventEmitter {
     this._initLogging()
 
     if (devMode) {
-      this._log.info('Running in developer mode')
+      this._log.info('Running in Developer Mode')
     }
     this._log.info('Node-RED dir: ' + nodeRedDir)
     this._log.info('Node-RED data dir: ' + nodeRedDataDir)
