@@ -184,8 +184,10 @@ export default class NodeREDController {
       updates.push(
         new Promise((resolve, reject) => {
           const flowFilePath = path.join(this._getDataDir(), 'flows.json')
-          fs.writeFile(flowFilePath, JSON.stringify(flows), err =>
-            err ? reject(err) : resolve()
+          fs.writeFile(
+            flowFilePath,
+            JSON.stringify(flows),
+            err => (err ? reject(err) : resolve())
           )
         })
       )
@@ -195,8 +197,10 @@ export default class NodeREDController {
       updates.push(
         new Promise((resolve, reject) => {
           const credFilePath = path.join(this._getDataDir(), 'flows_cred.json')
-          fs.writeFile(credFilePath, JSON.stringify(creds), err =>
-            err ? reject(err) : resolve()
+          fs.writeFile(
+            credFilePath,
+            JSON.stringify(creds),
+            err => (err ? reject(err) : resolve())
           )
         })
       )
@@ -218,8 +222,10 @@ export default class NodeREDController {
             null,
             2
           )
-          fs.writeFile(packageJSONFilePath, packageJSON, err =>
-            err ? reject(err) : resolve()
+          fs.writeFile(
+            packageJSONFilePath,
+            packageJSON,
+            err => (err ? reject(err) : resolve())
           )
         })
       )
@@ -365,13 +371,11 @@ export default class NodeREDController {
 
   async _sendEditorAgentIPAddress(editSession: EditSession) {
     const { ipAddress, sessionToken } = editSession
-    const agentIpAddress = ip.address()
+    // const agentIpAddress = ip.address()
     try {
       axios.post(
         `http://${ipAddress}:9017/api/v1/agent-editor/ip`,
-        {
-          agentIPAddress: agentIpAddress
-        },
+        {},
         {
           headers: {
             'x-ee-session': sessionToken
