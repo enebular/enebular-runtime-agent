@@ -134,13 +134,11 @@ export default class EnebularAgent extends EventEmitter {
       })
     }
 
+    const devMode = this._config.get('ENEBULAR_DEV_MODE')
     const nodeRedDir = this._config.get('NODE_RED_DIR')
     const nodeRedDataDir = this._config.get('NODE_RED_DATA_DIR')
     const defaultNodeRedCommand =
-      './node_modules/.bin/node-red -s .node-red-config/' +
-      (process.env.ENEBULAR_EDITOR_URL
-        ? 'enebular-editor-settings.js'
-        : 'settings.js')
+      './node_modules/.bin/node-red -s .node-red-config/settings.js'
     const nodeRedCommand =
       this._config.get('NODE_RED_COMMAND') || defaultNodeRedCommand
     const configFile = this._config.get('ENEBULAR_CONFIG_PATH')
@@ -157,6 +155,9 @@ export default class EnebularAgent extends EventEmitter {
 
     this._initLogging()
 
+    if (devMode) {
+      this._log.info('Running in developer mode')
+    }
     this._log.info('Node-RED dir: ' + nodeRedDir)
     this._log.info('Node-RED data dir: ' + nodeRedDataDir)
     this._log.info('Node-RED command: ' + nodeRedCommand)
@@ -203,7 +204,8 @@ export default class EnebularAgent extends EventEmitter {
         command: nodeRedCommand,
         killSignal: this._config.get('NODE_RED_KILL_SIGNAL'),
         pidFile: this._config.get('ENEBULAR_NODE_RED_PID_FILE'),
-        assetsDataPath: this._config.get('ENEBULAR_ASSETS_DATA_PATH')
+        assetsDataPath: this._config.get('ENEBULAR_ASSETS_DATA_PATH'),
+        allowEditSessions: devMode
       }
     )
 
