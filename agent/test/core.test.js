@@ -354,17 +354,6 @@ test.serial(
         1000 + tolerance
       )
     )
-    notifyStatusReceived = 0
-    t.true(
-      await polling(
-        () => {
-          return notifyStatusReceived === 0
-        },
-        2000,
-        100,
-        1000
-      )
-    )
   }
 )
 

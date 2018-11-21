@@ -277,7 +277,7 @@ export function nodeRedIsAlive(port) {
     const settings = await api.getSettings()
     return !!settings
   }
-  return polling(callback, 0, 500, 10000)
+  return polling(callback, 0, 500, 30000)
 }
 
 export function nodeRedIsDead(port) {
