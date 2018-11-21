@@ -120,7 +120,7 @@ export default class CommandLine {
     return !!this._command
   }
 
-  processCommand() {
+  async processCommand() {
     switch (this._command) {
       case 'startup-register':
       case 'startup-unregister':
@@ -140,7 +140,8 @@ export default class CommandLine {
           this._config.get('ENEBULAR_AGENT_PID_FILE')
         )
       case 'list-config-items':
-        return this._listConfigItems()
+        this._listConfigItems()
+        return true
       case 'unknown':
       default:
         console.error(

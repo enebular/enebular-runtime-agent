@@ -47,10 +47,6 @@ To view the logs on enebular, the device must be a 'paid' device.
 
 enebular-agent provides simple reporting on its status to enebular (when it has been made a 'paid' device).
 
-### enebular editor Support
-
-enebular-agent supports being used together with the enebular enebular editor. This allows you to deploy flows from the enebular editor directly to the enebular-agent device via the local network.
-
 ## Structure
 
 enebular-agent is implemented as a collection of Node.js modules. Its core runtime functionality is implemented as the `enebular-runtime-agent` module (under the `agent` directory). On top of this, there is a module for each of the supported IoT platform connection types (under the `ports` directory). Each of the ports includes the enebular-runtime-agent core module as a dependency. See below for more information on the ports.

@@ -17,4 +17,8 @@ process.on('uncaughtException', err => {
   process.exit(1)
 })
 
-agent.startup()
+agent.startup().then((ret) => {
+  if (!ret) {
+    process.exit(1)
+  }
+})

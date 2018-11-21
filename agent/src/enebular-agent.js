@@ -306,7 +306,9 @@ export default class EnebularAgent extends EventEmitter {
     if (this._connector.init) {
       this._connector.init()
     }
-    return this._nodeRed.startService()
+
+    await this._nodeRed.startService()
+    return true
   }
 
   async shutdown() {

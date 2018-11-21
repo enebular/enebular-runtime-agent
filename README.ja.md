@@ -47,10 +47,6 @@ enebular-agent は、Node-RED が標準出力と標準エラー出力（stdout �
 
 enebular-agent は有償デバイスの場合に簡易なステータス情報を enebular に送信します。
 
-### enebular editor のサポート
-
-enebular-agent は enebular editor と連携して利用することをサポートしています。これによって、enebular editor からローカルネットワークを介して enebular-agent のデバイスに直接にフローをデプロイすることができます。
-
 ## 構成
 
 enebular-agent は、Node.js モジュールの集合として実装されています。enebular-agent のコアランタイム機能は`enebular-runtime-agent`モジュールとして（`agent`ディレクトリの下で）実装されています。この上に、サポートされている IoT プラットフォームの接続タイプごとにモジュールが（`ports`ディレクトリの下に）あります。 各ポートが enebular-runtime-agent コアのモジュールを依存モジュールとして含んでいます。ポートの詳細情報については下記「ポート」の項を参照してください。
