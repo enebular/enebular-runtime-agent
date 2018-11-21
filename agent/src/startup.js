@@ -119,7 +119,7 @@ export default class Startup {
   ): boolean {
     if (!fs.existsSync(Startup._getServiceFilePath(serviceName))) {
       console.error('No startup service has been registered.')
-      return true
+      return false
     }
 
     if (process.getuid() !== 0) {
