@@ -71,7 +71,7 @@ To use enebular-agent with the enebular editor, you will first need to install e
 
 ```sh
 cd ports/awsiot
-./bin/enebular-awsiot-agent --dev-mode
+DEBUG=info ./bin/enebular-awsiot-agent --dev-mode
 ```
 
 ## Quick Setup

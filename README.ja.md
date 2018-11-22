@@ -71,7 +71,7 @@ enebular-agent を enebular editor と連携して利用するには、enebular-
 
 ```sh
 cd ports/awsiot
-./bin/enebular-awsiot-agent --dev-mode
+DEBUG=info ./bin/enebular-awsiot-agent --dev-mode
 ```
 
 ## クイックセットアップ

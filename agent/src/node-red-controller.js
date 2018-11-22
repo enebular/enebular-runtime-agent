@@ -142,6 +142,7 @@ export default class NodeREDController {
     let editSessionRequested = this._flowPackageContainsEditSession(flowPackage)
     if (editSessionRequested && !this._allowEditSessions) {
       this.info('Edit session flow deploy requested but not allowed')
+      this.info('Start agent in --dev-mode to allow edit session.')
       return
     }
 
