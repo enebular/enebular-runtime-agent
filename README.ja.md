@@ -10,6 +10,7 @@ enebular-agent には次の主要機能があります。
 - Node-RED インスタンスの管理と enebular からデプロイされたフローの実行
 - enebular からのファイルデプロイと実行
 - enebular へのステータス通知およびログ送信
+- enebular editor のサポート
 
 enebular は、サードパーティの IoT プラットフォーム接続を介して enebular-agent と通信します。
 
@@ -63,6 +64,15 @@ enebular-agent を利用するには、利用する外部サービスに合わ�
 - **AWS IoT** - AWS IoT と連携して利用します
 - **Local** - ローカルにある他のプログラムと併せて利用します
   - enebular-agent を Pelion Device Management と連携して利用する場合に[enebular-agent Mbed Cloud Connector](https://github.com/enebular/enebular-runtime-agent-mbed-cloud-connector)と併せて利用します。
+
+## enebular editor モードの利用
+
+enebular-agent を enebular editor と連携して利用するには、enebular-agent を手動でセットアップする必要があります。手動セットアップの詳細については、下記「手動セットアップ」の項を参照してください。
+
+```sh
+cd ports/awsiot
+DEBUG=info ./bin/enebular-awsiot-agent --dev-mode
+```
 
 ## クイックセットアップ
 

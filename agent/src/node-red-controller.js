@@ -2,7 +2,7 @@
 import fs from 'fs'
 import EventEmitter from 'events'
 import path from 'path'
-import { spawn, type ChildProcess } from 'child_process'
+import { spawn, type ChildProcess, exec } from 'child_process'
 import ProcessUtil from './process-util'
 import fetch from 'isomorphic-fetch'
 import type { Logger } from 'winston'
@@ -24,7 +24,13 @@ const maxRetryCountResetInterval = 5
 type NodeRedFlowPackage = {
   flows: Object[],
   creds: Object,
-  packages: Object
+  packages: Object,
+  editSession?: EditSession
+}
+
+type EditSession = {
+  ipAddress: string,
+  sessionToken: string
 }
 
 export default class NodeREDController {
@@ -42,6 +48,7 @@ export default class NodeREDController {
   _nodeRedLog: Logger
   _exceptionRetryCount: number = 0
   _lastRetryTimestamp: number = Date.now()
+  _allowEditSessions: boolean = false
 
   constructor(
     emitter: EventEmitter,
@@ -55,6 +62,7 @@ export default class NodeREDController {
     this._killSignal = config.killSignal
     this._pidFile = config.pidFile
     this._assetsDataPath = config.assetsDataPath
+    this._allowEditSessions = config.allowEditSessions
 
     if (!fs.existsSync(this._dir)) {
       throw new Error(`The Node-RED directory was not found: ${this._dir}`)
@@ -129,18 +137,42 @@ export default class NodeREDController {
 
   async _fetchAndUpdateFlow(params: { downloadUrl: string }) {
     this.info('Updating flow')
-    await this._downloadAndUpdatePackage(params.downloadUrl)
-    await this._restartService()
+
+    const flowPackage = await this._downloadPackage(params.downloadUrl)
+    let editSessionRequested = this._flowPackageContainsEditSession(flowPackage)
+    if (editSessionRequested && !this._allowEditSessions) {
+      this.info('Edit session flow deploy requested but not allowed')
+      this.info('Start agent in --dev-mode to allow edit session.')
+      return
+    }
+
+    await this._updatePackage(flowPackage)
+    if (editSessionRequested) {
+      await this._restartInEditorMode(flowPackage.editSession)
+    } else {
+      await this._restartService()
+    }
   }
 
-  async _downloadAndUpdatePackage(downloadUrl: string) {
+  _flowPackageContainsEditSession(flowPackage: NodeRedFlowPackage) {
+    if (
+      flowPackage &&
+      flowPackage.editSession &&
+      flowPackage.editSession.ipAddress &&
+      flowPackage.editSession.sessionToken
+    ) {
+      return true
+    }
+    return false
+  }
+
+  async _downloadPackage(downloadUrl: string): NodeRedFlowPackage {
     this.info('Downloading flow:', downloadUrl)
     const res = await fetch(downloadUrl)
     if (res.status >= 400) {
       throw new Error('invalid url')
     }
-    const body = await res.json()
-    return this._updatePackage(body)
+    return res.json()
   }
 
   async _updatePackage(flowPackage: NodeRedFlowPackage) {
@@ -230,28 +262,44 @@ export default class NodeREDController {
     }
   }
 
-  async startService() {
-    return this._queueAction(() => this._startService())
+  async startService(editSession: EditSession) {
+    return this._queueAction(() => this._startService(editSession))
   }
 
-  async _startService() {
-    this.info('Staring service...')
+  async _startService(editSession: EditSession) {
+    if (editSession) {
+      this.info('Starting service (editor mode)...')
+    } else {
+      this.info('Starting service...')
+    }
+
+    let executedLoadURL = false
     return new Promise((resolve, reject) => {
       if (fs.existsSync(this._pidFile)) {
         ProcessUtil.killProcessByPIDFile(this._pidFile)
       }
-
-      const [command, ...args] = this._command.split(/\s+/)
+      let [command, ...args] = this._command.split(/\s+/)
+      let env = Object.assign(process.env, {
+        ENEBULAR_ASSETS_DATA_PATH: this._assetsDataPath
+      })
+      if (editSession) {
+        args = ['-s', '.node-red-config/enebular-editor-settings.js']
+        env['ENEBULAR_EDITOR_URL'] = `http://${editSession.ipAddress}:9017`
+        env['ENEBULAR_EDITOR_SESSION_TOKEN'] = editSession.sessionToken
+      }
       const cproc = spawn(command, args, {
         stdio: 'pipe',
         cwd: this._dir,
-        env: Object.assign(process.env, {
-          ENEBULAR_ASSETS_DATA_PATH: this._assetsDataPath
-        })
+        env: env
       })
       cproc.stdout.on('data', data => {
         let str = data.toString().replace(/(\n|\r)+$/, '')
         this._nodeRedLog.info(str)
+        if (editSession && !executedLoadURL && str.includes('Started flows')) {
+          this._nodeRedLog.info('Pinging enebular editor...')
+          this._sendEditorAgentIPAddress(editSession)
+          executedLoadURL = true
+        }
       })
       cproc.stderr.on('data', data => {
         let str = data.toString().replace(/(\n|\r)+$/, '')
@@ -275,7 +323,7 @@ export default class NodeREDController {
                 this._exceptionRetryCount
             )
             setTimeout(() => {
-              this.startService()
+              this._startService(editSession)
             }, 1000)
           } else {
             this.info(
@@ -320,8 +368,29 @@ export default class NodeREDController {
     })
   }
 
+  async _sendEditorAgentIPAddress(editSession: EditSession) {
+    const { ipAddress, sessionToken } = editSession
+    try {
+      fetch(`http://${ipAddress}:9017/api/v1/agent-editor/ping`, {
+        method: 'POST',
+        headers: {
+          'x-ee-session': sessionToken
+        }
+      })
+    } catch (err) {
+      console.error('send editor error', err)
+    }
+  }
+
   async restartService() {
     return this._queueAction(() => this._restartService())
+  }
+
+  async _restartInEditorMode(editSession: EditSession) {
+    this.info('Restarting service (editor mode)...')
+    this.info(`enebular editor IP Address: ${editSession.ipAddress}`)
+    await this._shutdownService()
+    await this._startService(editSession)
   }
 
   async _restartService() {

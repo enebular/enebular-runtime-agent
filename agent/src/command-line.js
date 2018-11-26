@@ -16,6 +16,8 @@ export default class CommandLine {
     this._config = config
     commander.version(pkg.version, '-v, --version')
 
+    this.addConfigOption('ENEBULAR_DEV_MODE', '--dev-mode')
+
     this.addConfigOption(
       'ENEBULAR_CONFIG_PATH',
       '--enebular-config-file <path>'
