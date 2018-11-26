@@ -9,7 +9,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@uhuru/enebular-node-red": "0.18.6-alpha.6",
+    "@uhuru/enebular-node-red": "^0.18.6-alpha.8",
     "axios": "^0.18.0",
     "enebular-agent-dynamic-deps": "file:.node-red-config/enebular-agent-dynamic-deps",
     "node-red-contrib-milkcocoa": "0.0.7"
