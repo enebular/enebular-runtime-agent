@@ -7,10 +7,15 @@ import { Server } from 'net'
 import EnebularAgent from '../src/enebular-agent'
 import Utils from './helpers/utils'
 import DummyServer from './helpers/dummy-server'
-import { createAuthenticatedAgent } from './helpers/agent-helper'
+import {
+  createAuthenticatedAgent,
+  polling,
+  agentCleanup
+} from './helpers/agent-helper'
 
 const DummyServerPort = 3006
 const NodeRedPort = 4006
+const MonitoringActiveDelay = 10 * 1000
 
 let agent: EnebularAgent
 let server: DummyServer
@@ -34,16 +39,7 @@ test.afterEach.always('cleanup listener', t => {
 })
 
 test.afterEach.always('cleanup', async t => {
-  if (agent) {
-    console.log('cleanup: agent')
-    await agent.shutdown().catch(error => {
-      // ignore the error, we don't care this
-      // set to null to avoid 'unused' lint error
-      error = null
-    })
-    agent = null
-  }
-
+  await agentCleanup(agent, NodeRedPort)
   server.setLogReturnBadRequest(false)
 })
 
@@ -120,6 +116,17 @@ test.serial('Log.2: Log is sent to server periodically', async t => {
   )
   agent = ret.agent
 
+  t.true(
+    await polling(
+      () => {
+        return agent._monitoringActive
+      },
+      0,
+      100,
+      MonitoringActiveDelay + 3000
+    )
+  )
+
   t.is(agent._logManager._enebularTransport._sendInterval, interval)
 
   const data = fs.readFileSync(path.join(__dirname, 'data', 'text.1k'), 'utf8')
@@ -127,15 +134,46 @@ test.serial('Log.2: Log is sent to server periodically', async t => {
     agent.log.info(data)
   }, 500)
 
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      fs.removeSync(tmpLogCacheDir)
-      server.removeListener('recordLogs', logCallback)
-      clearInterval(intervalObj)
-      t.is(recordLogsReceived, 3)
-      resolve()
-    }, 11000)
-  })
+  const tolerance = 1000
+  recordLogsReceived = 0
+  t.true(
+    await polling(
+      () => {
+        return recordLogsReceived === 1
+      },
+      0,
+      100,
+      interval * 1000 + tolerance
+    )
+  )
+
+  recordLogsReceived = 0
+  t.true(
+    await polling(
+      () => {
+        return recordLogsReceived === 1
+      },
+      0,
+      100,
+      interval * 1000 + tolerance
+    )
+  )
+
+  recordLogsReceived = 0
+  t.true(
+    await polling(
+      () => {
+        return recordLogsReceived === 1
+      },
+      0,
+      100,
+      interval * 1000 + tolerance
+    )
+  )
+
+  fs.removeSync(tmpLogCacheDir)
+  server.removeListener('recordLogs', logCallback)
+  clearInterval(intervalObj)
 })
 
 test.serial('Log.3: Log level is handled correctly', async t => {
@@ -163,6 +201,17 @@ test.serial('Log.3: Log level is handled correctly', async t => {
     DummyServerPort
   )
   agent = ret.agent
+
+  t.true(
+    await polling(
+      () => {
+        return agent._monitoringActive
+      },
+      MonitoringActiveDelay,
+      500,
+      3000
+    )
+  )
 
   t.is(agent._logManager._enebularTransport._sendInterval, interval)
 
@@ -209,7 +258,10 @@ test.serial(
     )
     agent = ret.agent
 
-    t.is(agent._logManager._enebularTransport._maxSizePerInterval, maxSizePerInterval)
+    t.is(
+      agent._logManager._enebularTransport._maxSizePerInterval,
+      maxSizePerInterval
+    )
     const intervalObj = setInterval(() => {
       agent.log.info('1')
     }, 1)

@@ -11,12 +11,15 @@ import Utils from './helpers/utils'
 import DummyServer from './helpers/dummy-server'
 import DummyServerConfig from './helpers/dummy-server-config'
 import {
+  polling,
   createConnectedAgent,
-  createAuthenticatedAgent
+  createAuthenticatedAgent,
+  agentCleanup
 } from './helpers/agent-helper'
 
 const DummyServerPort = 3005
 const NodeRedPort = 4005
+const MonitoringActiveDelay = 10 * 1000
 
 let agent: EnebularAgent
 let server: DummyServer
@@ -40,15 +43,7 @@ test.afterEach.always('cleanup listener', t => {
 })
 
 test.afterEach.always('cleanup', async t => {
-  if (agent) {
-    console.log('cleanup: agent')
-    await agent.shutdown().catch(error => {
-      // ignore the error, we don't care this
-      // set to null to avoid 'unused' lint error
-      error = null
-    })
-    agent = null
-  }
+  await agentCleanup(agent, NodeRedPort)
 })
 
 test.serial(
@@ -63,9 +58,9 @@ test.serial(
     agentConfig['ENEBULAR_CONFIG_PATH'] = configFile
 
     agent = new EnebularAgent({
-        portBasePath: path.resolve(__dirname, '../'),
-        connector: connector,
-        config: agentConfig
+      portBasePath: path.resolve(__dirname, '../'),
+      connector: connector,
+      config: agentConfig
     })
 
     return new Promise(async (resolve, reject) => {
@@ -87,7 +82,10 @@ test.serial('Core.2: Agent correctly handle register message', async t => {
   const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
   const ret = await createConnectedAgent(
     t,
-    Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
+    Utils.addNodeRedPortToConfig(
+      { ENEBULAR_CONFIG_PATH: configFile },
+      NodeRedPort
+    )
   )
   agent = ret.agent
   const config = {
@@ -124,7 +122,10 @@ test.serial(
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
     const ret = await createConnectedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig(
+        { ENEBULAR_CONFIG_PATH: configFile },
+        NodeRedPort
+      )
     )
     agent = ret.agent
     const config = {
@@ -163,7 +164,10 @@ test.serial(
     const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
     const ret = await createConnectedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig(
+        { ENEBULAR_CONFIG_PATH: configFile },
+        NodeRedPort
+      )
     )
     agent = ret.agent
     return new Promise((resolve, reject) => {
@@ -193,7 +197,27 @@ test.serial(
       DummyServerPort
     )
     agent = ret.agent
-    t.true(notifyStatusReceived)
+
+    t.true(
+      await polling(
+        () => {
+          return agent._monitoringActive
+        },
+        MonitoringActiveDelay,
+        500,
+        3000
+      )
+    )
+    t.true(
+      await polling(
+        () => {
+          return notifyStatusReceived
+        },
+        0,
+        500,
+        5000
+      )
+    )
   }
 )
 
@@ -214,16 +238,30 @@ test.serial(
     )
     agent = ret.agent
 
+    t.true(
+      await polling(
+        () => {
+          return agent._monitoringActive
+        },
+        MonitoringActiveDelay,
+        500,
+        3000
+      )
+    )
     // shut down agent should trigger records-log request
     await agent.shutdown()
     agent = null
 
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        t.true(recordLogsReceived)
-        resolve()
-      }, 500)
-    })
+    t.true(
+      await polling(
+        () => {
+          return recordLogsReceived
+        },
+        0,
+        500,
+        5000
+      )
+    )
   }
 )
 
@@ -249,16 +287,84 @@ test.serial(
     )
     agent = ret.agent
 
-    let runningTime = 8
-    return new Promise(async (resolve, reject) => {
-      setTimeout(() => {
-        t.is(
-          notifyStatusReceived,
-          Utils.calcExpectedNumberOfRequestsByInterval(agent, runningTime)
-        )
-        resolve()
-      }, 1000 * runningTime)
-    })
+    t.true(
+      await polling(
+        () => {
+          return agent._monitoringActive
+        },
+        0,
+        100,
+        MonitoringActiveDelay + 3000
+      )
+    )
+
+    const tolerance = 500
+    notifyStatusReceived = 0
+    t.true(
+      await polling(
+        () => {
+          return notifyStatusReceived === 1
+        },
+        0,
+        100,
+        1000 + tolerance
+      )
+    )
+    notifyStatusReceived = 0
+    t.true(
+      await polling(
+        () => {
+          return notifyStatusReceived === 1
+        },
+        0,
+        100,
+        1000 + tolerance
+      )
+    )
+    notifyStatusReceived = 0
+    t.true(
+      await polling(
+        () => {
+          return notifyStatusReceived === 1
+        },
+        0,
+        100,
+        1000 + tolerance
+      )
+    )
+    notifyStatusReceived = 0
+    t.true(
+      await polling(
+        () => {
+          return notifyStatusReceived === 1
+        },
+        0,
+        100,
+        1000 + tolerance
+      )
+    )
+    notifyStatusReceived = 0
+    t.true(
+      await polling(
+        () => {
+          return notifyStatusReceived === 1
+        },
+        0,
+        100,
+        1000 + tolerance
+      )
+    )
+    notifyStatusReceived = 0
+    t.true(
+      await polling(
+        () => {
+          return notifyStatusReceived === 0
+        },
+        2000,
+        100,
+        1000
+      )
+    )
   }
 )
 
@@ -266,8 +372,12 @@ test.serial(
   'Core.8: Agent receives status notification periodically - normal',
   async t => {
     let notifyStatusReceived = 0
+    let lastNotifyTime
     server.on('notifyStatus', req => {
       notifyStatusReceived++
+      if (lastNotifyTime)
+        console.log('interval to last notify: ' + (Date.now() - lastNotifyTime))
+      lastNotifyTime = Date.now()
     })
 
     const ret = await createAuthenticatedAgent(
@@ -275,8 +385,8 @@ test.serial(
       server,
       Utils.addNodeRedPortToConfig(
         {
-          ENEBULAR_MONITOR_INTERVAL_FAST: 1,
-          ENEBULAR_MONITOR_INTERVAL_FAST_PERIOD: 2,
+          ENEBULAR_MONITOR_INTERVAL_FAST: 2,
+          ENEBULAR_MONITOR_INTERVAL_FAST_PERIOD: 4,
           ENEBULAR_MONITOR_INTERVAL_NORMAL: 6
         },
         NodeRedPort
@@ -285,16 +395,65 @@ test.serial(
     )
     agent = ret.agent
 
-    let runningTime = 17
-    return new Promise(async (resolve, reject) => {
-      setTimeout(() => {
-        t.is(
-          notifyStatusReceived,
-          Utils.calcExpectedNumberOfRequestsByInterval(agent, runningTime)
-        )
-        resolve()
-      }, 1000 * runningTime)
-    })
+    t.true(
+      await polling(
+        () => {
+          return agent._monitoringActive
+        },
+        0,
+        100,
+        MonitoringActiveDelay + 3000
+      )
+    )
+
+    notifyStatusReceived = 0
+    const tolerance = 1000
+    t.true(
+      await polling(
+        () => {
+          return notifyStatusReceived === 1
+        },
+        0,
+        100,
+        2000 + tolerance
+      )
+    )
+
+    notifyStatusReceived = 0
+    t.true(
+      await polling(
+        () => {
+          return notifyStatusReceived === 1
+        },
+        0,
+        100,
+        2000 + tolerance
+      )
+    )
+
+    notifyStatusReceived = 0
+    t.true(
+      await polling(
+        () => {
+          return notifyStatusReceived === 1
+        },
+        0,
+        100,
+        6000 + tolerance
+      )
+    )
+
+    notifyStatusReceived = 0
+    t.true(
+      await polling(
+        () => {
+          return notifyStatusReceived === 1
+        },
+        0,
+        100,
+        6000 + tolerance
+      )
+    )
   }
 )
 
@@ -320,6 +479,17 @@ test.serial(
     )
     agent = ret.agent
 
+    t.true(
+      await polling(
+        () => {
+          return agent._monitoringActive
+        },
+        MonitoringActiveDelay,
+        500,
+        3000
+      )
+    )
+
     // callback to process unauthentication.
     const authCallback = req => {
       authRequestReceived = true
@@ -333,24 +503,36 @@ test.serial(
     }
     server.on('authRequest', authCallback)
 
-    return new Promise(async (resolve, reject) => {
-      setTimeout(() => {
-        // trigger auth request
-        ret.connector.sendMessage('updateAuth', {
-          idToken: '-',
-          accessToken: '-',
-          state: '-'
-        })
-      }, 1000 * 3)
+    await polling(
+      () => {
+        return notifyStatusReceived >= 4
+      },
+      0,
+      500,
+      10000
+    )
 
-      setTimeout(() => {
-        // within 6 seconds, we should only receive 4(fast period)
-        t.is(notifyStatusReceived, 4)
-        server.removeListener('authRequest', authCallback)
-        t.true(authRequestReceived)
-        t.is(agent._agentState, 'unauthenticated')
-        resolve()
-      }, 1000 * 6)
+    // trigger auth request
+    ret.connector.sendMessage('updateAuth', {
+      idToken: '-',
+      accessToken: '-',
+      state: '-'
     })
+
+    notifyStatusReceived = 0
+    t.false(
+      await polling(
+        () => {
+          return notifyStatusReceived
+        },
+        1000,
+        500,
+        3000
+      )
+    )
+
+    server.removeListener('authRequest', authCallback)
+    t.true(authRequestReceived)
+    t.is(agent._agentState, 'unauthenticated')
   }
 )

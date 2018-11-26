@@ -2,6 +2,7 @@
 import fs from 'fs'
 import path from 'path'
 import awsIot from 'aws-iot-device-sdk'
+import { version as agentVer } from 'enebular-runtime-agent/package.json'
 import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
 
 const MODULE_NAME = 'aws-iot'
@@ -65,31 +66,53 @@ function createThingShadowReportedAwsIotConnectedState(connected) {
   })
 }
 
-function updateThingShadow(state) {
-  let token = thingShadow.update(thingName, state)
-  if (token === null) {
-    error('Shadow update request failed')
-  } else {
-    debug(`Shadow update requested (${token})`)
-    operationResultHandlers[token] = (timeout, stat) => {
-      if (timeout || stat !== 'accepted') {
-        error('Shadow update failed')
+function createThingShadowReportedAgentInfo(info) {
+  return createThingShadowReportedState({
+    agent: info
+  })
+}
+
+async function updateThingShadow(state) {
+  return new Promise((resolve, reject) => {
+    let token = thingShadow.update(thingName, state)
+    if (token === null) {
+      error('Shadow update request failed')
+      resolve()
+    } else {
+      debug(`Shadow update requested (${token})`)
+      operationResultHandlers[token] = (timeout, stat) => {
+        if (timeout || stat !== 'accepted') {
+          error('Shadow update failed')
+        }
+        resolve()
       }
     }
-  }
+  })
 }
 
-function updateThingShadowReportedRoot(reportedState) {
-  updateThingShadow(createThingShadowReportedStateRoot(reportedState))
+async function updateThingShadowReportedRoot(reportedState) {
+  return updateThingShadow(createThingShadowReportedStateRoot(reportedState))
 }
 
-function updateThingShadowReportedAwsIotConnectedState(connected: boolean) {
+async function updateThingShadowReportedAwsIotConnectedState(
+  connected: boolean
+) {
   debug(
     `Updating shadow AWS IoT connection state to: ${
       connected ? 'connected' : 'disconnected'
     }`
   )
-  updateThingShadow(createThingShadowReportedAwsIotConnectedState(connected))
+  return updateThingShadow(
+    createThingShadowReportedAwsIotConnectedState(connected)
+  )
+}
+
+async function updateThingShadowReportedAgentInfo() {
+  const info = {
+    type: 'enebular-agent',
+    v: agentVer
+  }
+  return updateThingShadow(createThingShadowReportedAgentInfo(info))
 }
 
 function handleThingShadowRegisterStateChange(registered: boolean) {
@@ -101,7 +124,7 @@ function handleThingShadowRegisterStateChange(registered: boolean) {
   connector.updateConnectionState(registered)
 }
 
-function updateThingShadowRegisterState() {
+async function updateThingShadowRegisterState() {
   let register = awsIotConnected && canRegisterThingShadow
   if (register === thingShadowRegistered) {
     return
@@ -113,10 +136,11 @@ function updateThingShadowRegisterState() {
         ignoreDeltas: false,
         persistentSubscribe: true
       },
-      err => {
+      async err => {
         handleThingShadowRegisterStateChange(!err)
         if (!err) {
-          updateThingShadowReportedAwsIotConnectedState(true)
+          await updateThingShadowReportedAwsIotConnectedState(true)
+          updateThingShadowReportedAgentInfo()
         }
       }
     )

@@ -27,7 +27,7 @@ export default class NodeRedAdminApi {
       }
       return res.json()
     } catch (err) {
-      console.log('error:', err.message)
+      // console.log('error:', err.message)
     }
   }
 

@@ -1,8 +1,9 @@
 {
-    "name": "node-red-project",
-    "description": "A Node-RED Project",
-    "version": "0.0.1",
-    "dependencies": {
-        "enebular-agent-dynamic-deps": "file:enebular-agent-dynamic-deps"
-    }
+  "name": "node-red-project",
+  "description": "A Node-RED Project",
+  "version": "0.0.1",
+  "dependencies": {
+    "axios": "^0.18.0",
+    "enebular-agent-dynamic-deps": "file:enebular-agent-dynamic-deps"
+  }
 }

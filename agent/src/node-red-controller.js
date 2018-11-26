@@ -13,7 +13,8 @@ export type NodeREDConfig = {
   dataDir: string,
   command: string,
   killSignal: string,
-  pidFile: string
+  pidFile: string,
+  assetsDataPath: string
 }
 
 const moduleName = 'node-red'
@@ -32,6 +33,7 @@ export default class NodeREDController {
   _command: string
   _killSignal: string
   _pidFile: string
+  _assetsDataPath: string
   _cproc: ?ChildProcess = null
   _actions: Array<() => Promise<any>> = []
   _isProcessing: ?Promise<void> = null
@@ -52,6 +54,7 @@ export default class NodeREDController {
     this._command = config.command
     this._killSignal = config.killSignal
     this._pidFile = config.pidFile
+    this._assetsDataPath = config.assetsDataPath
 
     if (!fs.existsSync(this._dir)) {
       throw new Error(`The Node-RED directory was not found: ${this._dir}`)
@@ -211,19 +214,14 @@ export default class NodeREDController {
 
   _createPIDFile(pid: string) {
     try {
-      fs.writeFileSync(
-        this._pidFile,
-        pid,
-        'utf8'
-      )
+      fs.writeFileSync(this._pidFile, pid, 'utf8')
     } catch (err) {
       this._log.error(err)
     }
   }
 
   _removePIDFile() {
-    if (!fs.existsSync(this._pidFile))
-      return
+    if (!fs.existsSync(this._pidFile)) return
 
     try {
       fs.unlinkSync(this._pidFile)
@@ -244,7 +242,13 @@ export default class NodeREDController {
       }
 
       const [command, ...args] = this._command.split(/\s+/)
-      const cproc = spawn(command, args, { stdio: 'pipe', cwd: this._dir })
+      const cproc = spawn(command, args, {
+        stdio: 'pipe',
+        cwd: this._dir,
+        env: Object.assign(process.env, {
+          ENEBULAR_ASSETS_DATA_PATH: this._assetsDataPath
+        })
+      })
       cproc.stdout.on('data', data => {
         let str = data.toString().replace(/(\n|\r)+$/, '')
         this._nodeRedLog.info(str)
@@ -289,7 +293,7 @@ export default class NodeREDController {
         reject(err)
       })
       this._cproc = cproc
-      this._createPIDFile(this._cproc.pid.toString())
+      if (this._cproc.pid) this._createPIDFile(this._cproc.pid.toString())
       setTimeout(() => resolve(), 1000)
     })
   }

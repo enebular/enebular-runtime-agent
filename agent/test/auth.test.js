@@ -11,7 +11,8 @@ import DummyServer from './helpers/dummy-server'
 import {
   createConnectedAgent,
   createAuthenticatedAgent,
-  createUnauthenticatedAgent
+  createUnauthenticatedAgent,
+  agentCleanup
 } from './helpers/agent-helper'
 
 const DummyServerPort = 3002
@@ -40,15 +41,7 @@ test.afterEach.always('cleanup listener', t => {
 })
 
 test.afterEach.always('cleanup', async t => {
-  if (agent) {
-    console.log('cleanup: agent')
-    await agent.shutdown().catch(error => {
-      // ignore the error, we don't care this
-      // set to null to avoid 'unused' lint error
-      error = null
-    })
-    agent = null
-  }
+  await agentCleanup(agent, NodeRedPort)
 })
 
 test.serial(
@@ -101,7 +94,10 @@ test.serial('Auth.3: Agent handles auth request failure(http)', async t => {
   })
   const ret = await createConnectedAgent(
     t,
-    Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
+    Utils.addNodeRedPortToConfig(
+      { ENEBULAR_CONFIG_PATH: configFile },
+      NodeRedPort
+    )
   )
   agent = ret.agent
   return new Promise(async (resolve, reject) => {
@@ -133,7 +129,10 @@ test.serial(
     const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
     const ret = await createConnectedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig(
+        { ENEBULAR_CONFIG_PATH: configFile },
+        NodeRedPort
+      )
     )
     agent = ret.agent
     connector = ret.connector
@@ -170,7 +169,10 @@ test.serial(
     const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
     const ret = await createConnectedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig(
+        { ENEBULAR_CONFIG_PATH: configFile },
+        NodeRedPort
+      )
     )
     agent = ret.agent
     connector = ret.connector
@@ -242,7 +244,10 @@ test.serial(
     )
     const ret = await createConnectedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig(
+        { ENEBULAR_CONFIG_PATH: configFile },
+        NodeRedPort
+      )
     )
     agent = ret.agent
 

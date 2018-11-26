@@ -8,6 +8,7 @@ enebular-agent には次の主要機能があります。
 
 - IoT デバイス（エージェント）のアクティベーションと登録、認証
 - Node-RED インスタンスの管理と enebular からデプロイされたフローの実行
+- enebular からのファイルデプロイと実行
 - enebular へのステータス通知およびログ送信
 
 enebular は、サードパーティの IoT プラットフォーム接続を介して enebular-agent と通信します。
@@ -29,6 +30,10 @@ enebular-agent が enebular と通信するには、認証のための登録情�
 
 enebular-agent は enebular からデプロイされたフローを Node-RED で実行します。また、フローに npm で公開されているノードが使用されている場合、そのノードを自動的にインストールします。
 
+### ファイルデプロイ
+
+enebular-agent は enebular からデプロイされたファイルをインストールします。また、そのファイルの実行と、指定されたコマンドフックの実行に対応しています。
+
 ### ロギング
 
 enebular-agent は、定期的に enebular にログメッセージを送信します。標準出力ストリーム（コマンドラインのコンソールなど）にもロギングできますが、デフォルトでは有効になっていません。ロギングするには`DEBUG`環境変数を設定します。また、オプションで syslog にロギングすることもできます。設定オプションの詳細については「設定方法」の項を参照してください。
@@ -49,7 +54,7 @@ Node-RED も Node.js のモジュールとしてインストールされます�
 
 ## ポート
 
-ポートとは、enebular-agent を AWS IoT や Mbed Cloud などの外部サービスと連携するために個別に準備された enebular-agent のエディションのことを指します。
+ポートとは、enebular-agent を AWS IoT や Pelion Device Management などの外部サービスと連携するために個別に準備された enebular-agent のエディションのことを指します。
 
 enebular-agent を利用するには、利用する外部サービスに合わせて適切なポートを選択し、そのポートのインストールと設定を行ってから、ポートの`bin`ディレクトリの下にある実行ファイルを実行します。
 
@@ -57,7 +62,7 @@ enebular-agent を利用するには、利用する外部サービスに合わ�
 
 - **AWS IoT** - AWS IoT と連携して利用します
 - **Local** - ローカルにある他のプログラムと併せて利用します
-  - enebular-agent を Mbed Cloud と連携して利用する場合に[enebular-agent Mbed Cloud Connector](https://github.com/enebular/enebular-runtime-agent-mbed-cloud-connector)と併せて利用します。
+  - enebular-agent を Pelion Device Management と連携して利用する場合に[enebular-agent Mbed Cloud Connector](https://github.com/enebular/enebular-runtime-agent-mbed-cloud-connector)と併せて利用します。
 
 ## クイックセットアップ
 
@@ -83,7 +88,7 @@ enebular-agent を AWS IoT と一緒に使用して、新しいモノを自動�
 インストールスクリプトは、次のコマンドで開発用の PC 上の SSH を使用してリモートのデバイスで実行します。
 
 ```sh
-ssh -t <user>@<device-ip-address> "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
+ssh -t <user>@<device-ip-address> "wget -qO- https://enebular.com/agent-install | sudo -E bash -s"
 ```
 
 上記のコマンドパターンではデフォルトで AWS IoT 用の enebular-agent ポートがインストールされます。
@@ -91,7 +96,7 @@ ssh -t <user>@<device-ip-address> "wget -qO- https://raw.githubusercontent.com/e
 例えば、リモートの Raspberry Pi のデフォルトである `pi` ユーザーと `192.168.1.125` の IP アドレスを使用してスクリプトを実行する場合のコマンドは次のようになります。
 
 ```sh
-ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s"
 ```
 
 上記のコマンドで enebular-agent の AWS IoT ポートがインストールされますが、必要な接続情報がまだ設定されていないため、起動することが出来ません。 新しい AWS IoT の*モノ*を自動的に追加して利用したい場合は、上記のコマンドの代わりに下記の「AWS IoT の Thing 自動作成とセットアップ」の説明に従ってください。
@@ -112,7 +117,7 @@ enebular-agent の AWS IoT ポートをインストールし、新しい AWS IoT
 例えば、`pi` ユーザと `192.168.1.125` の IP アドレスを持つ Raspberry Pi デバイスに AWS IoT のポートをインストールし、 `raspberry-pi` という名前の AWS IoT の*モノ*を作成する場合のコマンドは次のようになります。
 
 ```sh
-ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
 ```
 
 ### 確認方法

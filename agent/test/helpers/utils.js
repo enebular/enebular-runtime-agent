@@ -1,5 +1,10 @@
+/* @flow */
 import fs from 'fs'
 import DummyServerConfig from './dummy-server-config'
+import objectHash from 'object-hash'
+import crypto from 'crypto'
+import { version as agentVer } from '../../package.json'
+import objectPath from 'object-path'
 
 export default class Utils {
   static randomString() {
@@ -75,28 +80,6 @@ export default class Utils {
     )
   }
 
-  static calcExpectedNumberOfRequestsByInterval(agent, runningTime) {
-    const {
-      _monitorIntervalFast,
-      _monitorIntervalFastPeriod,
-      _monitorIntervalNormal
-    } = agent
-
-    let requestsInFastPeriod = Math.floor(
-      _monitorIntervalFastPeriod / _monitorIntervalFast
-    )
-    // the first request happen in zero second
-    requestsInFastPeriod++
-    if (runningTime <= _monitorIntervalFastPeriod) {
-      return requestsInFastPeriod
-    }
-
-    let remain = runningTime - _monitorIntervalFastPeriod
-    let requestsInNormalPeriod = Math.floor(remain / _monitorIntervalNormal)
-
-    return requestsInFastPeriod + requestsInNormalPeriod
-  }
-
   static createDefaultAgentConfig(nodeRedPort) {
     let agentConfig = {}
     agentConfig['NODE_RED_DIR'] = '../node-red'
@@ -104,5 +87,129 @@ export default class Utils {
     agentConfig['NODE_RED_COMMAND'] =
       './node_modules/.bin/node-red -p ' + nodeRedPort
     return agentConfig
+  }
+
+  static getMetaHash(state) {
+    let hashObj = {
+      fqDeviceId: state.fqDeviceId,
+      type: state.type,
+      state: state.state,
+      meta: {
+        v: state.meta.v,
+        ts: state.meta.ts,
+        uId: state.meta.uId,
+        pHash: state.meta.pHash
+      }
+    }
+    return objectHash(hashObj, { algorithm: 'sha1', encoding: 'base64' })
+  }
+
+  static getDummyState(type, state) {
+    let newState = {
+      fqDeviceId: 'dummy_connectionId::dummy_deviceId',
+      type: type,
+      meta: {
+        pHash: '-',
+        ts: Date.now(),
+        v: 1,
+        uId: 1
+      },
+      state: state
+    }
+    newState.meta.hash = Utils.getMetaHash(newState)
+    return newState
+  }
+
+  static getDummyStatusState(type, v) {
+    return Utils.getDummyState('status', {
+      agent: {
+        type: type,
+        v: v
+      }
+    })
+  }
+
+  static getEmptyDeviceState() {
+    return [
+      {
+        type: 'desired',
+        state: {}
+      },
+      {
+        type: 'reported',
+        state: {}
+      },
+      Utils.getDummyStatusState('enebular-agent', agentVer)
+    ]
+  }
+
+  static getFileIntegrity(path: string) {
+    return new Promise((resolve, reject) => {
+      const hash = crypto.createHash('sha256')
+      const file = fs.createReadStream(path)
+      file.on('data', data => {
+        hash.update(data)
+      })
+      file.on('end', () => {
+        const digest = hash.digest('base64')
+        resolve(digest)
+      })
+      file.on('error', err => {
+        reject(err)
+      })
+    })
+  }
+
+  static createFileOfSize(fileName, size) {
+    return new Promise((resolve, reject) => {
+      let f = fs.openSync(fileName, 'w')
+      for (let i = 0; i < size / 10; i++) fs.writeSync(f, Utils.randomString())
+      fs.closeSync(f)
+      resolve(true)
+    })
+  }
+
+  static addFileAssetToState(state, assetId, fileName, integrity) {
+    objectPath.set(state, 'state.assets.assets.' + assetId, {
+      updateId: Utils.randomString(),
+      ts: Date.now(),
+      config: {
+        name: fileName,
+        type: 'file',
+        destPath: 'dst',
+        fileTypeConfig: {
+          filename: fileName,
+          integrity: integrity,
+          internalSrcConfig: {
+            key: fileName,
+            stored: true
+          }
+        }
+      }
+    })
+  }
+
+  static addFileAssetToDesiredState(
+    desiredState,
+    assetId,
+    fileName,
+    integrity
+  ) {
+    Utils.addFileAssetToState(desiredState, assetId, fileName, integrity)
+    return Utils.getDummyState('desired', desiredState.state)
+  }
+
+  static delDesiredAsset(desiredState, assetId) {
+    objectPath.del(desiredState, 'state.assets.assets.' + assetId)
+    return Utils.getDummyState('desired', desiredState.state)
+  }
+
+  static modifyDesiredAsset(desiredState, assetId, prop, value) {
+    objectPath.set(
+      desiredState,
+      'state.assets.assets.' + assetId + '.' + prop,
+      value
+    )
+    return Utils.getDummyState('desired', desiredState.state)
   }
 }

@@ -10,7 +10,8 @@ import DummyServer from './helpers/dummy-server'
 import DummyServerConfig from './helpers/dummy-server-config'
 import {
   createConnectedAgent,
-  createStartedAgent
+  createStartedAgent,
+  agentCleanup
 } from './helpers/agent-helper'
 
 const DummyServerPort = 3003
@@ -37,15 +38,7 @@ test.afterEach.always('cleanup listener', t => {
 })
 
 test.afterEach.always('cleanup', async t => {
-  if (agent) {
-    console.log('cleanup: agent')
-    await agent.shutdown().catch(error => {
-      // ignore the error, we don't care this
-      // set to null to avoid 'unused' lint error
-      error = null
-    })
-    agent = null
-  }
+  await agentCleanup(agent, NodeRedPort)
 })
 
 test.serial(
@@ -54,7 +47,10 @@ test.serial(
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
     const ret = await createConnectedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig(
+        { ENEBULAR_CONFIG_PATH: configFile },
+        NodeRedPort
+      )
     )
     agent = ret.agent
 
@@ -73,11 +69,11 @@ test.serial(
     agentConfig['ENEBULAR_CONFIG_PATH'] = configFile
 
     agent = new EnebularAgent({
-        portBasePath: path.resolve(__dirname, '../'),
-        connector: connector,
-        config: agentConfig
+      portBasePath: path.resolve(__dirname, '../'),
+      connector: connector,
+      config: agentConfig
     })
-    await t.throws( agent.startup() , Error)
+    await t.throws(agent.startup(), Error)
   }
 )
 
@@ -97,7 +93,10 @@ test.serial(
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
     const ret = await createStartedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig(
+        { ENEBULAR_CONFIG_PATH: configFile },
+        NodeRedPort
+      )
     )
     agent = ret.agent
 
@@ -127,7 +126,10 @@ test.serial(
     const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
     const ret = await createConnectedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig(
+        { ENEBULAR_CONFIG_PATH: configFile },
+        NodeRedPort
+      )
     )
     agent = ret.agent
 
@@ -162,7 +164,10 @@ test.serial(
     const configFile = '/tmp/.enebular-config-' + Utils.randomString() + '.json'
     const ret = await createStartedAgent(
       t,
-      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort)
+      Utils.addNodeRedPortToConfig(
+        { ENEBULAR_CONFIG_PATH: configFile },
+        NodeRedPort
+      )
     )
     agent = ret.agent
 
@@ -203,12 +208,17 @@ test.serial('Activator.6: License is valid.', async t => {
   const connector = new ConnectorService(() => {
     connector.updateActiveState(true)
   })
-  const agentConfig = Object.assign(Utils.createDefaultAgentConfig(1990),
-      Utils.addNodeRedPortToConfig({ ENEBULAR_CONFIG_PATH: configFile }, NodeRedPort))
+  const agentConfig = Object.assign(
+    Utils.createDefaultAgentConfig(1990),
+    Utils.addNodeRedPortToConfig(
+      { ENEBULAR_CONFIG_PATH: configFile },
+      NodeRedPort
+    )
+  )
   agent = new EnebularAgent({
-      portBasePath: path.resolve(__dirname, '../'),
-      connector: connector,
-      config: agentConfig
+    portBasePath: path.resolve(__dirname, '../'),
+    connector: connector,
+    config: agentConfig
   })
 
   agent.on('connectorRegister', () => {
@@ -221,7 +231,7 @@ test.serial('Activator.6: License is valid.', async t => {
   })
 
   await agent.startup()
-  
+
   return new Promise(async (resolve, reject) => {
     setTimeout(() => {
       server.removeListener('verifyLicense', verifyCallback)

@@ -9,7 +9,7 @@ _Read this in other languages: [English](README.md), [日本語](README.ja.md)_
 インストールスクリプトをターゲットのデバイスで直接に使用するには、次に示すように wget を使用してダウンロードして実行します。
 
 ```sh
-wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s
+wget -qO- https://enebular.com/agent-install | sudo -E bash -s
 ```
 
 ## リモートのインストール
@@ -17,13 +17,13 @@ wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/mast
 インストールスクリプトは、次のコマンドパターンのように SSH 経由でリモートのデバイスで実行することもできます。
 
 ```sh
-ssh -t <user>@<device-ip-address> "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
+ssh -t <user>@<device-ip-address> "wget -qO- https://enebular.com/agent-install | sudo -E bash -s"
 ```
 
 例えば、デフォルトの `pi` ユーザと `192.168.1.125` の IP アドレスを持つリモートの Raspberry Pi でスクリプトを実行するコマンドは次のようになります。
 
 ```sh
-ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s"
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s"
 ```
 
 ## ユーザ
@@ -110,17 +110,17 @@ OPTION                      FORMAT              DEFAULT                         
 Raspberry Pi デバイスに `pi` ユーザと `192.168.1.125` の IP アドレスで SSH を介して AWS IoT の enebular-agent ポートをインストールし、`raspberry-pi`という名前の AWS IoT のモノを作成します。
 
 ```sh
-ssh -t pi@192.168.1.125 "wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
 ```
 
 `2.1.2` リリースを使用して AWS IoT の enebular-agent ポートをインストールします。
 
 ```sh
-wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s -- -v=2.1.2
+wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- -v=2.1.2
 ```
 
 ユーザを `enebular-user-test` に、インストール先のディレクトリを `/home/enebular-user-test/my-agent` に、スタートアップ登録なしで `2.1.3` のリリースを使用して AWS IoT の enebular-agent ポートをインストールします。
 
 ```sh
-wget -qO- https://raw.githubusercontent.com/enebular/enebular-runtime-agent/master/tools/install/install.sh | sudo -E bash -s -- -v=2.1.3 --user=enebular-user-test -d=/home/enebular-user-test/my-agent --no-startup-register
+wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- -v=2.1.3 --user=enebular-user-test -d=/home/enebular-user-test/my-agent --no-startup-register
 ```

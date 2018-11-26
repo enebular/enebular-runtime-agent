@@ -49,6 +49,18 @@ get_arch() {
   echo "${ARCH}"
 }
 
+is_raspberry_pi() {
+  local OUT
+  OUT=`uname -n | grep -o "raspberrypi" | wc -l`
+  if [ $OUT -eq 0 ]; then
+    OUT=`cat /proc/device-tree/model | grep -o "Raspberry Pi" | wc -l`
+    [ $OUT -eq 0 ] || return 0
+    return 1
+  else
+    return 0
+  fi
+}
+
 #args: url, file_name
 get_node_checksum() {
   download "${1-}" "-" | command awk "{ if (\"${2-}\" == \$2) print \$1}"
@@ -475,6 +487,25 @@ do_install() {
 }
 
 post_install() {
+  if is_raspberry_pi; then
+    _echo Adding ${USER} to gpio group...
+    _echo ---------
+    local GROUP_OUT
+    local GROUP_EXISTS
+    local USER_ADDED
+    GROUP_OUT=`getent group gpio`
+    GROUP_EXISTS=`echo ${GROUP_OUT} | wc -l`
+    USER_ADDED=`echo ${GROUP_OUT} | grep -o "${USER}" | wc -l`
+    if [ $GROUP_EXISTS -eq 1 ] && [ $USER_ADDED -eq 0 ]; then
+      adduser ${USER} gpio > /dev/null 2>&1
+      EXIT_CODE=$?
+      if [ "$EXIT_CODE" -ne 0 ]; then
+        _err "Adding ${USER} to gpio group failed."
+      else
+        _echo "Added ${USER} to gpio group."
+      fi
+    fi
+  fi
   if [ ! -z ${AWS_IOT_THING_NAME} ]; then
     _echo Creating AWS IoT thing...
     _echo ---------
@@ -491,7 +522,7 @@ post_install() {
   if [ ! -z ${LICENSE_KEY} ]; then
     _echo Creating activation configuration file...
     _echo ---------
-    run_as_user ${USER} 'echo "{\"enebularBaseURL\": \"https://enebular.com/api/v1\",\"licenseKey\": \"'${LICENSE_KEY}'\"}" \
+    run_as_user ${USER} 'echo "{\"enebularBaseURL\": \"'${ENEBULAR_BASE_URL}'\",\"licenseKey\": \"'${LICENSE_KEY}'\"}" \
       > "'${INSTALL_DIR}'/ports/awsiot/.enebular-activation-config.json"'
   fi
 
@@ -513,6 +544,7 @@ PORT=awsiot
 RELEASE_VERSION="latest-release"
 AGENT_DOWNLOAD_PATH="https://api.github.com/repos/enebular/enebular-runtime-agent/"
 SUPPORTED_NODE_VERSION="v9.2.1"
+ENEBULAR_BASE_URL="https://enebular.com/api/v1"
 
 for i in "$@"
 do
@@ -559,6 +591,10 @@ case $i in
   ;;
   --license-key=*)
   LICENSE_KEY="${i#*=}"
+  shift
+  ;;
+  --enebular-base-url=*)
+  ENEBULAR_BASE_URL="${i#*=}"
   shift
   ;;
   *)

@@ -73,6 +73,21 @@ export default class Config {
         description: '',
         userExpose: false
       },
+      ENEBULAR_DEVICE_STATE_REFRESH_INTERVAL: {
+        value: 60 * 60 * 12,
+        description: 'Device state refresh interval',
+        userExpose: true
+      },
+      ENEBULAR_ASSETS_DATA_PATH: {
+        value: p.resolve(portBasePath, 'assets'),
+        description: 'Assets data directory path',
+        userExpose: true
+      },
+      ENEBULAR_ASSETS_STATE_PATH: {
+        value: p.resolve(portBasePath, '.enebular-assets.json'),
+        description: 'Assets state file path',
+        userExpose: true
+      },
 
       // logging
       ENEBULAR_LOG_LEVEL: {

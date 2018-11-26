@@ -2,6 +2,7 @@
 import net from 'net'
 import fs from 'fs'
 import path from 'path'
+import { version as agentVer } from 'enebular-runtime-agent/package.json'
 import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
 
 const MODULE_NAME = 'local'
@@ -123,6 +124,7 @@ async function startLocalServer(connector: ConnectorService): net.Server {
     })
 
     clientSendMessage('ok')
+    clientSendMessage(`agent: {"v": "${agentVer}", "type": "enebular-agent"}`)
 
     connector.updateActiveState(true)
   })
@@ -162,8 +164,8 @@ async function startup() {
     localServer = await startLocalServer(connector)
   })
   agent = new EnebularAgent({
-      portBasePath: path.resolve(__dirname, '../'),
-      connector: connector
+    portBasePath: path.resolve(__dirname, '../'),
+    connector: connector
   })
 
   await agent.startup()
