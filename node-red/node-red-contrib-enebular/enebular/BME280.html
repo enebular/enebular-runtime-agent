@@ -1,0 +1,63 @@
+<script type="text/javascript">
+    RED.nodes.registerType('BME280', {
+        category: 'EEA',
+        color: '#91b122',
+        defaults: {
+            scl: { value: 'PTE24' },
+            sda: { value: 'PTE25' },
+            name: { value: '' }
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: 'light.png',
+        label: function () {
+            return this.name || 'BME280';
+        },
+    });
+</script>
+
+<script type="text/x-red" data-template-name="BME280">
+    <div class="form-row input-bme280-scl">
+      <label for="node-input-scl"><i class="fa fa-bolt"></i> scl</label>
+        <select type="text" id="node-input-scl">
+            <option value="PTE24">PTE24</option>
+        </select>
+    </div>
+    <div class="form-row input-bme280-sda">
+      <label for="node-input-sda"><i class="fa fa-bolt"></i> sda</label>
+        <select type="text" id="node-input-sda">
+            <option value="PTE25">PTE25</option>
+        </select>    
+    </div>
+        <div class="form-row">
+      <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+      <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="BME280">
+    <p>温度（℃）、湿度（%）、大気圧（hPa）を取得できるノードです。</p>
+    <p>I2C で使用するピン名をscl,sdaにそれぞれ入力してください。</p>
+    <p>※デフォルトではK64Fで使用する値が設定されています。</p>
+    
+    <p>payload に以下の値を代入します。※xxxには取得した各値が入ります。</p>
+    
+    <p><code>{"temperature": xxx, "humidity": xxx, "atmPressure": xxx }</code></p>
+    <p>enebular の editor 上では、payloadに以下の値を代入します。</p>
+    
+    <p><code>{"temperature": 20, "humidity": 30, "atmPressure": 1013 }</code></p>
+
+    <h3>Properties</h3>
+    <ul>
+        <li><code>scl</code>： I2Cのsclピン番号を入力</li>
+        <ul>
+            <li><code>PTE24</code></li>
+          </ul>
+        <li><code>sda</code>： I2Cのsdaピン番号を入力</li>
+        <ul>
+            <li><code>PTE25</code></li>
+          </ul>
+    </ul>
+    <p>※I2Cの設定はK64Fのもののみ選択できる仕様です。</p>
+
+</script>

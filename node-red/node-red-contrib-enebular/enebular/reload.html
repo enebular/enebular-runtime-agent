@@ -1,0 +1,21 @@
+<script type="text/javascript">
+  RED.menu.addItem("btn-deploy-options", { id: 'menu-item-export-reload', label: "Sync Flow", icon: 'images/sync-transparent.png', onselect: reloadFlow });
+
+  function reloadFlow() {
+    console.log('##### flow reload ####')
+    $.ajax({
+      headers: {
+        Accept: 'application/json',
+        'Node-RED-Deployment-Type': 'reload'
+      },
+      type: 'POST',
+      url: 'flows',
+      success: function (data) {
+        location.reload()
+      },
+      error: function (err) {
+        console.log(err, '***reload err***')
+      }
+    })
+  }
+</script>

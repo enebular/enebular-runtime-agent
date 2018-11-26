@@ -16,6 +16,8 @@ results
 
 /lib
 assets/
+certs/
+config.json
 
 npm-debug.log
 node_modules

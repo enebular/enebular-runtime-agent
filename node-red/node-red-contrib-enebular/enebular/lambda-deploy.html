@@ -1,0 +1,21 @@
+<script type="text/javascript">
+
+    RED.menu.addItem("btn-deploy-options", { id: 'menu-item-export-lambda', label: "Export to Other Services", onselect: onLambdaDeploy });
+
+    function onLambdaDeploy() {
+        var deployUrl = "enebular/deploy";
+        var w = window.open("about:blank", "_blank", "width=1000,height=600,scrollbars=yes");
+        if (w) {
+            var formPostHtml =
+                '<html><body>' +
+                '<form name="form1" method="POST" action="' + deployUrl + '">' +
+                '</form>' +
+                '</body></html>';
+            w.document.open();
+            w.document.write(formPostHtml);
+            w.document.close();
+            w.document.form1.submit();
+        }
+    }
+
+</script>
