@@ -1,1 +1,0 @@
-[{"id":"4af8425e.fa098c","type":"tab","label":"Flow 1","disabled":false,"info":""},{"id":"373af10d.0f10ee","type":"aws-lambda-request","z":"4af8425e.fa098c","x":280,"y":240,"wires":[["ac0647c6.abee28"]]},{"id":"ac0647c6.abee28","type":"aws-lambda-response","z":"4af8425e.fa098c","x":450,"y":320,"wires":[]}]

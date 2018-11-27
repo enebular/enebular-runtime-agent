@@ -38,16 +38,8 @@
   "main": "./enebular/hub.js",
   "node-red": {
     "nodes": {
-      "reload": "enebular/reload.js",
-      "lambda-deploy": "enebular/lambda-deploy.js",
-      "aws-lambda-io": "enebular/aws-lambda-io.js",
-      "TSL2561": "enebular/TSL2561.js",
-      "BME280": "enebular/BME280.js",
-      "digitalout": "enebular/digitalout.js",
-      "rpi-gpio": "enebular/rp-gpio.js",
-      "analogin": "enebular/analogin.js",
-      "interruptin": "enebular/interruptin.js"
-    }
+      "aws-lambda-io": "enebular/aws-lambda-io.js"
+        }
   },
   "readme": "node-red-contrib-enebular\n====================================\nAn enebular tab for <a href=\"http://nodered.org\" target=\"_new\">Node-RED</a>.\n\n\n\nLicense\n-------\n\nSee [license] (https://github.com/enebular/node-red-contrib-enebular/blob/master/LICENSE) (Apache License Version 2.0).",
   "readmeFilename": "README.md",
