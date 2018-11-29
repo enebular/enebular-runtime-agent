@@ -6,6 +6,8 @@ const RED = require('@uhuru/enebular-node-red')
 const ENEBULAR_EDITOR_URL =
   process.env.ENEBULAR_EDITOR_URL || 'http://localhost:9017'
 
+const SESSION_TOKEN = process.env.ENEBULAR_EDITOR_SESSION_TOKEN
+
 function getLibraryEntry(type, path) {
   return new Promise((resolve, reject) => resolve([]))
 }
@@ -73,7 +75,11 @@ function saveEnebularFlow(params) {
   const saveFlowUrl = `${ENEBULAR_EDITOR_URL}/api/v1/agent-editor/flow`
   return new Promise((resolve, reject) => {
     return axios
-      .post(saveFlowUrl, params)
+      .post(saveFlowUrl, params, {
+        headers: {
+          'x-ee-session': SESSION_TOKEN
+        }
+      })
       .then(response => {
         resolve()
       })
@@ -100,7 +106,11 @@ function saveCredentials(credentials, flows) {
   const saveCredUrl = `${ENEBULAR_EDITOR_URL}/api/v1/agent-editor/credential`
   return new Promise((resolve, reject) => {
     return axios
-      .post(saveCredUrl, [credentials, flows])
+      .post(saveCredUrl, [credentials, flows], {
+        headers: {
+          'x-ee-session': SESSION_TOKEN
+        }
+      })
       .then(response => {
         resolve()
       })

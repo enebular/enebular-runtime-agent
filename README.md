@@ -10,6 +10,7 @@ enebular-agent has the following key functionality.
 - Management of a Node-RED instance, and deployment and execution of flows sent from enebular to that.
 - Deployment and execution of files sent from enebular.
 - Status and log reporting to enebular.
+- Support for the enebular editor.
 
 enebular communicates with enebular-agent via a third-party IoT platform connection.
 
@@ -63,6 +64,15 @@ The current ports are:
 - **AWS IoT** - For use with AWS IoT
 - **Local** - For use together other local programs
   - This is used together with the [enebular-agent Mbed Cloud Connector](https://github.com/enebular/enebular-runtime-agent-mbed-cloud-connector) when using enebular-agent with Pelion Device Management
+
+## Using enebular editor Mode
+
+To use enebular-agent with the enebular editor, you will first need to install enebular-agent manually. For instructions on installing it manually, see the _Manual Setup_ section further below.
+
+```sh
+cd ports/awsiot
+DEBUG=info ./bin/enebular-awsiot-agent --dev-mode
+```
 
 ## Quick Setup
 

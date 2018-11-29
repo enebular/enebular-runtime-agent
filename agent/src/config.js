@@ -13,6 +13,11 @@ export default class Config {
 
   constructor(portBasePath: string) {
     this._items = {
+      ENEBULAR_DEV_MODE: {
+        value: false,
+        description: 'Run in developer mode',
+        userExpose: true
+      },
       ENEBULAR_DAEMON_MODE: {
         value: false,
         description: 'Run as daemon',
