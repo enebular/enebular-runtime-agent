@@ -8,7 +8,7 @@ module.exports = {
   httpAdminRoot: '/',
   httpNodeRoot: '/',
   storageModule: require('../enebularStorageModule'),
-  credentialSecret: false,
+  //credentialSecret: false,
   editorTheme: {
     userMenu: false,
     page: {

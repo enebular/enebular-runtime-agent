@@ -7,6 +7,7 @@ import fetch from 'isomorphic-fetch'
 import type { Logger } from 'winston'
 import ProcessUtil from './process-util'
 import type LogManager from './log-manager'
+import crypto from 'crypto'
 
 export type NodeREDConfig = {
   dir: string,
@@ -180,6 +181,23 @@ export default class NodeREDController {
     return res.json()
   }
 
+  _encryptCredential(userKey: string, credentials: Object) {
+    const encryptionKey = crypto
+      .createHash('sha256')
+      .update(userKey)
+      .digest()
+    const initVector = crypto.randomBytes(16)
+    const cipher = crypto.createCipheriv(
+      'aes-256-ctr',
+      encryptionKey,
+      initVector
+    )
+    const result =
+      cipher.update(JSON.stringify(credentials), 'utf8', 'base64') +
+      cipher.final('base64')
+    return initVector.toString('hex') + result
+  }
+
   async _updatePackage(flowPackage: NodeRedFlowPackage) {
     this.info('Updating package', flowPackage)
     const updates = []
@@ -195,12 +213,53 @@ export default class NodeREDController {
       )
     }
     if (flowPackage.cred || flowPackage.creds) {
-      const creds = flowPackage.cred || flowPackage.creds
+      let creds = flowPackage.cred || flowPackage.creds
       updates.push(
         new Promise((resolve, reject) => {
           const credFilePath = path.join(this._getDataDir(), 'flows_cred.json')
-          fs.writeFile(credFilePath, JSON.stringify(creds), err =>
-            err ? reject(err) : resolve()
+          const editSessionRequested = this._flowPackageContainsEditSession(
+            flowPackage
+          )
+
+          let settings
+          if (editSessionRequested) {
+            // enebular-editor remote deploy
+            settings = require(path.join(
+              this._getDataDir(),
+              'enebular-editor-settings.js'
+            ))
+          } else {
+            settings = require(path.join(this._getDataDir(), 'settings.js'))
+          }
+          if (settings.credentialSecret === false) {
+            this.info('skip credential encryption')
+          } else {
+            this.info('credential encryption')
+            try {
+              const dotconfig = fs.readFileSync(
+                path.join(this._getDataDir(), '.config.json'),
+                'utf8'
+              )
+
+              // enebular-node-red dont see credentialSecret in settings.js
+              //const defaultKey =
+              //  settings.credentialSecret ||
+              //  JSON.parse(dotconfig)._credentialSecret
+              const defaultKey = JSON.parse(dotconfig)._credentialSecret
+
+              creds = { $: this._encryptCredential(defaultKey, creds) }
+            } catch (err) {
+              throw new Error(
+                'encrypt credential and create flows_cred.json failed',
+                err
+              )
+            }
+          }
+
+          fs.writeFile(
+            credFilePath,
+            JSON.stringify(creds),
+            err => (err ? reject(err) : resolve())
           )
         })
       )

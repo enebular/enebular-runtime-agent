@@ -3,6 +3,7 @@ import test from 'ava'
 import fs from 'fs-extra'
 import path from 'path'
 import { Server } from 'net'
+import crypto from 'crypto'
 
 import EnebularAgent from '../src/enebular-agent'
 import ConnectorService from '../src/connector-service'
@@ -49,7 +50,7 @@ test.afterEach.always('cleanup', async t => {
 
 async function createAgentRunningWithTestNodeRedSettings(
   t: test,
-  withCredentialSecret: boolean
+  withCredentialSecretFileName: string
 ) {
   tmpNodeRedDataDir = '/tmp/.node-red-config-' + Utils.randomString()
   fs.ensureDirSync(tmpNodeRedDataDir)
@@ -61,11 +62,11 @@ async function createAgentRunningWithTestNodeRedSettings(
     path.join(
       __dirname,
       'data',
-      withCredentialSecret
-        ? 'node-red-test-settings-with-credential-secret'
+      withCredentialSecretFileName
+        ? withCredentialSecretFileName
         : 'node-red-test-settings'
     ),
-    tmpNodeRedDataDir + '/test-settings.js'
+    tmpNodeRedDataDir + '/settings.js'
   )
 
   const ret = await createUnauthenticatedAgent(
@@ -78,7 +79,7 @@ async function createAgentRunningWithTestNodeRedSettings(
         NodeRedPort +
         ' -s ' +
         tmpNodeRedDataDir +
-        '/test-settings.js'
+        '/settings.js'
     },
     DummyServerPort
   )
@@ -87,6 +88,24 @@ async function createAgentRunningWithTestNodeRedSettings(
 
   // console.log("user directory: ", agent._nodeRed._getDataDir())
   t.true(await nodeRedIsAlive(NodeRedPort))
+}
+
+function decryptCredential(key: string, credential: object) {
+  const encryptionKey = crypto
+    .createHash('sha256')
+    .update(key)
+    .digest()
+  const initVector = new Buffer(credential.substring(0, 32), 'hex')
+  const encryptedCredentials = credential.substring(32)
+  const decipher = crypto.createDecipheriv(
+    'aes-256-ctr',
+    encryptionKey,
+    initVector
+  )
+  const decrypted =
+    decipher.update(encryptedCredentials, 'base64', 'utf8') +
+    decipher.final('utf8')
+  return decrypted
 }
 
 test.serial(
@@ -294,11 +313,58 @@ test.serial(
   }
 )
 
+test.serial(
+  'NodeRedController.8: Agent handles deploy encrypted credentials correctly',
+  async t => {
+    await createAgentRunningWithTestNodeRedSettings(
+      t,
+      'node-red-test-settings-with-encryption'
+    )
+
+    // update the flow
+    const expectedFlowName = 'flow_clear_text_creds.json'
+    const url =
+      'http://127.0.0.1:' +
+      DummyServerPort +
+      '/test/download-flow?flow=' +
+      expectedFlowName
+    connector.sendMessage('deploy', {
+      downloadUrl: url
+    })
+    return new Promise((resolve, reject) => {
+      setTimeout(async () => {
+        const flowCredsPath = path.join(
+          __dirname,
+          'data',
+          'creds_of_' + expectedFlowName
+        )
+        const credJson = fs.readFileSync(
+          tmpNodeRedDataDir + '/flows_cred.json',
+          'utf8'
+        )
+        const cred = JSON.parse(credJson).$
+
+        const settings = JSON.parse(
+          fs.readFileSync(tmpNodeRedDataDir + '/.config.json', 'utf8')
+        )
+        const decryptKey = settings._credentialSecret
+        const decryptCredJson = JSON.parse(decryptCredential(decryptKey, cred))
+
+        const expectedCredJson = fs.readFileSync(flowCredsPath, 'utf8')
+        const expectedCred = JSON.parse(expectedCredJson)
+
+        t.deepEqual(decryptCredJson, expectedCred)
+        resolve()
+      }, 4000)
+    })
+  }
+)
+
 /*
 test.serial(
   'NodeRedController.8: Agent accepts flow credentials correctly if secret is specified',
   async t => {
-    await createAgentRunningWithTestNodeRedSettings(t, true)
+    await createAgentRunningWithTestNodeRedSettings(t, 'node-red-test-settings-with-credential-secret')
 
     let credsCheckReceived = false
     const credsCheckCallback = (login, password) => {

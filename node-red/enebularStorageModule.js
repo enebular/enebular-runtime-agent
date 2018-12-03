@@ -1,6 +1,7 @@
 const axios = require('axios')
 const fs = require('fs')
 const path = require('path')
+const crypto = require('crypto')
 const RED = require('@uhuru/enebular-node-red')
 
 const ENEBULAR_EDITOR_URL =
@@ -11,6 +12,25 @@ const SESSION_TOKEN = process.env.ENEBULAR_EDITOR_SESSION_TOKEN
 function getLibraryEntry(type, path) {
   return new Promise((resolve, reject) => resolve([]))
 }
+
+function decryptCredential(key, credential) {
+  const encryptionKey = crypto
+    .createHash('sha256')
+    .update(key)
+    .digest()
+  const initVector = new Buffer(credential.substring(0, 32), 'hex')
+  const encryptedCredentials = credential.substring(32)
+  const decipher = crypto.createDecipheriv(
+    'aes-256-ctr',
+    encryptionKey,
+    initVector
+  )
+  const decrypted =
+    decipher.update(encryptedCredentials, 'base64', 'utf8') +
+    decipher.final('utf8')
+  return decrypted
+}
+
 function loadConfig(fileName) {
   return new Promise(function(resolve, reject) {
     const userdir = path.resolve(__dirname, '.node-red-config')
@@ -21,7 +41,16 @@ function loadConfig(fileName) {
         if (!data) {
           resolve({})
         } else {
-          resolve(JSON.parse(data))
+          let result = JSON.parse(data)
+          if (fileName === 'flows_cred.json' && result.$) {
+            const dotconfig = fs.readFileSync(
+              path.join(userdir, '.config.json'),
+              'utf8'
+            )
+            const key = JSON.parse(dotconfig)._credentialSecret
+            result = JSON.parse(decryptCredential(key, result.$))
+          }
+          resolve(result)
         }
       }
     })
