@@ -1,180 +1,159 @@
 /* @flow */
-import net from 'net'
 import fs from 'fs'
 import path from 'path'
-import { version as agentVer } from 'enebular-runtime-agent/package.json'
-import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
+import { spawn, type ChildProcess } from 'child_process'
+import { LocalConnector } from 'enebular-runtime-agent'
 
-const MODULE_NAME = 'local'
-const END_OF_MSG_MARKER = 0x1e // RS (Record Separator)
+class MbedConnector extends LocalConnector {
+  _pidFile: string
+  _cproc: ?ChildProcess
+  _portBasePath: string
 
-const SOCKET_PATH =
-  process.env.SOCKET_PATH || '/tmp/enebular-local-agent.socket'
-
-let agent: EnebularAgent
-let localServer: net.Server
-let clientSocket: ?net.Socket
-
-function log(level: string, msg: string, ...args: Array<mixed>) {
-  args.push({ module: MODULE_NAME })
-  agent.log.log(level, msg, ...args)
-}
-
-function debug(msg: string, ...args: Array<mixed>) {
-  log('debug', msg, ...args)
-}
-
-function info(msg: string, ...args: Array<mixed>) {
-  log('info', msg, ...args)
-}
-
-function error(msg: string, ...args: Array<mixed>) {
-  log('error', msg, ...args)
-}
-
-function attemptSocketRemove() {
-  try {
-    fs.unlinkSync(SOCKET_PATH)
-  } catch (err) {
-    // ignore any errors
+  constructor() {
+    super()
+    this._cproc = null
+    this._portBasePath = path.resolve(__dirname, '../')
+    this._pidFile = path.resolve(this._portBasePath, './.mbed_cloud_connector.pid')
   }
-}
 
-function clientSendMessage(message: string) {
-  if (clientSocket) {
-    clientSocket.write(message + String.fromCharCode(END_OF_MSG_MARKER))
-  }
-}
-
-async function startLocalServer(connector: ConnectorService): net.Server {
-  function handleClientMessage(clientMessage: string) {
-    debug(`client message: [${clientMessage}]`)
-    let message
+  async onConnectorInit() {
+    super.onConnectorInit()
     try {
-      message = JSON.parse(clientMessage)
-      switch (message.type) {
-        case 'connect':
-          connector.updateConnectionState(true)
-          break
-        case 'disconnect':
-          connector.updateConnectionState(false)
-          break
-        case 'registration':
-          connector.updateRegistrationState(
-            message.registration.registered,
-            message.registration.deviceId
-          )
-          break
-        case 'message':
-          connector.sendMessage(
-            message.message.messageType,
-            message.message.message
-          )
-          break
-        case 'log':
-          log(message.log.level, message.log.message)
-          break
-        default:
-          info('unsupported client message type: ' + message.type)
-          break
-      }
+      await this._startMbedCloudConnector()
     } catch (err) {
-      error('client message: failed to handle: ' + err)
+      console.error(err)
     }
   }
 
-  const server = net.createServer(socket => {
-    info('client connected')
+  onConnectorRegisterConfig() {
+    super.onConnectorRegisterConfig()
+    this._agent.config.addItem(
+      'ENEBULAR_MBED_CLOUD_CONNECTOR_STARTUP_COMMAND',
+      path.resolve(
+        this._portBasePath,
+        '../../',
+        'tools/mbed-cloud-connector/out/Release/enebular-agent-mbed-cloud-connector.elf'
+      ),
+      'Mbed cloud connector startup command',
+      true
+    )
+    this._agent.config.addItem(
+      'ENEBULAR_MBED_CLOUD_CONNECTOR_DATA_PATH',
+      path.resolve(
+        this._portBasePath,
+        '../../',
+        'tools/mbed-cloud-connector'
+      ),
+      'Mbed cloud connector data path',
+      true
+    )
+  }
 
-    socket.setEncoding('utf8')
+  _createPIDFile(pid: string) {
+    try {
+      fs.writeFileSync(this._pidFile, pid, 'utf8')
+    } catch (err) {
+      this._log.error(err)
+    }
+  }
 
-    clientSocket = socket
+  _removePIDFile() {
+    if (!fs.existsSync(this._pidFile)) return
 
-    let messages = ''
+    try {
+      fs.unlinkSync(this._pidFile)
+    } catch (err) {
+      this._log.error(err)
+    }
+  }
 
-    socket.on('data', data => {
-      messages += data
-      if (messages.charCodeAt(messages.length - 1) === END_OF_MSG_MARKER) {
-        let msgs = messages.split(String.fromCharCode(END_OF_MSG_MARKER))
-        for (let msg of msgs) {
-          if (msg.length > 0) {
-            handleClientMessage(msg)
-          }
-        }
-        messages = ''
+  async _startMbedCloudConnector() {
+    this._info('Starting mbed cloud connector...')
+    return new Promise((resolve, reject) => {
+      if (fs.existsSync(this._pidFile)) {
+        // ProcessUtil.killProcessByPIDFile(this._pidFile)
+      }
+
+      const startupCommand =
+        this._agent.config.get(
+          'ENEBULAR_MBED_CLOUD_CONNECTOR_STARTUP_COMMAND'
+        ) +
+        ' -c -d -s ' +
+        this._agent.config.get('ENEBULAR_LOCAL_PORT_SOCKET_PATH')
+
+      this._info('Mbed cloud connector startup command: ' + startupCommand)
+
+      const [command, ...args] = startupCommand.split(/\s+/)
+      const cproc = spawn(command, args, {
+        stdio: 'pipe',
+        cwd: this._agent.config.get(
+          'ENEBULAR_MBED_CLOUD_CONNECTOR_DATA_PATH'
+        )
+      })
+      cproc.stdout.on('data', data => {
+        let str = data.toString().replace(/(\n|\r)+$/, '')
+        this._info(str)
+      })
+      cproc.stderr.on('data', data => {
+        let str = data.toString().replace(/(\n|\r)+$/, '')
+        this._error(str)
+      })
+      cproc.once('exit', (code, signal) => {
+        this._info(
+          `mbed cloud connector exited (${code !== null ? code : signal})`
+        )
+        this._cproc = null
+        this._removePIDFile()
+      })
+      cproc.once('error', err => {
+        this._cproc = null
+        reject(err)
+      })
+      this._cproc = cproc
+      if (this._cproc.pid) this._createPIDFile(this._cproc.pid.toString())
+      setTimeout(() => resolve(), 1000)
+    })
+  }
+
+  async _stopMbedCloudConnector() {
+    return new Promise((resolve, reject) => {
+      const cproc = this._cproc
+      if (cproc) {
+        this._info('Stopping mbed cloud connector...')
+        cproc.once('exit', () => {
+          this._info('mbed cloud connector ended')
+          this._cproc = null
+          resolve()
+        })
+        cproc.kill('SIGINT')
+      } else {
+        resolve()
       }
     })
+  }
 
-    socket.on('end', () => {
-      if (messages.length > 0) {
-        info('client ended with partial message: ' + messages)
-        messages = ''
-      }
-    })
+  async startup() {
+    return super.startup(this._portBasePath)
+  }
 
-    socket.on('close', () => {
-      info('client disconnected')
-      clientSocket = null
-      connector.updateConnectionState(false)
-      connector.updateActiveState(false)
-    })
-
-    socket.on('error', err => {
-      info('client socket error: ' + err)
-    })
-
-    clientSendMessage('ok')
-    clientSendMessage(`agent: {"v": "${agentVer}", "type": "enebular-agent"}`)
-
-    connector.updateActiveState(true)
-  })
-
-  server.on('listening', () => {
-    info('server listening on: ' + JSON.stringify(server.address()))
-  })
-
-  server.on('error', err => {
-    error('server error: ' + err)
-  })
-
-  server.on('close', () => {
-    info('server closed')
-  })
-
-  attemptSocketRemove()
-  server.listen(SOCKET_PATH)
-
-  return server
+  async shutdown() {
+    try {
+      await this._stopMbedCloudConnector()
+    } catch (err) {
+      console.error(err)
+    }
+    return super.shutdown()
+  }
 }
 
+const mbedConnector = new MbedConnector()
+
 async function startup() {
-  const connector = new ConnectorService(async () => {
-    agent.on('connectorRegister', () => {
-      clientSendMessage('register')
-    })
-
-    agent.on('connectorConnect', () => {
-      clientSendMessage('connect')
-    })
-
-    agent.on('connectorDisconnect', () => {
-      clientSendMessage('disconnect')
-    })
-
-    localServer = await startLocalServer(connector)
-  })
-  agent = new EnebularAgent({
-    portBasePath: path.resolve(__dirname, '../'),
-    connector: connector
-  })
-
-  return agent.startup()
+  return mbedConnector.startup()
 }
 
 async function shutdown() {
-  await localServer.close()
-  attemptSocketRemove()
-  return agent.shutdown()
+  return mbedConnector.shutdown()
 }
 
 async function exit() {

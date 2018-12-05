@@ -19,3 +19,11 @@ exists "agent takes NODE_RED_COMMAND env" "node-red-command-overide"
 BIN='DEBUG="debug" ENEBULAR_CONFIG_PATH="/enebular-config-file-overide" '${AGENT_BIN}''
 run "$BIN"
 exists "agent takes ENEBULAR_CONFIG_PATH env" "enebular-config-file-overide"
+
+BIN='DEBUG="debug" ENEBULAR_MBED_CLOUD_CONNECTOR_STARTUP_COMMAND="enebular-mbed-cloud-connector-startup-command-overide" '${AGENT_BIN}''
+run "$BIN" 5
+exists "agent takes ENEBULAR_MBED_CLOUD_CONNECTOR_STARTUP_COMMAND env" "enebular-mbed-cloud-connector-startup-command-overide"
+
+BIN='DEBUG="debug" ENEBULAR_LOCAL_PORT_SOCKET_PATH="enebular-local-port-socket-path-overide" '${AGENT_BIN}''
+run "$BIN" 5
+exists "agent takes ENEBULAR_LOCAL_PORT_SOCKET_PATH env" "enebular-local-port-socket-path-overide"
