@@ -2,7 +2,7 @@
 import fs from 'fs'
 import EventEmitter from 'events'
 import path from 'path'
-import { spawn, type ChildProcess, exec } from 'child_process'
+import { spawn, type ChildProcess } from 'child_process'
 import ProcessUtil from './process-util'
 import fetch from 'isomorphic-fetch'
 import type { Logger } from 'winston'
@@ -18,8 +18,6 @@ export type NodeREDConfig = {
 }
 
 const moduleName = 'node-red'
-const maxRetryCount = 5
-const maxRetryCountResetInterval = 5
 
 type NodeRedFlowPackage = {
   flows: Object[],
@@ -310,14 +308,17 @@ export default class NodeREDController {
         this._cproc = null
         /* Restart automatically on an abnormal exit. */
         if (code !== 0) {
-          const now = Date.now()
-          /* Detect continuous crashes (exceptions happen within 5 seconds). */
-          this._exceptionRetryCount =
-            this._lastRetryTimestamp + maxRetryCountResetInterval * 1000 > now
-              ? this._exceptionRetryCount + 1
-              : 0
-          this._lastRetryTimestamp = now
-          if (this._exceptionRetryCount < maxRetryCount) {
+          let shouldRetry
+          ;[
+            shouldRetry,
+            this._exceptionRetryCount,
+            this._lastRetryTimestamp
+          ] = ProcessUtil.shouldRetryOnCrash(
+            this._exceptionRetryCount,
+            this._lastRetryTimestamp
+          )
+
+          if (shouldRetry) {
             this.info(
               'Unexpected exit, restarting service in 1 second. Retry count:' +
                 this._exceptionRetryCount

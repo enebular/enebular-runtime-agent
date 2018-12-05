@@ -1,6 +1,9 @@
 /* @flow */
 import fs from 'fs'
 
+const maxRetryCount = 5
+const maxRetryCountResetInterval = 5
+
 export default class ProcessUtil {
   static processIsAlive(pid: number) {
     try {
@@ -53,5 +56,20 @@ export default class ProcessUtil {
       console.error(err)
     }
     return ret
+  }
+
+  static shouldRetryOnCrash(
+    crashRetryCount,
+    lastRetryTimestamp
+  ): [boolean, number, number] {
+    const now = Date.now()
+    /* Detect continuous crashes (exceptions happen within 5 seconds). */
+    crashRetryCount =
+      lastRetryTimestamp + maxRetryCountResetInterval * 1000 > now
+        ? crashRetryCount + 1
+        : 0
+    lastRetryTimestamp = now
+    const shouldRetry = crashRetryCount < maxRetryCount
+    return [shouldRetry, crashRetryCount, lastRetryTimestamp]
   }
 }

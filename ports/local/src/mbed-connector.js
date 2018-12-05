@@ -2,15 +2,19 @@
 import fs from 'fs'
 import path from 'path'
 import { spawn, type ChildProcess } from 'child_process'
-import { LocalConnector } from 'enebular-runtime-agent'
+import { LocalConnector, ProcessUtil } from 'enebular-runtime-agent'
 
 export default class MbedConnector extends LocalConnector {
   _pidFile: string
   _cproc: ?ChildProcess
   _portBasePath: string
+  _retryCount: number
+  _lastRetryTimestamp: number
 
   constructor() {
     super()
+    this._retryCount = 0
+    this._lastRetryTimestamp = Date.now()
     this._cproc = null
     this._portBasePath = path.resolve(__dirname, '../')
     this._pidFile = path.resolve(
@@ -70,7 +74,7 @@ export default class MbedConnector extends LocalConnector {
     this._info('Starting mbed cloud connector...')
     return new Promise((resolve, reject) => {
       if (fs.existsSync(this._pidFile)) {
-        // ProcessUtil.killProcessByPIDFile(this._pidFile)
+        ProcessUtil.killProcessByPIDFile(this._pidFile)
       }
 
       const startupCommand =
@@ -100,6 +104,34 @@ export default class MbedConnector extends LocalConnector {
           `mbed cloud connector exited (${code !== null ? code : signal})`
         )
         this._cproc = null
+        if (code !== 0) {
+          let shouldRetry
+          ;[
+            shouldRetry,
+            this._retryCount,
+            this._lastRetryTimestamp
+          ] = ProcessUtil.shouldRetryOnCrash(
+            this._retryCount,
+            this._lastRetryTimestamp
+          )
+
+          if (shouldRetry) {
+            this._info(
+              `Unexpected exit, restarting service in 1 second. Retry count: ${
+                this._retryCount
+              }`
+            )
+            setTimeout(() => {
+              this._startMbedCloudConnector()
+            }, 1000)
+          } else {
+            this._info(
+              `Unexpected exit, but retry count(${
+                this._retryCount
+              }) exceed max.`
+            )
+          }
+        }
         this._removePIDFile()
       })
       cproc.once('error', err => {
