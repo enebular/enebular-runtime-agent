@@ -27,6 +27,7 @@ static unsigned int _network_interface = 0xFFFFFFFF;
 static void *network_interface = &_network_interface;
 static bool enable_log_console;
 static bool enable_debug_logging;
+static char server_socket[256] = { 0 };
 
 EnebularAgentMbedCloudConnector *connector;
 
@@ -148,13 +149,14 @@ static int parse_args(int argc, char * const *argv)
         {"version",         0, NULL, 'v'},
         {"console",         0, NULL, 'c'},
         {"debug",           0, NULL, 'd'},
+        {"server-socket",   required_argument, NULL, 's'},
         {0, 0, 0, 0}
     };
     int c;
 
     while (1) {
 
-        c = getopt_long(argc, argv, "hvcd", options, NULL);
+        c = getopt_long(argc, argv, "hvcds:", options, NULL);
         if (c == -1)
             break;
 
@@ -174,6 +176,10 @@ static int parse_args(int argc, char * const *argv)
 
             case 'd':
                 enable_debug_logging = true;
+                break;
+
+            case 's':
+                strncpy(server_socket, optarg, sizeof(server_socket));
                 break;
 
             default:
@@ -208,7 +214,7 @@ int main(int argc, char **argv)
     }
 
     try {
-        connector = new EnebularAgentMbedCloudConnector();
+        connector = new EnebularAgentMbedCloudConnector(server_socket);
     } catch (...) {
         fprintf(stderr, "An unexpected runtime error occured\n");
         return EXIT_FAILURE;

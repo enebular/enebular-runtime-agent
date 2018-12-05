@@ -26,7 +26,7 @@ public:
     /**
      * Constructor
      */
-    EnebularAgentInterface(EnebularAgentMbedCloudConnector * connector);
+    EnebularAgentInterface(EnebularAgentMbedCloudConnector * connector, const char* server_socket);
 
     /**
      * Deconstructor
@@ -140,6 +140,7 @@ private:
     int _recv_cnt;
     bool _waiting_for_connect_ok;
     bool _is_connected;
+    const char *_server_socket;
     vector<AgentConnectionChangeCB> _agent_conn_change_cbs;
     ConnectorRegistrationRequestCB _registration_request_cb;
     ConnectorConnectionRequestCB _connection_request_cb;
