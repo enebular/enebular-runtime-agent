@@ -13,7 +13,7 @@
     "lint": "eslint src",
     "flow": "flow",
     "test": "test/bash/env.bash && test/bash/commandline-opts.bash",
-    "dev": "DEBUG=debug NODE_RED_DIR=../../node-red ./bin/enebular-local-agent --dev-mode"
+    "dev": "DEBUG=debug ./bin/enebular-local-agent --dev-mode"
   },
   "author": "",
   "license": "MIT",
