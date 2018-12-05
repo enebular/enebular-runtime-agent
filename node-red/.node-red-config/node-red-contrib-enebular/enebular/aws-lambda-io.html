@@ -1,0 +1,30 @@
+<script type="text/javascript">
+/* global RED */
+"use strict";
+
+RED.nodes.registerType('aws-lambda-request', {
+    category: 'input',
+    color: '#aaeeee',
+    inputs: 0,
+    outputs: 1,
+    label: 'AWS Lambda Request'
+});
+
+RED.nodes.registerType('aws-lambda-response', {
+    category: 'output',
+    color: '#aaeeee',
+    inputs: 1,
+    outputs: 0,
+    label: 'AWS Lambda Response'
+});
+</script>
+
+<script type="text/x-red" data-template-name="aws-lambda-request">
+    <div class="form-row">
+    </div>
+</script>
+
+<script type="text/x-red" data-template-name="aws-lambda-response">
+    <div class="form-row">
+    </div>
+</script>

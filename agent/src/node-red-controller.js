@@ -3,9 +3,9 @@ import fs from 'fs'
 import EventEmitter from 'events'
 import path from 'path'
 import { spawn, type ChildProcess } from 'child_process'
-import ProcessUtil from './process-util'
 import fetch from 'isomorphic-fetch'
 import type { Logger } from 'winston'
+import ProcessUtil from './process-util'
 import type LogManager from './log-manager'
 
 export type NodeREDConfig = {
@@ -210,6 +210,9 @@ export default class NodeREDController {
             'enebular-agent-dynamic-deps',
             'package.json'
           )
+          if (Object.keys(flowPackage.packages).includes('node-red-contrib-enebular')) {
+            flowPackage.packages['node-red-contrib-enebular'] = 'file:../../node-red-contrib-enebular'
+          }
           const packageJSON = JSON.stringify(
             {
               name: 'enebular-agent-dynamic-deps',
