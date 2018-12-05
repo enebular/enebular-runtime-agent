@@ -25,23 +25,19 @@ export default class MbedConnector extends LocalConnector {
 
   async onConnectorInit() {
     super.onConnectorInit()
-    try {
-      await this._startMbedCloudConnector()
-    } catch (err) {
-      console.error(err)
-    }
+    await this._startMbedCloudConnector()
   }
 
   onConnectorRegisterConfig() {
     super.onConnectorRegisterConfig()
     this._agent.config.addItem(
-      'ENEBULAR_MBED_CLOUD_CONNECTOR_STARTUP_COMMAND',
+      'ENEBULAR_MBED_CLOUD_CONNECTOR_EXECUTABLE_FILE',
       path.resolve(
         this._portBasePath,
         '../../',
         'tools/mbed-cloud-connector/out/Release/enebular-agent-mbed-cloud-connector.elf'
       ),
-      'Mbed cloud connector startup command',
+      'Mbed cloud connector executable file',
       true
     )
     this._agent.config.addItem(
@@ -56,7 +52,7 @@ export default class MbedConnector extends LocalConnector {
     try {
       fs.writeFileSync(this._pidFile, pid, 'utf8')
     } catch (err) {
-      this._log.error(err)
+      this._error(err)
     }
   }
 
@@ -66,7 +62,7 @@ export default class MbedConnector extends LocalConnector {
     try {
       fs.unlinkSync(this._pidFile)
     } catch (err) {
-      this._log.error(err)
+      this._error(err)
     }
   }
 
@@ -79,7 +75,7 @@ export default class MbedConnector extends LocalConnector {
 
       const startupCommand =
         this._agent.config.get(
-          'ENEBULAR_MBED_CLOUD_CONNECTOR_STARTUP_COMMAND'
+          'ENEBULAR_MBED_CLOUD_CONNECTOR_EXECUTABLE_FILE'
         ) +
         ' -c -d -s ' +
         this._agent.config.get('ENEBULAR_LOCAL_PORT_SOCKET_PATH')

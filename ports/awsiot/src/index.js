@@ -355,6 +355,9 @@ if (require.main === module) {
     if (!ret) {
       process.exit(1)
     }
+  }).catch(err => {
+    console.error(`Agent startup failed: ${err}`)
+    process.exit(1)
   })
 }
 
