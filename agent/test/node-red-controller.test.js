@@ -145,7 +145,7 @@ test.serial(
       }
       return false
     }
-    t.true(await polling(callback, 0, 500, 10000))
+    t.true(await polling(callback, 0, 500, 30000))
   }
 )
 
@@ -175,14 +175,13 @@ test.serial(
       if (flow) {
         t.truthy(flow)
         const expectedFlow = JSON.parse(expectedFlowJson)
-        t.deepEqual(expectedFlow, flow)
-        return true
+        return Utils.jsonEquals(expectedFlow, flow)
       }
       return false
     }
 
     // give it 2s to shutdown
-    t.true(await polling(callback, 2000, 500, 10000))
+    t.true(await polling(callback, 2000, 500, 30000))
   }
 )
 
@@ -212,14 +211,13 @@ test.serial(
       if (flow) {
         t.truthy(flow)
         const expectedFlow = JSON.parse(expectedFlowJson)
-        t.deepEqual(expectedFlow, flow)
-        return true
+        return Utils.jsonEquals(expectedFlow, flow)
       }
       return false
     }
 
     // give it 2s to shutdown
-    t.true(await polling(callback, 2000, 500, 10000))
+    t.true(await polling(callback, 2000, 500, 30000))
   }
 )
 
@@ -256,7 +254,7 @@ test.serial(
         tmpNodeRedDataDir + '/node_modules/node-red-node-pi-gpiod'
       )
     }
-    t.true(await polling(callback, 0, 500, 10000))
+    t.true(await polling(callback, 0, 500, 30000))
   }
 )
 
@@ -275,25 +273,24 @@ test.serial(
     connector.sendMessage('deploy', {
       downloadUrl: url
     })
-    return new Promise((resolve, reject) => {
-      setTimeout(async () => {
-        const flowCredsPath = path.join(
-          __dirname,
-          'data',
-          'creds_of_' + expectedFlowName
-        )
 
-        const expectedCredJson = fs.readFileSync(flowCredsPath, 'utf8')
-        const expectedCred = JSON.parse(expectedCredJson)
-        const credJson = fs.readFileSync(
-          tmpNodeRedDataDir + '/flows_cred.json',
-          'utf8'
-        )
-        const cred = JSON.parse(credJson)
-        t.deepEqual(cred, expectedCred)
-        resolve()
-      }, 4000)
-    })
+    const flowCredsPath = path.join(
+      __dirname,
+      'data',
+      'creds_of_' + expectedFlowName
+    )
+    const expectedCredJson = fs.readFileSync(flowCredsPath, 'utf8')
+    const expectedCred = JSON.parse(expectedCredJson)
+    const callback = () => {
+      const credJson = fs.readFileSync(
+        tmpNodeRedDataDir + '/flows_cred.json',
+        'utf8'
+      )
+      const cred = JSON.parse(credJson)
+      return Utils.jsonEquals(expectedCred, cred)
+    }
+
+    t.true(await polling(callback, 0, 500, 30000))
   }
 )
 

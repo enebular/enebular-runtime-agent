@@ -591,7 +591,10 @@ test.serial(
 
     const id = 'random-' + Utils.randomString()
     const p = path.join(server._tmpAssetFilePath, id)
-    fs.writeFileSync(p, 'sleep 10')
+    const fd = fs.openSync(p, 'w')
+    fs.writeSync(fd, 'sleep 10')
+    fs.fsyncSync(fd)
+    fs.closeSync(fd)
     const integrity = await Utils.getFileIntegrity(p)
     const asset = {
       id: id,
