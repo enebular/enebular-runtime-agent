@@ -12,7 +12,8 @@
     "start": "node lib/index.js",
     "lint": "eslint src",
     "flow": "flow",
-    "test": "test/bash/env.bash && test/bash/commandline-opts.bash"
+    "test": "test/bash/env.bash && test/bash/commandline-opts.bash",
+    "dev": "DEBUG=debug ./bin/enebular-local-agent --dev-mode"
   },
   "author": "",
   "license": "MIT",
