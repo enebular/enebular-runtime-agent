@@ -2,7 +2,7 @@
 SRC=$(cd $(dirname "$0"); pwd)
 source "${SRC}/include.bash"
 
-AGENT_BIN=`realpath ${SRC}/../../bin/enebular-local-agent`
+AGENT_BIN=`realpath ${SRC}/../../bin/enebular-mbed-agent`
 
 BIN='DEBUG="debug" NODE_RED_DIR="/node-red-dir-overide" '${AGENT_BIN}''
 run "$BIN"
@@ -24,6 +24,6 @@ BIN='DEBUG="debug" ENEBULAR_MBED_CLOUD_CONNECTOR_EXECUTABLE_FILE="enebular-mbed-
 run "$BIN" 5
 exists "agent takes ENEBULAR_MBED_CLOUD_CONNECTOR_EXECUTABLE_FILE env" "enebular-mbed-cloud-connector-executable-file-overide"
 
-BIN='DEBUG="debug" ENEBULAR_LOCAL_PORT_SOCKET_PATH="enebular-local-port-socket-path-overide" '${AGENT_BIN}''
+BIN='DEBUG="debug" ENEBULAR_LOCAL_PORT_SOCKET_PATH="enebular-mbed-port-socket-path-overide" '${AGENT_BIN}''
 run "$BIN" 5
-exists "agent takes ENEBULAR_LOCAL_PORT_SOCKET_PATH env" "enebular-local-port-socket-path-overide"
+exists "agent takes ENEBULAR_LOCAL_PORT_SOCKET_PATH env" "enebular-mbed-port-socket-path-overide"
