@@ -541,13 +541,6 @@ do_install() {
   fi
 
   if [ "${AGENT_TYPE}" == "mbed" ]; then
-    # once we merged the connector into agent we will remove the install part.
-    install_mbed_cloud_connector "${INSTALL_DIR}/tools/mbed-cloud-connector"
-    EXIT_CODE=$?
-    if [ "$EXIT_CODE" -ne 0 ]; then
-      _err "Install mbed cloud connector failed."
-      exit 1
-    fi
     setup_mbed_cloud_connector "${INSTALL_DIR}/tools/mbed-cloud-connector"
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
@@ -575,7 +568,7 @@ setup_mbed_cloud_connector() {
   _echo_g "OK"
 
   _task "Checking python dependencies for mbed cloud connector"
-  cmd_wrapper run_as_user ${USER} "(pip install mbed-cli click requests)"
+  cmd_wrapper run_as_user ${USER} "(pip install mbed-cli click requests --user)"
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
     _err "Python dependencies install failed."
@@ -610,50 +603,6 @@ setup_mbed_cloud_connector() {
     _err "Failed to complie mbed cloud connector."
     exit 1
   fi
-  _echo_g "OK"
-}
-
-#args: install_dir
-install_mbed_cloud_connector() {
-  local INSTALL_DIR
-  INSTALL_DIR="${1-}"
-  if [ -z "${INSTALL_DIR}" ]; then
-    _err "Missing install directory."
-    exit 1
-  fi
-
-  _task "Downloading mbed-cloud-connector"
-  local EXIT_CODE
-  local TEMP_GZ
-  TEMP_GZ=`mktemp --dry-run /tmp/mbed-cloud-connector.XXXXXXXXX`
-  local VERSION_INFO
-  local PREBUILT_URL
-  VERSION_INFO="$(get_version_info_from_github ${MBED_CLOUD_CONNECTOR_DOWNLOAD_PATH}releases/latest)"
-  if [ -z "${VERSION_INFO}" ]; then
-    _echo "Failed to get latest version from github."
-    exit 1
-  else
-    VERSION_INFO=($VERSION_INFO)
-    RELEASE_VERSION="${VERSION_INFO[0]}"
-  fi
-
-  cmd_wrapper download_tarball "${MBED_CLOUD_CONNECTOR_DOWNLOAD_PATH}tarball/${RELEASE_VERSION}" "${TEMP_GZ}"
-  EXIT_CODE=$?
-  if [ "$EXIT_CODE" -ne 0 ]; then
-    _echo "Can't find available release for latest version."
-    exit 1
-  fi
-  _echo_g "OK"
-
-  _task "Installing mbed-cloud-connector ${VERSION_INFO}"
-  install_tarball "${TEMP_GZ}" "${INSTALL_DIR}"
-  EXIT_CODE=$?
-  if [ "$EXIT_CODE" -ne 0 ]; then
-    _err "Install enebular agent failed."
-    rm ${TEMP_GZ}
-    exit 1
-  fi
-  rm ${TEMP_GZ}
   _echo_g "OK"
 }
 
@@ -718,7 +667,6 @@ USER=enebular
 AGENT_TYPE=awsiot
 RELEASE_VERSION="latest-release"
 AGENT_DOWNLOAD_PATH="https://api.github.com/repos/enebular/enebular-runtime-agent/"
-MBED_CLOUD_CONNECTOR_DOWNLOAD_PATH="https://api.github.com/repos/enebular/enebular-runtime-agent-mbed-cloud-connector/"
 MBED_CLOUD_DEV_CRET="/tmp/mbed_cloud_dev_credentials.c"
 SUPPORTED_NODE_VERSION="v9.2.1"
 ENEBULAR_BASE_URL="https://enebular.com/api/v1"
@@ -768,10 +716,6 @@ case $i in
   ;;
   --agent-download-path=*)
   AGENT_DOWNLOAD_PATH="${i#*=}"
-  shift
-  ;;
-  --mbed-cloud-connector-download-path=*)
-  MBED_CLOUD_CONNECTOR_DOWNLOAD_PATH="${i#*=}"
   shift
   ;;
   --license-key=*)
