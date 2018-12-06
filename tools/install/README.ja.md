@@ -93,7 +93,7 @@ sudo systemctl restart enebular-agent-enebular.service
 
 ```sh
 OPTION                      FORMAT              DEFAULT                              DESCRIPTION
--p or --port                -p=[local,awsiot]   awsiot                               インストールするポート
+-p or --port                -p=[mbed,awsiot]    awsiot                               インストールするポート
 -u or --user                -u=*                enebular                             インストール後の実行ユーザ
 -d or --install-dir         -d=<path>           /home/<user>/enebular-runtime-agent  インストール先のディレクトリ
 -v or --release-version     -v=*                The latest release                   enebular-agentのリリース

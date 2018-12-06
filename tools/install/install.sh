@@ -451,7 +451,7 @@ do_install() {
   _echo "$(_echo_g "*") Device Name:              $(_echo_g $(uname -n))"
   _echo "$(_echo_g "*") System:                   $(_echo_g $(uname -srmo))"
   _echo "$(_echo_g "*") Install User:             $(_echo_g ${USER})"
-  _echo "$(_echo_g "*") Agent Port Type:          $(_echo_g ${AGENT_TYPE})"
+  _echo "$(_echo_g "*") Agent Port Type:          $(_echo_g ${PORT})"
   _echo "$(_echo_g "*") Install Destination:      $(_echo_g ${INSTALL_DIR})"
   _echo "$(_echo_g "*") Version To Be Installed:  $(_echo_g ${RELEASE_VERSION})"
   _horizontal_bar
@@ -540,7 +540,7 @@ do_install() {
     exit 1
   fi
 
-  if [ "${AGENT_TYPE}" == "mbed" ]; then
+  if [ "${PORT}" == "mbed" ]; then
     setup_mbed_cloud_connector "${INSTALL_DIR}/tools/mbed-cloud-connector"
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
@@ -664,7 +664,7 @@ post_install() {
 }
 
 USER=enebular
-AGENT_TYPE=awsiot
+PORT=awsiot
 RELEASE_VERSION="latest-release"
 AGENT_DOWNLOAD_PATH="https://api.github.com/repos/enebular/enebular-runtime-agent/"
 MBED_CLOUD_DEV_CRET="/tmp/mbed_cloud_dev_credentials.c"
@@ -674,8 +674,8 @@ ENEBULAR_BASE_URL="https://enebular.com/api/v1"
 for i in "$@"
 do
 case $i in
-  -p=*|--type=*)
-  AGENT_TYPE="${i#*=}"
+  -p=*|--port=*)
+  PORT="${i#*=}"
   shift
   ;;
   -u=*|--user=*)
@@ -751,13 +751,8 @@ if [ -z ${INSTALL_DIR} ]; then
   INSTALL_DIR=/home/${USER}/enebular-runtime-agent
 fi
 
-case "${AGENT_TYPE}" in
-  awsiot)
-  PORT=awsiot
-  ;;
-  mbed)
-  PORT=local
-  ;;
+case "${PORT}" in
+  awsiot | mbed);;
   *)
     _err 'Unknown port, supported ports: awsiot, mbed'
     exit 1

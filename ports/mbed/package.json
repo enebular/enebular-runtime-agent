@@ -1,10 +1,10 @@
 {
-  "name": "enebular-local-agent",
+  "name": "enebular-mbed-agent",
   "version": "2.3.0",
-  "description": "The 'local' port of enebular-agent for enebular",
+  "description": "The 'mbed' port of enebular-agent for enebular",
   "main": "lib/index.js",
   "bin": {
-    "enebular-local-agent": "./bin/enebular-local-agent"
+    "enebular-mbed-agent": "./bin/enebular-mbed-agent"
   },
   "scripts": {
     "prepare": "npm run build",
@@ -13,7 +13,7 @@
     "lint": "eslint src",
     "flow": "flow",
     "test": "test/bash/env.bash && test/bash/commandline-opts.bash",
-    "dev": "DEBUG=debug ./bin/enebular-local-agent --dev-mode"
+    "dev": "DEBUG=debug ./bin/enebular-mbed-agent --dev-mode"
   },
   "author": "",
   "license": "MIT",

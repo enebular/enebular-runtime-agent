@@ -13,6 +13,7 @@ export default class MbedConnector extends LocalConnector {
 
   constructor() {
     super()
+    this._moduleName = 'mbed'
     this._retryCount = 0
     this._lastRetryTimestamp = Date.now()
     this._cproc = null

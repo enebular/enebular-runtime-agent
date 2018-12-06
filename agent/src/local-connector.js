@@ -13,9 +13,10 @@ export default class LocalConnector {
   _connector: ConnectorService
   _localServer: net.Server
   _clientSocket: ?net.Socket
+  _moduleName: ?string
 
   _log(level: string, msg: string, ...args: Array<mixed>) {
-    args.push({ module: MODULE_NAME })
+    args.push({ module: this._moduleName || MODULE_NAME })
     this._agent.log.log(level, msg, ...args)
   }
 

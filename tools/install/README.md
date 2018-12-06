@@ -94,7 +94,7 @@ The supported Node.js version is as defined in the offical enebular documentatio
 
 ```sh
 OPTION                      FORMAT              DEFAULT                              DESCRIPTION
--p or --port                -p=[local,awsiot]   awsiot                               Port to install
+-p or --port                -p=[mbed,awsiot]    awsiot                               Port to install
 -u or --user                -u=*                enebular                             User to run as after being installed
 -d or --install-dir         -d=<path>           /home/<user>/enebular-runtime-agent  Install directory
 -v or --release-version     -v=*                The latest release                   Release version of enebular-agent
