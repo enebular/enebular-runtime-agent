@@ -540,7 +540,7 @@ do_install() {
     exit 1
   fi
 
-  if [ "${PORT}" == "mbed" ]; then
+  if [ "${PORT}" == "mbed" ] && ([ ! -z "${MBED_CLOUD_DEV_CRET}" ] || [ ! -z "${MBED_CLOUD_PAL}" ]); then
     setup_mbed_cloud_connector "${INSTALL_DIR}/tools/mbed-cloud-connector"
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
@@ -585,22 +585,38 @@ setup_mbed_cloud_connector() {
   fi
   _echo_g "OK"
 
-  _task "Copying mbed cloud dev credentials"
-  cmd_wrapper run_as_user ${USER} "cp ${MBED_CLOUD_DEV_CRET} ${INSTALL_DIR}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c"
-  EXIT_CODE=$?
-  if [ "$EXIT_CODE" -ne 0 ]; then
-    _err "Failed to copy mbed cloud developer credentials."
-    exit 1
+  local MBED_CLOUD_DEFINE
+  if [ ! -z ${MBED_CLOUD_DEV_CRET} ]; then
+    _task "Copying mbed cloud dev credentials"
+    cmd_wrapper run_as_user ${USER} "cp ${MBED_CLOUD_DEV_CRET} ${INSTALL_DIR}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c"
+    EXIT_CODE=$?
+    if [ "$EXIT_CODE" -ne 0 ]; then
+      _err "Failed to copy mbed cloud developer credentials."
+      exit 1
+    fi
+    MBED_CLOUD_DEFINE=define.txt
+    _echo_g "OK"
   fi
-  _echo_g "OK"
+
+  if [ ! -z ${MBED_CLOUD_PAL} ]; then
+    _task "Copying mbed cloud credentials"
+    cmd_wrapper run_as_user ${USER} "cp -r ${MBED_CLOUD_PAL} ${INSTALL_DIR}/tools/mbed-cloud-connector/"
+    EXIT_CODE=$?
+    if [ "$EXIT_CODE" -ne 0 ]; then
+      _err "Failed to copy mbed cloud credentials."
+      exit 1
+    fi
+    MBED_CLOUD_DEFINE=define_factory.txt
+    _echo_g "OK"
+  fi
 
   _task "Building mbed cloud connector(It may take a few minutes)"
   cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector && \
     python pal-platform/pal-platform.py fullbuild --target x86_x64_NativeLinux_mbedtls --toolchain GCC --external \
-    ./../define.txt --name enebular-agent-mbed-cloud-connector.elf)"
+    ./../${MBED_CLOUD_DEFINE} --name enebular-agent-mbed-cloud-connector.elf)"
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
-    _err "Failed to complie mbed cloud connector."
+    _err "Failed to complie mbed cloud connector." 
     exit 1
   fi
   _echo_g "OK"
@@ -667,7 +683,6 @@ USER=enebular
 PORT=awsiot
 RELEASE_VERSION="latest-release"
 AGENT_DOWNLOAD_PATH="https://api.github.com/repos/enebular/enebular-runtime-agent/"
-MBED_CLOUD_DEV_CRET="/tmp/mbed_cloud_dev_credentials.c"
 SUPPORTED_NODE_VERSION="v9.2.1"
 ENEBULAR_BASE_URL="https://enebular.com/api/v1"
 
@@ -712,6 +727,14 @@ case $i in
   ;;
   --aws-iot-thing-name=*)
   AWS_IOT_THING_NAME="${i#*=}"
+  shift
+  ;;
+  --mbed-cloud-dev-cret=*)
+  MBED_CLOUD_DEV_CRET="${i#*=}"
+  shift
+  ;;
+  --mbed-cloud-pal=*)
+  MBED_CLOUD_PAL="${i#*=}"
   shift
   ;;
   --agent-download-path=*)
