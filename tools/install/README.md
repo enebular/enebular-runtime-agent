@@ -54,6 +54,21 @@ The generated keys and certificates will be stored in `/home/enebular/enebular-r
 
 See the *Examples* section below for an example of a command to create an AWS IoT thing.
 
+## Mbed Cloud Credentials Install
+
+The Install script provides the ability to install developer or factory credentials for mbed cloud port.
+
+To let script includes the credentials, the credentials itself has to be updated to device first. Then one of the following path options must be specified to where the credentials is stored on device depends on developer or factory mode.
+
+```sh
+--mbed-cloud-dev-cret
+--mbed-cloud-pal
+```
+
+It's best to upload the credentials to some temporary storage on device rather than disk, for example under `/tmp/` which won't persistent after reboot
+
+See the *Examples* section below for an example of a command to include mbed cloud credentials.
+
 ## Activtion
 
 The install script will create the activation configuration file for enebular-agent if the `--license-key` option is provided.
@@ -103,6 +118,8 @@ OPTION                      FORMAT              DEFAULT                         
 --aws-secret-access-key     =*                  N/A                                  AWS secret access key
 --aws-iot-region            =*                  N/A                                  AWS IoT region
 --aws-iot-thing-name        =*                  N/A                                  AWS IoT thing name
+--mbed-cloud-dev-cret       =*                  N/A                                  Path to Mbed Cloud developer credentials c file
+--mbed-cloud-pal            =*                  N/A                                  Path to Mbed Cloud factory pal folder
 --license-key               =*                  N/A                                  Enebular licence key to activate
 ```
 
@@ -125,3 +142,18 @@ Install the AWS IoT enebular-agent port using the `2.1.3` release with the user 
 ```sh
 wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- -v=2.1.3 --user=enebular-user-test -d=/home/enebular-user-test/my-agent --no-startup-register
 ```
+
+Install the Mbed Cloud enebular-agent port with developer credentials on a Raspberry Pi device via SSH (with the `pi` user and IP address of `192.168.1.125`).
+
+```sh
+scp mbed_cloud_dev_credentials.c pi@192.168.1.125:/tmp/
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=mbed --mbed-cloud-dev-cret=/tmp/mbed_cloud_dev_credentials.c"
+```
+
+Install the Mbed Cloud enebular-agent port with factory pal folder on a Raspberry Pi device via SSH (with the `pi` user and IP address of `192.168.1.125`).
+
+```sh
+rsync -avr pal pi@192.168.1.125:/tmp/pal
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=mbed --mbed-cloud-pal=/tmp/pal"
+```
+
