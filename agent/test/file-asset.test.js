@@ -49,6 +49,10 @@ test.afterEach.always('cleanup', async t => {
   await agentCleanup(agent, NodeRedPort)
 })
 
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function getDefaultDesiredState(fileName, integrity) {
   return {
     updateId: Utils.randomString(),
@@ -247,6 +251,7 @@ test.serial('FileAsset.3: Agent runs pre-deploy hooks correctly', async t => {
       assets[i].id
     } ]] && touch pre-hook${i}`
     fs.writeFileSync(path.join(ret.assetDataPath, cmdForTest[i].cmd), content)
+    delay(1000)
     assetState = getDefaultDesiredState(assets[i].id, assets[i].integrity)
     assetState.config.hooks = [
       {
@@ -322,6 +327,7 @@ test.serial('FileAsset.4: Agent runs post-deploy hooks correctly', async t => {
       assets[i].id
     } ]] && touch pre-hook${i}`
     fs.writeFileSync(path.join(ret.assetDataPath, cmdForTest[i].cmd), content)
+    delay(1000)
     assetState = getDefaultDesiredState(assets[i].id, assets[i].integrity)
     assetState.config.hooks = [
       {
@@ -463,6 +469,7 @@ test.serial(
     ]
 
     fs.writeFileSync(path.join(ret.assetDataPath, 'go.sh'), 'sleep 10')
+    delay(1000)
     const assets = await createAssets(cmdForTest.length)
 
     let desiredState = {}
@@ -535,6 +542,7 @@ test.serial(
     const id = 'random-' + Utils.randomString()
     const p = path.join(server._tmpAssetFilePath, id)
     fs.writeFileSync(p, 'touch asset_is_running')
+    delay(1000)
     const integrity = await Utils.getFileIntegrity(p)
     const asset = {
       id: id,
@@ -595,6 +603,7 @@ test.serial(
     fs.writeSync(fd, 'sleep 10')
     fs.fsyncSync(fd)
     fs.closeSync(fd)
+    delay(1000)
     const integrity = await Utils.getFileIntegrity(p)
     const asset = {
       id: id,
@@ -654,6 +663,7 @@ test.serial(
     const p = path.join(server._tmpAssetFilePath, id)
     const content = `#!/bin/bash\n arg="$*"\n echo "$arg" > asset_args`
     fs.writeFileSync(p, content)
+    delay(1000)
     const integrity = await Utils.getFileIntegrity(p)
     const asset = {
       id: id,
@@ -719,6 +729,7 @@ test.serial(
     const p = path.join(server._tmpAssetFilePath, id)
     const content = `#!/bin/bash\n echo "$TEST_ENV1" > asset_env1\n echo "$TEST_ENV2" > asset_env2\n`
     fs.writeFileSync(p, content)
+    delay(1000)
     const integrity = await Utils.getFileIntegrity(p)
     const asset = {
       id: id,
@@ -793,6 +804,7 @@ test.serial(
     const p = path.join(server._tmpAssetFilePath, id)
     const content = `#!/bin/bash\n not_a_commnad`
     fs.writeFileSync(p, content)
+    delay(1000)
     const integrity = await Utils.getFileIntegrity(p)
     const asset = {
       id: id,
