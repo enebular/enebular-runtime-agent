@@ -600,10 +600,16 @@ setup_mbed_cloud_connector() {
 
   if [ ! -z ${MBED_CLOUD_PAL} ]; then
     _task "Copying mbed cloud credentials"
-    cmd_wrapper run_as_user ${USER} "cp -r ${MBED_CLOUD_PAL} ${INSTALL_DIR}/tools/mbed-cloud-connector/"
+    cp -RT ${MBED_CLOUD_PAL} ${INSTALL_DIR}/tools/mbed-cloud-connector/pal
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
       _err "Failed to copy mbed cloud credentials."
+      exit 1
+    fi
+    chown -R ${USER}:${USER} ${INSTALL_DIR}/tools/mbed-cloud-connector/pal
+    EXIT_CODE=$?
+    if [ "$EXIT_CODE" -ne 0 ]; then
+      _err "Failed to change mbed cloud credentials permission."
       exit 1
     fi
     MBED_CLOUD_DEFINE=define_factory.txt
@@ -617,6 +623,14 @@ setup_mbed_cloud_connector() {
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
     _err "Failed to complie mbed cloud connector." 
+    exit 1
+  fi
+
+# FIXME: One more setup to check as the build script return zero exit code even the build was failed.
+# Consider check version number matches or not.
+  _task "Verifying mbed cloud connector"
+  if [ ! -f "${INSTALL_DIR}/tools/mbed-cloud-connector/out/Release/enebular-agent-mbed-cloud-connector.elf" ]; then
+    _err "Can't find mbed cloud connector binary."
     exit 1
   fi
   _echo_g "OK"
