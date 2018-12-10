@@ -287,8 +287,6 @@ void EnebularAgentMbedCloudConnector::connection_request_cb(bool connect)
 
 void EnebularAgentMbedCloudConnector::agent_info_cb(const char *info)
 {
-    _logger->log(INFO, "Agent: agent info: %s", info);
-
     _mbed_cloud_client->set_agent_info(info);
 }
 
