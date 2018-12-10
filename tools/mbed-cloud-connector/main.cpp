@@ -208,6 +208,9 @@ int main(int argc, char **argv)
         exit(ret);
     }
 
+    setvbuf(stdout, NULL, _IONBF, 0);
+    setvbuf(stderr, NULL, _IONBF, 0);
+
     if (!init()) {
         fprintf(stderr, "Base initialization failed\n");
         return EXIT_FAILURE;
