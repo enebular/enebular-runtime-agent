@@ -2,26 +2,21 @@
 import fs from 'fs'
 import path from 'path'
 import { spawn, type ChildProcess } from 'child_process'
-import { LocalConnector, ProcessUtil } from 'enebular-runtime-agent'
+import { LocalConnector, ProcessUtil, type RetryInfo } from 'enebular-runtime-agent'
 
 export default class PelionConnector extends LocalConnector {
   _pidFile: string
   _cproc: ?ChildProcess
   _portBasePath: string
-  _retryCount: number
-  _lastRetryTimestamp: number
+  _retryInfo: RetryInfo
 
   constructor() {
     super()
     this._moduleName = 'pelion'
-    this._retryCount = 0
-    this._lastRetryTimestamp = Date.now()
+    this._retryInfo = { retryCount: 0, lastRetryTimestamp: Date.now() }
     this._cproc = null
     this._portBasePath = path.resolve(__dirname, '../')
-    this._pidFile = path.resolve(
-      this._portBasePath,
-      './.pelion_connector.pid'
-    )
+    this._pidFile = path.resolve(this._portBasePath, './.pelion_connector.pid')
   }
 
   async onConnectorInit() {
@@ -43,7 +38,7 @@ export default class PelionConnector extends LocalConnector {
     )
     this._agent.config.addItem(
       'ENEBULAR_PELION_CONNECTOR_DATA_PATH',
-      path.resolve(this._portBasePath, '../../', 'tools/mbed-cloud-connector'),
+      path.resolve(this._portBasePath, './.pelion-connector/'),
       'Pelion cloud connector data path',
       true
     )
@@ -75,18 +70,27 @@ export default class PelionConnector extends LocalConnector {
       }
 
       const startupCommand =
-        this._agent.config.get(
-          'ENEBULAR_PELION_CONNECTOR_PATH'
-        ) +
+        this._agent.config.get('ENEBULAR_PELION_CONNECTOR_PATH') +
         ' -s ' +
         this._agent.config.get('ENEBULAR_LOCAL_CONNECTOR_SOCKET_PATH')
 
       this._info('Pelion connector startup command: ' + startupCommand)
 
+      const dataPath = this._agent.config.get(
+        'ENEBULAR_PELION_CONNECTOR_DATA_PATH'
+      )
+      try {
+        if (!fs.existsSync(dataPath)) {
+          fs.mkdirSync(dataPath)
+        }
+      } catch (err) {
+        this._error('Failed to create connector data directory: ' + err)
+      }
+
       const [command, ...args] = startupCommand.split(/\s+/)
       const cproc = spawn(command, args, {
         stdio: 'pipe',
-        cwd: this._agent.config.get('ENEBULAR_PELION_CONNECTOR_DATA_PATH')
+        cwd: dataPath
       })
       cproc.stdout.on('data', data => {
         let str = data.toString().replace(/(\n|\r)+$/, '')
@@ -97,25 +101,14 @@ export default class PelionConnector extends LocalConnector {
         this._error('conntector: ' + str)
       })
       cproc.once('exit', (code, signal) => {
-        this._info(
-          `pelion connector exited (${code !== null ? code : signal})`
-        )
+        this._info(`pelion connector exited (${code !== null ? code : signal})`)
         this._cproc = null
         if (code !== 0) {
-          let shouldRetry
-          ;[
-            shouldRetry,
-            this._retryCount,
-            this._lastRetryTimestamp
-          ] = ProcessUtil.shouldRetryOnCrash(
-            this._retryCount,
-            this._lastRetryTimestamp
-          )
-
+          let shouldRetry = ProcessUtil.shouldRetryOnCrash(this._retryInfo)
           if (shouldRetry) {
             this._info(
               `Unexpected exit, restarting service in 1 second. Retry count: ${
-                this._retryCount
+                this._retryInfo.retryCount
               }`
             )
             setTimeout(() => {
@@ -124,9 +117,10 @@ export default class PelionConnector extends LocalConnector {
           } else {
             this._info(
               `Unexpected exit, but retry count(${
-                this._retryCount
+                this._retryInfo.retryCount
               }) exceed max.`
             )
+            throw new Error('Failed to start pelion connector.')
           }
         }
         this._removePIDFile()

@@ -34,7 +34,9 @@ export default class LocalConnector {
 
   _attemptSocketRemove() {
     try {
-      fs.unlinkSync(this._agent.config.get('ENEBULAR_LOCAL_CONNECTOR_SOCKET_PATH'))
+      fs.unlinkSync(
+        this._agent.config.get('ENEBULAR_LOCAL_CONNECTOR_SOCKET_PATH')
+      )
     } catch (err) {
       // ignore any errors
     }
@@ -73,7 +75,10 @@ export default class LocalConnector {
             )
             break
           case 'log':
-            localPort._log(message.log.level, 'conntector: ' + message.log.message)
+            localPort._log(
+              message.log.level,
+              'conntector: ' + message.log.message
+            )
             break
           default:
             localPort._info('unsupported client message type: ' + message.type)
@@ -145,7 +150,9 @@ export default class LocalConnector {
     })
 
     this._attemptSocketRemove()
-    server.listen(this._agent.config.get('ENEBULAR_LOCAL_CONNECTOR_SOCKET_PATH'))
+    server.listen(
+      this._agent.config.get('ENEBULAR_LOCAL_CONNECTOR_SOCKET_PATH')
+    )
 
     return server
   }

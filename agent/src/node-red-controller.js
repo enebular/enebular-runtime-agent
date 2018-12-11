@@ -5,7 +5,7 @@ import path from 'path'
 import { spawn, type ChildProcess } from 'child_process'
 import fetch from 'isomorphic-fetch'
 import type { Logger } from 'winston'
-import ProcessUtil from './process-util'
+import ProcessUtil, { type RetryInfo } from './process-util'
 import type LogManager from './log-manager'
 
 export type NodeREDConfig = {
@@ -19,16 +19,16 @@ export type NodeREDConfig = {
 
 const moduleName = 'node-red'
 
+type EditSession = {
+  ipAddress: string,
+  sessionToken: string
+}
+
 type NodeRedFlowPackage = {
   flows: Object[],
   creds: Object,
   packages: Object,
   editSession?: EditSession
-}
-
-type EditSession = {
-  ipAddress: string,
-  sessionToken: string
 }
 
 export default class NodeREDController {
@@ -44,8 +44,7 @@ export default class NodeREDController {
   _log: Logger
   _logManager: LogManager
   _nodeRedLog: Logger
-  _exceptionRetryCount: number = 0
-  _lastRetryTimestamp: number = Date.now()
+  _retryInfo: RetryInfo
   _allowEditSessions: boolean = false
 
   constructor(
@@ -61,6 +60,7 @@ export default class NodeREDController {
     this._pidFile = config.pidFile
     this._assetsDataPath = config.assetsDataPath
     this._allowEditSessions = config.allowEditSessions
+    this._retryInfo = { retryCount: 0, lastRetryTimestamp: Date.now() }
 
     if (!fs.existsSync(this._dir)) {
       throw new Error(`The Node-RED directory was not found: ${this._dir}`)
@@ -210,8 +210,13 @@ export default class NodeREDController {
             'enebular-agent-dynamic-deps',
             'package.json'
           )
-          if (Object.keys(flowPackage.packages).includes('node-red-contrib-enebular')) {
-            flowPackage.packages['node-red-contrib-enebular'] = 'file:../../node-red-contrib-enebular'
+          if (
+            Object.keys(flowPackage.packages).includes(
+              'node-red-contrib-enebular'
+            )
+          ) {
+            flowPackage.packages['node-red-contrib-enebular'] =
+              'file:../../node-red-contrib-enebular'
           }
           const packageJSON = JSON.stringify(
             {
@@ -311,20 +316,11 @@ export default class NodeREDController {
         this._cproc = null
         /* Restart automatically on an abnormal exit. */
         if (code !== 0) {
-          let shouldRetry
-          ;[
-            shouldRetry,
-            this._exceptionRetryCount,
-            this._lastRetryTimestamp
-          ] = ProcessUtil.shouldRetryOnCrash(
-            this._exceptionRetryCount,
-            this._lastRetryTimestamp
-          )
-
+          let shouldRetry = ProcessUtil.shouldRetryOnCrash(this._retryInfo)
           if (shouldRetry) {
             this.info(
               'Unexpected exit, restarting service in 1 second. Retry count:' +
-                this._exceptionRetryCount
+                this._retryInfo.retryCount
             )
             setTimeout(() => {
               this._startService(editSession)
@@ -332,7 +328,7 @@ export default class NodeREDController {
           } else {
             this.info(
               `Unexpected exit, but retry count(${
-                this._exceptionRetryCount
+                this._retryInfo.retryCount
               }) exceed max.`
             )
             /* Other restart strategies (change port, etc.) could be tried here. */
