@@ -15,7 +15,8 @@ _horizontal_bar() {
 }
 
 _task() {
-  _horizontal_bar "[TASK] "$*" "
+  #_horizontal_bar "[TASK] "$*" "
+  echo "==== "$*" ===="
 }
 
 _err() {
@@ -290,7 +291,7 @@ setup_enebular_agent() {
       fi
       _echo_g "OK"
     fi
-    _task "Building enebular-agent from source(It may take a few minutes)"
+    _task "Building enebular-agent from source (It may take a few minutes)"
     cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/agent && ${NPM_BUILD_AND_INSTALL}) \
       && (cd ${INSTALL_DIR}/node-red && ${NPM_BUILD_AND_INSTALL}) \
       && (cd ${INSTALL_DIR}/ports/${PORT} && ${NPM_BUILD_AND_INSTALL})" ${NODE_ENV}
@@ -447,13 +448,13 @@ do_install() {
   fi
 
   _horizontal_bar
-  _echo "$(_echo_g "*")           Enebular-agent installation"
-  _echo "$(_echo_g "*") Device Name:              $(_echo_g $(uname -n))"
-  _echo "$(_echo_g "*") System:                   $(_echo_g $(uname -srmo))"
-  _echo "$(_echo_g "*") Install User:             $(_echo_g ${USER})"
-  _echo "$(_echo_g "*") Agent Port Type:          $(_echo_g ${PORT})"
-  _echo "$(_echo_g "*") Install Destination:      $(_echo_g ${INSTALL_DIR})"
-  _echo "$(_echo_g "*") Version To Be Installed:  $(_echo_g ${RELEASE_VERSION})"
+  _echo " $(_echo_g "enebular-agent installation:")"
+  _echo "   - Device name:         $(uname -n)"
+  _echo "   - System:              $(uname -srmo)"
+  _echo "   - Install user:        ${USER}"
+  _echo "   - Install destination: ${INSTALL_DIR}"
+  _echo "   - Agent port:          ${PORT}"
+  _echo "   - Agent version:       ${RELEASE_VERSION}"
   _horizontal_bar
 
   _task "Checking dependencies"
@@ -544,7 +545,7 @@ do_install() {
     setup_mbed_cloud_connector "${INSTALL_DIR}/tools/mbed-cloud-connector"
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
-      _err "Setup mbed cloud connector failed."
+      _err "Setup mbed-cloud-connector failed."
       exit 1
     fi
   fi
@@ -554,7 +555,7 @@ do_install() {
 
 #args: install_dir
 setup_mbed_cloud_connector() {
-  _task "Checking dependencies for mbed cloud connector"
+  _task "Checking dependencies for mbed-cloud-connector"
   cmd_wrapper apt-get update
   if ! dpkg -s git >/dev/null 2>&1; then
     cmd_wrapper apt-get -y install git
@@ -567,7 +568,7 @@ setup_mbed_cloud_connector() {
   fi
   _echo_g "OK"
 
-  _task "Checking python dependencies for mbed cloud connector"
+  _task "Checking python dependencies for mbed-cloud-connector"
   cmd_wrapper run_as_user ${USER} "(pip install mbed-cli click requests --user)"
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
@@ -616,21 +617,21 @@ setup_mbed_cloud_connector() {
     _echo_g "OK"
   fi
 
-  _task "Building mbed cloud connector(It may take a few minutes)"
+  _task "Building mbed-cloud-connector (It may take a few minutes)"
   cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector && \
     python pal-platform/pal-platform.py fullbuild --target x86_x64_NativeLinux_mbedtls --toolchain GCC --external \
     ./../${MBED_CLOUD_DEFINE} --name enebular-agent-mbed-cloud-connector.elf)"
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
-    _err "Failed to complie mbed cloud connector." 
+    _err "Failed to complie mbed-cloud-connector."
     exit 1
   fi
 
 # FIXME: One more setup to check as the build script return zero exit code even the build was failed.
 # Consider check version number matches or not.
-  _task "Verifying mbed cloud connector"
+  _task "Verifying mbed-cloud-connector"
   if [ ! -f "${INSTALL_DIR}/tools/mbed-cloud-connector/out/Release/enebular-agent-mbed-cloud-connector.elf" ]; then
-    _err "Can't find mbed cloud connector binary."
+    _err "Can't find mbed-cloud-connector binary."
     exit 1
   fi
   _echo_g "OK"
@@ -818,9 +819,11 @@ post_install
 
 _horizontal_bar
 echo -e "\033[32m enebular-agent has been successfully installed ✔\033[0m"
-_echo " Version: $(get_enebular_agent_package_version ${INSTALL_DIR})"
-_echo " Location: ${INSTALL_DIR}"
-_echo " User: ${USER}"
+_echo "   - Version: $(get_enebular_agent_package_version ${INSTALL_DIR})"
+_echo "   - Location: ${INSTALL_DIR}"
+_echo "   - User: ${USER}"
+_echo "   - Service name: enebular-agent-${USER}"
+_echo ""
 if [ ! -z ${AWS_IOT_THING_NAME} ]; then
   echo -e " AWS IoT Thing \033[32m${AWS_IOT_THING_NAME}\033[0m has been created."
 fi
