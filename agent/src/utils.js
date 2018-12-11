@@ -11,7 +11,7 @@ export async function delay(msec: number) {
  * HTTP request with JSON response
  *
  * This makes a HTTP request with a JSON response and provides
- * consistant error handling of that response.
+ * consistent error handling of that response.
  *
  * @param  {string} url     Fetch URL
  * @param  {Object} options Fetch options
@@ -49,7 +49,7 @@ export async function fetchJSON(url, options) {
  * HTTP request with JSON body and response
  *
  * This makes a HTTP POST request with both a JSON body and response, and
- * provides consistant error handling of that response.
+ * provides consistent error handling of that response.
  *
  * @param  {string} url     Request URL
  * @param  {Object} body    Request body
