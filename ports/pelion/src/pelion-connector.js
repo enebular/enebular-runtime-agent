@@ -2,7 +2,11 @@
 import fs from 'fs'
 import path from 'path'
 import { spawn, type ChildProcess } from 'child_process'
-import { LocalConnector, ProcessUtil, type RetryInfo } from 'enebular-runtime-agent'
+import {
+  LocalConnector,
+  ProcessUtil,
+  type RetryInfo
+} from 'enebular-runtime-agent'
 
 export default class PelionConnector extends LocalConnector {
   _pidFile: string
@@ -20,8 +24,8 @@ export default class PelionConnector extends LocalConnector {
   }
 
   async onConnectorInit() {
-    super.onConnectorInit()
     await this._startPelionConnector()
+    super.onConnectorInit()
   }
 
   onConnectorRegisterConfig() {
@@ -69,8 +73,21 @@ export default class PelionConnector extends LocalConnector {
         ProcessUtil.killProcessByPIDFile(this._pidFile)
       }
 
+      const connectorPath = this._agent.config.get(
+        'ENEBULAR_PELION_CONNECTOR_PATH'
+      )
+      if (!fs.existsSync(connectorPath)) {
+        this._info('This may be legacy version, uses fixed socket path.')
+        this._agent.config.set(
+          'ENEBULAR_LOCAL_CONNECTOR_SOCKET_PATH',
+          '/tmp/enebular-local-agent.socket'
+        )
+        resolve()
+        return
+      }
+
       const startupCommand =
-        this._agent.config.get('ENEBULAR_PELION_CONNECTOR_PATH') +
+        connectorPath +
         ' -s ' +
         this._agent.config.get('ENEBULAR_LOCAL_CONNECTOR_SOCKET_PATH')
 
