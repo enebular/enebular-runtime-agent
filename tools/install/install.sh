@@ -343,10 +343,13 @@ install_nodejs() {
     return 2
   fi
 
+  _task "Checking existing node.js ${VERSION}"
   if [ -d "${DST}" ]; then
     _echo "Node.js ${VERSION} is already installed"
+    _echo_g "OK"
     return 0
   fi
+  _echo_g "OK"
 
   local TEMP_NODE_GZ
   TEMP_NODE_GZ=`mktemp --dry-run /tmp/nodejs.XXXXXXXXX`
@@ -541,7 +544,7 @@ do_install() {
     exit 1
   fi
 
-  if [ "${PORT}" == "mbed" ] && ([ ! -z "${MBED_CLOUD_DEV_CRET}" ] || [ ! -z "${MBED_CLOUD_PAL}" ]); then
+  if [ "${PORT}" == "pelion" ] && ([ ! -z "${MBED_CLOUD_DEV_CRED}" ] || [ ! -z "${MBED_CLOUD_PAL}" ]); then
     setup_mbed_cloud_connector "${INSTALL_DIR}/tools/mbed-cloud-connector"
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
@@ -587,9 +590,9 @@ setup_mbed_cloud_connector() {
   _echo_g "OK"
 
   local MBED_CLOUD_DEFINE
-  if [ ! -z ${MBED_CLOUD_DEV_CRET} ]; then
+  if [ ! -z ${MBED_CLOUD_DEV_CRED} ]; then
     _task "Copying mbed cloud dev credentials"
-    cmd_wrapper run_as_user ${USER} "cp ${MBED_CLOUD_DEV_CRET} ${INSTALL_DIR}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c"
+    cmd_wrapper run_as_user ${USER} "cp ${MBED_CLOUD_DEV_CRED} ${INSTALL_DIR}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c"
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
       _err "Failed to copy mbed cloud developer credentials."
@@ -626,6 +629,7 @@ setup_mbed_cloud_connector() {
     _err "Failed to complie mbed-cloud-connector."
     exit 1
   fi
+  _echo_g "OK"
 
 # FIXME: One more setup to check as the build script return zero exit code even the build was failed.
 # Consider check version number matches or not.
@@ -744,8 +748,8 @@ case $i in
   AWS_IOT_THING_NAME="${i#*=}"
   shift
   ;;
-  --mbed-cloud-dev-cret=*)
-  MBED_CLOUD_DEV_CRET="${i#*=}"
+  --mbed-cloud-dev-cred=*)
+  MBED_CLOUD_DEV_CRED="${i#*=}"
   shift
   ;;
   --mbed-cloud-pal=*)
@@ -790,9 +794,9 @@ if [ -z ${INSTALL_DIR} ]; then
 fi
 
 case "${PORT}" in
-  awsiot | mbed);;
+  awsiot | pelion);;
   *)
-    _err 'Unknown port, supported ports: awsiot, mbed'
+    _err 'Unknown port, supported ports: awsiot, pelion'
     exit 1
   ;;
 esac
