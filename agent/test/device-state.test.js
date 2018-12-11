@@ -127,7 +127,7 @@ test.serial(
     const log = fs.readFileSync(tmpLogPath, 'utf8')
     t.true(
       log.includes(
-        'Failed to get device state: Failed to fetch device state: 400'
+        'Device state get request failed: Failed response (400 Bad Request)'
       )
     )
     fs.unlinkSync(tmpLogPath)
@@ -158,7 +158,9 @@ test.serial(
 
     const log = fs.readFileSync(tmpLogPath, 'utf8')
     t.true(
-      log.includes('Failed to get device state: invalid json response body')
+      log.includes(
+        'Device state get request failed: Response did not contain JSON'
+      )
     )
     fs.unlinkSync(tmpLogPath)
     t.pass()
