@@ -53,7 +53,7 @@ export default class DummyServer extends EventEmitter {
       (req, res) => {
         // console.log("log:", req.file);
         server.emit('recordLogs', req.file)
-        res.sendStatus(this._logReturnBadRequest ? 400 : 200)
+        res.status(this._logReturnBadRequest ? 400 : 200).send({})
       }
     )
     app.post(DummyServerConfig.notifyStatusURL, (req, res) => {
