@@ -1,6 +1,6 @@
 /* @flow */
-import fetch from 'isomorphic-fetch'
 import fs from 'fs'
+import { postJSON } from './utils'
 
 export type ActivatableResult = {
   canActivate: boolean,
@@ -50,26 +50,15 @@ export default class EnebularActivator {
       }
     }
     try {
-      const res = await fetch(this._verifyURL, {
-        method: 'POST',
-        body: JSON.stringify({
+      const res = await postJSON(
+        this._verifyURL,
+        JSON.stringify({
           licenseKey: this._licenseKey
-        }),
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-      let resJson = await res.json()
-      if (!res.ok) {
-        let msg = `Failed response (${res.status} ${res.statusText})`
-        if (resJson && resJson.message) {
-          msg += `: ${resJson.message}`
-        }
-        throw Error(msg)
-      }
+        })
+      )
       return {
-        canActivate: resJson.canActivate,
-        message: resJson.canActivate ? null : 'Invalid license key'
+        canActivate: res.canActivate,
+        message: res.canActivate ? null : 'Invalid license key'
       }
     } catch (err) {
       return {
@@ -81,28 +70,17 @@ export default class EnebularActivator {
 
   async activate(deviceId: string): ActivationResult {
     try {
-      const res = await fetch(this._activateURL, {
-        method: 'POST',
-        body: JSON.stringify({
+      const res = await postJSON(
+        this._activateURL,
+        JSON.stringify({
           licenseKey: this._licenseKey,
           deviceId: deviceId
-        }),
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-      let resJson = await res.json()
-      if (!res.ok) {
-        let msg = `Failed response (${res.status} ${res.statusText})`
-        if (resJson && resJson.message) {
-          msg += `: ${resJson.message}`
-        }
-        throw Error(msg)
-      }
+        })
+      )
       return {
-        connectionId: resJson.connectionId,
-        authRequestUrl: resJson.authRequestUrl,
-        agentManagerBaseUrl: resJson.agentManagerBaseUrl
+        connectionId: res.connectionId,
+        authRequestUrl: res.authRequestUrl,
+        agentManagerBaseUrl: res.agentManagerBaseUrl
       }
     } catch (err) {
       throw Error('Activate request failed: ' + err.message)
