@@ -29,17 +29,11 @@ export async function fetchJSON(url, options) {
     let details
     try {
       const resJson = await res.json()
-      if (resJson.message) {
-        details = resJson.message
-      } else {
-        details = JSON.stringify(resJson)
-      }
+      details = resJson.message ? resJson.message : JSON.stringify(resJson)
     } catch (err) {
-      msg += ' - No error message available'
+      details = 'No error details available'
     }
-    if (details) {
-      msg += ' - ' + details
-    }
+    msg += ' - ' + details
     throw new Error(msg)
   }
 
