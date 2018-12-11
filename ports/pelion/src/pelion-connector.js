@@ -4,7 +4,7 @@ import path from 'path'
 import { spawn, type ChildProcess } from 'child_process'
 import { LocalConnector, ProcessUtil } from 'enebular-runtime-agent'
 
-export default class MbedConnector extends LocalConnector {
+export default class PelionConnector extends LocalConnector {
   _pidFile: string
   _cproc: ?ChildProcess
   _portBasePath: string
@@ -13,38 +13,38 @@ export default class MbedConnector extends LocalConnector {
 
   constructor() {
     super()
-    this._moduleName = 'mbed'
+    this._moduleName = 'pelion'
     this._retryCount = 0
     this._lastRetryTimestamp = Date.now()
     this._cproc = null
     this._portBasePath = path.resolve(__dirname, '../')
     this._pidFile = path.resolve(
       this._portBasePath,
-      './.mbed_cloud_connector.pid'
+      './.pelion_connector.pid'
     )
   }
 
   async onConnectorInit() {
     super.onConnectorInit()
-    await this._startMbedCloudConnector()
+    await this._startPelionConnector()
   }
 
   onConnectorRegisterConfig() {
     super.onConnectorRegisterConfig()
     this._agent.config.addItem(
-      'ENEBULAR_MBED_CLOUD_CONNECTOR_EXECUTABLE_FILE',
+      'ENEBULAR_PELION_CONNECTOR_PATH',
       path.resolve(
         this._portBasePath,
         '../../',
         'tools/mbed-cloud-connector/out/Release/enebular-agent-mbed-cloud-connector.elf'
       ),
-      'Mbed cloud connector executable file',
+      'Pelion connector executable file',
       true
     )
     this._agent.config.addItem(
-      'ENEBULAR_MBED_CLOUD_CONNECTOR_DATA_PATH',
+      'ENEBULAR_PELION_CONNECTOR_DATA_PATH',
       path.resolve(this._portBasePath, '../../', 'tools/mbed-cloud-connector'),
-      'Mbed cloud connector data path',
+      'Pelion cloud connector data path',
       true
     )
   }
@@ -67,8 +67,8 @@ export default class MbedConnector extends LocalConnector {
     }
   }
 
-  async _startMbedCloudConnector() {
-    this._info('Starting mbed cloud connector...')
+  async _startPelionConnector() {
+    this._info('Starting pelion connector...')
     return new Promise((resolve, reject) => {
       if (fs.existsSync(this._pidFile)) {
         ProcessUtil.killProcessByPIDFile(this._pidFile)
@@ -76,29 +76,29 @@ export default class MbedConnector extends LocalConnector {
 
       const startupCommand =
         this._agent.config.get(
-          'ENEBULAR_MBED_CLOUD_CONNECTOR_EXECUTABLE_FILE'
+          'ENEBULAR_PELION_CONNECTOR_PATH'
         ) +
-        ' -c -d -s ' +
-        this._agent.config.get('ENEBULAR_LOCAL_PORT_SOCKET_PATH')
+        ' -s ' +
+        this._agent.config.get('ENEBULAR_LOCAL_CONNECTOR_SOCKET_PATH')
 
-      this._info('Mbed cloud connector startup command: ' + startupCommand)
+      this._info('Pelion connector startup command: ' + startupCommand)
 
       const [command, ...args] = startupCommand.split(/\s+/)
       const cproc = spawn(command, args, {
         stdio: 'pipe',
-        cwd: this._agent.config.get('ENEBULAR_MBED_CLOUD_CONNECTOR_DATA_PATH')
+        cwd: this._agent.config.get('ENEBULAR_PELION_CONNECTOR_DATA_PATH')
       })
       cproc.stdout.on('data', data => {
         let str = data.toString().replace(/(\n|\r)+$/, '')
-        this._info(str)
+        this._info('conntector: ' + str)
       })
       cproc.stderr.on('data', data => {
         let str = data.toString().replace(/(\n|\r)+$/, '')
-        this._error(str)
+        this._error('conntector: ' + str)
       })
       cproc.once('exit', (code, signal) => {
         this._info(
-          `mbed cloud connector exited (${code !== null ? code : signal})`
+          `pelion connector exited (${code !== null ? code : signal})`
         )
         this._cproc = null
         if (code !== 0) {
@@ -119,7 +119,7 @@ export default class MbedConnector extends LocalConnector {
               }`
             )
             setTimeout(() => {
-              this._startMbedCloudConnector()
+              this._startPelionConnector()
             }, 1000)
           } else {
             this._info(
@@ -141,13 +141,13 @@ export default class MbedConnector extends LocalConnector {
     })
   }
 
-  async _stopMbedCloudConnector() {
+  async _stopPelionConnector() {
     return new Promise((resolve, reject) => {
       const cproc = this._cproc
       if (cproc) {
-        this._info('Stopping mbed cloud connector...')
+        this._info('Stopping pelion connector...')
         cproc.once('exit', () => {
-          this._info('mbed cloud connector ended')
+          this._info('pelion connector ended')
           this._cproc = null
           resolve()
         })
@@ -164,7 +164,7 @@ export default class MbedConnector extends LocalConnector {
 
   async shutdown() {
     try {
-      await this._stopMbedCloudConnector()
+      await this._stopPelionConnector()
     } catch (err) {
       console.error(err)
     }

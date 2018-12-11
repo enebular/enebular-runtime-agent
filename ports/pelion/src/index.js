@@ -1,14 +1,14 @@
 /* @flow */
-import MbedConnector from './mbed-connector'
+import PelionConnector from './pelion-connector'
 
-const mbedConnector = new MbedConnector()
+const pelionConnector = new PelionConnector()
 
 async function startup() {
-  return mbedConnector.startup()
+  return pelionConnector.startup()
 }
 
 async function shutdown() {
-  return mbedConnector.shutdown()
+  return pelionConnector.shutdown()
 }
 
 async function exit() {

@@ -2,7 +2,7 @@
 SRC=$(cd $(dirname "$0"); pwd)
 source "${SRC}/include.bash"
 
-AGENT_BIN=`realpath ${SRC}/../../bin/enebular-mbed-agent`
+AGENT_BIN=`realpath ${SRC}/../../bin/enebular-pelion-agent`
 
 BIN='DEBUG="debug" '${AGENT_BIN}' --node-red-dir="/node-red-dir-override"'
 run "$BIN"

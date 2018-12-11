@@ -2,7 +2,7 @@
 SRC=$(cd $(dirname "$0"); pwd)
 source "${SRC}/include.bash"
 
-AGENT_BIN=`realpath ${SRC}/../../bin/enebular-mbed-agent`
+AGENT_BIN=`realpath ${SRC}/../../bin/enebular-pelion-agent`
 
 BIN='DEBUG="debug" NODE_RED_DIR="/node-red-dir-overide" '${AGENT_BIN}''
 run "$BIN"
@@ -20,10 +20,10 @@ BIN='DEBUG="debug" ENEBULAR_CONFIG_PATH="/enebular-config-file-overide" '${AGENT
 run "$BIN"
 exists "agent takes ENEBULAR_CONFIG_PATH env" "enebular-config-file-overide"
 
-BIN='DEBUG="debug" ENEBULAR_MBED_CLOUD_CONNECTOR_EXECUTABLE_FILE="enebular-mbed-cloud-connector-executable-file-overide" '${AGENT_BIN}''
+BIN='DEBUG="debug" ENEBULAR_PELION_CONNECTOR_PATH="enebular-pelion-connector-path-overide" '${AGENT_BIN}''
 run "$BIN" 5
-exists "agent takes ENEBULAR_MBED_CLOUD_CONNECTOR_EXECUTABLE_FILE env" "enebular-mbed-cloud-connector-executable-file-overide"
+exists "agent takes ENEBULAR_PELION_CONNECTOR_PATH env" "enebular-pelion-connector-path-overide"
 
-BIN='DEBUG="debug" ENEBULAR_LOCAL_PORT_SOCKET_PATH="enebular-mbed-port-socket-path-overide" '${AGENT_BIN}''
+BIN='DEBUG="debug" ENEBULAR_LOCAL_CONNECTOR_SOCKET_PATH="enebular-local-connector-socket-path-overide" '${AGENT_BIN}''
 run "$BIN" 5
-exists "agent takes ENEBULAR_LOCAL_PORT_SOCKET_PATH env" "enebular-mbed-port-socket-path-overide"
+exists "agent takes ENEBULAR_LOCAL_CONNECTOR_SOCKET_PATH env" "enebular-local-connector-socket-path-overide"
