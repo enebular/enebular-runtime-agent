@@ -1,10 +1,12 @@
 #!/bin/bash
 _echo() {
   printf %s\\n "$*" 2>/dev/null
+  echo $@ >> ${LOG_FILE}
 }
 
 _echo_g() {
   echo -e "\033[32m"$@"\033[0m"
+  echo $@ >> ${LOG_FILE}
 }
 
 _horizontal_bar() {
@@ -12,11 +14,16 @@ _horizontal_bar() {
   local padding=`expr $(tput cols) - ${#var}`
   printf "%s" "$*" 2>/dev/null
   printf '%*s\n' "${COLUMNS:-${padding}}" '' | tr ' ' =
+  echo "===============================" >> ${LOG_FILE}
 }
 
 _task() {
-  #_horizontal_bar "[TASK] "$*" "
-  echo "==== "$*" ===="
+  _echo "==== "$*" ===="
+}
+
+_exit() {
+  _echo "See details in full install log file: ${LOG_FILE}"
+  exit $1
 }
 
 _err() {
@@ -29,10 +36,17 @@ has() {
 }
 
 setval() {
-  printf -v "$1" "%s" "$(cat | base64 -w0)"; declare -p "$1"; 
+  printf -v "$1" "%s" "$(cat | base64 -w0)"; declare -p "$1";
+  eval out='$'$1
+  echo $out | base64 -w0 -d >> ${LOG_FILE}
+}
+
+create_log() {
+  mktemp /tmp/enebular-agent-install-log.XXXXXX
 }
 
 cmd_wrapper() {
+  echo "$@" >> ${LOG_FILE}
   if [ -z ${VERBOSE} ]; then
     eval "$( "$@" 2> >(setval err) > >(setval out); ret=$?; declare -p ret; )"
     if [ $ret -ne 0 ]; then
@@ -343,7 +357,7 @@ install_nodejs() {
     return 2
   fi
 
-  _task "Checking existing node.js ${VERSION}"
+  _task "Checking existing node.js ${VERSION} installation"
   if [ -d "${DST}" ]; then
     _echo "Node.js ${VERSION} is already installed"
     _echo_g "OK"
@@ -429,25 +443,25 @@ do_install() {
   PORT="${1-}"
   if [ -z "${PORT}" ]; then
     _err "Missing port."
-    exit 1
+    _exit 1
   fi
   local USER
   USER="${2-}"
   if [ -z "${USER}" ]; then
     _err "Missing user."
-    exit 1
+    _exit 1
   fi
   local INSTALL_DIR
   INSTALL_DIR="${3-}"
   if [ -z "${INSTALL_DIR}" ]; then
     _err "Missing install directory."
-    exit 1
+    _exit 1
   fi
   local RELEASE_VERSION
   RELEASE_VERSION="${4-}"
   if [ -z "${RELEASE_VERSION}" ]; then
     _err "Missing release version."
-    exit 1
+    _exit 1
   fi
 
   _horizontal_bar
@@ -462,10 +476,10 @@ do_install() {
 
   _task "Checking dependencies"
   if ! dpkg -s build-essential >/dev/null 2>&1; then
-    apt-get -y install build-essential
+    cmd_wrapper apt-get -y install build-essential
   fi
   if ! dpkg -s python >/dev/null 2>&1; then
-    apt-get -y install python
+    cmd_wrapper apt-get -y install python
   fi
   _echo_g OK
 
@@ -476,7 +490,7 @@ do_install() {
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
       _err "Can't create user: ${USER}"
-      exit 1
+      _exit 1
     fi
     _echo_g OK
   fi
@@ -493,7 +507,7 @@ do_install() {
   fi
   if [ -z "${VERSION_INFO}" ]; then
     _err "Failed to get version ${RELEASE_VERSION} from github."
-    exit 1
+    _exit 1
   else
     VERSION_INFO=($VERSION_INFO)
     RELEASE_VERSION="${VERSION_INFO[0]}"
@@ -511,7 +525,7 @@ do_install() {
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
     _err "Can't find available release for ${RELEASE_VERSION}"
-    exit 1
+    _exit 1
   fi
   _echo_g OK
 
@@ -521,7 +535,7 @@ do_install() {
   if [ "$EXIT_CODE" -ne 0 ]; then
     _err "Install enebular agent failed."
     rm ${TEMP_GZ}
-    exit 1
+    _exit 1
   fi
   rm ${TEMP_GZ}
   _echo_g OK
@@ -531,7 +545,7 @@ do_install() {
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
     _err "No suitable Node.js has been installed"
-    exit 1
+    _exit 1
   fi
 
   local NODE_ENV
@@ -541,7 +555,7 @@ do_install() {
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
     _err "Setup agent failed."
-    exit 1
+    _exit 1
   fi
 
   if [ "${PORT}" == "pelion" ] && ([ ! -z "${MBED_CLOUD_DEV_CRED}" ] || [ ! -z "${MBED_CLOUD_PAL}" ]); then
@@ -549,7 +563,7 @@ do_install() {
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
       _err "Setup mbed-cloud-connector failed."
-      exit 1
+      _exit 1
     fi
   fi
 
@@ -576,27 +590,31 @@ setup_mbed_cloud_connector() {
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
     _err "Python dependencies install failed."
-    exit 1
+    _exit 1
   fi
   _echo_g "OK"
 
   _task "Deploying mbed project"
-  cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector && mbed config root . && mbed deploy)"
+  local LOCAL_BIN_ENV
+  LOCAL_BIN_ENV="PATH=/home/${USER}/.local/bin:${PATH}"
+  cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector \
+    && mbed config root . && mbed deploy)" ${LOCAL_BIN_ENV}
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
     _err "mbed deploy failed."
-    exit 1
+    _exit 1
   fi
   _echo_g "OK"
 
   local MBED_CLOUD_DEFINE
   if [ ! -z ${MBED_CLOUD_DEV_CRED} ]; then
     _task "Copying mbed cloud dev credentials"
-    cmd_wrapper run_as_user ${USER} "cp ${MBED_CLOUD_DEV_CRED} ${INSTALL_DIR}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c"
+    cmd_wrapper run_as_user ${USER} "cp ${MBED_CLOUD_DEV_CRED} \
+      ${INSTALL_DIR}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c"
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
       _err "Failed to copy mbed cloud developer credentials."
-      exit 1
+      _exit 1
     fi
     MBED_CLOUD_DEFINE=define.txt
     _echo_g "OK"
@@ -608,13 +626,13 @@ setup_mbed_cloud_connector() {
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
       _err "Failed to copy mbed cloud credentials."
-      exit 1
+      _exit 1
     fi
     chown -R ${USER}:${USER} ${INSTALL_DIR}/tools/mbed-cloud-connector/pal
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
       _err "Failed to change mbed cloud credentials permission."
-      exit 1
+      _exit 1
     fi
     MBED_CLOUD_DEFINE=define_factory.txt
     _echo_g "OK"
@@ -627,16 +645,16 @@ setup_mbed_cloud_connector() {
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
     _err "Failed to complie mbed-cloud-connector."
-    exit 1
+    _exit 1
   fi
   _echo_g "OK"
 
-# FIXME: One more setup to check as the build script return zero exit code even the build was failed.
+# FIXME: One more setup to check as the build script return zero _exit code even the build was failed.
 # Consider check version number matches or not.
   _task "Verifying mbed-cloud-connector"
   if [ ! -f "${INSTALL_DIR}/tools/mbed-cloud-connector/out/Release/enebular-agent-mbed-cloud-connector.elf" ]; then
     _err "Can't find mbed-cloud-connector binary."
-    exit 1
+    _exit 1
   fi
   _echo_g "OK"
 }
@@ -667,7 +685,7 @@ post_install() {
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
       _err "Creating AWS IoT thing failed."
-      exit 1
+      _exit 1
     fi
     _echo_g "OK"
   fi
@@ -680,19 +698,18 @@ post_install() {
   fi
 
   if [ -z ${NO_STARTUP_REGISTER} ]; then
-    _echo Registering startup service...
-    _echo ---------
+    _task "Registering startup service"
     local LAUNCH_ENV
     LAUNCH_ENV=${NODE_ENV_PATH}
     if [ ! -z ${ENEBULAR_DEV_MODE} ]; then
       LAUNCH_ENV="${LAUNCH_ENV} ENEBULAR_DEV_MODE=true"
     fi
-    bash -c "${LAUNCH_ENV} ${INSTALL_DIR}/ports/${PORT}/bin/enebular-${PORT}-agent \
+    cmd_wrapper bash -c "${LAUNCH_ENV} ${INSTALL_DIR}/ports/${PORT}/bin/enebular-${PORT}-agent \
       startup-register -u ${USER}"
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
       _err "Registering startup service failed."
-      exit 1
+      _exit 1
     fi
     _echo_g "OK"
   fi
@@ -775,18 +792,22 @@ case $i in
   *)
   # unknown option
   _echo "Unknown option: ${i}"
-  exit 1
+  _exit 1
   ;;
 esac
 done
 
+LOG_FILE="$(create_log)"
+chmod +r ${LOG_FILE}
+"$@" >> ${LOG_FILE}
+
 if ! has "curl" && ! has "wget"; then
   _err "You need curl or wget to proceed"
-  exit 1
+  _exit 1
 fi
 if ! has "tar"; then
   _err "You need tar to proceed"
-  exit 1
+  _exit 1
 fi
 
 if [ -z ${INSTALL_DIR} ]; then
@@ -797,23 +818,23 @@ case "${PORT}" in
   awsiot | pelion);;
   *)
     _err 'Unknown port, supported ports: awsiot, pelion'
-    exit 1
+    _exit 1
   ;;
 esac
 
 # if user specified thing name, we assume thing creation is wanted.
 if [ ! -z ${AWS_IOT_THING_NAME} ]; then
     if [ -z ${AWS_ACCESS_KEY_ID} ]; then
-      _echo "aws-access-key-id is required" && exit 1
+      _echo "aws-access-key-id is required" && _exit 1
     fi
     if [ -z ${AWS_SECRET_ACCESS_KEY} ]; then
-      _echo "aws-secret-access-key is required" && exit 1
+      _echo "aws-secret-access-key is required" && _exit 1
     fi
     if [ -z ${AWS_IOT_REGION} ]; then
-      _echo "aws-iot-region is required" && exit 1
+      _echo "aws-iot-region is required" && _exit 1
     fi
     if [ -z ${AWS_IOT_THING_NAME} ]; then
-      _echo "aws-iot-thing-name is required" && exit 1
+      _echo "aws-iot-thing-name is required" && _exit 1
     fi
 fi
 
@@ -837,4 +858,4 @@ if [ -z ${NO_STARTUP_REGISTER} ]; then
   _echo "   sudo journalctl -ex -u enebular-agent-${USER}.service"
 fi
 _horizontal_bar
-
+_exit 0
