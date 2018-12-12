@@ -730,6 +730,9 @@ AGENT_DOWNLOAD_PATH="https://api.github.com/repos/enebular/enebular-runtime-agen
 SUPPORTED_NODE_VERSION="v9.2.1"
 ENEBULAR_BASE_URL="https://enebular.com/api/v1"
 
+LOG_FILE="$(create_log)"
+chmod +r ${LOG_FILE}
+
 for i in "$@"
 do
 case $i in
@@ -805,8 +808,6 @@ case $i in
 esac
 done
 
-LOG_FILE="$(create_log)"
-chmod +r ${LOG_FILE}
 "$@" >> ${LOG_FILE}
 
 if ! has "curl" && ! has "wget"; then
@@ -829,6 +830,16 @@ case "${PORT}" in
     _exit 1
   ;;
 esac
+
+if [ ! -z ${MBED_CLOUD_DEV_CRED} ] && [ ! -f ${MBED_CLOUD_DEV_CRED} ]; then
+  _err "${MBED_CLOUD_DEV_CRED} doesn't exist."
+  _exit 1
+fi
+
+if [ ! -z ${MBED_CLOUD_PAL} ] && [ ! -f ${MBED_CLOUD_PAL} ]; then
+  _err "${MBED_CLOUD_PAL} doesn't exist."
+  _exit 1
+fi
 
 # if user specified thing name, we assume thing creation is wanted.
 if [ ! -z ${AWS_IOT_THING_NAME} ]; then
