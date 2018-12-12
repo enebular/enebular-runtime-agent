@@ -61,7 +61,7 @@ The Install script provides the ability to install developer or factory credenti
 To let script includes the credentials, the credentials itself has to be updated to device first. Then one of the following path options must be specified to where the credentials is stored on device depends on developer or factory mode.
 
 ```sh
---mbed-cloud-dev-cret
+--mbed-cloud-dev-cred
 --mbed-cloud-pal
 ```
 
@@ -118,7 +118,7 @@ OPTION                      FORMAT              DEFAULT                         
 --aws-secret-access-key     =*                  N/A                                  AWS secret access key
 --aws-iot-region            =*                  N/A                                  AWS IoT region
 --aws-iot-thing-name        =*                  N/A                                  AWS IoT thing name
---mbed-cloud-dev-cret       =*                  N/A                                  Path to Mbed Cloud developer credentials c file
+--mbed-cloud-dev-cred       =*                  N/A                                  Path to Mbed Cloud developer credentials c file
 --mbed-cloud-pal            =*                  N/A                                  Path to Mbed Cloud factory pal folder
 --license-key               =*                  N/A                                  Enebular licence key to activate
 ```
@@ -147,13 +147,13 @@ Install the Mbed Cloud enebular-agent port with developer credentials on a Raspb
 
 ```sh
 scp mbed_cloud_dev_credentials.c pi@192.168.1.125:/tmp/
-ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=mbed --mbed-cloud-dev-cret=/tmp/mbed_cloud_dev_credentials.c"
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=mbed --mbed-cloud-dev-cred=/tmp/mbed_cloud_dev_credentials.c"
 ```
 
 Install the Mbed Cloud enebular-agent port with factory pal folder on a Raspberry Pi device via SSH (with the `pi` user and IP address of `192.168.1.125`).
 
 ```sh
-rsync -avr pal pi@192.168.1.125:/tmp/pal
+scp -r pal pi@192.168.1.125:/tmp/pal
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=mbed --mbed-cloud-pal=/tmp/pal"
 ```
 
