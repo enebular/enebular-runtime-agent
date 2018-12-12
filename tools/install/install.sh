@@ -622,13 +622,21 @@ setup_mbed_cloud_connector() {
 
   if [ ! -z ${MBED_CLOUD_PAL} ]; then
     _task "Copying mbed cloud credentials"
-    cp -RT ${MBED_CLOUD_PAL} ${INSTALL_DIR}/tools/mbed-cloud-connector/pal
+    local PAL_PATH
+    PAL_PATH=${INSTALL_DIR}/ports/pelion/.pelion-connector
+    cmd_wrapper mkdir -p ${PAL_PATH}
+    EXIT_CODE=$?
+    if [ "$EXIT_CODE" -ne 0 ]; then
+      _err "Failed to create pal directory."
+      _exit 1
+    fi
+    cmd_wrapper cp -RT ${MBED_CLOUD_PAL} ${PAL_PATH}/pal
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
       _err "Failed to copy mbed cloud credentials."
       _exit 1
     fi
-    chown -R ${USER}:${USER} ${INSTALL_DIR}/tools/mbed-cloud-connector/pal
+    cmd_wrapper chown -R ${USER}:${USER} ${PAL_PATH}
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
       _err "Failed to change mbed cloud credentials permission."
