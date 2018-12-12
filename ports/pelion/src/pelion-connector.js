@@ -77,8 +77,12 @@ export default class PelionConnector extends LocalConnector {
         'ENEBULAR_PELION_CONNECTOR_PATH'
       )
       if (!fs.existsSync(connectorPath)) {
-        this._info('Connector path doesn\'t exist: ' + connectorPath)
-        this._info('This may be legacy version, uses fixed socket path.')
+        this._info(
+          "Connector path doesn't exist: " +
+            connectorPath +
+            '. This may be legacy version, uses fixed socket path instead of ' +
+            this._agent.config.get('ENEBULAR_LOCAL_CONNECTOR_SOCKET_PATH')
+        )
         this._agent.config.set(
           'ENEBULAR_LOCAL_CONNECTOR_SOCKET_PATH',
           '/tmp/enebular-local-agent.socket'
