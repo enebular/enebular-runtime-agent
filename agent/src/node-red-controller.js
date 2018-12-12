@@ -95,6 +95,11 @@ export default class NodeREDController {
     this._log.info(msg, ...args)
   }
 
+  error(msg: string, ...args: Array<mixed>) {
+    args.push({ module: moduleName })
+    this._log.error(msg, ...args)
+  }
+
   _getDataDir() {
     return this._dataDir
   }
@@ -169,8 +174,8 @@ export default class NodeREDController {
   async _downloadPackage(downloadUrl: string): NodeRedFlowPackage {
     this.info('Downloading flow:', downloadUrl)
     const res = await fetch(downloadUrl)
-    if (res.status >= 400) {
-      throw new Error('invalid url')
+    if (!res.ok) {
+      throw new Error(`Failed response (${res.status} ${res.statusText})`)
     }
     return res.json()
   }
@@ -183,10 +188,8 @@ export default class NodeREDController {
       updates.push(
         new Promise((resolve, reject) => {
           const flowFilePath = path.join(this._getDataDir(), 'flows.json')
-          fs.writeFile(
-            flowFilePath,
-            JSON.stringify(flows),
-            err => (err ? reject(err) : resolve())
+          fs.writeFile(flowFilePath, JSON.stringify(flows), err =>
+            err ? reject(err) : resolve()
           )
         })
       )
@@ -196,10 +199,8 @@ export default class NodeREDController {
       updates.push(
         new Promise((resolve, reject) => {
           const credFilePath = path.join(this._getDataDir(), 'flows_cred.json')
-          fs.writeFile(
-            credFilePath,
-            JSON.stringify(creds),
-            err => (err ? reject(err) : resolve())
+          fs.writeFile(credFilePath, JSON.stringify(creds), err =>
+            err ? reject(err) : resolve()
           )
         })
       )
@@ -212,8 +213,13 @@ export default class NodeREDController {
             'enebular-agent-dynamic-deps',
             'package.json'
           )
-          if (Object.keys(flowPackage.packages).includes('node-red-contrib-enebular')) {
-            flowPackage.packages['node-red-contrib-enebular'] = 'file:../../node-red-contrib-enebular'
+          if (
+            Object.keys(flowPackage.packages).includes(
+              'node-red-contrib-enebular'
+            )
+          ) {
+            flowPackage.packages['node-red-contrib-enebular'] =
+              'file:../../node-red-contrib-enebular'
           }
           const packageJSON = JSON.stringify(
             {
@@ -224,10 +230,8 @@ export default class NodeREDController {
             null,
             2
           )
-          fs.writeFile(
-            packageJSONFilePath,
-            packageJSON,
-            err => (err ? reject(err) : resolve())
+          fs.writeFile(packageJSONFilePath, packageJSON, err =>
+            err ? reject(err) : resolve()
           )
         })
       )
@@ -374,14 +378,20 @@ export default class NodeREDController {
   async _sendEditorAgentIPAddress(editSession: EditSession) {
     const { ipAddress, sessionToken } = editSession
     try {
-      fetch(`http://${ipAddress}:9017/api/v1/agent-editor/ping`, {
-        method: 'POST',
-        headers: {
-          'x-ee-session': sessionToken
+      const res = await fetch(
+        `http://${ipAddress}:9017/api/v1/agent-editor/ping`,
+        {
+          method: 'POST',
+          headers: {
+            'x-ee-session': sessionToken
+          }
         }
-      })
+      )
+      if (!res.ok) {
+        throw new Error(`Failed response (${res.status} ${res.statusText})`)
+      }
     } catch (err) {
-      console.error('send editor error', err)
+      this.error('Failed to ping editor: ' + err.message)
     }
   }
 
