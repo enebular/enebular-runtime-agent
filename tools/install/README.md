@@ -153,7 +153,7 @@ ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E 
 Install the Mbed Cloud enebular-agent port with factory pal folder on a Raspberry Pi device via SSH (with the `pi` user and IP address of `192.168.1.125`).
 
 ```sh
-scp -r pal pi@192.168.1.125:/tmp/pal
+scp -r pal pi@192.168.1.125:/tmp/
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=mbed --mbed-cloud-pal=/tmp/pal"
 ```
 
