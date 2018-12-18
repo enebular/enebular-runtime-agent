@@ -7,6 +7,7 @@ import crypto from 'crypto'
 
 import EnebularAgent from '../src/enebular-agent'
 import ConnectorService from '../src/connector-service'
+import { decryptCredential } from '../src/utils'
 import NodeRedAdminApi from './helpers/node-red-admin-api'
 import Utils from './helpers/utils'
 import DummyServer from './helpers/dummy-server'
@@ -88,24 +89,6 @@ async function createAgentRunningWithTestNodeRedSettings(
 
   // console.log("user directory: ", agent._nodeRed._getDataDir())
   t.true(await nodeRedIsAlive(NodeRedPort))
-}
-
-function decryptCredential(key: string, credential: object) {
-  const encryptionKey = crypto
-    .createHash('sha256')
-    .update(key)
-    .digest()
-  const initVector = new Buffer(credential.substring(0, 32), 'hex')
-  const encryptedCredentials = credential.substring(32)
-  const decipher = crypto.createDecipheriv(
-    'aes-256-ctr',
-    encryptionKey,
-    initVector
-  )
-  const decrypted =
-    decipher.update(encryptedCredentials, 'base64', 'utf8') +
-    decipher.final('utf8')
-  return decrypted
 }
 
 test.serial(

@@ -7,7 +7,7 @@ import fetch from 'isomorphic-fetch'
 import type { Logger } from 'winston'
 import ProcessUtil from './process-util'
 import type LogManager from './log-manager'
-import crypto from 'crypto'
+import { encryptCredential } from './utils'
 
 export type NodeREDConfig = {
   dir: string,
@@ -181,23 +181,6 @@ export default class NodeREDController {
     return res.json()
   }
 
-  _encryptCredential(userKey: string, credentials: Object) {
-    const encryptionKey = crypto
-      .createHash('sha256')
-      .update(userKey)
-      .digest()
-    const initVector = crypto.randomBytes(16)
-    const cipher = crypto.createCipheriv(
-      'aes-256-ctr',
-      encryptionKey,
-      initVector
-    )
-    const result =
-      cipher.update(JSON.stringify(credentials), 'utf8', 'base64') +
-      cipher.final('base64')
-    return initVector.toString('hex') + result
-  }
-
   async _updatePackage(flowPackage: NodeRedFlowPackage) {
     this.info('Updating package', flowPackage)
     const updates = []
@@ -206,8 +189,10 @@ export default class NodeREDController {
       updates.push(
         new Promise((resolve, reject) => {
           const flowFilePath = path.join(this._getDataDir(), 'flows.json')
-          fs.writeFile(flowFilePath, JSON.stringify(flows), err =>
-            err ? reject(err) : resolve()
+          fs.writeFile(
+            flowFilePath,
+            JSON.stringify(flows),
+            err => (err ? reject(err) : resolve())
           )
         })
       )
@@ -247,7 +232,7 @@ export default class NodeREDController {
               //  JSON.parse(dotconfig)._credentialSecret
               const defaultKey = JSON.parse(dotconfig)._credentialSecret
 
-              creds = { $: this._encryptCredential(defaultKey, creds) }
+              creds = { $: encryptCredential(defaultKey, creds) }
             } catch (err) {
               throw new Error(
                 'encrypt credential and create flows_cred.json failed',
@@ -289,8 +274,10 @@ export default class NodeREDController {
             null,
             2
           )
-          fs.writeFile(packageJSONFilePath, packageJSON, err =>
-            err ? reject(err) : resolve()
+          fs.writeFile(
+            packageJSONFilePath,
+            packageJSON,
+            err => (err ? reject(err) : resolve())
           )
         })
       )
