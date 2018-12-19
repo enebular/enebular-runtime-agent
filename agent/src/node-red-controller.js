@@ -7,6 +7,7 @@ import fetch from 'isomorphic-fetch'
 import type { Logger } from 'winston'
 import ProcessUtil from './process-util'
 import type LogManager from './log-manager'
+import { encryptCredential } from './utils'
 
 export type NodeREDConfig = {
   dir: string,
@@ -188,19 +189,62 @@ export default class NodeREDController {
       updates.push(
         new Promise((resolve, reject) => {
           const flowFilePath = path.join(this._getDataDir(), 'flows.json')
-          fs.writeFile(flowFilePath, JSON.stringify(flows), err =>
-            err ? reject(err) : resolve()
+          fs.writeFile(
+            flowFilePath,
+            JSON.stringify(flows),
+            err => (err ? reject(err) : resolve())
           )
         })
       )
     }
     if (flowPackage.cred || flowPackage.creds) {
-      const creds = flowPackage.cred || flowPackage.creds
+      let creds = flowPackage.cred || flowPackage.creds
       updates.push(
         new Promise((resolve, reject) => {
           const credFilePath = path.join(this._getDataDir(), 'flows_cred.json')
-          fs.writeFile(credFilePath, JSON.stringify(creds), err =>
-            err ? reject(err) : resolve()
+          const editSessionRequested = this._flowPackageContainsEditSession(
+            flowPackage
+          )
+
+          let settings
+          if (editSessionRequested) {
+            // enebular-editor remote deploy
+            settings = require(path.join(
+              this._getDataDir(),
+              'enebular-editor-settings.js'
+            ))
+          } else {
+            settings = require(path.join(this._getDataDir(), 'settings.js'))
+          }
+          if (settings.credentialSecret === false) {
+            this.info('skip credential encryption')
+          } else {
+            this.info('credential encryption')
+            try {
+              const dotconfig = fs.readFileSync(
+                path.join(this._getDataDir(), '.config.json'),
+                'utf8'
+              )
+
+              // enebular-node-red dont see credentialSecret in settings.js
+              //const defaultKey =
+              //  settings.credentialSecret ||
+              //  JSON.parse(dotconfig)._credentialSecret
+              const defaultKey = JSON.parse(dotconfig)._credentialSecret
+
+              creds = { $: encryptCredential(defaultKey, creds) }
+            } catch (err) {
+              throw new Error(
+                'encrypt credential and create flows_cred.json failed',
+                err
+              )
+            }
+          }
+
+          fs.writeFile(
+            credFilePath,
+            JSON.stringify(creds),
+            err => (err ? reject(err) : resolve())
           )
         })
       )
@@ -230,8 +274,10 @@ export default class NodeREDController {
             null,
             2
           )
-          fs.writeFile(packageJSONFilePath, packageJSON, err =>
-            err ? reject(err) : resolve()
+          fs.writeFile(
+            packageJSONFilePath,
+            packageJSON,
+            err => (err ? reject(err) : resolve())
           )
         })
       )
