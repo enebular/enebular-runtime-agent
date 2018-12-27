@@ -167,7 +167,14 @@ export default class Config {
       } else {
         this._items[key] = {}
       }
-      this._items[key].value = value
+
+      if (typeof value == 'string' && typeof this._items[key].value == 'boolean') {
+        this._items[key].value = (value == 'true')
+      } else if (typeof value == 'string' && typeof this._items[key].value == 'number') {
+        this._items[key].value = parseInt(value)
+      } else {
+        this._items[key].value = value
+      }
     }
   }
 
