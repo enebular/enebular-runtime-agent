@@ -49,11 +49,11 @@
     },
     "middleware": {
       "mbedtls": {
-        "version": "2.4.2",
+        "version": "2.16.0",
         "from": {
           "protocol": "git",
           "location": "https://github.com/ARMmbed/mbedtls.git",
-          "tag": "mbedtls-2.4.2"
+          "tag": "mbedtls-2.16.0"
         },
         "to": "Middleware/mbedtls/mbedtls"
       }
