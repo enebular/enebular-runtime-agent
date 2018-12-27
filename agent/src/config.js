@@ -2,7 +2,7 @@
 import p from 'path'
 
 export type ConfigItem = {
-  value?: string,
+  value?: any,
   description: string,
   override?: boolean,
   userExpose?: boolean
