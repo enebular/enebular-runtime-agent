@@ -20,7 +20,6 @@ export default class PelionConnector extends LocalConnector {
     this._retryInfo = { retryCount: 0, lastRetryTimestamp: Date.now() }
     this._cproc = null
     this._portBasePath = path.resolve(__dirname, '../')
-    this._pidFile = path.resolve(this._portBasePath, './.pelion_connector.pid')
   }
 
   async onConnectorInit() {
@@ -61,7 +60,13 @@ export default class PelionConnector extends LocalConnector {
     this._agent.config.addItem(
       'ENEBULAR_PELION_CONNECTOR_DATA_PATH',
       path.resolve(this._portBasePath, './.pelion-connector/'),
-      'Pelion cloud connector data path',
+      'Pelion connector data path',
+      true
+    )
+    this._agent.config.addItem(
+      'ENEBULAR_PELION_CONNECTOR_PID_PATH',
+      path.resolve(this._portBasePath, './.pelion_connector.pid'),
+      'Pelion connector pid file path',
       true
     )
   }
@@ -87,6 +92,9 @@ export default class PelionConnector extends LocalConnector {
   async _startPelionConnector() {
     this._info('Starting Pelion connector...')
     return new Promise((resolve, reject) => {
+      this._pidFile = this._agent.config.get(
+        'ENEBULAR_PELION_CONNECTOR_PID_PATH'
+      )
       if (fs.existsSync(this._pidFile)) {
         ProcessUtil.killProcessByPIDFile(this._pidFile)
       }
