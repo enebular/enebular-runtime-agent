@@ -32,7 +32,7 @@ cd ports/pelion
 npm install
 ```
 
-4 . Setup the mbed-cloud-connector in the tools directory by following its [readme file](tools/mbed-cloud-connector/README.md).
+4 . Setup the mbed-cloud-connector in the tools directory by following its [readme file](../../tools/mbed-cloud-connector/README.md).
 
 ## Running
 
