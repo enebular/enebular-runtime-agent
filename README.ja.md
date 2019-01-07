@@ -62,8 +62,7 @@ enebular-agent を利用するには、利用する外部サービスに合わ�
 現在、以下のポートがあります。
 
 - **AWS IoT** - AWS IoT と連携して利用します
-- **Local** - ローカルにある他のプログラムと併せて利用します
-  - enebular-agent を Pelion Device Management と連携して利用する場合に[enebular-agent Mbed Cloud Connector](https://github.com/enebular/enebular-runtime-agent-mbed-cloud-connector)と併せて利用します。
+- **Pelion** - Arm Pelion と連携して利用します
 
 ## enebular editor モードの利用
 
@@ -162,7 +161,7 @@ enebular-agent を実行するには、利用する IoT プラットフォーム
 必要なモジュールと接続情報は、各 IoT プラットフォームのポートによって異なります。enebular-agent の設定と実行の詳細については、各ポートの readme ファイルを参照してください。
 
 - [AWS IoT ポートの README](ports/awsiot/README.ja.md)
-- [Local ポートの README](ports/local/README.ja.md)
+- [Pelion ポートの README](ports/pelion/README.ja.md)
 
 ### 設定方法
 

@@ -62,8 +62,7 @@ To use enebular-agent you select the appropriate port for the IoT platform conne
 The current ports are:
 
 - **AWS IoT** - For use with AWS IoT
-- **Local** - For use together other local programs
-  - This is used together with the [enebular-agent Mbed Cloud Connector](https://github.com/enebular/enebular-runtime-agent-mbed-cloud-connector) when using enebular-agent with Pelion Device Management
+- **Pelion** - For use witn Arm Pelion
 
 ## Using enebular editor Mode
 
@@ -162,7 +161,7 @@ To run enebular-agent you need to install the Node.js modules required by the Io
 The required modules and connection configuration differs for each IoT platform port. Please see the readme files of each port for details on how to set up and run the enebular-agent.
 
 - [AWS IoT Port README](ports/awsiot/README.md)
-- [Local Port README](ports/local/README.md)
+- [Pelion Port README](ports/pelion/README.md)
 
 ### Configuration
 
