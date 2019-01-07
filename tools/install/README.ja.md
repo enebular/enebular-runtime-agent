@@ -38,8 +38,8 @@ ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E 
 
 現在、以下のポートがサポートされています。
 
-- **awsiot** - AWS IoT と連携して利用します
-- **pelion** - Arm Pelion と連携して利用します
+- **AWS IoT** - AWS IoT と連携して利用します
+- **Pelion** - Arm Pelion と連携して利用します
 
 デフォルトでは、enebular-agent の AWS IoT ポートがインストールされます。
 
@@ -64,7 +64,7 @@ ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E 
 
 AWS IoT のモノを作成するコマンドの例については、下記「実行例」の項を参照してください。
 
-#### Pelion - Credentials Install
+#### Pelion の認証情報インストール
 
 The install script provides the ability to install developer or factory credentials for the pelion port.
 
@@ -81,7 +81,7 @@ See the *Examples* section below for an example of a command to install Pelion c
 
 ### ポートの手動設定
 
-このスクリプトは enebular-agent を全てインストールし、システム起動時に実行されるように設定します。しかし、選択したポート固有の設定も必要なため、AWS IoT の Thing の自動作成を選択しなかった場合、そのままだと起動が失敗します。
+このスクリプトは enebular-agent を全てインストールし、システム起動時に実行されるように設定します。しかし、選択したポート固有の設定も必要なため、自動設定のオプションを指定しなかった場合、そのままだと起動が失敗します。
 
 この場合、enebular-agent を正しく実行させるには、enebular-agent の readme ファイルの説明に従って、ポートに必要なファイルを適切な場所と正しいユーザー権限で追加してから、enebular-agent を再起動します。
 
@@ -104,8 +104,8 @@ OPTION                      FORMAT              DEFAULT                         
 --aws-secret-access-key     =*                  N/A                                  AWS secret access key
 --aws-iot-region            =*                  N/A                                  AWS IoTのリージョン
 --aws-iot-thing-name        =*                  N/A                                  AWS IoTのモノ名
---mbed-cloud-dev-cred       =*                  N/A                                  Path to Mbed Cloud developer credentials c file
---mbed-cloud-pal            =*                  N/A                                  Path to Mbed Cloud factory pal folder
+--mbed-cloud-dev-cred       =*                  N/A                                  Pelionの開発者用認証情報ファイルのパス
+--mbed-cloud-pal            =*                  N/A                                  Pelionのファクトリー用認証情報ディレクトリのパス
 --license-key               =*                  N/A                                  アクティベーション用のライセンスキー
 ```
 
@@ -127,6 +127,20 @@ wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- -v=2.1.2
 
 ```sh
 wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- -v=2.1.3 --user=enebular-user-test -d=/home/enebular-user-test/my-agent --no-startup-register
+```
+
+Raspberry Pi デバイスに `pi` ユーザと `192.168.1.125` の IP アドレスで SSH を介して Pelion の enebular-agent ポートを開発者用の認証情報と一緒にインストールします。
+
+```sh
+scp mbed_cloud_dev_credentials.c pi@192.168.1.125:/tmp/
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-dev-cred=/tmp/mbed_cloud_dev_credentials.c"
+```
+
+Raspberry Pi デバイスに `pi` ユーザと `192.168.1.125` の IP アドレスで SSH を介して Pelion の enebular-agent ポートをファクトリー用の認証情報と一緒にインストールします。
+
+```sh
+scp -r pal pi@192.168.1.125:/tmp/
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-pal=/tmp/pal"
 ```
 
 ## インストール完了後
