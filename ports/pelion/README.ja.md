@@ -3,15 +3,15 @@
 
 *Read this in other languages: [English](README.md), [日本語](README.ja.md)*
 
-Mbedポートを使用すると、enebular-runtime-agentをUnixソケット経由で別のローカルプロセスと一緒に使用できます。このローカルプロセスは、IoTプラットフォーム接続のプロキシとして動作し、エージェントにコマンドを配信します。
+Pelionポートを使用すると、enebular-agentをArm Pelionの接続で使用できます。
 
-ここではMbedポートの設定と実行の例を示します。この例で記載されているディレクトリは、エージェントのプロジェクトディレクトリのベースと想定して記述されています。 また、Node.js(8.9.0)とnpm(5.5.1)が既にインストールされていることを前提としています。
+ここではPelionポートの設定と実行の例を示します。この例で記載されているディレクトリは、エージェントのプロジェクトディレクトリをベースとして記述されています。 また、前提条件として、Node.js(9.2.1)とnpm(5.5.1)が既にインストールされている必要があります。
 
 ## セットアップ
 
 ※詳しくは、[enebular-docs](https://docs.enebular.com/)を参照してください。
 
-1 . エージェントのコアモジュールをインストールします。
+1 . enebular-agentのコアモジュールをインストールします。
 
 ```
 cd agent
@@ -25,29 +25,32 @@ cd node-red
 npm install
 ```
 
-3 . Mbedポートのモジュールをインストールします。
+3 . Pelionポートのモジュールをインストールします。
 
 ```
-cd ports/mbed
+cd ports/pelion
 npm install
 ```
 
+4 . toolsディレクトリに含まれているmbed-cloud-connectorを[readmeファイル](../../tools/mbed-cloud-connector/README.ja.md)に従ってセットアップします。
+
 ## 実行
 
+上記のセットアップが完了したら、exampleモジュールのディレクトリから`npm run start`コマンドでenebular-agentが起動できます。
 
-上記のセットアップが完了したら、エージェントは `npm run start`コマンドでMbedポートのディレクトリから起動できます。このコマンドと一緒に、Node-REDがインストールされているディレクトリを設定するように`NODE_RED_DIR`環境変数も指定する必要があります。また、デフォルトの状態ではエージェントがコンソールにログを出力しませんが、`DEBUG`環境変数を` info`または `debug`のいずれかに設定することで出力するようにできます。
-
-```
-NODE_RED_DIR=../../node-red DEBUG=info npm run start
-```
-
-エージェントが正常に起動すると、次のログメッセージが表示されます。
+デフォルトの状態ではコンソールにログを出力しませんが、`DEBUG`環境変数を` info`または `debug`のいずれかに設定することで出力するようにできます。
 
 ```
-internal: mbed: server listening on: "/tmp/enebular-local-agent.socket"
+DEBUG=info npm run start
 ```
 
-これが表示されると、エージェントはローカルのプロキシアプリケーションと一緒に使用できます。
+enebular-agentが正常に起動してPelionに接続すると、次のログメッセージが表示されます。
+
+```
+internal: pelion: conntector: Mbed Cloud: Client: connected
+```
+
+このメッセージが表示されると、enebularでデバイスを使用することができます。
 
 ## その他の設定オプション
 
