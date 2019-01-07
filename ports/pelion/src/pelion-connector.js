@@ -37,7 +37,7 @@ export default class PelionConnector extends LocalConnector {
         '../../',
         'tools/mbed-cloud-connector/out/Release/enebular-agent-mbed-cloud-connector.elf'
       ),
-      'Pelion connector executable file',
+      'Pelion connector executable path',
       true
     )
     this._agent.config.addItem(
@@ -67,7 +67,7 @@ export default class PelionConnector extends LocalConnector {
   }
 
   async _startPelionConnector() {
-    this._info('Starting pelion connector...')
+    this._info('Starting Pelion connector...')
     return new Promise((resolve, reject) => {
       if (fs.existsSync(this._pidFile)) {
         ProcessUtil.killProcessByPIDFile(this._pidFile)
@@ -78,10 +78,9 @@ export default class PelionConnector extends LocalConnector {
       )
       if (!fs.existsSync(connectorPath)) {
         this._info(
-          "Connector path doesn't exist: " +
+          "Connector doesn't exist at " +
             connectorPath +
-            '. This may be legacy version, uses fixed socket path instead of ' +
-            this._agent.config.get('ENEBULAR_LOCAL_CONNECTOR_SOCKET_PATH')
+            '. Will use fixed socket path to allow it to be started separately.'
         )
         this._agent.config.set(
           'ENEBULAR_LOCAL_CONNECTOR_SOCKET_PATH',
@@ -123,7 +122,7 @@ export default class PelionConnector extends LocalConnector {
         this._error('conntector: ' + str)
       })
       cproc.once('exit', (code, signal) => {
-        this._info(`pelion connector exited (${code !== null ? code : signal})`)
+        this._info(`Pelion connector exited (${code !== null ? code : signal})`)
         this._cproc = null
         if (code !== 0) {
           let shouldRetry = ProcessUtil.shouldRetryOnCrash(this._retryInfo)
@@ -138,11 +137,11 @@ export default class PelionConnector extends LocalConnector {
             }, 1000)
           } else {
             this._info(
-              `Unexpected exit, but retry count(${
+              `Unexpected exit, retry count (${
                 this._retryInfo.retryCount
               }) exceed max.`
             )
-            throw new Error('Failed to start pelion connector.')
+            throw new Error('Failed to start Pelion connector')
           }
         }
         this._removePIDFile()
@@ -161,9 +160,9 @@ export default class PelionConnector extends LocalConnector {
     return new Promise((resolve, reject) => {
       const cproc = this._cproc
       if (cproc) {
-        this._info('Stopping pelion connector...')
+        this._info('Stopping Pelion connector...')
         cproc.once('exit', () => {
-          this._info('pelion connector ended')
+          this._info('Pelion connector ended')
           this._cproc = null
           resolve()
         })
