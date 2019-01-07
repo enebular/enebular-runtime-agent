@@ -30,11 +30,22 @@ ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E 
 
 デフォルトでは、enebular-agent が `enebular` ユーザとして実行されるようにインストールされます。そのユーザが存在しない場合はインストールスクリプトが追加します。
 
+## Node.js のバージョン
+
+サポートされている Node.js のバージョンは、enebular のドキュメントで定義されています。インストールスクリプトがこのバージョンの既存インストールを見つけられない場合、nodejs.org から事前にビルドされたリリースをインストールします。
+
 ## ポート
 
-デフォルトでは、enebular-agent の AWS IoT ポートがインストールされます。その他のポートを選択するには、下記「オプション」の項を参照してください。
+現在、以下のポートがサポートされています。
 
-## AWS IoT の Thing 作成
+- **awsiot** - AWS IoT と連携して利用します
+- **pelion** - Arm Pelion と連携して利用します
+
+デフォルトでは、enebular-agent の AWS IoT ポートがインストールされます。
+
+### ポートの自動設定
+
+#### AWS IoT の Thing 作成
 
 インストールスクリプトは、enebular-agent が使用するための AWS IoT 上のモノを自動的に作成する機能を持っています。
 
@@ -53,11 +64,22 @@ ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E 
 
 AWS IoT のモノを作成するコマンドの例については、下記「実行例」の項を参照してください。
 
-## アクティベーション
+#### Pelion - Credentials Install
 
-`--license-key` オプションを指定するとインストールスクリプトが enebular-agent のアクティベーション用の設定ファイルを作成します。
+The install script provides the ability to install developer or factory credentials for the pelion port.
 
-## ポートの手動設定
+The credentials must be copied to the device first and then their location must be specified with one of the two following options.
+
+```sh
+--mbed-cloud-dev-cred
+--mbed-cloud-pal
+```
+
+It's best to copy the credentials to a temporary storage area on the device such as under `/tmp` which won't be saved after a reboot.
+
+See the *Examples* section below for an example of a command to install Pelion credentials.
+
+### ポートの手動設定
 
 このスクリプトは enebular-agent を全てインストールし、システム起動時に実行されるように設定します。しかし、選択したポート固有の設定も必要なため、AWS IoT の Thing の自動作成を選択しなかった場合、そのままだと起動が失敗します。
 
@@ -65,35 +87,15 @@ AWS IoT のモノを作成するコマンドの例については、下記「実
 
 enebular-agent の再起動方法と実行状態の確認方法については、下記「インストール完了後」の項を参照してください。
 
-## インストール完了後
+## アクティベーション
 
-インストールが完了してから、次のコマンドパターンを使用して systemd ジャーナルで enebular-agent の実行状態を確認することができます。
-
-```sh
-sudo journalctl -ex -u enebular-agent-<user>.service
-```
-
-デフォルトの `enebular` ユーザの場合、使用するコマンドは次の通りです。
-
-```sh
-sudo journalctl -ex -u enebular-agent-enebular.service
-```
-
-enebular-agent を再起動するには、次のコマンドを使用します。
-
-```sh
-sudo systemctl restart enebular-agent-enebular.service
-```
-
-## Node.js のバージョン
-
-サポートされている Node.js のバージョンは、enebular のドキュメントで定義されています。インストールスクリプトがこのバージョンの既存インストールを見つけられない場合、nodejs.org から事前にビルドされたリリースをインストールします。
+`--license-key` オプションを指定するとインストールスクリプトが enebular-agent のアクティベーション用の設定ファイルを作成します。
 
 ## オプション
 
 ```sh
 OPTION                      FORMAT              DEFAULT                              DESCRIPTION
--p or --port                -p=[mbed,awsiot]    awsiot                               インストールするポート
+-p or --port                -p=[awsiot,pelion]  awsiot                               インストールするポート
 -u or --user                -u=*                enebular                             インストール後の実行ユーザ
 -d or --install-dir         -d=<path>           /home/<user>/enebular-runtime-agent  インストール先のディレクトリ
 -v or --release-version     -v=*                The latest release                   enebular-agentのリリース
@@ -102,6 +104,8 @@ OPTION                      FORMAT              DEFAULT                         
 --aws-secret-access-key     =*                  N/A                                  AWS secret access key
 --aws-iot-region            =*                  N/A                                  AWS IoTのリージョン
 --aws-iot-thing-name        =*                  N/A                                  AWS IoTのモノ名
+--mbed-cloud-dev-cred       =*                  N/A                                  Path to Mbed Cloud developer credentials c file
+--mbed-cloud-pal            =*                  N/A                                  Path to Mbed Cloud factory pal folder
 --license-key               =*                  N/A                                  アクティベーション用のライセンスキー
 ```
 
@@ -123,4 +127,24 @@ wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- -v=2.1.2
 
 ```sh
 wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- -v=2.1.3 --user=enebular-user-test -d=/home/enebular-user-test/my-agent --no-startup-register
+```
+
+## インストール完了後
+
+インストールが完了してから、次のコマンドパターンを使用して systemd ジャーナルで enebular-agent の実行状態を確認することができます。
+
+```sh
+sudo journalctl -ex -u enebular-agent-<user>.service
+```
+
+デフォルトの `enebular` ユーザの場合、使用するコマンドは次の通りです。
+
+```sh
+sudo journalctl -ex -u enebular-agent-enebular.service
+```
+
+enebular-agent を再起動するには、次のコマンドを使用します。
+
+```sh
+sudo systemctl restart enebular-agent-enebular.service
 ```
