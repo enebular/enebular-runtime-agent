@@ -87,6 +87,11 @@ enebular-agent を AWS IoT と一緒に使用して、新しいモノを自動�
 - AWS IoT のリージョン
 - 追加するモノの名前
 
+enebular-agent を Arm Pelion と一緒に使用する場合、以下のいずれかが必要になります。
+
+- Pelionの開発者用認証情報ファイル
+- Pelionのファクトリー用認証情報palディレクトリ
+
 ### 基本的な利用方法
 
 インストールスクリプトは、次のコマンドで開発用の PC 上の SSH を使用してリモートのデバイスで実行します。
@@ -103,7 +108,13 @@ ssh -t <user>@<device-ip-address> "wget -qO- https://enebular.com/agent-install 
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s"
 ```
 
-上記のコマンドで enebular-agent の AWS IoT ポートがインストールされますが、必要な接続情報がまだ設定されていないため、起動することが出来ません。 新しい AWS IoT の*モノ*を自動的に追加して利用したい場合は、上記のコマンドの代わりに下記の「AWS IoT の Thing 自動作成とセットアップ」の説明に従ってください。
+AWS IoT以外のポートをインストールするには、`--port`オプションを指定します。Pelionのポートをインストールする場合のコマンドは次のようになります。
+
+```sh
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion"
+```
+
+上記のコマンドで enebular-agent がインストールされますが、必要な接続情報がまだ設定されていないため、起動することが出来ません。 新しい AWS IoT の*モノ*を自動的に追加して利用したい場合は、上記のコマンドの代わりに下記の「AWS IoT の Thing 自動作成とセットアップ」の説明に従ってください。また、 enebular-agent の Pelion ポートを利用して必要となる認証情報をインストールしたい場合は、下記の「Pelion の認証情報インストール」の説明に従ってください。
 
 手動で接続情報を設定したい場合、ポートに必要なファイルを適切な場所と正しいユーザー権限で追加してから、enebular-agent を再起動しないといけません。詳細については、下記の「手動セットアップ」の項を参照してください。
 
@@ -122,6 +133,24 @@ enebular-agent の AWS IoT ポートをインストールし、新しい AWS IoT
 
 ```sh
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
+```
+
+### Pelion Credentials Install
+
+To install the Pelion enebular-agent port, the required Pelion credentials must be copied to the device first and then their location specified with one of the two following options. 
+
+```sh
+--mbed-cloud-dev-cred=<Path of the Pelion developer credentials c file>
+--mbed-cloud-pal=<Path of the Pelion factory pal directory>
+```
+
+The `--port` option must also be set to `pelion`.
+
+For example, to install the Pelion port with developer credentials on a Raspberry Pi device (with the `pi` user and IP address of `192.168.1.125`), the commands would be similar to the following.
+
+```sh
+scp mbed_cloud_dev_credentials.c pi@192.168.1.125:/tmp/
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-dev-cred=/tmp/mbed_cloud_dev_credentials.c"
 ```
 
 ### 確認方法

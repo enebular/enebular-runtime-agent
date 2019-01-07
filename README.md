@@ -87,6 +87,11 @@ If you are using enebular-agent with AWS IoT and you'd like to automatically add
 - Your AWS IoT region
 - A name for the new _thing_
 
+If you are using enebular-agent with Arm Pelion, you'll also need to have one of the following.
+
+- Pelion developer credentials c file
+- Pelion factory pal directory
+
 ### Basic Usage
 
 The install script can be run on a remote device by using SSH on your development PC with the following command pattern.
@@ -103,7 +108,13 @@ For example, to run the script on a remote Raspberry Pi with the default `pi` us
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s"
 ```
 
-This will install the AWS IoT enebular-agent port, but as it will be missing the required connection info it will not actually run. If you'd like to automatically add a new AWS IoT _thing_ to use, then follow the instructions in the "Automatic AWS IoT Thing Creation and Setup" section below instead.
+To install a port other than AWS IoT specify the `--port` option. If installing the Pelion port, the command would be as follows.
+
+```sh
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion"
+```
+
+This will install enebular-agent, but as it will be missing the required connection info it will not actually run. If you'd like to automatically add a new AWS IoT _thing_ to use, then follow the instructions in the "Automatic AWS IoT Thing Creation and Setup" section below instead. If you're using Pelion enebular-agent port and you'd like to install the required credentials, then follow the instructions in the "Pelion Credentials Install" section.
 
 If you'd like to set up the connection info manually, you'll need to add the required files for the port (in the correct location and with the correct user permissions) as specified in the port's readme file and then restart enebular-agent. See the "Manual Setup" section further below for more details on this.
 
@@ -122,6 +133,24 @@ For example, to install the AWS IoT port and create an AWS IoT thing named `rasp
 
 ```sh
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
+```
+
+### Pelion Credentials Install
+
+To install the Pelion enebular-agent port, the required Pelion credentials must be copied to the device first and then their location specified with one of the two following options.
+
+```sh
+--mbed-cloud-dev-cred=<Path of the Pelion developer credentials c file>
+--mbed-cloud-pal=<Path of the Pelion factory pal directory>
+```
+
+The `--port` option must also be set to `pelion`.
+
+For example, to install the Pelion port with developer credentials on a Raspberry Pi device (with the `pi` user and IP address of `192.168.1.125`), the commands would be similar to the following.
+
+```sh
+scp mbed_cloud_dev_credentials.c pi@192.168.1.125:/tmp/
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-dev-cred=/tmp/mbed_cloud_dev_credentials.c"
 ```
 
 ### Confirmation
