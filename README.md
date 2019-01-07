@@ -64,14 +64,9 @@ The current ports are:
 - **AWS IoT** - For use with AWS IoT
 - **Pelion** - For use with Arm Pelion
 
-## Using enebular editor Mode
+## Using with enebular editor
 
-To use enebular-agent with the enebular editor, you will first need to install enebular-agent manually. For instructions on installing it manually, see the _Manual Setup_ section further below.
-
-```sh
-cd ports/awsiot
-DEBUG=info ./bin/enebular-awsiot-agent --dev-mode
-```
+To use enebular-agent with the enebular editor, enebular-agent must be started in developer mode by specifying the `--dev-mode` option. This option can be specified both when using the install script in the "Quick Setup" section and when starting enebular-agent manually.
 
 ## Quick Setup
 
