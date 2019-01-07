@@ -1,5 +1,5 @@
 
-# enebular-agent - Mbedポート
+# enebular-agent - Pelionポート
 
 *Read this in other languages: [English](README.md), [日本語](README.ja.md)*
 
@@ -36,7 +36,7 @@ npm install
 
 ## 実行
 
-上記のセットアップが完了したら、exampleモジュールのディレクトリから`npm run start`コマンドでenebular-agentが起動できます。
+上記のセットアップが完了したら、Pelionポートのディレクトリから`npm run start`コマンドでenebular-agentが起動できます。
 
 デフォルトの状態ではコンソールにログを出力しませんが、`DEBUG`環境変数を` info`または `debug`のいずれかに設定することで出力するようにできます。
 
