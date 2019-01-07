@@ -24,8 +24,26 @@ export default class PelionConnector extends LocalConnector {
   }
 
   async onConnectorInit() {
-    await this._startPelionConnector()
-    super.onConnectorInit()
+    const path = this._agent.config.get('ENEBULAR_PELION_CONNECTOR_PATH')
+    const connectorExists = fs.existsSync(path)
+
+    if (!connectorExists) {
+      this._debug(
+        `Connector doesn't exist at ${path}. ` +
+          'Will use fixed socket path instead of ' +
+          this._agent.config.get('ENEBULAR_LOCAL_CONNECTOR_SOCKET_PATH') +
+          ' to allow it to be started separately.'
+      )
+      this._agent.config.set(
+        'ENEBULAR_LOCAL_CONNECTOR_SOCKET_PATH',
+        '/tmp/enebular-local-agent.socket'
+      )
+    }
+    await super.onConnectorInit()
+
+    if (connectorExists) {
+      await this._startPelionConnector()
+    }
   }
 
   onConnectorRegisterConfig() {
@@ -73,28 +91,10 @@ export default class PelionConnector extends LocalConnector {
         ProcessUtil.killProcessByPIDFile(this._pidFile)
       }
 
-      const connectorPath = this._agent.config.get(
-        'ENEBULAR_PELION_CONNECTOR_PATH'
-      )
-      if (!fs.existsSync(connectorPath)) {
-        this._info(
-          "Connector doesn't exist at " +
-            connectorPath +
-            '. Will use fixed socket path to allow it to be started separately.'
-        )
-        this._agent.config.set(
-          'ENEBULAR_LOCAL_CONNECTOR_SOCKET_PATH',
-          '/tmp/enebular-local-agent.socket'
-        )
-        resolve()
-        return
-      }
-
       const startupCommand =
-        connectorPath +
+        this._agent.config.get('ENEBULAR_PELION_CONNECTOR_PATH') +
         ' -s ' +
         this._agent.config.get('ENEBULAR_LOCAL_CONNECTOR_SOCKET_PATH')
-
       this._info('Pelion connector startup command: ' + startupCommand)
 
       const dataPath = this._agent.config.get(
