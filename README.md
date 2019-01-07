@@ -130,13 +130,14 @@ Once the script has completed successfully, it will display a report similar to 
 
 ```
  enebular-agent has been successfully installed ✔
- Version: <version>
- Location: <directory>
- User: enebular
- AWS IoT Thing <thing-name> has been created.
+   - Version: <version>
+   - Location: <directory>
+   - User: enebular
+   - Service name: enebular-agent-enebular
+
  enebular-agent is running as a system service.
  To check the status of agent, run the following command on the target device:
-   sudo journalctl -ex -u enebular-agent-<user>.service
+   sudo journalctl -ex -u enebular-agent-enebular.service
 ```
 
 ### More Details

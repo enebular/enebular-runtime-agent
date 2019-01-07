@@ -68,15 +68,6 @@ enebular-agent を利用するには、利用する外部サービスに合わ�
 
 enebular-agent を enebular editor と連携して利用するには、`--dev-mode`オプションを指定して enebular-agent を開発者用モードで起動する必要があります。このオプションは、下記「クイックセットアップ」の項で説明されているインストール用のスクリプトを利用する場合にも、 enebular-agent を手動で起動する場合にも指定することができます。
 
-## enebular editor モードの利用
-
-enebular-agent を enebular editor と連携して利用するには、enebular-agent を手動でセットアップする必要があります。手動セットアップの詳細については、下記「手動セットアップ」の項を参照してください。
-
-```sh
-cd ports/awsiot
-DEBUG=info ./bin/enebular-awsiot-agent --dev-mode
-```
-
 ## クイックセットアップ
 
 インストール用のスクリプトを使用して enebular-agent を Raspberry Pi のような Debian ベースのデバイスで素早くセットアップできます。 このスクリプトは ssh クライアントを使用して開発用の PC 上のコマンドとして実行することをお勧めします。スクリプトの使用要件は以下の通りです。
@@ -139,13 +130,14 @@ ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E 
 
 ```
  enebular-agent has been successfully installed ✔
- Version: <version>
- Location: <directory>
- User: enebular
- AWS IoT Thing <thing-name> has been created.
+   - Version: <version>
+   - Location: <directory>
+   - User: enebular
+   - Service name: enebular-agent-enebular
+
  enebular-agent is running as a system service.
  To check the status of agent, run the following command on the target device:
-   sudo journalctl -ex -u enebular-agent-<user>.service
+   sudo journalctl -ex -u enebular-agent-enebular.service
 ```
 
 ### 詳細情報
