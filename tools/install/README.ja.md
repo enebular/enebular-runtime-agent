@@ -107,6 +107,7 @@ OPTION                      FORMAT              DEFAULT                         
 --mbed-cloud-dev-cred       =*                  N/A                                  Pelionの開発者用認証情報ファイルのパス
 --mbed-cloud-pal            =*                  N/A                                  Pelionのファクトリー用認証情報ディレクトリのパス
 --license-key               =*                  N/A                                  アクティベーション用のライセンスキー
+--dev-mode                  N/A                 N/A                                  enebular-agentを開発者用モードで起動する
 ```
 
 ## 実行例

@@ -39,8 +39,8 @@ The supported Node.js version is as defined in the offical enebular documentatio
 
 The currently supported ports are:
 
-- **awsiot** - For use with AWS IoT
-- **pelion** - For use witn Arm Pelion
+- **AWS IoT** - For use with AWS IoT
+- **Pelion** - For use witn Arm Pelion
 
 By default the awsiot port of enebular-agent is installed. 
 
@@ -82,7 +82,7 @@ See the *Examples* section below for an example of a command to install Pelion c
 
 ### Manual Port Configuration
 
-While this script will fully install enebular-agent and set it up to run at system startup, as enebular-agent also needs additional configuration specific to the selected port, if you didn't select an automatic configuration option then enebular-agent will actually fail to run to start with.
+While this script will fully install enebular-agent and set it up to run at system startup, as enebular-agent also needs additional configuration specific to the selected port, if you didn't specify an automatic configuration option then enebular-agent will actually fail to run to start with.
 
 To have enebular-agent run correctly, add the required files for the port (in the correct location and with the correct user permissions) as specified in the enebular-agent readme files and then restart enebular-agent.
 
@@ -108,6 +108,7 @@ OPTION                      FORMAT              DEFAULT                         
 --mbed-cloud-dev-cred       =*                  N/A                                  Path to Mbed Cloud developer credentials c file
 --mbed-cloud-pal            =*                  N/A                                  Path to Mbed Cloud factory pal folder
 --license-key               =*                  N/A                                  Enebular licence key to activate
+--dev-mode                  N/A                 N/A                                  Run enebular-agent in developer mode
 ```
 
 ## Examples
