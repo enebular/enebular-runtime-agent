@@ -67,16 +67,16 @@ See the *Examples* section below for an example of a command to create an AWS Io
 
 #### Pelion - Credentials Install
 
-The install script provides the ability to install developer or factory credentials for pelion port.
+The install script provides the ability to install developer or factory credentials for the pelion port.
 
-The credentials must be copied to the device first, and then their location must be specified with one of the two following options.
+The credentials must be copied to the device first and then their location must be specified with one of the two following options.
 
 ```sh
 --mbed-cloud-dev-cred
 --mbed-cloud-pal
 ```
 
-It's best to copy the credentials to a temporary storage area on the device such as under `/tmp/` which won't saved after a reboot.
+It's best to copy the credentials to a temporary storage area on the device such as under `/tmp` which won't be saved after a reboot.
 
 See the *Examples* section below for an example of a command to install Pelion credentials.
 
@@ -130,18 +130,18 @@ Install the AWS IoT enebular-agent port using the `2.1.3` release with the user 
 wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- -v=2.1.3 --user=enebular-user-test -d=/home/enebular-user-test/my-agent --no-startup-register
 ```
 
-Install the Mbed Cloud enebular-agent port with developer credentials on a Raspberry Pi device via SSH (with the `pi` user and IP address of `192.168.1.125`).
+Install the Pelion enebular-agent port with developer credentials on a Raspberry Pi device via SSH (with the `pi` user and IP address of `192.168.1.125`).
 
 ```sh
 scp mbed_cloud_dev_credentials.c pi@192.168.1.125:/tmp/
-ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=mbed --mbed-cloud-dev-cred=/tmp/mbed_cloud_dev_credentials.c"
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-dev-cred=/tmp/mbed_cloud_dev_credentials.c"
 ```
 
-Install the Mbed Cloud enebular-agent port with factory pal folder on a Raspberry Pi device via SSH (with the `pi` user and IP address of `192.168.1.125`).
+Install the Pelion enebular-agent port with the factory pal folder on a Raspberry Pi device via SSH (with the `pi` user and IP address of `192.168.1.125`).
 
 ```sh
 scp -r pal pi@192.168.1.125:/tmp/
-ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=mbed --mbed-cloud-pal=/tmp/pal"
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-pal=/tmp/pal"
 ```
 
 ## Post Install
