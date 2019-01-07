@@ -62,7 +62,7 @@ To use enebular-agent you select the appropriate port for the IoT platform conne
 The current ports are:
 
 - **AWS IoT** - For use with AWS IoT
-- **Pelion** - For use witn Arm Pelion
+- **Pelion** - For use with Arm Pelion
 
 ## Using enebular editor Mode
 

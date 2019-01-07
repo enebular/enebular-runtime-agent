@@ -148,7 +148,7 @@ ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E 
 
 上記以外のオプションなどの詳細情報については、インストールスクリプトの readme ファイルを参照してください。
 
-- [インストールスクリプトの README](tools/install/README.md)
+- [インストールスクリプトの README](tools/install/README.ja.md)
 
 ## 手動セットアップ
 
