@@ -66,18 +66,18 @@ AWS IoT のモノを作成するコマンドの例については、下記「実
 
 #### Pelion の認証情報インストール
 
-The install script provides the ability to install developer or factory credentials for the pelion port.
+インストールスクリプトは、enebular-agent が使用するための Pelion の開発者用またはファクトリー用の認証情報をインストールする機能を持っています。
 
-The credentials must be copied to the device first and then their location must be specified with one of the two following options.
+認証情報は先にデバイスに転送してから、転送先を以下のオプションのいずれかで設定する必要があります。
 
 ```sh
 --mbed-cloud-dev-cred
 --mbed-cloud-pal
 ```
 
-It's best to copy the credentials to a temporary storage area on the device such as under `/tmp` which won't be saved after a reboot.
+認証情報は、`/tmp`などのように再起動後に保存されない一時的なストレージ領域に転送するのが望ましいです。
 
-See the *Examples* section below for an example of a command to install Pelion credentials.
+認証情報をインストールするコマンドの例については、下記「実行例」の項を参照してください。
 
 ### ポートの手動設定
 
