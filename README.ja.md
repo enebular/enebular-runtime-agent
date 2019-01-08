@@ -135,18 +135,18 @@ enebular-agent の AWS IoT ポートをインストールし、新しい AWS IoT
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
 ```
 
-### Pelion Credentials Install
+### Pelion の認証情報インストール
 
-To install the Pelion enebular-agent port, the required Pelion credentials must be copied to the device first and then their location specified with one of the two following options. 
+enebular-agent の Pelion ポートをインストールするには、必要となる認証情報を先にデバイスに転送してから、転送先を以下のオプションのいずれかで設定する必要があります。
 
 ```sh
---mbed-cloud-dev-cred=<Path of the Pelion developer credentials c file>
---mbed-cloud-pal=<Path of the Pelion factory pal directory>
+--mbed-cloud-dev-cred=<Pelionの開発者用認証情報ファイルのパス>
+--mbed-cloud-pal=<Pelionのファクトリー用認証情報palディレクトリのパス>
 ```
 
-The `--port` option must also be set to `pelion`.
+また、`--port`オプションで`pelion`を設定する必要があります。
 
-For example, to install the Pelion port with developer credentials on a Raspberry Pi device (with the `pi` user and IP address of `192.168.1.125`), the commands would be similar to the following.
+例えば、`pi` ユーザと `192.168.1.125` の IP アドレスを持つ Raspberry Pi デバイスに Pelion の enebular-agent ポートを開発者用の認証情報と一緒にインストールする場合のコマンドは次のようになります。
 
 ```sh
 scp mbed_cloud_dev_credentials.c pi@192.168.1.125:/tmp/

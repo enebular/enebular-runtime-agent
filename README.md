@@ -114,7 +114,7 @@ To install a port other than AWS IoT specify the `--port` option. If installing 
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion"
 ```
 
-This will install enebular-agent, but as it will be missing the required connection info it will not actually run. If you'd like to automatically add a new AWS IoT _thing_ to use, then follow the instructions in the "Automatic AWS IoT Thing Creation and Setup" section below instead. If you're using Pelion enebular-agent port and you'd like to install the required credentials, then follow the instructions in the "Pelion Credentials Install" section.
+This will install enebular-agent, but as it will be missing the required connection info it will not actually run. If you'd like to automatically add a new AWS IoT _thing_ to use, then follow the instructions in the "Automatic AWS IoT Thing Creation and Setup" section below instead. If you're using the Pelion enebular-agent port and you'd like to install the required credentials, then follow the instructions in the "Pelion Credentials Install" section.
 
 If you'd like to set up the connection info manually, you'll need to add the required files for the port (in the correct location and with the correct user permissions) as specified in the port's readme file and then restart enebular-agent. See the "Manual Setup" section further below for more details on this.
 
