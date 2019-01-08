@@ -105,8 +105,8 @@ OPTION                      FORMAT              DEFAULT                         
 --aws-secret-access-key     =*                  N/A                                  AWS secret access key
 --aws-iot-region            =*                  N/A                                  AWS IoT region
 --aws-iot-thing-name        =*                  N/A                                  AWS IoT thing name
---mbed-cloud-dev-cred       =*                  N/A                                  Path to Mbed Cloud developer credentials c file
---mbed-cloud-pal            =*                  N/A                                  Path to Mbed Cloud factory pal folder
+--mbed-cloud-dev-cred       =*                  N/A                                  Path to Pelion developer credentials c file
+--mbed-cloud-pal            =*                  N/A                                  Path to Pelion factory pal directory
 --license-key               =*                  N/A                                  Enebular licence key to activate
 --dev-mode                  N/A                 N/A                                  Run enebular-agent in developer mode
 ```
@@ -138,7 +138,7 @@ scp mbed_cloud_dev_credentials.c pi@192.168.1.125:/tmp/
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-dev-cred=/tmp/mbed_cloud_dev_credentials.c"
 ```
 
-Install the Pelion enebular-agent port with the factory pal folder on a Raspberry Pi device via SSH (with the `pi` user and IP address of `192.168.1.125`).
+Install the Pelion enebular-agent port with the factory pal directory on a Raspberry Pi device via SSH (with the `pi` user and IP address of `192.168.1.125`).
 
 ```sh
 scp -r pal pi@192.168.1.125:/tmp/
