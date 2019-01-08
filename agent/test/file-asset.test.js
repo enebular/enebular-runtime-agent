@@ -649,10 +649,19 @@ test.serial(
     )
     agent = ret.agent
 
-    const args = 'test args --fix -gc'
+    const argvExpected = [
+      '-valid=true',
+      '--quotes',
+      '"test quotes"',
+      '"nested \'quotes\'"',
+      '--key="some value"',
+      '--title="Peter\'s Friends"'
+    ]
+
+    const args = argvExpected.join(' ')
     const id = 'random-' + Utils.randomString()
     const p = path.join(server._tmpAssetFilePath, id)
-    const content = `#!/bin/bash\n arg="$*"\n echo "$arg" > asset_args`
+    const content = '#!/bin/bash\n touch asset_args\n for arg in "$@"; do echo "$arg" >> asset_args; done;'
     fs.writeFileSync(p, content)
     const integrity = await Utils.getFileIntegrity(p)
     const asset = {
@@ -688,13 +697,18 @@ test.serial(
     t.true(
       fs.existsSync(path.join(agent._assetManager.dataDir(), 'asset_args'))
     )
-    t.is(
-      fs
+    const argv = fs
         .readFileSync(path.join(agent._assetManager.dataDir(), 'asset_args'))
         .toString()
-        .trim(),
-      args
-    )
+        .trim()
+        .split(/\r\n|\r|\n/g)
+
+    t.is(argv[0], '-valid=true')
+    t.is(argv[1], '--quotes')
+    t.is(argv[2], 'test quotes')
+    t.is(argv[3], 'nested \'quotes\'')
+    t.is(argv[4], '--key="some value"')
+    t.is(argv[5], '--title="Peter\'s Friends"')
 
     fs.unlinkSync(ret.assetStatePath)
     fs.removeSync(ret.assetDataPath)
