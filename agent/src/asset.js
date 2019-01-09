@@ -4,6 +4,7 @@ import fs from 'fs'
 import path from 'path'
 import rimraf from 'rimraf'
 import mkdirp from 'mkdirp'
+import stringArgv from 'string-argv'
 import { spawn } from 'child_process'
 import type AssetManager from './asset-manager'
 
@@ -108,7 +109,7 @@ export default class Asset {
   }
 
   _execArgsArray(argsString: string): Array<string> {
-    return argsString ? argsString.split(/\s+/) : []
+    return argsString ? stringArgv(argsString) : []
   }
 
   _execEnvObj(envs: Array<string>): {} {
