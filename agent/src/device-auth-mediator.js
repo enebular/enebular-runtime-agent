@@ -124,6 +124,8 @@ export default class DeviceAuthMediator extends EventEmitter {
     this._seq++
     const state = `req-${this._seq}`
     const waitTokens = this._waitForTokenUpdate()
+    waitTokens.catch(() => {});
+
     try {
       await postJSON(
         this._requestUrl,
