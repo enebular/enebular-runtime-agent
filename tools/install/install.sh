@@ -265,6 +265,9 @@ apply_patches() {
   find ${PATCH_DIR} -type f -name "*.patch" | while read PATCH_FULL_PATH; do
     PATCH_RELATIVE_PATH=./${PATCH_FULL_PATH#"${PATCH_DIR}/"}
     PATCH_PROJECT_PATH=${INSTALL_DIR}/${PATCH_RELATIVE_PATH%/*}
+    if [ ! -d "${PATCH_PROJECT_PATH}" ]; then
+      continue
+    fi
     patch -p1 -N --dry-run --silent -f -d ${PATCH_PROJECT_PATH} < ${PATCH_FULL_PATH} &>/dev/null
     if [ "$?" -eq 0 ]; then
       _task "Applying ${PATCH_RELATIVE_PATH}"
