@@ -124,6 +124,10 @@ export default class DeviceAuthMediator extends EventEmitter {
     this._seq++
     const state = `req-${this._seq}`
     const waitTokens = this._waitForTokenUpdate()
+    waitTokens.catch(err => {
+      this.debug('Auth request: ' + err.message)
+    })
+
     try {
       await postJSON(
         this._requestUrl,
@@ -147,7 +151,7 @@ export default class DeviceAuthMediator extends EventEmitter {
         resolve()
       })
       setTimeout(() => {
-        reject(new Error('Device authentication timeout'))
+        reject(new Error('Tokens did not arrive'))
       }, AUTH_TOKEN_TIMEOUT)
     })
   }
