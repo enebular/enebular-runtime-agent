@@ -189,10 +189,6 @@ if (require.main === module) {
   process.on('SIGTERM', () => {
     exit()
   })
-  process.on('uncaughtException', err => {
-    console.error(`Uncaught exception: ${err.stack}`)
-    process.exit(1)
-  })
 
   startup().then((ret) => {
     if (!ret) {
