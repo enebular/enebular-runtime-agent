@@ -253,6 +253,49 @@ install_tarball() {
   fi
 }
 
+#args: patch_dir
+apply_patches() {
+  local PATCH_DIR
+  PATCH_DIR="${1-}"
+  if [ -z "${PATCH_DIR}" ]; then
+    _err "Missing patch path."
+    return 1
+  fi
+
+  find ${PATCH_DIR} -type f -name "*.patch" | while read PATCH_FULL_PATH; do
+    PATCH_RELATIVE_PATH=./${PATCH_FULL_PATH#"${PATCH_DIR}/"}
+    PATCH_PROJECT_PATH=${INSTALL_DIR}/${PATCH_RELATIVE_PATH%/*}
+    patch -p1 -N --dry-run --silent -f -d ${PATCH_PROJECT_PATH} < ${PATCH_FULL_PATH} &>/dev/null
+    if [ "$?" -eq 0 ]; then
+      _task "Applying ${PATCH_RELATIVE_PATH}"
+      patch -p1 -N --silent -f -d ${PATCH_PROJECT_PATH} < ${PATCH_FULL_PATH} &>/dev/null
+      if [ "$?" -ne 0 ]; then
+        _err "Applying patch failed, ignore it."
+      else
+        _echo "Patch applied."
+      fi
+      _echo_g "OK"
+    else
+      patch -p1 -R --dry-run --silent -f -d ${PATCH_PROJECT_PATH} < ${PATCH_FULL_PATH} &>/dev/null
+      if [ "$?" -ne 0 ]; then
+        _task "Applying ${PATCH_RELATIVE_PATH}"
+        _err "Applying patch failed, ignore it."
+        _echo_g "OK"
+      # else
+        #_echo "Patch has been applied, skip it."
+      fi
+    fi
+  done
+}
+
+apply_patches_if_available() {
+  local PATCH_PATH_TO_INSTALL
+  PATCH_PATH_TO_INSTALL=${INSTALL_DIR}/tools/install/patches
+  if [ -d "${PATCH_PATH_TO_INSTALL}" ]; then
+    apply_patches ${PATCH_PATH_TO_INSTALL}
+  fi
+}
+
 #args: port, user, install_dir, node_env, install_kind
 setup_enebular_agent() {
   local PORT
@@ -289,6 +332,8 @@ setup_enebular_agent() {
   _task Checking build environment for enebular-agent ${INSTALL_KIND} package
   run_as_user ${USER} 'echo Build environment nodejs: `node -v` \(npm `npm -v`\)' ${NODE_ENV}
   _echo_g "OK"
+
+  apply_patches_if_available
 
   local EXIT_CODE
   case "${INSTALL_KIND}" in
@@ -645,6 +690,8 @@ setup_mbed_cloud_connector() {
     MBED_CLOUD_DEFINE=define_factory.txt
     _echo_g "OK"
   fi
+
+  apply_patches_if_available
 
   _task "Building mbed-cloud-connector (It may take a few minutes)"
   cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector && \
