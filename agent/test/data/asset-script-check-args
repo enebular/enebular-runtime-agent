@@ -1,0 +1,3 @@
+#!/bin/bash
+touch asset_args 
+for arg in "$@"; do echo "$arg" >> asset_args; done;
