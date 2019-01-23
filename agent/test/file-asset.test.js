@@ -532,9 +532,8 @@ test.serial(
     )
     agent = ret.agent
 
-    const id = 'random-' + Utils.randomString()
-    const p = path.join(server._tmpAssetFilePath, id)
-    fs.writeFileSync(p, 'touch asset_is_running')
+    const id = 'asset-script-is-running'
+    const p = path.join(__dirname, 'data', id)
     const integrity = await Utils.getFileIntegrity(p)
     const asset = {
       id: id,
@@ -589,12 +588,8 @@ test.serial(
     )
     agent = ret.agent
 
-    const id = 'random-' + Utils.randomString()
-    const p = path.join(server._tmpAssetFilePath, id)
-    const fd = fs.openSync(p, 'w')
-    fs.writeSync(fd, 'sleep 10')
-    fs.fsyncSync(fd)
-    fs.closeSync(fd)
+    const id = 'asset-script-sleep-10'
+    const p = path.join(__dirname, 'data', id)
     const integrity = await Utils.getFileIntegrity(p)
     const asset = {
       id: id,
@@ -659,10 +654,8 @@ test.serial(
     ]
 
     const args = argvExpected.join(' ')
-    const id = 'random-' + Utils.randomString()
-    const p = path.join(server._tmpAssetFilePath, id)
-    const content = '#!/bin/bash\n touch asset_args\n for arg in "$@"; do echo "$arg" >> asset_args; done;'
-    fs.writeFileSync(p, content)
+    const id = 'asset-script-check-args'
+    const p = path.join(__dirname, 'data', id)
     const integrity = await Utils.getFileIntegrity(p)
     const asset = {
       id: id,
@@ -729,10 +722,8 @@ test.serial(
     agent = ret.agent
 
     const envs = ['TEST_ENV1=abc', 'TEST_ENV2=cba']
-    const id = 'random-' + Utils.randomString()
-    const p = path.join(server._tmpAssetFilePath, id)
-    const content = `#!/bin/bash\n echo "$TEST_ENV1" > asset_env1\n echo "$TEST_ENV2" > asset_env2\n`
-    fs.writeFileSync(p, content)
+    const id = 'asset-script-env'
+    const p = path.join(__dirname, 'data', id)
     const integrity = await Utils.getFileIntegrity(p)
     const asset = {
       id: id,
@@ -803,10 +794,8 @@ test.serial(
     )
     agent = ret.agent
 
-    const id = 'random-' + Utils.randomString()
-    const p = path.join(server._tmpAssetFilePath, id)
-    const content = `#!/bin/bash\n not_a_commnad`
-    fs.writeFileSync(p, content)
+    const id = 'asset-script-not-a-command'
+    const p = path.join(__dirname, 'data', id)
     const integrity = await Utils.getFileIntegrity(p)
     const asset = {
       id: id,

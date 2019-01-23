@@ -1,0 +1,4 @@
+#!/bin/bash
+echo "$TEST_ENV1" > asset_env1
+echo "$TEST_ENV2" > asset_env2
+
