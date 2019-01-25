@@ -13,6 +13,7 @@ import LogManager from './log-manager'
 import CommandLine from './command-line'
 import Config from './config'
 import type { Logger } from 'winston'
+import { version as agentVer } from '../package.json'
 
 export type EnebularAgentConfig = {
   NODE_RED_DIR: string,
@@ -155,6 +156,7 @@ export default class EnebularAgent extends EventEmitter {
 
     this._initLogging()
 
+    this._log.info('enebular-agent version: ' + agentVer)
     if (devMode) {
       this._log.info('Running in Developer Mode')
     }

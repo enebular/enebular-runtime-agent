@@ -3,6 +3,6 @@ const path = require('path')
 
 module.exports = {
   userDir: __dirname,
-  credentialSecret: false,
+  //credentialSecret: false,
   flowFile: 'flows.json'
 };

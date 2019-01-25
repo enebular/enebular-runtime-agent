@@ -7,6 +7,7 @@ import fetch from 'isomorphic-fetch'
 import type { Logger } from 'winston'
 import ProcessUtil, { type RetryInfo } from './process-util'
 import type LogManager from './log-manager'
+import { encryptCredential } from './utils'
 
 export type NodeREDConfig = {
   dir: string,
@@ -93,6 +94,11 @@ export default class NodeREDController {
     this._log.info(msg, ...args)
   }
 
+  error(msg: string, ...args: Array<mixed>) {
+    args.push({ module: moduleName })
+    this._log.error(msg, ...args)
+  }
+
   _getDataDir() {
     return this._dataDir
   }
@@ -167,8 +173,8 @@ export default class NodeREDController {
   async _downloadPackage(downloadUrl: string): NodeRedFlowPackage {
     this.info('Downloading flow:', downloadUrl)
     const res = await fetch(downloadUrl)
-    if (res.status >= 400) {
-      throw new Error('invalid url')
+    if (!res.ok) {
+      throw new Error(`Failed response (${res.status} ${res.statusText})`)
     }
     return res.json()
   }
@@ -190,10 +196,49 @@ export default class NodeREDController {
       )
     }
     if (flowPackage.cred || flowPackage.creds) {
-      const creds = flowPackage.cred || flowPackage.creds
+      let creds = flowPackage.cred || flowPackage.creds
       updates.push(
         new Promise((resolve, reject) => {
           const credFilePath = path.join(this._getDataDir(), 'flows_cred.json')
+          const editSessionRequested = this._flowPackageContainsEditSession(
+            flowPackage
+          )
+
+          let settings
+          if (editSessionRequested) {
+            // enebular-editor remote deploy
+            settings = require(path.join(
+              this._getDataDir(),
+              'enebular-editor-settings.js'
+            ))
+          } else {
+            settings = require(path.join(this._getDataDir(), 'settings.js'))
+          }
+          if (settings.credentialSecret === false) {
+            this.info('skip credential encryption')
+          } else {
+            this.info('credential encryption')
+            try {
+              const dotconfig = fs.readFileSync(
+                path.join(this._getDataDir(), '.config.json'),
+                'utf8'
+              )
+
+              // enebular-node-red dont see credentialSecret in settings.js
+              //const defaultKey =
+              //  settings.credentialSecret ||
+              //  JSON.parse(dotconfig)._credentialSecret
+              const defaultKey = JSON.parse(dotconfig)._credentialSecret
+
+              creds = { $: encryptCredential(defaultKey, creds) }
+            } catch (err) {
+              throw new Error(
+                'encrypt credential and create flows_cred.json failed',
+                err
+              )
+            }
+          }
+
           fs.writeFile(
             credFilePath,
             JSON.stringify(creds),
@@ -371,14 +416,20 @@ export default class NodeREDController {
   async _sendEditorAgentIPAddress(editSession: EditSession) {
     const { ipAddress, sessionToken } = editSession
     try {
-      fetch(`http://${ipAddress}:9017/api/v1/agent-editor/ping`, {
-        method: 'POST',
-        headers: {
-          'x-ee-session': sessionToken
+      const res = await fetch(
+        `http://${ipAddress}:9017/api/v1/agent-editor/ping`,
+        {
+          method: 'POST',
+          headers: {
+            'x-ee-session': sessionToken
+          }
         }
-      })
+      )
+      if (!res.ok) {
+        throw new Error(`Failed response (${res.status} ${res.statusText})`)
+      }
     } catch (err) {
-      console.error('send editor error', err)
+      this.error('Failed to ping editor: ' + err.message)
     }
   }
 

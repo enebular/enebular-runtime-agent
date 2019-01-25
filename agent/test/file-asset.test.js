@@ -539,10 +539,8 @@ test.serial(
     )
     agent = ret.agent
 
-    const id = 'random-' + Utils.randomString()
-    const p = path.join(server._tmpAssetFilePath, id)
-    fs.writeFileSync(p, 'touch asset_is_running')
-    delay(1000)
+    const id = 'asset-script-is-running'
+    const p = path.join(__dirname, 'data', id)
     const integrity = await Utils.getFileIntegrity(p)
     const asset = {
       id: id,
@@ -597,13 +595,8 @@ test.serial(
     )
     agent = ret.agent
 
-    const id = 'random-' + Utils.randomString()
-    const p = path.join(server._tmpAssetFilePath, id)
-    const fd = fs.openSync(p, 'w')
-    fs.writeSync(fd, 'sleep 10')
-    fs.fsyncSync(fd)
-    fs.closeSync(fd)
-    delay(1000)
+    const id = 'asset-script-sleep-10'
+    const p = path.join(__dirname, 'data', id)
     const integrity = await Utils.getFileIntegrity(p)
     const asset = {
       id: id,
@@ -658,12 +651,18 @@ test.serial(
     )
     agent = ret.agent
 
-    const args = 'test args --fix -gc'
-    const id = 'random-' + Utils.randomString()
-    const p = path.join(server._tmpAssetFilePath, id)
-    const content = `#!/bin/bash\n arg="$*"\n echo "$arg" > asset_args`
-    fs.writeFileSync(p, content)
-    delay(1000)
+    const argvExpected = [
+      '-valid=true',
+      '--quotes',
+      '"test quotes"',
+      '"nested \'quotes\'"',
+      '--key="some value"',
+      '--title="Peter\'s Friends"'
+    ]
+
+    const args = argvExpected.join(' ')
+    const id = 'asset-script-check-args'
+    const p = path.join(__dirname, 'data', id)
     const integrity = await Utils.getFileIntegrity(p)
     const asset = {
       id: id,
@@ -698,13 +697,18 @@ test.serial(
     t.true(
       fs.existsSync(path.join(agent._assetManager.dataDir(), 'asset_args'))
     )
-    t.is(
-      fs
+    const argv = fs
         .readFileSync(path.join(agent._assetManager.dataDir(), 'asset_args'))
         .toString()
-        .trim(),
-      args
-    )
+        .trim()
+        .split(/\r\n|\r|\n/g)
+
+    t.is(argv[0], '-valid=true')
+    t.is(argv[1], '--quotes')
+    t.is(argv[2], 'test quotes')
+    t.is(argv[3], 'nested \'quotes\'')
+    t.is(argv[4], '--key="some value"')
+    t.is(argv[5], '--title="Peter\'s Friends"')
 
     fs.unlinkSync(ret.assetStatePath)
     fs.removeSync(ret.assetDataPath)
@@ -725,11 +729,8 @@ test.serial(
     agent = ret.agent
 
     const envs = ['TEST_ENV1=abc', 'TEST_ENV2=cba']
-    const id = 'random-' + Utils.randomString()
-    const p = path.join(server._tmpAssetFilePath, id)
-    const content = `#!/bin/bash\n echo "$TEST_ENV1" > asset_env1\n echo "$TEST_ENV2" > asset_env2\n`
-    fs.writeFileSync(p, content)
-    delay(1000)
+    const id = 'asset-script-env'
+    const p = path.join(__dirname, 'data', id)
     const integrity = await Utils.getFileIntegrity(p)
     const asset = {
       id: id,
@@ -800,11 +801,8 @@ test.serial(
     )
     agent = ret.agent
 
-    const id = 'random-' + Utils.randomString()
-    const p = path.join(server._tmpAssetFilePath, id)
-    const content = `#!/bin/bash\n not_a_commnad`
-    fs.writeFileSync(p, content)
-    delay(1000)
+    const id = 'asset-script-not-a-command'
+    const p = path.join(__dirname, 'data', id)
     const integrity = await Utils.getFileIntegrity(p)
     const asset = {
       id: id,
