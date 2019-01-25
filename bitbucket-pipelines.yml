@@ -17,7 +17,7 @@ pipelines:
         - (cd ports/awsiot && npm i
           && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientId":"thing_name","thingName":"thing_name","caCert":"./certs/root_certificate","clientCert":"./certs/thing_cert","privateKey":"./certs/thing_private_key>","topic":"aws/things/thing_name/shadow/update"}' > ./config.json
           && npm run test && rm ./config.json)
-        - (cd ports/local && npm i && npm run test)
+        - (cd ports/pelion && npm i && npm run test)
         - (cd tools/awsiot-thing-creator && npm i)
   tags:
     '*':
@@ -33,13 +33,13 @@ pipelines:
           - (cd ports/awsiot && npm i
             && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientId":"thing_name","thingName":"thing_name","caCert":"./certs/root_certificate","clientCert":"./certs/thing_cert","privateKey":"./certs/thing_private_key>","topic":"aws/things/thing_name/shadow/update"}' > ./config.json
             && npm run test && rm ./config.json)
-          - (cd ports/local && npm i && npm run test)
+          - (cd ports/pelion && npm i && npm run test)
           - (cd tools/awsiot-thing-creator && npm i)
           # package
           - (cd node-red && rm -rf node_modules)
           - (cd agent && rm -rf node_modules)
           - (cd ports/awsiot && rm -rf node_modules)
-          - (cd ports/local && rm -rf node_modules)
+          - (cd ports/pelion && rm -rf node_modules)
           - (cd tools/awsiot-thing-creator && rm -rf node_modules)
           - rm -rf .git
           - tar --transform "s,^\.,${BITBUCKET_TAG}," -czf /tmp/${BITBUCKET_TAG}-prebuilt.tar.gz .

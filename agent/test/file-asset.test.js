@@ -49,6 +49,10 @@ test.afterEach.always('cleanup', async t => {
   await agentCleanup(agent, NodeRedPort)
 })
 
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function getDefaultDesiredState(fileName, integrity) {
   return {
     updateId: Utils.randomString(),
@@ -247,6 +251,7 @@ test.serial('FileAsset.3: Agent runs pre-deploy hooks correctly', async t => {
       assets[i].id
     } ]] && touch pre-hook${i}`
     fs.writeFileSync(path.join(ret.assetDataPath, cmdForTest[i].cmd), content)
+    delay(1000)
     assetState = getDefaultDesiredState(assets[i].id, assets[i].integrity)
     assetState.config.hooks = [
       {
@@ -322,6 +327,7 @@ test.serial('FileAsset.4: Agent runs post-deploy hooks correctly', async t => {
       assets[i].id
     } ]] && touch pre-hook${i}`
     fs.writeFileSync(path.join(ret.assetDataPath, cmdForTest[i].cmd), content)
+    delay(1000)
     assetState = getDefaultDesiredState(assets[i].id, assets[i].integrity)
     assetState.config.hooks = [
       {
@@ -463,6 +469,7 @@ test.serial(
     ]
 
     fs.writeFileSync(path.join(ret.assetDataPath, 'go.sh'), 'sleep 10')
+    delay(1000)
     const assets = await createAssets(cmdForTest.length)
 
     let desiredState = {}

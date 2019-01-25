@@ -347,11 +347,16 @@ if (require.main === module) {
     exit()
   })
 
-  startup().then((ret) => {
-    if (!ret) {
+  startup()
+    .then(ret => {
+      if (!ret) {
+        process.exit(1)
+      }
+    })
+    .catch(err => {
+      console.error(`Agent startup failed: ${err}`)
       process.exit(1)
-    }
-  })
+    })
 }
 
 export { startup, shutdown }
