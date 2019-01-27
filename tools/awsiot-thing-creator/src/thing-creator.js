@@ -1,5 +1,6 @@
 /* @flow */
 import IoT from 'aws-sdk/clients/iot'
+import IAM from 'aws-sdk/clients/iam'
 import path from 'path'
 import http from 'https'
 import fs from 'fs'
@@ -19,6 +20,102 @@ export default class ThingCreator {
     this._awsAccessKeyId = config.awsAccessKeyId
     this._awsSecretAccessKey = config.awsSecretAccessKey
     this._awsIotRegion = config.awsIotRegion
+  }
+
+  async _attachPolicy(iam: IAM, roleName: string, policyName: string) {
+    let policy
+    try {
+      const ret = await iam
+        .listPolicies({
+          PathPrefix: '/enebular/'
+        })
+        .promise()
+      const policies = ret.Policies.filter((item) => {
+        return item.PolicyName === policyName
+      })
+      if (policies.length > 0) {
+        policy = policies[0]
+      }
+    } catch (err) {
+      throw new Error('Failed to list policies, reason:\n' + err.message)
+    }
+
+    if (!policy) {
+      try {
+        const ret = await iam
+          .createPolicy({
+            PolicyName: policyName,
+            Path: '/enebular/',
+            PolicyDocument: fs.readFileSync(`./${policyName}.json`, 'utf8')
+          })
+          .promise()
+        policy = ret.Policy
+      } catch (err) {
+        throw new Error('Failed to create policy, reason:\n' + err.message)
+      }
+    }
+
+    try {
+      await iam
+        .attachRolePolicy({
+          PolicyArn: policy.Arn,
+          RoleName: roleName,
+        })
+        .promise()
+    } catch (err) {
+      throw new Error('Failed to attach policy to role, reason:\n' + err.message)
+    }
+  }
+
+  async _ensureRoleCreated() {
+    const iam = new IAM();
+    const roleName = 'enebular_aws_iot_role'
+    let roleArn
+    try {
+      const ret = await iam.getRole({ RoleName: roleName }).promise()
+      roleArn = ret.Role.Arn
+    } catch (err) {
+      if (err.statusCode !== 404) {
+        throw new Error('Failed to get role, reason:\n' + err.message)
+      }
+      console.log(
+        `Unable to find ${roleName}, creating...`
+      )
+      try {
+        const ret = await iam
+          .createRole({
+            RoleName: roleName,
+            Path: "/service-role/",
+            AssumeRolePolicyDocument: fs.readFileSync(`./${roleName}_trust_relationship_policy.json`, 'utf8')
+          })
+          .promise()
+        roleArn = ret.Role.Arn
+      } catch (err) {
+        throw new Error('Failed to create role, reason:\n' + err.message)
+      }
+    }
+
+    let ret
+    try {
+      ret = await iam.listAttachedRolePolicies({ RoleName: roleName }).promise()
+    } catch (err) {
+      throw new Error('Failed to listAttachedRolePolicies, reason:\n' + err.message)
+    }
+
+    const policyNamesArray = ['enebular_aws_iot_shadow_update']
+    const allPromise = policyNamesArray.map(async(name) => {
+      const policies = ret.AttachedPolicies.filter((item) => {
+        return item.PolicyName === name
+      })
+      if (policies.length < 1) {
+        console.log(
+          `${name} policy is not attached to ${roleName}, attaching...`
+        )
+        return this._attachPolicy(iam, roleName, name)
+      }
+    })
+    await Promise.all(allPromise)
+    return roleArn
   }
 
   async createThing(configSavePath: ?string, thingName: ?string) {
@@ -55,6 +152,8 @@ export default class ThingCreator {
     }
 
     const policyName = 'enebular_policy'
+
+
     try {
       await iot.getPolicy({ policyName: policyName }).promise()
     } catch (err) {
@@ -99,6 +198,40 @@ export default class ThingCreator {
         .promise()
     } catch (err) {
       throw new Error('Attach thing to certificate failed.')
+    }
+
+    const roleArn = await this._ensureRoleCreated()
+    const enebularShadowUpdateRuleName = "enebular_shadow_update"
+    try {
+      await iot.getTopicRule({
+        ruleName: enebularShadowUpdateRuleName
+      })
+      .promise()
+    } catch (err) {
+      if (err.statusCode !== 401) {
+        console.log(err)
+        throw new Error('Failed to get rule, reason:\n' + err.message)
+      }
+      try {
+        await iot
+          .createTopicRule({
+            ruleName: enebularShadowUpdateRuleName,
+            topicRulePayload: {
+              actions: [
+                {
+                  republish: {
+                    roleArn: roleArn,
+                    topic: '$$aws/things/${topic(3)}/shadow/update'
+                  }
+                }
+              ],
+              sql: "SELECT * FROM 'enebular/things/+/shadow/update'",
+            }
+          })
+          .promise()
+      } catch (err) {
+        throw new Error('Failed to createTopicRule, reason:\n' + err.message)
+      }
     }
 
     return this._save(
