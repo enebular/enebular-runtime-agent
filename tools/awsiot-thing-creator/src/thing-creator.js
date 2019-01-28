@@ -22,7 +22,12 @@ export default class ThingCreator {
     this._awsIotRegion = config.awsIotRegion
   }
 
-  async _attachPolicy(iam: IAM, roleName: string, policyName: string) {
+  async _attachPolicy(
+    iotArnBase: string,
+    iam: IAM,
+    roleName: string,
+    policyName: string
+  ) {
     let policy
     try {
       const ret = await iam
@@ -30,7 +35,7 @@ export default class ThingCreator {
           PathPrefix: '/enebular/'
         })
         .promise()
-      const policies = ret.Policies.filter((item) => {
+      const policies = ret.Policies.filter(item => {
         return item.PolicyName === policyName
       })
       if (policies.length > 0) {
@@ -42,11 +47,16 @@ export default class ThingCreator {
 
     if (!policy) {
       try {
+        let policyDocument = fs.readFileSync(
+          `./role-policies/${policyName}.json`,
+          'utf8'
+        )
+        policyDocument = policyDocument.replace('<$$TOPIC_ARN_BASE$$>', iotArnBase)
         const ret = await iam
           .createPolicy({
             PolicyName: policyName,
             Path: '/enebular/',
-            PolicyDocument: fs.readFileSync(`./${policyName}.json`, 'utf8')
+            PolicyDocument: policyDocument
           })
           .promise()
         policy = ret.Policy
@@ -59,16 +69,18 @@ export default class ThingCreator {
       await iam
         .attachRolePolicy({
           PolicyArn: policy.Arn,
-          RoleName: roleName,
+          RoleName: roleName
         })
         .promise()
     } catch (err) {
-      throw new Error('Failed to attach policy to role, reason:\n' + err.message)
+      throw new Error(
+        'Failed to attach policy to role, reason:\n' + err.message
+      )
     }
   }
 
-  async _ensureRoleCreated() {
-    const iam = new IAM();
+  async _ensureRoleCreated(iotArnBase: string) {
+    const iam = new IAM()
     const roleName = 'enebular_aws_iot_role'
     let roleArn
     try {
@@ -78,15 +90,16 @@ export default class ThingCreator {
       if (err.statusCode !== 404) {
         throw new Error('Failed to get role, reason:\n' + err.message)
       }
-      console.log(
-        `Unable to find ${roleName}, creating...`
-      )
+      console.log(`Unable to find ${roleName}, creating...`)
       try {
         const ret = await iam
           .createRole({
             RoleName: roleName,
-            Path: "/service-role/",
-            AssumeRolePolicyDocument: fs.readFileSync(`./${roleName}_trust_relationship_policy.json`, 'utf8')
+            Path: '/service-role/',
+            AssumeRolePolicyDocument: fs.readFileSync(
+              `./role-policies/${roleName}_trust_relationship_policy.json`,
+              'utf8'
+            )
           })
           .promise()
         roleArn = ret.Role.Arn
@@ -99,19 +112,21 @@ export default class ThingCreator {
     try {
       ret = await iam.listAttachedRolePolicies({ RoleName: roleName }).promise()
     } catch (err) {
-      throw new Error('Failed to listAttachedRolePolicies, reason:\n' + err.message)
+      throw new Error(
+        'Failed to listAttachedRolePolicies, reason:\n' + err.message
+      )
     }
 
     const policyNamesArray = ['enebular_aws_iot_shadow_update']
-    const allPromise = policyNamesArray.map(async(name) => {
-      const policies = ret.AttachedPolicies.filter((item) => {
+    const allPromise = policyNamesArray.map(async name => {
+      const policies = ret.AttachedPolicies.filter(item => {
         return item.PolicyName === name
       })
       if (policies.length < 1) {
         console.log(
           `${name} policy is not attached to ${roleName}, attaching...`
         )
-        return this._attachPolicy(iam, roleName, name)
+        return this._attachPolicy(iotArnBase, iam, roleName, name)
       }
     })
     await Promise.all(allPromise)
@@ -152,14 +167,10 @@ export default class ThingCreator {
     }
 
     const policyName = 'enebular_policy'
-
-
     try {
       await iot.getPolicy({ policyName: policyName }).promise()
     } catch (err) {
-      console.log(
-        'Failed to find enebular_policy, creating enebular_policy...'
-      )
+      console.log('Failed to find enebular_policy, creating enebular_policy...')
       try {
         await iot
           .createPolicy({
@@ -183,8 +194,9 @@ export default class ThingCreator {
       throw new Error('Attach policy to certificate failed.')
     }
 
+    let thingRet
     try {
-      await iot.createThing({ thingName: thingName }).promise()
+      thingRet = await iot.createThing({ thingName: thingName }).promise()
     } catch (err) {
       throw new Error('Create thing failed.')
     }
@@ -200,13 +212,18 @@ export default class ThingCreator {
       throw new Error('Attach thing to certificate failed.')
     }
 
-    const roleArn = await this._ensureRoleCreated()
-    const enebularShadowUpdateRuleName = "enebular_shadow_update"
+    const iotArnBase = thingRet.thingArn
+      .split(':')
+      .slice(0, 5)
+      .join(':')
+    const roleArn = await this._ensureRoleCreated(iotArnBase)
+    const enebularShadowUpdateRuleName = 'enebular_shadow_update'
     try {
-      await iot.getTopicRule({
-        ruleName: enebularShadowUpdateRuleName
-      })
-      .promise()
+      await iot
+        .getTopicRule({
+          ruleName: enebularShadowUpdateRuleName
+        })
+        .promise()
     } catch (err) {
       if (err.statusCode !== 401) {
         console.log(err)
@@ -221,11 +238,11 @@ export default class ThingCreator {
                 {
                   republish: {
                     roleArn: roleArn,
-                    topic: '$$aws/things/${topic(3)}/shadow/update'
+                    topic: `$$aws/things/$\{topic(3)}/shadow/update`
                   }
                 }
               ],
-              sql: "SELECT * FROM 'enebular/things/+/shadow/update'",
+              sql: "SELECT * FROM 'enebular/things/+/shadow/update'"
             }
           })
           .promise()
