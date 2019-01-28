@@ -81,7 +81,7 @@ export default class ThingCreator {
 
   async _ensureRoleCreated(iotArnBase: string) {
     const iam = new IAM()
-    const roleName = 'enebular_aws_iot_role'
+    const roleName = 'enebular_aws_iot_shadow_update'
     let roleArn
     try {
       const ret = await iam.getRole({ RoleName: roleName }).promise()
