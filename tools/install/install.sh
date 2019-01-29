@@ -607,41 +607,66 @@ do_install() {
   fi
 
   if [ "${PORT}" == "pelion" ] && ([ ! -z "${MBED_CLOUD_DEV_CRED}" ] || [ ! -z "${MBED_CLOUD_PAL}" ]); then
-    setup_mbed_cloud_connector "${INSTALL_DIR}/tools/mbed-cloud-connector"
+    _task "Checking dependencies for mbed-cloud-connector"
+    cmd_wrapper apt-get update
+    if ! dpkg -s git >/dev/null 2>&1; then
+      cmd_wrapper apt-get -y install git
+    fi
+    if ! dpkg -s cmake >/dev/null 2>&1; then
+      cmd_wrapper apt-get -y install cmake
+    fi
+    if ! dpkg -s python-pip >/dev/null 2>&1; then
+      cmd_wrapper apt-get -y install python-pip
+    fi
+    _echo_g "OK"
+
+    _task "Checking python dependencies for mbed-cloud-connector"
+    cmd_wrapper run_as_user ${USER} "(pip install mbed-cli click requests --user)"
+    EXIT_CODE=$?
+    if [ "$EXIT_CODE" -ne 0 ]; then
+      _err "Python dependencies install failed."
+      _exit 1
+    fi
+    _echo_g "OK"
+
+    setup_mbed_cloud_connector
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
       _err "Setup mbed-cloud-connector failed."
       _exit 1
+    fi
+    if [ -d "${INSTALL_DIR}/tools/mbed-cloud-connector-fcc" ] && [ ! -z ${BUILD_FCC} ]; then
+      setup_mbed_cloud_connector_fcc
+      EXIT_CODE=$?
+      if [ "$EXIT_CODE" -ne 0 ]; then
+        _err "Setup mbed-cloud-connector-fcc failed."
+        _exit 1
+      fi
     fi
   fi
 
   eval "$5='${NODE_ENV}'"
 }
 
-#args: install_dir
-setup_mbed_cloud_connector() {
-  _task "Checking dependencies for mbed-cloud-connector"
-  cmd_wrapper apt-get update
-  if ! dpkg -s git >/dev/null 2>&1; then
-    cmd_wrapper apt-get -y install git
-  fi
-  if ! dpkg -s cmake >/dev/null 2>&1; then
-    cmd_wrapper apt-get -y install cmake
-  fi
-  if ! dpkg -s python-pip >/dev/null 2>&1; then
-    cmd_wrapper apt-get -y install python-pip
-  fi
-  _echo_g "OK"
-
-  _task "Checking python dependencies for mbed-cloud-connector"
-  cmd_wrapper run_as_user ${USER} "(pip install mbed-cli click requests --user)"
+setup_mbed_cloud_connector_fcc() {
+  _task "Building mbed-cloud-connector-fcc (It may take a few minutes)"
+  cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector-fcc && ./build-linux.sh Release)"
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
-    _err "Python dependencies install failed."
+    _err "Failed to build mbed-cloud-connector-fcc."
     _exit 1
   fi
   _echo_g "OK"
 
+  _task "Verifying mbed-cloud-connector-fcc"
+  if [ ! -f "${INSTALL_DIR}/tools/mbed-cloud-connector-fcc/__x86_x64_NativeLinux_mbedtls/Release/factory-configurator-client-enebular.elf" ]; then
+    _err "Can't find mbed-cloud-connector-fcc binary."
+    _exit 1
+  fi
+  _echo_g "OK"
+}
+
+setup_mbed_cloud_connector() {
   _task "Deploying mbed project"
   local LOCAL_BIN_ENV
   LOCAL_BIN_ENV="PATH=/home/${USER}/.local/bin:${PATH}"
@@ -834,6 +859,10 @@ case $i in
   MBED_CLOUD_PAL="${i#*=}"
   shift
   ;;
+  --build-fcc)
+  BUILD_FCC=yes
+  shift
+  ;;
   --agent-download-path=*)
   AGENT_DOWNLOAD_PATH="${i#*=}"
   shift
@@ -874,7 +903,13 @@ if [ -z ${INSTALL_DIR} ]; then
 fi
 
 case "${PORT}" in
-  awsiot | pelion);;
+  awsiot);;
+  pelion)
+  if [ -z "${MBED_CLOUD_DEV_CRED}" ] && [ -z "${MBED_CLOUD_PAL}" ]; then
+    _err 'Must specify either --mbed-cloud-dev-cred or --mbed-cloud-pal when port is pelion'
+    _exit 1
+  fi
+  ;;
   *)
     _err 'Unknown port, supported ports: awsiot, pelion'
     _exit 1

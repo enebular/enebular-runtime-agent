@@ -21,6 +21,9 @@ set -e
 # set default BUILD_TYPE=Debug
 BUILD_TYPE=${1:-Debug}
 
+# config root of project
+mbed config root .
+
 # deploy components
 mbed deploy
 
