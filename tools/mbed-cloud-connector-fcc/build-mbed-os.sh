@@ -24,7 +24,7 @@ FCC_EXAMPLE_TOP=$MY_DIR
 source build-mbed-os-common.sh
 
 mbed compile \
-	-v -c --artifact-name factory-configurator-client-example --build "BUILD/$PLATFORM/$TOOLCHAIN/$INTERFACE" -t "$TOOLCHAIN" -m "$PLATFORM" --profile="$CFLAGS" -D"$INTERFACE"
+	-v -c --artifact-name factory-configurator-client-enebular --build "BUILD/$PLATFORM/$TOOLCHAIN/$INTERFACE" -t "$TOOLCHAIN" -m "$PLATFORM" --profile="$CFLAGS" -D"$INTERFACE"
 
 # Find correct bootloader
 echo $PLATFORM
@@ -32,4 +32,4 @@ BOARD=$(echo $PLATFORM | tr '[:upper:]' '[:lower:]')
 echo $BOARD
 
 #create combined with bootloader executable 
-python tools/combine_bootloader_with_app.py -a "BUILD/$PLATFORM/$TOOLCHAIN/$INTERFACE/factory-configurator-client-example.bin" -o "BUILD/$PLATFORM/$TOOLCHAIN/$INTERFACE/factory-configurator-client-example.hex" -m "$BOARD"
+python tools/combine_bootloader_with_app.py -a "BUILD/$PLATFORM/$TOOLCHAIN/$INTERFACE/factory-configurator-client-enebular.bin" -o "BUILD/$PLATFORM/$TOOLCHAIN/$INTERFACE/factory-configurator-client-enebular.hex" -m "$BOARD"

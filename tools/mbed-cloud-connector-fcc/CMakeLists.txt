@@ -29,14 +29,14 @@ endif()
 
 # example source files
 SET(
-	factory-configurator-client-example
+	factory-configurator-client-enebular
 	${CMAKE_CURRENT_SOURCE_DIR}/source/factory_client_example.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/source/fce_${SA_PV_OS_NAME}_socket_helper.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/source/fce_common_helper.h
 )
 
 message ("*********************************************************************")
-message ("factory-configurator-client-example = [[${factory-configurator-client-example}]]")
+message ("factory-configurator-client-enebular = [[${factory-configurator-client-enebular}]]")
 message ("*********************************************************************")
 
 # On Linux, we might find different names for the network interface
@@ -51,7 +51,7 @@ set(TMPD \"${ETHNAME}\")
 add_definitions(-DETHERNET_LINUX_IFACE_NAME=${TMPD})
 message("ETHERNET_LINUX_IFACE_NAME=${ETHNAME}")
 
-CREATE_TEST_LIBRARY(factory-configurator-client-example "${factory-configurator-client-example}" "")
+CREATE_TEST_LIBRARY(factory-configurator-client-enebular "${factory-configurator-client-enebular}" "")
 
 add_subdirectory(mbed-cloud-client/factory-configurator-client ${CMAKE_BINARY_DIR}/factory-configurator-client)
 add_subdirectory(mbed-cloud-client/mbed-client-pal ${CMAKE_BINARY_DIR}/mbed-client-pal)

@@ -34,4 +34,4 @@ cd __x86_x64_NativeLinux_mbedtls
 cmake -G 'Unix Makefiles' -DCMAKE_BUILD_TYPE="$BUILD_TYPE" -DCMAKE_TOOLCHAIN_FILE=../pal-platform/Toolchain/GCC/GCC.cmake -DEXTARNAL_DEFINE_FILE=../linux-config.cmake
 
 # build the example target
-make factory-configurator-client-example.elf
+make factory-configurator-client-enebular.elf

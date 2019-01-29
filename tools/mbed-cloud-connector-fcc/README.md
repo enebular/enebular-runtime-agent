@@ -16,7 +16,7 @@ To build this for Linux, run the following build script.
 In addition to the network receive support of the default factory-configurator-client-example, it's possible to directly specify a bundle file as an option to the command, as shown below.
 
 ```
-./__x86_x64_NativeLinux_mbedtls/Debug/factory-configurator-client-example.elf <bundle>
+./__x86_x64_NativeLinux_mbedtls/Debug/factory-configurator-client-enebular.elf <bundle>
 [...]
 Successfully handled file bundle
 ```
