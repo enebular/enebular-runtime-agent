@@ -649,8 +649,22 @@ do_install() {
 }
 
 setup_mbed_cloud_connector_fcc() {
+  _task "Deploying mbed project"
+  local LOCAL_BIN_ENV
+  LOCAL_BIN_ENV="PATH=/home/${USER}/.local/bin:${PATH}"
+  cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector-fcc \
+    && mbed config root . && mbed deploy)" ${LOCAL_BIN_ENV}
+  EXIT_CODE=$?
+  if [ "$EXIT_CODE" -ne 0 ]; then
+    _err "mbed deploy failed."
+    _exit 1
+  fi
+  _echo_g "OK"
+
+  apply_patches_if_available
+
   _task "Building mbed-cloud-connector-fcc (It may take a few minutes)"
-  cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector-fcc && ./build-linux.sh Release)"
+  cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector-fcc && ./build-linux-release.sh)"
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
     _err "Failed to build mbed-cloud-connector-fcc."
