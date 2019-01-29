@@ -223,6 +223,14 @@ export default class EnebularAgent extends EventEmitter {
     this._agentState = 'init'
   }
 
+  _logMetrics() {
+    const memUsage = process.memoryUsage()
+    this._log.info('metrics.mem.rss: ' + memUsage.rss)
+    this._log.info('metrics.mem.heapTotal: ' + memUsage.heapTotal)
+    this._log.info('metrics.mem.heapUsed: ' + memUsage.heapUsed)
+    this._log.info('metrics.mem.external: ' + memUsage.external)
+  }
+
   _initLogging() {
     if (process.env.DEBUG) {
       this._config.set('ENEBULAR_LOG_LEVEL', process.env.DEBUG)
@@ -235,6 +243,11 @@ export default class EnebularAgent extends EventEmitter {
       'file',
       'syslog'
     ])
+
+    if (this._config.get('ENEBULAR_LOG_METRICS_ENABLE')) {
+      const interval = this._config.get('ENEBULAR_LOG_METRICS_INTERVAL')
+      setInterval(() => this._logMetrics(), interval * 1000)
+    }
   }
 
   get log(): Logger {
