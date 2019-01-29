@@ -606,7 +606,7 @@ do_install() {
     _exit 1
   fi
 
-  if [ "${PORT}" == "pelion" ] && ([ ! -z "${MBED_CLOUD_DEV_CRED}" ] || [ ! -z "${MBED_CLOUD_PAL}" ]); then
+  if [ "${PORT}" == "pelion" ]; then
     _task "Checking dependencies for mbed-cloud-connector"
     cmd_wrapper apt-get update
     if ! dpkg -s git >/dev/null 2>&1; then
@@ -635,7 +635,7 @@ do_install() {
       _err "Setup mbed-cloud-connector failed."
       _exit 1
     fi
-    if [ -d "${INSTALL_DIR}/tools/mbed-cloud-connector-fcc" ] && [ ! -z ${BUILD_FCC} ]; then
+    if [ -d "${INSTALL_DIR}/tools/mbed-cloud-connector-fcc" ] && [ ! -z ${MBED_CLOUD_BUILD_FCC} ]; then
       setup_mbed_cloud_connector_fcc
       EXIT_CODE=$?
       if [ "$EXIT_CODE" -ne 0 ]; then
@@ -689,7 +689,6 @@ setup_mbed_cloud_connector() {
       _err "Failed to copy mbed cloud developer credentials."
       _exit 1
     fi
-    MBED_CLOUD_DEFINE=define.txt
     _echo_g "OK"
   fi
 
@@ -715,8 +714,13 @@ setup_mbed_cloud_connector() {
       _err "Failed to change mbed cloud credentials permission."
       _exit 1
     fi
-    MBED_CLOUD_DEFINE=define_factory.txt
     _echo_g "OK"
+  fi
+
+  if [ ${MBED_CLOUD_MODE} == 'develop' ]; then
+    MBED_CLOUD_DEFINE=define.txt
+  else
+    MBED_CLOUD_DEFINE=define_factory.txt
   fi
 
   apply_patches_if_available
@@ -804,6 +808,7 @@ RELEASE_VERSION="latest-release"
 AGENT_DOWNLOAD_PATH="https://api.github.com/repos/enebular/enebular-runtime-agent/"
 SUPPORTED_NODE_VERSION="v9.2.1"
 ENEBULAR_BASE_URL="https://enebular.com/api/v1"
+MBED_CLOUD_MODE=develop
 
 LOG_FILE="$(create_log)"
 chmod +r ${LOG_FILE}
@@ -859,8 +864,12 @@ case $i in
   MBED_CLOUD_PAL="${i#*=}"
   shift
   ;;
-  --build-fcc)
-  BUILD_FCC=yes
+  --mbed-cloud-build-fcc)
+  MBED_CLOUD_BUILD_FCC=yes
+  shift
+  ;;
+  --mbed-cloud-mode=*)
+  MBED_CLOUD_MODE="${i#*=}"
   shift
   ;;
   --agent-download-path=*)
@@ -905,8 +914,15 @@ fi
 case "${PORT}" in
   awsiot);;
   pelion)
-  if [ -z "${MBED_CLOUD_DEV_CRED}" ] && [ -z "${MBED_CLOUD_PAL}" ]; then
-    _err 'Must specify either --mbed-cloud-dev-cred or --mbed-cloud-pal when port is pelion'
+  case "${MBED_CLOUD_MODE}" in
+    develop | factory);;
+    *)
+      _err 'Unknown mbed cloud mode, supported modes: develop, factory'
+      _exit 1
+    ;;
+  esac
+  if [ -z "${MBED_CLOUD_DEV_CRED}" ] && [ ${MBED_CLOUD_MODE} == 'develop' ]; then
+    _err 'Must specify --mbed-cloud-dev-cred in pelion develop mode'
     _exit 1
   fi
   ;;
@@ -921,7 +937,7 @@ if [ ! -z ${MBED_CLOUD_DEV_CRED} ] && [ ! -f ${MBED_CLOUD_DEV_CRED} ]; then
   _exit 1
 fi
 
-if [ ! -z ${MBED_CLOUD_PAL} ] && [ ! -f ${MBED_CLOUD_PAL} ]; then
+if [ ! -z ${MBED_CLOUD_PAL} ] && [ ! -d ${MBED_CLOUD_PAL} ]; then
   _err "${MBED_CLOUD_PAL} doesn't exist."
   _exit 1
 fi
