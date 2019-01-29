@@ -18,9 +18,6 @@
 # halt on error
 set -e
 
-# deploy repositories and generate CMake build files
-python pal-platform/pal-platform.py -v deploy --target=x86_x64_NativeLinux_mbedtls generate
-
 # all auto generated makefiles goes here
 cd __x86_x64_NativeLinux_mbedtls
 

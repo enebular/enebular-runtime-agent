@@ -659,6 +659,14 @@ setup_mbed_cloud_connector_fcc() {
     _err "mbed deploy failed."
     _exit 1
   fi
+
+  cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector-fcc \
+    && python pal-platform/pal-platform.py -v deploy --target=x86_x64_NativeLinux_mbedtls generate)" ${LOCAL_BIN_ENV}
+  EXIT_CODE=$?
+  if [ "$EXIT_CODE" -ne 0 ]; then
+    _err "pal-platform deploy failed."
+    _exit 1
+  fi
   _echo_g "OK"
 
   apply_patches_if_available
