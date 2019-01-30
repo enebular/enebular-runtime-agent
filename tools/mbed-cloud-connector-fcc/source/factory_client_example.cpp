@@ -45,7 +45,7 @@ static int factory_example_success = EXIT_FAILURE;
 static int g_argc;
 static char **g_argv;
 
-static bool factory_flow_file(const char * path)
+static int factory_flow_file(const char * path)
 {
     uint8_t * bundle;
     size_t bundle_size;
@@ -182,7 +182,7 @@ static void factory_flow_task()
 {
     fcc_status_e fcc_status = FCC_STATUS_SUCCESS;
     bool success;
-    int res;
+    int ret;
 
     mcc_platform_sw_build_info();
 
@@ -210,11 +210,11 @@ static void factory_flow_task()
     }
 
     if (g_argc == 2) {
-        success = factory_flow_file(g_argv[1]);
+        ret = factory_flow_file(g_argv[1]);
     } else {
-        success = factory_flow_comm();
+        ret = factory_flow_comm();
     }
-    if (success) {
+    if (ret == 0) {
         factory_example_success = EXIT_SUCCESS;
     }
 
