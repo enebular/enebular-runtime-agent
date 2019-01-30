@@ -8,18 +8,21 @@ import fs from 'fs'
 export type ThingCreatorConfig = {
   awsAccessKeyId: ?string,
   awsSecretAccessKey: ?string,
-  awsIotRegion: ?string
+  awsIotRegion: ?string,
+  disableRuleCreation: ?string
 }
 
 export default class ThingCreator {
   _awsSecretAccessKey: ?string
   _awsAccessKeyId: ?string
   _awsIotRegion: ?string
+  _disableRuleCreation: ?boolean
 
   constructor(config: ThingCreatorConfig) {
     this._awsAccessKeyId = config.awsAccessKeyId
     this._awsSecretAccessKey = config.awsSecretAccessKey
     this._awsIotRegion = config.awsIotRegion
+    this._disableRuleCreation = (config.disableRuleCreation == 'true')
   }
 
   async _attachPolicy(
@@ -212,45 +215,46 @@ export default class ThingCreator {
       throw new Error('Attach thing to certificate failed.')
     }
 
-    const iotArnBase = thingRet.thingArn
-      .split(':')
-      .slice(0, 5)
-      .join(':')
-    const roleArn = await this._ensureRoleCreated(iotArnBase)
-    const enebularShadowUpdateRuleName = 'enebular_shadow_update'
-    try {
-      await iot
-        .getTopicRule({
-          ruleName: enebularShadowUpdateRuleName
-        })
-        .promise()
-    } catch (err) {
-      if (err.statusCode !== 401) {
-        console.log(err)
-        throw new Error('Failed to get rule, reason:\n' + err.message)
-      }
+    if (!this._disableRuleCreation) {
+      const iotArnBase = thingRet.thingArn
+        .split(':')
+        .slice(0, 5)
+        .join(':')
+      const roleArn = await this._ensureRoleCreated(iotArnBase)
+      const enebularShadowUpdateRuleName = 'enebular_shadow_update'
       try {
         await iot
-          .createTopicRule({
-            ruleName: enebularShadowUpdateRuleName,
-            topicRulePayload: {
-              actions: [
-                {
-                  republish: {
-                    roleArn: roleArn,
-                    topic: `$$aws/things/$\{topic(3)}/shadow/update`
-                  }
-                }
-              ],
-              sql: "SELECT * FROM 'enebular/things/+/shadow/update'"
-            }
+          .getTopicRule({
+            ruleName: enebularShadowUpdateRuleName
           })
           .promise()
       } catch (err) {
-        throw new Error('Failed to createTopicRule, reason:\n' + err.message)
+        if (err.statusCode !== 401) {
+          console.log(err)
+          throw new Error('Failed to get rule, reason:\n' + err.message)
+        }
+        try {
+          await iot
+            .createTopicRule({
+              ruleName: enebularShadowUpdateRuleName,
+              topicRulePayload: {
+                actions: [
+                  {
+                    republish: {
+                      roleArn: roleArn,
+                      topic: `$$aws/things/$\{topic(3)}/shadow/update`
+                    }
+                  }
+                ],
+                sql: "SELECT * FROM 'enebular/things/+/shadow/update'"
+              }
+            })
+            .promise()
+        } catch (err) {
+          throw new Error('Failed to createTopicRule, reason:\n' + err.message)
+        }
       }
     }
-
     return this._save(
       configSavePath,
       thingName,
