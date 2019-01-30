@@ -100,6 +100,16 @@ export default class Config {
         description: 'Logging level',
         userExpose: true
       },
+      ENEBULAR_LOG_METRICS_ENABLE: {
+        value: false,
+        description: 'Enable metrics logging',
+        userExpose: true
+      },
+      ENEBULAR_LOG_METRICS_INTERVAL: {
+        value: 30,
+        description: 'Metrics logging interval (seconds)',
+        userExpose: true
+      },
       ENEBULAR_ENABLE_CONSOLE_LOG: {
         value: false,
         description: 'Enable logging to the console',
