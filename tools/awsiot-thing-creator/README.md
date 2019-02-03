@@ -8,7 +8,7 @@ It does the following:
 2. Creates a standard policy for the new thing (if it doesn't exist already)
 3. Attaches the standard policy to the new certificate
 4. Creates a new thing and attaches the new certificate
-5. Creates a standard rule to allow thing shadows to be updated when the device disconnects unexpectedly  (if it doesn't exist already)
+5. Creates a standard rule to allow the connection status to be updated when the device disconnects unexpectedly (if it doesn't exist already)
 
 It needs AWS IAM access to create the role used with the rule's action.
 
