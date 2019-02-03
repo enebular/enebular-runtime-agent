@@ -110,6 +110,24 @@ is_raspberry_pi() {
   fi
 }
 
+#args: package_name
+ensure_deb_packages_are_installed() {
+  local PACKAGES_TO_INSTALL
+  PACKAGES_TO_INSTALL=("$@")
+  for i in "${PACKAGES_TO_INSTALL[@]}"
+  do
+    local INSTALLED
+    INSTALLED=`dpkg-query --show --showformat='${db:Status-Status}\n' ${i} 2>/dev/null | grep "^\<installed\>" | wc -l`
+    if [ $INSTALLED -eq 0 ]; then
+      cmd_wrapper apt-get -y install ${i}
+      if [ "$?" -ne 0 ]; then
+        _err "Install package ${i} failed."
+        _exit 1
+      fi
+    fi
+  done
+}
+
 #args: url, file_name
 get_node_checksum() {
   download "${1-}" "-" | command awk "{ if (\"${2-}\" == \$2) print \$1}"
@@ -523,12 +541,9 @@ do_install() {
   _horizontal_bar
 
   _task "Checking dependencies"
-  if ! dpkg -s build-essential >/dev/null 2>&1; then
-    cmd_wrapper apt-get -y install build-essential
-  fi
-  if ! dpkg -s python >/dev/null 2>&1; then
-    cmd_wrapper apt-get -y install python
-  fi
+  local PACKAGES_TO_INSTALL
+  PACKAGES_TO_INSTALL=( "build-essential" "python")
+  ensure_deb_packages_are_installed "${PACKAGES_TO_INSTALL[@]}"
   _echo_g OK
 
   local EXIT_CODE
@@ -608,16 +623,11 @@ do_install() {
 
   if [ "${PORT}" == "pelion" ]; then
     _task "Checking dependencies for mbed-cloud-connector"
+    # ignore apt-get update failure
     cmd_wrapper apt-get update
-    if ! dpkg -s git >/dev/null 2>&1; then
-      cmd_wrapper apt-get -y install git
-    fi
-    if ! dpkg -s cmake >/dev/null 2>&1; then
-      cmd_wrapper apt-get -y install cmake
-    fi
-    if ! dpkg -s python-pip >/dev/null 2>&1; then
-      cmd_wrapper apt-get -y install python-pip
-    fi
+    local PACKAGES_TO_INSTALL
+    PACKAGES_TO_INSTALL=( "git" "cmake" "python-pip")
+    ensure_deb_packages_are_installed "${PACKAGES_TO_INSTALL[@]}"
     _echo_g "OK"
 
     _task "Checking python dependencies for mbed-cloud-connector"
