@@ -65,10 +65,10 @@ The generated keys and certificates will be stored in `/home/enebular/enebular-r
 
 The install script also adds the required AWS IoT policies and rules for use with enebular. This includes a rule to allow the connection status to be updated when the device disconnects unexpectedly.
 
-The install script requires access to the following AWS services:
+The install script requires access to the following AWS services.
 
-- IoT Core - for adding the Thing and associated certificates, policies and rules
-- IAM - for the creation of roles used with rule actions
+- **IoT Core** - for adding the Thing and associated certificates, policies and rules
+- **IAM** - for the creation of roles used with rule actions
 
 See the *Examples* section below for an example of a command to create an AWS IoT thing.
 
