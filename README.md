@@ -135,6 +135,11 @@ For example, to install the AWS IoT port and create an AWS IoT thing named `rasp
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
 ```
 
+The install script requires access to the following AWS services.
+
+- **IoT Core** - for adding the Thing and associated certificates, policies and rules
+- **IAM** - for the creation of roles used with rule actions
+
 ### Pelion Credentials Install
 
 To install the Pelion enebular-agent port, the required Pelion credentials must be copied to the device first and then their location specified with one of the two following options.
