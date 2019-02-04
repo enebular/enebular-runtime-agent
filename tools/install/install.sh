@@ -802,7 +802,7 @@ post_install() {
   if [ ! -z ${LICENSE_KEY} ]; then
     _task "Creating activation configuration file"
     cmd_wrapper run_as_user ${USER} 'echo "{\"enebularBaseURL\": \"'${ENEBULAR_BASE_URL}'\",\"licenseKey\": \"'${LICENSE_KEY}'\"}" \
-      > "'${INSTALL_DIR}'/ports/awsiot/.enebular-activation-config.json"'
+      > "'${INSTALL_DIR}'/ports/'${PORT}'/.enebular-activation-config.json"'
     _echo_g "OK"
   fi
 
