@@ -63,6 +63,13 @@ It's best to only use this feature when running the script remotely to avoid hav
 
 The generated keys and certificates will be stored in `/home/enebular/enebular-runtime-agent/ports/awsiot/certs` by default. The user must make sure the keys and certificates are backed up securely if necessary.
 
+The install script also adds the required AWS IoT policies and rules for use with enebular. This includes a rule to allow the connection status to be updated when the device disconnects unexpectedly.
+
+The install script requires access to the following AWS services.
+
+- **IoT Core** - for adding the Thing and associated certificates, policies and rules
+- **IAM** - for the creation of roles used with rule actions
+
 See the *Examples* section below for an example of a command to create an AWS IoT thing.
 
 #### Pelion - Credentials Install

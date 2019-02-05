@@ -135,6 +135,11 @@ enebular-agent の AWS IoT ポートをインストールし、新しい AWS IoT
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
 ```
 
+インストールスクリプトに以下の AWS サービスのアクセス権限が必要になります。
+
+- **IoT Core** - モノとその関連の証明書や、ポリシー、ルールの追加のために利用します
+- **IAM** - ルールのアクションで使用されるロールの追加のために利用します
+
 ### Pelion の認証情報インストール
 
 enebular-agent の Pelion ポートをインストールするには、必要となる認証情報を先にデバイスに転送してから、転送先を以下のオプションのいずれかで設定する必要があります。
