@@ -71,7 +71,13 @@ ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E 
 
 AWS IoT のモノを作成するコマンドの例については、下記「実行例」の項を参照してください。
 
-#### Pelion の認証情報インストール
+#### Pelion の接続モード選択と認証情報インストール
+
+Pelionの接続モードには、以下のオプションで`develop`または`factory`を選択できます。デフォルトでは `develop` になります。
+
+```sh
+--mbed-cloud-mode
+```
 
 インストールスクリプトは、enebular-agent が使用するための Pelion の開発者用またはファクトリー用の認証情報をインストールする機能を持っています。
 
@@ -81,6 +87,8 @@ AWS IoT のモノを作成するコマンドの例については、下記「実
 --mbed-cloud-dev-cred
 --mbed-cloud-pal
 ```
+
+Pelionの接続モードに開発者用モードを選択した場合に`--mbed-cloud-dev-cred`オプションで開発者用の認証情報のパス、ファクトリーモードを選択した場合に`--mbed-cloud-pal`オプションでファクトリー用の認証情報（palディレクトリ）のパスを設定します。
 
 認証情報は、`/tmp`などのように再起動後に保存されない一時的なストレージ領域に転送するのが望ましいです。
 
@@ -111,8 +119,10 @@ OPTION                      FORMAT              DEFAULT                         
 --aws-secret-access-key     =*                  N/A                                  AWS secret access key
 --aws-iot-region            =*                  N/A                                  AWS IoTのリージョン
 --aws-iot-thing-name        =*                  N/A                                  AWS IoTのモノ名
+--mbed-cloud-mode           =[develop,factory]  develop                              Pelionの接続モード
 --mbed-cloud-dev-cred       =*                  N/A                                  Pelionの開発者用認証情報ファイルのパス
---mbed-cloud-pal            =*                  N/A                                  Pelionのファクトリー用認証情報ディレクトリのパス
+--mbed-cloud-pal            =*                  N/A                                  Pelionのファクトリー用認証情報（palディレクトリ）のパス
+--mbed-cloud-build-fcc      N/A                 N/A                                  PelionのFCCツールをビルドする
 --license-key               =*                  N/A                                  アクティベーション用のライセンスキー
 --dev-mode                  N/A                 N/A                                  enebular-agentを開発者用モードで起動する
 ```
@@ -148,7 +158,7 @@ Raspberry Pi デバイスに `pi` ユーザと `192.168.1.125` の IP アドレ�
 
 ```sh
 scp -r pal pi@192.168.1.125:/tmp/
-ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-pal=/tmp/pal"
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-mode=factory --mbed-cloud-pal=/tmp/pal"
 ```
 
 ## インストール完了後
