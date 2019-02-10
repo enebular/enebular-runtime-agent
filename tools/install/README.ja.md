@@ -73,7 +73,7 @@ AWS IoT のモノを作成するコマンドの例については、下記「実
 
 #### Pelion の接続モード選択と認証情報インストール
 
-Pelionの接続モードには、以下のオプションで`develop`または`factory`を選択できます。デフォルトでは `develop` になります。
+Pelionの接続モードには、以下のオプションで`developer`または`factory`を選択できます。デフォルトでは `developer` になります。
 
 ```sh
 --mbed-cloud-mode
@@ -109,22 +109,22 @@ enebular-agent の再起動方法と実行状態の確認方法については�
 ## オプション
 
 ```sh
-OPTION                      FORMAT              DEFAULT                              DESCRIPTION
--p or --port                -p=[awsiot,pelion]  awsiot                               インストールするポート
--u or --user                -u=*                enebular                             インストール後の実行ユーザ
--d or --install-dir         -d=<path>           /home/<user>/enebular-runtime-agent  インストール先のディレクトリ
--v or --release-version     -v=*                The latest release                   enebular-agentのリリース
---no-startup-register       N/A                 N/A                                  システム起動時用のスタートアップ登録をしない
---aws-access-key-id         =*                  N/A                                  AWS access key ID
---aws-secret-access-key     =*                  N/A                                  AWS secret access key
---aws-iot-region            =*                  N/A                                  AWS IoTのリージョン
---aws-iot-thing-name        =*                  N/A                                  AWS IoTのモノ名
---mbed-cloud-mode           =[develop,factory]  develop                              Pelionの接続モード
---mbed-cloud-dev-cred       =*                  N/A                                  Pelionの開発者用認証情報ファイルのパス
---mbed-cloud-pal            =*                  N/A                                  Pelionのファクトリー用認証情報（palディレクトリ）のパス
---mbed-cloud-build-fcc      N/A                 N/A                                  PelionのFCCツールをビルドする
---license-key               =*                  N/A                                  アクティベーション用のライセンスキー
---dev-mode                  N/A                 N/A                                  enebular-agentを開発者用モードで起動する
+OPTION                      FORMAT                DEFAULT                              DESCRIPTION
+-p or --port                -p=[awsiot,pelion]    awsiot                               インストールするポート
+-u or --user                -u=*                  enebular                             インストール後の実行ユーザ
+-d or --install-dir         -d=<path>             /home/<user>/enebular-runtime-agent  インストール先のディレクトリ
+-v or --release-version     -v=*                  The latest release                   enebular-agentのリリース
+--no-startup-register       N/A                   N/A                                  システム起動時用のスタートアップ登録をしない
+--aws-access-key-id         =*                    N/A                                  AWS access key ID
+--aws-secret-access-key     =*                    N/A                                  AWS secret access key
+--aws-iot-region            =*                    N/A                                  AWS IoTのリージョン
+--aws-iot-thing-name        =*                    N/A                                  AWS IoTのモノ名
+--mbed-cloud-mode           =[developer,factory]  developer                            Pelionの接続モード
+--mbed-cloud-dev-cred       =*                    N/A                                  Pelionの開発者用認証情報ファイルのパス
+--mbed-cloud-pal            =*                    N/A                                  Pelionのファクトリー用認証情報（palディレクトリ）のパス
+--mbed-cloud-build-fcc      N/A                   N/A                                  PelionのFCCツールをビルドする
+--license-key               =*                    N/A                                  アクティベーション用のライセンスキー
+--dev-mode                  N/A                   N/A                                  enebular-agentを開発者用モードで起動する
 ```
 
 ## 実行例

@@ -74,7 +74,7 @@ See the *Examples* section below for an example of a command to create an AWS Io
 
 #### Pelion - Connection Mode and Credentials Install
 
-It's possible to select either `develop` or `factory` for the Pelion connection mode with the following option. It defaults to `develop`.
+It's possible to select either `developer` or `factory` for the Pelion connection mode with the following option. It defaults to `developer`.
 
 ```sh
 --mbed-cloud-mode
@@ -110,22 +110,22 @@ The install script will create the activation configuration file for enebular-ag
 ## Options
 
 ```sh
-OPTION                      FORMAT              DEFAULT                              DESCRIPTION
--p or --port                -p=[awsiot,pelion]  awsiot                               Port to install
--u or --user                -u=*                enebular                             User to run as after being installed
--d or --install-dir         -d=<path>           /home/<user>/enebular-runtime-agent  Install directory
--v or --release-version     -v=*                The latest release                   Release version of enebular-agent
---no-startup-register       N/A                 N/A                                  Do not register system startup configuration
---aws-access-key-id         =*                  N/A                                  AWS access key ID
---aws-secret-access-key     =*                  N/A                                  AWS secret access key
---aws-iot-region            =*                  N/A                                  AWS IoT region
---aws-iot-thing-name        =*                  N/A                                  AWS IoT thing name
---mbed-cloud-mode           =[develop,factory]  develop                              Pelion connection mode
---mbed-cloud-dev-cred       =*                  N/A                                  Path to Pelion developer credentials c file
---mbed-cloud-pal            =*                  N/A                                  Path to Pelion factory pal directory
---mbed-cloud-build-fcc      N/A                 N/A                                  Build the Pelion FCC tool
---license-key               =*                  N/A                                  Enebular licence key to activate
---dev-mode                  N/A                 N/A                                  Run enebular-agent in developer mode
+OPTION                      FORMAT                DEFAULT                              DESCRIPTION
+-p or --port                -p=[awsiot,pelion]    awsiot                               Port to install
+-u or --user                -u=*                  enebular                             User to run as after being installed
+-d or --install-dir         -d=<path>             /home/<user>/enebular-runtime-agent  Install directory
+-v or --release-version     -v=*                  The latest release                   Release version of enebular-agent
+--no-startup-register       N/A                   N/A                                  Do not register system startup configuration
+--aws-access-key-id         =*                    N/A                                  AWS access key ID
+--aws-secret-access-key     =*                    N/A                                  AWS secret access key
+--aws-iot-region            =*                    N/A                                  AWS IoT region
+--aws-iot-thing-name        =*                    N/A                                  AWS IoT thing name
+--mbed-cloud-mode           =[developer,factory]  developer                            Pelion connection mode
+--mbed-cloud-dev-cred       =*                    N/A                                  Path to Pelion developer credentials c file
+--mbed-cloud-pal            =*                    N/A                                  Path to Pelion factory pal directory
+--mbed-cloud-build-fcc      N/A                   N/A                                  Build the Pelion FCC tool
+--license-key               =*                    N/A                                  Enebular licence key to activate
+--dev-mode                  N/A                   N/A                                  Run enebular-agent in developer mode
 ```
 
 ## Examples

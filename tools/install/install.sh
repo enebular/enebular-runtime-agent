@@ -749,7 +749,7 @@ setup_mbed_cloud_connector() {
     _echo_g "OK"
   fi
 
-  if [ ${MBED_CLOUD_MODE} == 'develop' ]; then
+  if [ ${MBED_CLOUD_MODE} == 'developer' ]; then
     MBED_CLOUD_DEFINE=define.txt
   else
     MBED_CLOUD_DEFINE=define_factory.txt
@@ -841,7 +841,7 @@ RELEASE_VERSION="latest-release"
 AGENT_DOWNLOAD_PATH="https://api.github.com/repos/enebular/enebular-runtime-agent/"
 SUPPORTED_NODE_VERSION="v9.2.1"
 ENEBULAR_BASE_URL="https://enebular.com/api/v1"
-MBED_CLOUD_MODE=develop
+MBED_CLOUD_MODE=developer
 AWS_IOT_DISABLE_RULE_CREATION=false
 
 LOG_FILE="$(create_log)"
@@ -953,14 +953,14 @@ case "${PORT}" in
   awsiot);;
   pelion)
   case "${MBED_CLOUD_MODE}" in
-    develop | factory);;
+    developer | factory);;
     *)
-      _err 'Unknown mbed cloud mode, supported modes: develop, factory'
+      _err 'Unknown mbed cloud mode, supported modes: developer, factory'
       _exit 1
     ;;
   esac
-  if [ -z "${MBED_CLOUD_DEV_CRED}" ] && [ ${MBED_CLOUD_MODE} == 'develop' ]; then
-    _err 'Must specify --mbed-cloud-dev-cred in pelion develop mode'
+  if [ -z "${MBED_CLOUD_DEV_CRED}" ] && [ ${MBED_CLOUD_MODE} == 'developer' ]; then
+    _err 'Must specify --mbed-cloud-dev-cred in pelion developer mode'
     _exit 1
   fi
   ;;
