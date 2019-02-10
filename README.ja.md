@@ -140,7 +140,7 @@ ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E 
 - **IoT Core** - モノとその関連の証明書や、ポリシー、ルールの追加のために利用します
 - **IAM** - ルールのアクションで使用されるロールの追加のために利用します
 
-### Pelion 接続モード選択と認証情報インストール
+### Pelion の接続モード選択と認証情報インストール
 
 enebular-agent の Pelion ポートをインストールするには、`--port`オプションで`pelion`を設定する必要があります。
 
