@@ -72,7 +72,13 @@ The install script requires access to the following AWS services.
 
 See the *Examples* section below for an example of a command to create an AWS IoT thing.
 
-#### Pelion - Credentials Install
+#### Pelion - Connection Mode and Credentials Install
+
+It's possible to select either `developer` or `factory` for the Pelion connection mode with the following option. It defaults to `developer`.
+
+```sh
+--mbed-cloud-mode
+```
 
 The install script provides the ability to install developer or factory credentials for the pelion port.
 
@@ -82,6 +88,8 @@ The credentials must be copied to the device first and then their location must 
 --mbed-cloud-dev-cred
 --mbed-cloud-pal
 ```
+
+Use `--mbed-cloud-dev-cred` to specify the developer credentials in developer mode and `--mbed-cloud-pal` to specify the pal directory in factory mode.
 
 It's best to copy the credentials to a temporary storage area on the device such as under `/tmp` which won't be saved after a reboot.
 
@@ -102,20 +110,22 @@ The install script will create the activation configuration file for enebular-ag
 ## Options
 
 ```sh
-OPTION                      FORMAT              DEFAULT                              DESCRIPTION
--p or --port                -p=[awsiot,pelion]  awsiot                               Port to install
--u or --user                -u=*                enebular                             User to run as after being installed
--d or --install-dir         -d=<path>           /home/<user>/enebular-runtime-agent  Install directory
--v or --release-version     -v=*                The latest release                   Release version of enebular-agent
---no-startup-register       N/A                 N/A                                  Do not register system startup configuration
---aws-access-key-id         =*                  N/A                                  AWS access key ID
---aws-secret-access-key     =*                  N/A                                  AWS secret access key
---aws-iot-region            =*                  N/A                                  AWS IoT region
---aws-iot-thing-name        =*                  N/A                                  AWS IoT thing name
---mbed-cloud-dev-cred       =*                  N/A                                  Path to Pelion developer credentials c file
---mbed-cloud-pal            =*                  N/A                                  Path to Pelion factory pal directory
---license-key               =*                  N/A                                  Enebular licence key to activate
---dev-mode                  N/A                 N/A                                  Run enebular-agent in developer mode
+OPTION                      FORMAT                DEFAULT                              DESCRIPTION
+-p or --port                -p=[awsiot,pelion]    awsiot                               Port to install
+-u or --user                -u=*                  enebular                             User to run as after being installed
+-d or --install-dir         -d=<path>             /home/<user>/enebular-runtime-agent  Install directory
+-v or --release-version     -v=*                  The latest release                   Release version of enebular-agent
+--no-startup-register       N/A                   N/A                                  Do not register system startup configuration
+--aws-access-key-id         =*                    N/A                                  AWS access key ID
+--aws-secret-access-key     =*                    N/A                                  AWS secret access key
+--aws-iot-region            =*                    N/A                                  AWS IoT region
+--aws-iot-thing-name        =*                    N/A                                  AWS IoT thing name
+--mbed-cloud-mode           =[developer,factory]  developer                            Pelion connection mode
+--mbed-cloud-dev-cred       =*                    N/A                                  Path to Pelion developer credentials c file
+--mbed-cloud-pal            =*                    N/A                                  Path to Pelion factory pal directory
+--mbed-cloud-build-fcc      N/A                   N/A                                  Build the Pelion FCC tool
+--license-key               =*                    N/A                                  Enebular licence key to activate
+--dev-mode                  N/A                   N/A                                  Run enebular-agent in developer mode
 ```
 
 ## Examples
@@ -149,7 +159,7 @@ Install the Pelion enebular-agent port with the factory pal directory on a Raspb
 
 ```sh
 scp -r pal pi@192.168.1.125:/tmp/
-ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-pal=/tmp/pal"
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-mode=factory --mbed-cloud-pal=/tmp/pal"
 ```
 
 ## Post Install

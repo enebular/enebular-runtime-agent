@@ -140,16 +140,20 @@ The install script requires access to the following AWS services.
 - **IoT Core** - for adding the Thing and associated certificates, policies and rules
 - **IAM** - for the creation of roles used with rule actions
 
-### Pelion Credentials Install
+### Pelion Connection Mode Selection and Credentials Install
 
-To install the Pelion enebular-agent port, the required Pelion credentials must be copied to the device first and then their location specified with one of the two following options.
+To install the Pelion enebular-agent port, the `--port` option must be set to `pelion`.
+
+By default developer mode is selected for the connection mode. Factory mode can be selected by setting the `--mbed-cloud-mode` option to `factory`.
+
+The required Pelion credentials must be copied to the device first and then their location specified with one of the two following options.
 
 ```sh
 --mbed-cloud-dev-cred=<Path of the Pelion developer credentials c file>
 --mbed-cloud-pal=<Path of the Pelion factory pal directory>
 ```
 
-The `--port` option must also be set to `pelion`.
+Use `--mbed-cloud-dev-cred` to specify the developer credentials in developer mode and `--mbed-cloud-pal` to specify the pal directory in factory mode.
 
 For example, to install the Pelion port with developer credentials on a Raspberry Pi device (with the `pi` user and IP address of `192.168.1.125`), the commands would be similar to the following.
 
