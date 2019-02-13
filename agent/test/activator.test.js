@@ -73,7 +73,7 @@ test.serial(
       connector: connector,
       config: agentConfig
     })
-    await t.throws(agent.startup(), Error)
+    await t.throwsAsync(agent.startup(), Error)
   }
 )
 
