@@ -9,8 +9,12 @@ export interface ConfigItems {
   [key: string]: ConfigItem
 }
 
-interface NodeEnv {
+export interface ConfigStrings {
   [key: string]: string | undefined
+}
+
+export interface ConfigAnyTypes {
+  [key: string]: string | number | boolean
 }
 
 export default class Config {
@@ -18,9 +22,20 @@ export default class Config {
 
   public constructor() {
     this._items = {
+      ENEBULAR_AGENT_UPDATER_TEST: {
+        value: false,
+        description: 'test',
+        userExpose: true
+      },
       ENEBULAR_AGENT_INSTALL_DIR: {
         value: '/home/enebular/enebular-runtime-agent',
         description: 'Install location of enebular-agent',
+        userExpose: true
+      },
+      ENEBULAR_AGENT_DOWNLOAD_URL: {
+        value:
+          'https://s3-ap-southeast-2.amazonaws.com/enebular-agent-update-youxin-test/2.4.0-rc1-prebuilt.tar.gz',
+        description: 'The URL where to download enebular-agent',
         userExpose: true
       },
       ENEBULAR_AGENT_USER: {
@@ -96,6 +111,10 @@ export default class Config {
 
   public set(key: string, value: string | number | boolean): boolean {
     if (typeof this._items[key].value !== typeof value) {
+      /* console.log( */
+      /* `${key} type mismatch, expected: ${typeof this._items[key] */
+      /* .value}, but got ${typeof value}` */
+      /* ) */
       return false
     }
     this._items[key].override = true
@@ -116,11 +135,20 @@ export default class Config {
     }
   }
 
-  public importEnvironmentVariables(items: NodeEnv): void {
+  public importConfigStrings(items: ConfigStrings): void {
     Object.keys(items).forEach(key => {
       // modify only, we don't create new config item.
       if (key in this._items) {
         this.setAutoDetectType(key, items[key])
+      }
+    })
+  }
+
+  public importConfigAnyTypes(items: ConfigAnyTypes): void {
+    Object.keys(items).forEach(key => {
+      // modify only, we don't create new config item.
+      if (key in this._items) {
+        this.set(key, items[key])
       }
     })
   }
