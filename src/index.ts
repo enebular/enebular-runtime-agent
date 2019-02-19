@@ -8,7 +8,8 @@ function main(): Promise<string> {
 }
 
 if (require.main === module) {
-  main().catch(() => {
+  main().catch((err) => {
+    console.log(err)
     process.exit(1)
   })
 }

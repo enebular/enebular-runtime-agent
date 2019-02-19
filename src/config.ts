@@ -27,6 +27,11 @@ export default class Config {
         description: 'test',
         userExpose: true
       },
+      SUPPORTED_NODEJS_VERSION: {
+        value: 'v9.2.1',
+        description: 'Supported NodeJS version',
+        userExpose: true
+      },
       ENEBULAR_AGENT_INSTALL_DIR: {
         value: '/home/enebular/enebular-runtime-agent',
         description: 'Install location of enebular-agent',
@@ -107,6 +112,11 @@ export default class Config {
       }
     })
     return ret
+  }
+
+  public isOverridden(key: string): boolean {
+    const item = this.getItem(key)
+    return item && item.override ? true : false
   }
 
   public set(key: string, value: string | number | boolean): boolean {
