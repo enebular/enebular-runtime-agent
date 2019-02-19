@@ -1,8 +1,8 @@
 export interface ConfigItem {
-  value?: string | number | boolean
-  description?: string
+  value: string | number | boolean
+  description: string
   override?: boolean
-  userExpose?: boolean
+  userExpose: boolean
 }
 
 export interface ConfigItems {
@@ -59,10 +59,11 @@ export default class Config {
   ): boolean {
     if (key in this._items) return false
 
-    this._items[key] = {}
-    this._items[key].value = value
-    this._items[key].description = description
-    this._items[key].userExpose = userExpose
+    this._items[key] = { 
+      value: value,
+      description: description,
+      userExpose: userExpose
+    }
     return true
   }
 
@@ -70,37 +71,42 @@ export default class Config {
     return this._items
   }
 
-  public getItem(key: string): ConfigItem | undefined {
+  public getItem(key: string): ConfigItem {
+    if (this._items[key] == undefined) {
+      throw new Error(`Cannot found config ${key}`)
+    }
     return this._items[key]
   }
 
-  public getString(key: string): string | undefined {
+  public getString(key: string): string {
     if (
       this._items[key] == undefined ||
       typeof this._items[key].value !== 'string'
-    )
-      return undefined
+    ) {
+      throw new Error(`Cannot found config ${key}`)
+    }
     return this._items[key].value as string
   }
 
-  public getNumber(key: string): number | undefined {
-    if (this._items[key] && typeof this._items[key].value !== 'number')
-      return undefined
+  public getNumber(key: string): number {
+    if (this._items[key] && typeof this._items[key].value !== 'number') {
+      throw new Error(`Cannot found config ${key}`)
+    }
     return this._items[key].value as number
   }
 
-  public getBoolean(key: string): boolean | undefined {
+  public getBoolean(key: string): boolean {
     if (
       this._items[key] == undefined ||
       typeof this._items[key].value !== 'boolean'
-    )
-      return undefined
+    ) {
+      throw new Error(`Cannot found config ${key}`)
+    }
     return this._items[key].value as boolean
   }
 
-  public getDescription(key: string): string | undefined {
-    const item = this.getItem(key)
-    return item ? item.description : undefined
+  public getDescription(key: string): string {
+    return this.getItem(key).description
   }
 
   public getOverriddenItems(): ConfigItems {
@@ -115,8 +121,7 @@ export default class Config {
   }
 
   public isOverridden(key: string): boolean {
-    const item = this.getItem(key)
-    return item && item.override ? true : false
+    return this.getItem(key).override ? true : false
   }
 
   public set(key: string, value: string | number | boolean): boolean {
@@ -132,7 +137,7 @@ export default class Config {
     return true
   }
 
-  public setAutoDetectType(key: string, value: string | undefined): boolean {
+  public setAutoDetectType(key: string, value?: string): boolean {
     if (!(key in this._items) || !value) return false
 
     let int
