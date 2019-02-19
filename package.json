@@ -33,6 +33,7 @@
     "typescript": "^3.3.3"
   },
   "dependencies": {
+    "check-disk-space": "^1.5.0",
     "commander": "^2.19.0"
   }
 }

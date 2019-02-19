@@ -4,6 +4,7 @@ import util from 'util'
 import { execSync } from 'child_process'
 import * as fs from 'fs'
 import * as path from 'path'
+import checkDiskSpace from 'check-disk-space'
 
 interface AgentInfo {
   path?: string
@@ -18,6 +19,7 @@ export default class AgentUpdater {
   private _config: Config
   private _commandLine: CommandLine
   private _systemdChecked: boolean = false
+  private _minimumRequiredDiskSpace: number = 300 * 1024 * 1024
 
   public constructor() {
     this._config = new Config()
@@ -120,6 +122,20 @@ export default class AgentUpdater {
     console.log(agentInfo)
 
     // disk space check, nodejs check, etc
+    let usageInfo
+    try {
+      usageInfo = await checkDiskSpace(agentInstallDir)
+    } catch (err) {
+      throw new Error('Failed to get free space: ' + err.message)
+    }
+    if (usageInfo.free < this._minimumRequiredDiskSpace) {
+      throw new Error(
+        `Not enough storage space (available: ${
+          usageInfo.free
+        }B, required: ${this._minimumRequiredDiskSpace}B)`
+      )
+    }
+    // TODO: nodejs check
 
     // download
 
