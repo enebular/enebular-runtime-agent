@@ -59,7 +59,7 @@ export default class Config {
   ): boolean {
     if (key in this._items) return false
 
-    this._items[key] = { 
+    this._items[key] = {
       value: value,
       description: description,
       userExpose: userExpose
