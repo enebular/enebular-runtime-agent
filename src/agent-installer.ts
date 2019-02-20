@@ -6,15 +6,18 @@ import checkDiskSpace from 'check-disk-space'
 import request from 'request'
 import progress from 'request-progress'
 import tar from 'tar'
+import { spawn, execSync } from 'child_process'
 
 import Config from './config'
 import { AgentInfo } from './agent-updater'
+import Utils from './utils'
 
 export default class AgentInstaller {
   private _config: Config
   private _minimumRequiredDiskSpace: number = 400 * 1024 * 1024 // 400 MiB
   private _maxFetchRetryCount: number = 3
   private _fetchRetryCount: number = 0
+  private _buildEnv: NodeJS.ProcessEnv = {}
 
   public constructor(config: Config) {
     this._config = config
@@ -119,14 +122,19 @@ export default class AgentInstaller {
       } catch (err) {
         this._fetchRetryCount++
         if (this._fetchRetryCount <= this._maxFetchRetryCount) {
-          console.log(`Failed to fetch agent, retry in 1 second ...\n${err.message}`)
+          console.log(
+            `Failed to fetch agent, retry in 1 second ...\n${err.message}`
+          )
           setTimeout(async () => {
             resolve(await this._fetchWithRetry(url, path))
           }, 1000)
-        }
-        else {
+        } else {
           this._fetchRetryCount = 0
-          console.log(`Failed to to fetch agent, retry count(${this._maxFetchRetryCount}) reaches max\n${err.message}`)
+          console.log(
+            `Failed to to fetch agent, retry count(${
+              this._maxFetchRetryCount
+            }) reaches max\n${err.message}`
+          )
           resolve(false)
         }
       }
@@ -154,19 +162,82 @@ export default class AgentInstaller {
     })
   }
 
-  private _build(agentInfo: AgentInfo, installPath: string): Promise<boolean> {
+  private _buildNpmPackage(path: string): Promise<{}> {
+    return new Promise((resolve, reject) => {
+      const cproc = spawn('npm', ['i'], {
+        stdio: 'pipe',
+        env: this._buildEnv,
+        cwd: path
+      })
+      let stdout = '',
+        stderr = ''
+      cproc.stdout.on('data', data => {
+        stdout = data.toString().replace(/(\n|\r)+$/, '')
+      })
+      cproc.stderr.on('data', data => {
+        stderr = data.toString().replace(/(\n|\r)+$/, '')
+      })
+      cproc.once('exit', (code, signal) => {
+        if (code !== 0) {
+          reject(
+            new Error(
+              `Exited with (${
+                code !== null ? code : signal
+              })\n stderr:\n${stderr} stdout:\n${stdout}`
+            )
+          )
+        } else {
+          resolve()
+        }
+      })
+      cproc.once('error', err => {
+        reject(err)
+      })
+    })
+  }
+
+  private async _build(
+    agentInfo: AgentInfo,
+    installPath: string
+  ): Promise<boolean> {
+    console.log('Old agent info:')
+    console.log(agentInfo)
+    let newAgentInfo = Utils.collectAgentInfoFromSrc(installPath)
+    console.log('New agent info, before building:')
+    console.log(newAgentInfo)
+    const nodejsPath = path.resolve(
+      `/home/${this._config.getString('ENEBULAR_AGENT_USER')}/nodejs-${
+        newAgentInfo.nodejsVersion
+      }`
+    )
+    if (!fs.existsSync(nodejsPath)) {
+      // TODO: install nodejs
+      console.log(
+        `Installing nodejs-${newAgentInfo.nodejsVersion} to ${nodejsPath} ...`
+      )
+    }
+    this._buildEnv['PATH'] = `${nodejsPath}/bin:${process.env['PATH']}`
     console.log(`Building agent ...`)
+    await this._buildNpmPackage(`${installPath}/agent`)
+
     if (agentInfo.awsiot) {
       console.log(`Building awsiot port ...`)
+      await this._buildNpmPackage(`${installPath}//ports/awsiot`)
       console.log(`Building awsiot-thing-creator port ...`)
+      await this._buildNpmPackage(`${installPath}/tools/awsiot-thing-creator`)
     }
     if (agentInfo.pelion) {
       console.log(`Building pelion port ...`)
+      await this._buildNpmPackage(`${installPath}//ports/pelion`)
       console.log(`Building mbed-cloud-connector ...`)
       if (agentInfo.mbedCloudConnectorFCC) {
         console.log(`Building mbed-cloud-connector-fcc ...`)
       }
     }
+
+    newAgentInfo = Utils.collectAgentInfoFromSrc(installPath)
+    console.log('New agent info, after building:')
+    console.log(newAgentInfo)
     return true
   }
 
@@ -176,17 +247,28 @@ export default class AgentInstaller {
     installPath: string
   ): Promise<boolean> {
     const tarball = cachePath + '/enebular-agent-latest.tar.gz'
-    if (!await this._fetchWithRetry(
-      this._config.getString('ENEBULAR_AGENT_DOWNLOAD_URL'),
-      tarball
-    )) {
-      throw new Error(`Failed to fetch agent`)
+    if (
+      !(await this._fetchWithRetry(
+        this._config.getString('ENEBULAR_AGENT_DOWNLOAD_URL'),
+        tarball
+      ))
+    ) {
+      console.log(`Failed to fetch agent`)
+      return false
     }
 
     try {
       await this._extract(tarball, installPath)
     } catch (err) {
-      throw new Error(`Failed to extract agent:\n${err.message}`)
+      console.log(`Failed to extract agent:\n${err.message}`)
+      return false
+    }
+
+    try {
+      await this._build(agentInfo, installPath)
+    } catch (err) {
+      console.log(`Failed to build agent:\n${err.message}`)
+      return false
     }
     return true
   }
