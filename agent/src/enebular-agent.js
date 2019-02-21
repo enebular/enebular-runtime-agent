@@ -13,6 +13,7 @@ import LogManager from './log-manager'
 import CommandLine from './command-line'
 import Config from './config'
 import type { Logger } from 'winston'
+import { version as agentVer } from '../package.json'
 
 export type EnebularAgentConfig = {
   NODE_RED_DIR: string,
@@ -155,6 +156,7 @@ export default class EnebularAgent extends EventEmitter {
 
     this._initLogging()
 
+    this._log.info('enebular-agent version: ' + agentVer)
     if (devMode) {
       this._log.info('Running in Developer Mode')
     }
@@ -221,6 +223,14 @@ export default class EnebularAgent extends EventEmitter {
     this._agentState = 'init'
   }
 
+  _logMetrics() {
+    const memUsage = process.memoryUsage()
+    this._log.info('metrics.mem.rss: ' + memUsage.rss)
+    this._log.info('metrics.mem.heapTotal: ' + memUsage.heapTotal)
+    this._log.info('metrics.mem.heapUsed: ' + memUsage.heapUsed)
+    this._log.info('metrics.mem.external: ' + memUsage.external)
+  }
+
   _initLogging() {
     if (process.env.DEBUG) {
       this._config.set('ENEBULAR_LOG_LEVEL', process.env.DEBUG)
@@ -233,6 +243,11 @@ export default class EnebularAgent extends EventEmitter {
       'file',
       'syslog'
     ])
+
+    if (this._config.get('ENEBULAR_LOG_METRICS_ENABLE')) {
+      const interval = this._config.get('ENEBULAR_LOG_METRICS_INTERVAL')
+      setInterval(() => this._logMetrics(), interval * 1000)
+    }
   }
 
   get log(): Logger {
@@ -281,7 +296,7 @@ export default class EnebularAgent extends EventEmitter {
 
   async startup() {
     if (this._connector.registerConfig) {
-      this._connector.registerConfig()
+      await this._connector.registerConfig()
     }
     this._config.importEnvironmentVariables()
     this._commandLine.parse()
@@ -304,7 +319,7 @@ export default class EnebularAgent extends EventEmitter {
     this._updateMonitoringFromDesiredState()
 
     if (this._connector.init) {
-      this._connector.init()
+      await this._connector.init()
     }
 
     await this._nodeRed.startService()

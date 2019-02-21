@@ -2,11 +2,12 @@
 import fs from 'fs'
 import EventEmitter from 'events'
 import path from 'path'
-import { spawn, type ChildProcess, exec } from 'child_process'
-import ProcessUtil from './process-util'
+import { spawn, type ChildProcess } from 'child_process'
 import fetch from 'isomorphic-fetch'
 import type { Logger } from 'winston'
+import ProcessUtil, { type RetryInfo } from './process-util'
 import type LogManager from './log-manager'
+import { encryptCredential } from './utils'
 
 export type NodeREDConfig = {
   dir: string,
@@ -18,19 +19,17 @@ export type NodeREDConfig = {
 }
 
 const moduleName = 'node-red'
-const maxRetryCount = 5
-const maxRetryCountResetInterval = 5
+
+type EditSession = {
+  ipAddress: string,
+  sessionToken: string
+}
 
 type NodeRedFlowPackage = {
   flows: Object[],
   creds: Object,
   packages: Object,
   editSession?: EditSession
-}
-
-type EditSession = {
-  ipAddress: string,
-  sessionToken: string
 }
 
 export default class NodeREDController {
@@ -46,8 +45,7 @@ export default class NodeREDController {
   _log: Logger
   _logManager: LogManager
   _nodeRedLog: Logger
-  _exceptionRetryCount: number = 0
-  _lastRetryTimestamp: number = Date.now()
+  _retryInfo: RetryInfo
   _allowEditSessions: boolean = false
 
   constructor(
@@ -63,6 +61,7 @@ export default class NodeREDController {
     this._pidFile = config.pidFile
     this._assetsDataPath = config.assetsDataPath
     this._allowEditSessions = config.allowEditSessions
+    this._retryInfo = { retryCount: 0, lastRetryTimestamp: Date.now() }
 
     if (!fs.existsSync(this._dir)) {
       throw new Error(`The Node-RED directory was not found: ${this._dir}`)
@@ -93,6 +92,11 @@ export default class NodeREDController {
   info(msg: string, ...args: Array<mixed>) {
     args.push({ module: moduleName })
     this._log.info(msg, ...args)
+  }
+
+  error(msg: string, ...args: Array<mixed>) {
+    args.push({ module: moduleName })
+    this._log.error(msg, ...args)
   }
 
   _getDataDir() {
@@ -169,8 +173,8 @@ export default class NodeREDController {
   async _downloadPackage(downloadUrl: string): NodeRedFlowPackage {
     this.info('Downloading flow:', downloadUrl)
     const res = await fetch(downloadUrl)
-    if (res.status >= 400) {
-      throw new Error('invalid url')
+    if (!res.ok) {
+      throw new Error(`Failed response (${res.status} ${res.statusText})`)
     }
     return res.json()
   }
@@ -192,10 +196,49 @@ export default class NodeREDController {
       )
     }
     if (flowPackage.cred || flowPackage.creds) {
-      const creds = flowPackage.cred || flowPackage.creds
+      let creds = flowPackage.cred || flowPackage.creds
       updates.push(
         new Promise((resolve, reject) => {
           const credFilePath = path.join(this._getDataDir(), 'flows_cred.json')
+          const editSessionRequested = this._flowPackageContainsEditSession(
+            flowPackage
+          )
+
+          let settings
+          if (editSessionRequested) {
+            // enebular-editor remote deploy
+            settings = require(path.join(
+              this._getDataDir(),
+              'enebular-editor-settings.js'
+            ))
+          } else {
+            settings = require(path.join(this._getDataDir(), 'settings.js'))
+          }
+          if (settings.credentialSecret === false) {
+            this.info('skip credential encryption')
+          } else {
+            this.info('credential encryption')
+            try {
+              const dotconfig = fs.readFileSync(
+                path.join(this._getDataDir(), '.config.json'),
+                'utf8'
+              )
+
+              // enebular-node-red dont see credentialSecret in settings.js
+              //const defaultKey =
+              //  settings.credentialSecret ||
+              //  JSON.parse(dotconfig)._credentialSecret
+              const defaultKey = JSON.parse(dotconfig)._credentialSecret
+
+              creds = { $: encryptCredential(defaultKey, creds) }
+            } catch (err) {
+              throw new Error(
+                'encrypt credential and create flows_cred.json failed',
+                err
+              )
+            }
+          }
+
           fs.writeFile(
             credFilePath,
             JSON.stringify(creds),
@@ -212,6 +255,14 @@ export default class NodeREDController {
             'enebular-agent-dynamic-deps',
             'package.json'
           )
+          if (
+            Object.keys(flowPackage.packages).includes(
+              'node-red-contrib-enebular'
+            )
+          ) {
+            flowPackage.packages['node-red-contrib-enebular'] =
+              'file:../../node-red-contrib-enebular'
+          }
           const packageJSON = JSON.stringify(
             {
               name: 'enebular-agent-dynamic-deps',
@@ -310,17 +361,11 @@ export default class NodeREDController {
         this._cproc = null
         /* Restart automatically on an abnormal exit. */
         if (code !== 0) {
-          const now = Date.now()
-          /* Detect continuous crashes (exceptions happen within 5 seconds). */
-          this._exceptionRetryCount =
-            this._lastRetryTimestamp + maxRetryCountResetInterval * 1000 > now
-              ? this._exceptionRetryCount + 1
-              : 0
-          this._lastRetryTimestamp = now
-          if (this._exceptionRetryCount < maxRetryCount) {
+          let shouldRetry = ProcessUtil.shouldRetryOnCrash(this._retryInfo)
+          if (shouldRetry) {
             this.info(
               'Unexpected exit, restarting service in 1 second. Retry count:' +
-                this._exceptionRetryCount
+                this._retryInfo.retryCount
             )
             setTimeout(() => {
               this._startService(editSession)
@@ -328,7 +373,7 @@ export default class NodeREDController {
           } else {
             this.info(
               `Unexpected exit, but retry count(${
-                this._exceptionRetryCount
+                this._retryInfo.retryCount
               }) exceed max.`
             )
             /* Other restart strategies (change port, etc.) could be tried here. */
@@ -371,14 +416,20 @@ export default class NodeREDController {
   async _sendEditorAgentIPAddress(editSession: EditSession) {
     const { ipAddress, sessionToken } = editSession
     try {
-      fetch(`http://${ipAddress}:9017/api/v1/agent-editor/ping`, {
-        method: 'POST',
-        headers: {
-          'x-ee-session': sessionToken
+      const res = await fetch(
+        `http://${ipAddress}:9017/api/v1/agent-editor/ping`,
+        {
+          method: 'POST',
+          headers: {
+            'x-ee-session': sessionToken
+          }
         }
-      })
+      )
+      if (!res.ok) {
+        throw new Error(`Failed response (${res.status} ${res.statusText})`)
+      }
     } catch (err) {
-      console.error('send editor error', err)
+      this.error('Failed to ping editor: ' + err.message)
     }
   }
 

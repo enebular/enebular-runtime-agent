@@ -1,2 +1,7 @@
 .config.json
+.config.json.backup
+
+flows.json
+flows_cred.json
+
 .flows.json.backup

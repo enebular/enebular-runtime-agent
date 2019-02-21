@@ -1,6 +1,6 @@
 {
   "name": "enebular-awsiot-agent",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "The AWS IoT port of enebular-agent for enebular",
   "main": "lib/index.js",
   "bin": {
@@ -12,7 +12,8 @@
     "start": "node lib/index.js",
     "lint": "eslint src",
     "flow": "flow",
-    "test": "test/bash/env.bash && test/bash/commandline-opts.bash"
+    "test": "test/bash/env.bash && test/bash/commandline-opts.bash",
+    "dev": "DEBUG=debug ./bin/enebular-awsiot-agent --dev-mode"
   },
   "author": "",
   "license": "MIT",
