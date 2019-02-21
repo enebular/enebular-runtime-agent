@@ -13,6 +13,7 @@ export default class AgentInfo {
   public mbedCloudConnectorFCC?: boolean
   public nodejsVersion?: string
   public systemd?: {
+    user: string
     serviceName: string
     enabled: boolean
     active: boolean
@@ -55,7 +56,8 @@ export default class AgentInfo {
     }
 
     this.systemd = {
-      serviceName: `${serviceName}`,
+      user: user,
+      serviceName: serviceName,
       enabled: Utils.exec(`systemctl is-enabled --quiet ${serviceName}`),
       active: Utils.exec(`systemctl is-active --quiet ${serviceName}`),
       failed: Utils.exec(`systemctl is-failed --quiet ${serviceName}`)

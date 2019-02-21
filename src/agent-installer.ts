@@ -165,7 +165,7 @@ export default class AgentInstaller {
   }
 
   private _buildNpmPackage(path: string): Promise<{}> {
-    return Utils.spawn('npm', ['i'], path, this._buildEnv)
+    return Utils.spawn('npm', ['i'], path, this._buildEnv, this._log)
   }
 
   private async _build(

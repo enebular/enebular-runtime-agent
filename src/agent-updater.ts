@@ -28,6 +28,28 @@ export default class AgentUpdater {
     this._agentInstaller = new AgentInstaller(this._config, this._log)
   }
 
+  private _requireRootUser(user: string) {
+    this._log.info('You have to run this with root permission.')
+    this._log.info(
+      'To update enebular-agent, copy/paste the following command:'
+    )
+
+    let appendEnvs = ''
+    const overriddenItems = this._config.getOverriddenItems()
+    const itemKeys = Object.keys(overriddenItems)
+    itemKeys.forEach(key => {
+      appendEnvs = appendEnvs + ` ${key}='${overriddenItems[key].value}'`
+    })
+
+    this._log.info(
+      'sudo env PATH=$PATH:' +
+        path.dirname(process.execPath) +
+        appendEnvs +
+        ' ' +
+        process.argv[1]
+    )
+  }
+
   private replaceFolderWithBackup(from: string, to: string, backup: string) {
     const cmd = `mv ${to} ${backup} && mv ${from} ${to}`
     if (!Utils.exec(cmd)) {
@@ -59,7 +81,8 @@ export default class AgentUpdater {
           'service',
           [name, action],
           './',
-          {}
+          {},
+          this._log
         )
       } catch (err) {
         throw new Error(`Failed to ${action} ${name}:\n${err.message}`)
@@ -67,14 +90,18 @@ export default class AgentUpdater {
   }
 
   public async update(): Promise<boolean> {
-    let agentInfo = new AgentInfo()
-
+    const agentInfo = new AgentInfo()
     // Detect where existing agent is
     if (!agentInfo.collectFromSystemdAutoFindUser(this._config) || !agentInfo.systemd) {
       // For now we only support enebular-agent with systemd
       throw new Error(
         'Failed to find an enebular-agent registered with systemd\n'
       )
+    }
+
+    if (process.getuid() !== 0) {
+      this._requireRootUser(agentInfo.systemd.user)
+      return false
     }
 
     if (this._config.isOverridden('ENEBULAR_AGENT_INSTALL_DIR')) {
@@ -90,6 +117,7 @@ export default class AgentUpdater {
     }
 
     this._log.info('enebular-agent install directory is: ' + agentInfo.path)
+    this._log.info('enebular-agent user is: ' + agentInfo.systemd.user)
     // check existing agent
     agentInfo.collectFromSrc(agentInfo.path)
 

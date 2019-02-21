@@ -1,0 +1,17 @@
+#!/usr/bin/env node
+var updater = require('..')
+
+async function exit() {
+  process.exit(0)
+}
+
+process.on('SIGINT', () => {
+  exit()
+})
+process.on('SIGTERM', () => {
+  exit()
+})
+
+updater.main().catch(function () {
+    process.exit(1);
+});

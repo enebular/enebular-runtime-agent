@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "The client to update enebular-agent",
   "repository": "enebular/enebular-agent-updater",
-  "main": "index.js",
+  "main": "lib/src/index.js",
   "scripts": {
     "prepare": "npm run build",
     "start": "node lib/src/index.js",

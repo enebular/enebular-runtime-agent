@@ -1,6 +1,7 @@
 import { execSync, spawn } from 'child_process'
 import AgentInfo from './agent-info'
 import Config from './config'
+import Log from './log'
 
 export default class Utils {
   public static exec(cmd: string): boolean {
@@ -24,7 +25,8 @@ export default class Utils {
     cmd: string,
     args: string[],
     cwd: string,
-    env: NodeJS.ProcessEnv
+    env: NodeJS.ProcessEnv,
+    log: Log
   ): Promise<{}> {
     return new Promise((resolve, reject) => {
       const cproc = spawn(cmd, args, {
@@ -36,9 +38,11 @@ export default class Utils {
         stderr = ''
       cproc.stdout.on('data', data => {
         stdout = data.toString().replace(/(\n|\r)+$/, '')
+        log.debug(stdout)
       })
       cproc.stderr.on('data', data => {
         stderr = data.toString().replace(/(\n|\r)+$/, '')
+        log.debug(stderr)
       })
       cproc.once('exit', (code, signal) => {
         if (code !== 0) {
