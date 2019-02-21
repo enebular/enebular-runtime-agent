@@ -6,10 +6,10 @@ import checkDiskSpace from 'check-disk-space'
 import request from 'request'
 import progress from 'request-progress'
 import tar from 'tar'
-import { spawn, execSync } from 'child_process'
+import { spawn } from 'child_process'
 
 import Config from './config'
-import { AgentInfo } from './agent-updater'
+import AgentInfo from './agent-info'
 import Utils from './utils'
 
 export default class AgentInstaller {
@@ -23,7 +23,7 @@ export default class AgentInstaller {
     this._config = config
   }
 
-  private _download(url: string, path: string): Promise<string> {
+  private _download(url: string, path: string): Promise<{}> {
     const onProgress = (state): void => {
       console.log(
         util.format(
@@ -69,7 +69,7 @@ export default class AgentInstaller {
     })
   }
 
-  private async _fetch(url: string, path: string): Promise<boolean> {
+  private async _fetch(url: string, path: string) {
     let usageInfo
     try {
       usageInfo = await checkDiskSpace(path)
@@ -110,11 +110,10 @@ export default class AgentInstaller {
     } catch (err) {
       throw new Error(`Tarball integrity check failed: ${path}\n${err.message}`)
     }
-    return true
   }
 
   public async _fetchWithRetry(url: string, path: string): Promise<boolean> {
-    return new Promise(async (resolve, reject) => {
+    return new Promise(async resolve => {
       try {
         await this._fetch(url, path)
         this._fetchRetryCount = 0
@@ -141,7 +140,7 @@ export default class AgentInstaller {
     })
   }
 
-  private _extract(tarball: string, dst: string): Promise<boolean> {
+  private _extract(tarball: string, dst: string) {
     try {
       if (fs.existsSync(dst)) {
         rimraf.sync(dst)
@@ -163,46 +162,17 @@ export default class AgentInstaller {
   }
 
   private _buildNpmPackage(path: string): Promise<{}> {
-    return new Promise((resolve, reject) => {
-      const cproc = spawn('npm', ['i'], {
-        stdio: 'pipe',
-        env: this._buildEnv,
-        cwd: path
-      })
-      let stdout = '',
-        stderr = ''
-      cproc.stdout.on('data', data => {
-        stdout = data.toString().replace(/(\n|\r)+$/, '')
-      })
-      cproc.stderr.on('data', data => {
-        stderr = data.toString().replace(/(\n|\r)+$/, '')
-      })
-      cproc.once('exit', (code, signal) => {
-        if (code !== 0) {
-          reject(
-            new Error(
-              `Exited with (${
-                code !== null ? code : signal
-              })\n stderr:\n${stderr} stdout:\n${stdout}`
-            )
-          )
-        } else {
-          resolve()
-        }
-      })
-      cproc.once('error', err => {
-        reject(err)
-      })
-    })
+    return Utils.spawn('npm', ['i'], path, this._buildEnv)
   }
 
   private async _build(
     agentInfo: AgentInfo,
     installPath: string
   ): Promise<boolean> {
-    console.log('Old agent info:')
+    console.log('Current agent info:')
     console.log(agentInfo)
-    let newAgentInfo = Utils.collectAgentInfoFromSrc(installPath)
+    let newAgentInfo = new AgentInfo()
+    newAgentInfo.collectFromSrc(installPath)
     console.log('New agent info, before building:')
     console.log(newAgentInfo)
     const nodejsPath = path.resolve(
@@ -235,7 +205,7 @@ export default class AgentInstaller {
       }
     }
 
-    newAgentInfo = Utils.collectAgentInfoFromSrc(installPath)
+    newAgentInfo.collectFromSrc(installPath)
     console.log('New agent info, after building:')
     console.log(newAgentInfo)
     return true

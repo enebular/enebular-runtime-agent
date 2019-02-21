@@ -1,6 +1,6 @@
 import AgentUpdater from './agent-updater'
 
-function main(): Promise<string> {
+function main(): Promise<boolean> {
   const updater = new AgentUpdater()
   return updater.update().catch((err: Error) => {
     console.log(err)

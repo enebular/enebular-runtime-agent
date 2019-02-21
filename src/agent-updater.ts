@@ -1,25 +1,11 @@
 import Config from './config'
-import Utils from './utils'
 import CommandLine from './command-line'
+import AgentInfo from './agent-info'
 import AgentInstaller from './agent-installer'
-import * as fs from 'fs'
+import Utils from './utils'
 import * as path from 'path'
-
-export interface AgentInfo {
-  path?: string
-  version?: string
-  awsiot?: boolean
-  pelion?: boolean
-  awsiotThingCreator?: boolean
-  mbedCloudConnector?: boolean
-  mbedCloudConnectorFCC?: boolean
-  nodejsVersion?: string
-  systemd?: {
-    enabled?: boolean
-    active?: boolean
-    path?: string
-  }
-}
+import * as fs from 'fs'
+import * as rimraf from 'rimraf'
 
 export default class AgentUpdater {
   private _config: Config
@@ -37,46 +23,57 @@ export default class AgentUpdater {
     this._agentInstaller = new AgentInstaller(this._config)
   }
 
-  private _collectAgentInfoFromSystemd(): AgentInfo {
-    const user = this._config.getString('ENEBULAR_AGENT_USER')
-    const serviceName = `enebular-agent-${user}.service`
-    if (!fs.existsSync(`/etc/systemd/system/${serviceName}`)) {
-      if (this._config.isOverridden('ENEBULAR_AGENT_USER')) return {}
-      // TODO: try to list enebular-agent* and check if it is under another user
-      return {}
+  private replaceFolderWithBackup(from: string, to: string, backup: string) {
+    const cmd = `mv ${to} ${backup} && mv ${from} ${to}`
+    if (!Utils.exec(cmd)) {
+      throw new Error(`${cmd} failed`)
     }
-
-    let agentInfo: AgentInfo = {
-      systemd: {
-        enabled: Utils.exec(`systemctl is-enabled --quiet ${serviceName}`),
-        active: Utils.exec(`systemctl is-active --quiet ${serviceName}`)
-      }
-    }
-
-    let ret = Utils.execReturnStdout(
-      `systemctl show --no-pager -p User --value ${serviceName}`
-    )
-    if (ret.stdout && agentInfo.systemd) {
-      agentInfo.systemd['user'] = ret.stdout.replace(/(\n|\r)+$/, '')
-    }
-    ret = Utils.execReturnStdout(
-      `systemctl show --no-pager -p ExecStart --value ${serviceName}`
-    )
-    if (ret.stdout) {
-      const execStartPath = ret.stdout.split(';')[0].substring(7)
-      if (execStartPath.length > 0 && agentInfo.systemd) {
-        agentInfo.systemd['path'] = path.resolve(execStartPath, '../../../../')
-      }
-    }
-    return agentInfo
   }
 
-  public async update(): Promise<string> {
-    // detect where existing agent is based on systemd
-    let agentInfo = this._collectAgentInfoFromSystemd()
+  private checkIfAgentDead(path: string): Promise<boolean> {
+    return Utils.polling(
+      async (): Promise<boolean> => {
+        const info = Utils.dumpAgentInfo(path, this._config)
+        if (!info.systemd) return true
+        console.log(
+          `enebular-agent status: enabled:${info.systemd.enabled} active:${
+            info.systemd.active
+          } failed: ${info.systemd.failed}`
+        )
+        return info.systemd.failed || !info.systemd.active ? true : false
+      },
+      2000,
+      1000,
+      30 * 1000 // stable to run 30 seconds
+    )
+  }
+
+  private async systemdServiceCtl(name: string, action: string) {
+      try {
+        await Utils.spawn(
+          'sudo',
+          ['service', name, action],
+          './',
+          {}
+        )
+      } catch (err) {
+        throw new Error(`Failed to ${action} ${name}:\n${err.message}`)
+      }
+  }
+
+  public async update(): Promise<boolean> {
+    let agentInfo = new AgentInfo()
+
+    // Detect where existing agent is
+    if (!agentInfo.collectFromSystemdAutoFindUser(this._config) || !agentInfo.systemd) {
+      // For now we only support enebular-agent with systemd
+      throw new Error(
+        'Failed to find an enebular-agent registered with systemd\n'
+      )
+    }
 
     if (this._config.isOverridden('ENEBULAR_AGENT_INSTALL_DIR')) {
-      // we are enforced to use user specified path
+      // We are enforced to use user specified path
       agentInfo.path = this._config.getString('ENEBULAR_AGENT_INSTALL_DIR')
     } else {
       if (agentInfo.systemd && agentInfo.systemd.path) {
@@ -89,29 +86,69 @@ export default class AgentUpdater {
 
     console.log('enebular-agent install directory is: ' + agentInfo.path)
     // check existing agent
-    Object.assign(agentInfo, Utils.collectAgentInfoFromSrc(agentInfo.path))
+    agentInfo.collectFromSrc(agentInfo.path)
 
     // download and build new version
-    const cachePath = path.resolve(agentInfo.path, '../')
-    const installPath = path.resolve(
-      agentInfo.path,
-      '../enebular-runtime-agent.new'
-    )
+    const agentPath: string = agentInfo.path
+    const cachePath = path.resolve(agentPath, '../')
+    const newAgentDirName = 'enebular-runtime-agent.new'
+    const newAgentInstallPath = path.resolve(agentPath, `../${newAgentDirName}`)
     try {
-      await this._agentInstaller.install(agentInfo, cachePath, installPath)
+      await this._agentInstaller.install(
+        agentInfo,
+        cachePath,
+        newAgentInstallPath
+      )
     } catch (err) {
       throw new Error('Failed to install agent:\n' + err.message)
     }
 
-    // migrate
-
-    // shutdown old agent
+    // shutdown current agent
+    if (agentInfo.systemd.active) {
+      await this.systemdServiceCtl(agentInfo.systemd.serviceName, 'stop')
+    }
 
     // config copying
 
-    // start new agent
+    // migrate
 
+    console.log('Flip to new version')
+    const oldAgentDirName = 'enebular-runtime-agent.old'
+    const oldAgentBackupPath = path.resolve(agentPath, `../${oldAgentDirName}`)
+
+    if (fs.existsSync(oldAgentBackupPath)) {
+      rimraf.sync(oldAgentBackupPath)
+    }
+    this.replaceFolderWithBackup(newAgentInstallPath, agentPath, oldAgentBackupPath)
+
+    // start new agent
+    await this.systemdServiceCtl(agentInfo.systemd.serviceName, 'start')
     // if fail flip back to old version
-    return 'sds'
+    if (await this.checkIfAgentDead(agentPath)) {
+      // shutdown current agent
+      if (agentInfo.systemd.active) {
+        await this.systemdServiceCtl(agentInfo.systemd.serviceName, 'stop')
+      }
+
+      console.log('Flip back to old version')
+      this.replaceFolderWithBackup(
+        oldAgentBackupPath,
+        agentPath,
+        newAgentInstallPath
+      )
+
+      // start new agent
+      await this.systemdServiceCtl(agentInfo.systemd.serviceName, 'start')
+      // if fail flip back to old version
+      if (await this.checkIfAgentDead(agentPath)) {
+        throw new Error('Upgrade failed, recover failed:')
+      }
+    }
+
+    console.log(
+      'Enebular-agent status:\n' +
+        JSON.stringify(Utils.dumpAgentInfo(agentPath, this._config), null, 2)
+    )
+    return true
   }
 }
