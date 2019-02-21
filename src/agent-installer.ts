@@ -11,6 +11,7 @@ import { spawn } from 'child_process'
 import Config from './config'
 import AgentInfo from './agent-info'
 import Utils from './utils'
+import Log from './log'
 
 export default class AgentInstaller {
   private _config: Config
@@ -18,14 +19,16 @@ export default class AgentInstaller {
   private _maxFetchRetryCount: number = 3
   private _fetchRetryCount: number = 0
   private _buildEnv: NodeJS.ProcessEnv = {}
+  private _log: Log
 
-  public constructor(config: Config) {
+  public constructor(config: Config, log: Log) {
     this._config = config
+    this._log = log
   }
 
   private _download(url: string, path: string): Promise<{}> {
     const onProgress = (state): void => {
-      console.log(
+      this._log.info(
         util.format(
           'Download progress: %f%% @ %fKB/s, %fsec',
           state.percent ? Math.round(state.percent * 100) : 0,
@@ -34,7 +37,7 @@ export default class AgentInstaller {
         )
       )
     }
-    console.log(`Downloading ${url} to ${path} ...`)
+    this._log.info(`Downloading ${url} to ${path} ...`)
     return new Promise((resolve, reject) => {
       const fileStream = fs.createWriteStream(path)
       fileStream.on('error', err => {
@@ -121,7 +124,7 @@ export default class AgentInstaller {
       } catch (err) {
         this._fetchRetryCount++
         if (this._fetchRetryCount <= this._maxFetchRetryCount) {
-          console.log(
+          this._log.info(
             `Failed to fetch agent, retry in 1 second ...\n${err.message}`
           )
           setTimeout(async () => {
@@ -129,7 +132,7 @@ export default class AgentInstaller {
           }, 1000)
         } else {
           this._fetchRetryCount = 0
-          console.log(
+          this._log.error(
             `Failed to to fetch agent, retry count(${
               this._maxFetchRetryCount
             }) reaches max\n${err.message}`
@@ -150,7 +153,7 @@ export default class AgentInstaller {
       throw new Error(`Failed to create agent directory:\n${err.message}`)
     }
 
-    console.log(`Extracting ${tarball} to ${dst} ...`)
+    this._log.info(`Extracting ${tarball} to ${dst} ...`)
 
     return tar.x({
       file: tarball,
@@ -169,12 +172,12 @@ export default class AgentInstaller {
     agentInfo: AgentInfo,
     installPath: string
   ): Promise<boolean> {
-    console.log('Current agent info:')
-    console.log(agentInfo)
+    this._log.debug('Current agent info:')
+    this._log.debug(agentInfo)
     let newAgentInfo = new AgentInfo()
     newAgentInfo.collectFromSrc(installPath)
-    console.log('New agent info, before building:')
-    console.log(newAgentInfo)
+    this._log.debug('New agent info, before building:')
+    this._log.debug(newAgentInfo)
     const nodejsPath = path.resolve(
       `/home/${this._config.getString('ENEBULAR_AGENT_USER')}/nodejs-${
         newAgentInfo.nodejsVersion
@@ -182,32 +185,32 @@ export default class AgentInstaller {
     )
     if (!fs.existsSync(nodejsPath)) {
       // TODO: install nodejs
-      console.log(
+      this._log.info(
         `Installing nodejs-${newAgentInfo.nodejsVersion} to ${nodejsPath} ...`
       )
     }
     this._buildEnv['PATH'] = `${nodejsPath}/bin:${process.env['PATH']}`
-    console.log(`Building agent ...`)
+    this._log.info(`Building agent ...`)
     await this._buildNpmPackage(`${installPath}/agent`)
 
     if (agentInfo.awsiot) {
-      console.log(`Building awsiot port ...`)
+      this._log.info(`Building awsiot port ...`)
       await this._buildNpmPackage(`${installPath}//ports/awsiot`)
-      console.log(`Building awsiot-thing-creator port ...`)
+      this._log.info(`Building awsiot-thing-creator port ...`)
       await this._buildNpmPackage(`${installPath}/tools/awsiot-thing-creator`)
     }
     if (agentInfo.pelion) {
-      console.log(`Building pelion port ...`)
+      this._log.info(`Building pelion port ...`)
       await this._buildNpmPackage(`${installPath}//ports/pelion`)
-      console.log(`Building mbed-cloud-connector ...`)
+      this._log.info(`Building mbed-cloud-connector ...`)
       if (agentInfo.mbedCloudConnectorFCC) {
-        console.log(`Building mbed-cloud-connector-fcc ...`)
+        this._log.info(`Building mbed-cloud-connector-fcc ...`)
       }
     }
 
     newAgentInfo.collectFromSrc(installPath)
-    console.log('New agent info, after building:')
-    console.log(newAgentInfo)
+    this._log.debug('New agent info, after building:')
+    this._log.debug(newAgentInfo)
     return true
   }
 
@@ -223,21 +226,21 @@ export default class AgentInstaller {
         tarball
       ))
     ) {
-      console.log(`Failed to fetch agent`)
+      this._log.error(`Failed to fetch agent`)
       return false
     }
 
     try {
       await this._extract(tarball, installPath)
     } catch (err) {
-      console.log(`Failed to extract agent:\n${err.message}`)
+      this._log.error(`Failed to extract agent:\n${err.message}`)
       return false
     }
 
     try {
       await this._build(agentInfo, installPath)
     } catch (err) {
-      console.log(`Failed to build agent:\n${err.message}`)
+      this._log.error(`Failed to build agent:\n${err.message}`)
       return false
     }
     return true

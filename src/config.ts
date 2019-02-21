@@ -22,11 +22,6 @@ export default class Config {
 
   public constructor() {
     this._items = {
-      ENEBULAR_AGENT_UPDATER_TEST: {
-        value: false,
-        description: 'test',
-        userExpose: true
-      },
       SUPPORTED_NODEJS_VERSION: {
         value: 'v9.2.1',
         description: 'Supported NodeJS version',
@@ -47,7 +42,17 @@ export default class Config {
         value: 'enebular',
         description: 'Install location of enebular-agent',
         userExpose: true
-      }
+      },
+      ENEBULAR_AGENT_UPDATER_ENABLE_LOG: {
+        value: true,
+        description: 'Install location of enebular-agent',
+        userExpose: true
+      },
+      DEBUG: {
+        value: 'info',
+        description: 'Debug level, used to control logging',
+        userExpose: true
+      },
     }
   }
 

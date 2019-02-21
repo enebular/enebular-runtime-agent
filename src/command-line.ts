@@ -21,7 +21,8 @@ export default class CommandLine {
       '--agent-download-url <url>'
     )
     this.addConfigOption('ENEBULAR_AGENT_USER', '--user <user>')
-    this.addConfigOption('ENEBULAR_AGENT_UPDATER_TEST', '--test')
+    this.addConfigOption('ENEBULAR_AGENT_UPDATER_ENABLE_LOG', '--enable-log')
+    this.addConfigOption('DEBUG', '--debug-level <level>')
   }
 
   public addConfigOption(

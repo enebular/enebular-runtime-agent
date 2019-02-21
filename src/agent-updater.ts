@@ -1,5 +1,6 @@
 import Config from './config'
 import CommandLine from './command-line'
+import Log from './log'
 import AgentInfo from './agent-info'
 import AgentInstaller from './agent-installer'
 import Utils from './utils'
@@ -11,6 +12,7 @@ export default class AgentUpdater {
   private _config: Config
   private _commandLine: CommandLine
   private _agentInstaller: AgentInstaller
+  private _log: Log
 
   public constructor() {
     this._config = new Config()
@@ -20,7 +22,10 @@ export default class AgentUpdater {
     this._commandLine.parse()
     this._config.importConfigAnyTypes(this._commandLine.getConfigOptions())
 
-    this._agentInstaller = new AgentInstaller(this._config)
+    this._log = new Log(this._config.getString('DEBUG'),
+        this._config.getBoolean('ENEBULAR_AGENT_UPDATER_ENABLE_LOG'))
+
+    this._agentInstaller = new AgentInstaller(this._config, this._log)
   }
 
   private replaceFolderWithBackup(from: string, to: string, backup: string) {
@@ -35,7 +40,7 @@ export default class AgentUpdater {
       async (): Promise<boolean> => {
         const info = Utils.dumpAgentInfo(path, this._config)
         if (!info.systemd) return true
-        console.log(
+        this._log.info(
           `enebular-agent status: enabled:${info.systemd.enabled} active:${
             info.systemd.active
           } failed: ${info.systemd.failed}`
@@ -51,8 +56,8 @@ export default class AgentUpdater {
   private async systemdServiceCtl(name: string, action: string) {
       try {
         await Utils.spawn(
-          'sudo',
-          ['service', name, action],
+          'service',
+          [name, action],
           './',
           {}
         )
@@ -84,7 +89,7 @@ export default class AgentUpdater {
       }
     }
 
-    console.log('enebular-agent install directory is: ' + agentInfo.path)
+    this._log.info('enebular-agent install directory is: ' + agentInfo.path)
     // check existing agent
     agentInfo.collectFromSrc(agentInfo.path)
 
@@ -112,7 +117,7 @@ export default class AgentUpdater {
 
     // migrate
 
-    console.log('Flip to new version')
+    this._log.info('Flip to new version')
     const oldAgentDirName = 'enebular-runtime-agent.old'
     const oldAgentBackupPath = path.resolve(agentPath, `../${oldAgentDirName}`)
 
@@ -130,7 +135,7 @@ export default class AgentUpdater {
         await this.systemdServiceCtl(agentInfo.systemd.serviceName, 'stop')
       }
 
-      console.log('Flip back to old version')
+      this._log.info('Flip back to old version')
       this.replaceFolderWithBackup(
         oldAgentBackupPath,
         agentPath,
@@ -145,7 +150,8 @@ export default class AgentUpdater {
       }
     }
 
-    console.log(
+    this._log.info('Update succeed.')
+    this._log.debug(
       'Enebular-agent status:\n' +
         JSON.stringify(Utils.dumpAgentInfo(agentPath, this._config), null, 2)
     )
