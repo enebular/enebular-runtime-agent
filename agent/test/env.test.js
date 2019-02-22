@@ -34,9 +34,7 @@ test.serial('Env.1: Agent starts if node-red path is valid', async t => {
     connector: connector,
     config: agentConfig
   })
-  t.notThrows(async () => {
-    await agent.startup()
-  }, Error)
+  await t.notThrowsAsync(agent.startup())
   t.true(await nodeRedIsAlive(30001))
 })
 
@@ -54,7 +52,7 @@ test.serial(
       connector: connector,
       config: agentConfig
     })
-    await t.throws(agent.startup(), Error)
+    await t.throwsAsync(agent.startup(), Error)
   }
 )
 
@@ -71,7 +69,7 @@ test.serial(
       connector: connector,
       config: agentConfig
     })
-    await t.throws(agent.startup(), Error)
+    await t.throwsAsync(agent.startup(), Error)
   }
 )
 
@@ -114,7 +112,7 @@ test.serial('Env.5: Agent takes nodeRedCommand to launch node-red', async t => {
     connector: connector,
     config: agentConfig
   })
-  await t.notThrows(agent.startup(), Error)
+  await t.notThrowsAsync(agent.startup())
 
   t.true(await nodeRedIsAlive(30000))
 })
@@ -131,7 +129,7 @@ test.serial(
       connector: connector,
       config: agentConfig
     })
-    await t.notThrows(
+    await t.notThrowsAsync(
       agent
         .startup()
         .then(function(error) {
@@ -142,7 +140,6 @@ test.serial(
           console.log(error)
           t.pass()
         }),
-      Error
     )
   }
 )
@@ -160,7 +157,7 @@ test.serial('Env.7: Agent starts normally with no config file', async t => {
     config: agentConfig
   })
   return new Promise(async (resolve, reject) => {
-    await t.notThrows(agent.startup(), Error)
+    await t.notThrowsAsync(agent.startup())
     connector.updateActiveState(true)
     setTimeout(() => {
       fs.unlink(agentConfig['ENEBULAR_CONFIG_PATH'], err => {
@@ -184,7 +181,7 @@ test.serial('Env.8: Agent accepts all supported config items', async t => {
     config: agentConfig
   })
   return new Promise(async (resolve, reject) => {
-    await t.notThrows(agent.startup(), Error)
+    await t.notThrowsAsync(agent.startup())
     connector.updateActiveState(true)
     setTimeout(() => {
       fs.unlink(agentConfig['ENEBULAR_CONFIG_PATH'], err => {
@@ -221,7 +218,7 @@ test.serial('Env.9: Agent handles an invalid config file', async t => {
     config: agentConfig
   })
   return new Promise(async (resolve, reject) => {
-    await t.notThrows(agent.startup(), Error)
+    await t.notThrowsAsync(agent.startup())
     connector.updateActiveState(true)
     setTimeout(() => {
       fs.unlink(agentConfig['ENEBULAR_CONFIG_PATH'], err => {

@@ -1,4 +1,11 @@
 {
-  "presets": ["es2015","es2017","flow"],
-  "plugins": ["transform-runtime"]
+  "presets": [
+    ["@babel/preset-env", {
+      "targets": {
+        "node": "9.2.1"
+      }
+    }],
+    ["@babel/preset-flow"]
+  ],
+  "plugins": ["@babel/plugin-transform-runtime"]
 }
