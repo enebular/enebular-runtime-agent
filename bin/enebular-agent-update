@@ -12,6 +12,7 @@ process.on('SIGTERM', () => {
   exit()
 })
 
-updater.main().catch(function () {
+updater.main().catch(function (err) {
+    console.log(err.message)
     process.exit(1);
 });

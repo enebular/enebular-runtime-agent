@@ -1,7 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import Utils from './utils'
-import Config from './config'
 
 export default class AgentInfo {
   public path?: string
@@ -66,28 +65,18 @@ export default class AgentInfo {
     let ret = Utils.execReturnStdout(
       `systemctl show --no-pager -p User --value ${serviceName}`
     )
-    if (ret.stdout && this.systemd) {
-      this.systemd['user'] = ret.stdout.replace(/(\n|\r)+$/, '')
+    if (ret) {
+      this.systemd['user'] = ret.replace(/(\n|\r)+$/, '')
     }
     ret = Utils.execReturnStdout(
       `systemctl show --no-pager -p ExecStart --value ${serviceName}`
     )
-    if (ret.stdout) {
-      const execStartPath = ret.stdout.split(';')[0].substring(7)
-      if (execStartPath.length > 0 && this.systemd) {
+    if (ret) {
+      const execStartPath = ret.split(';')[0].substring(7)
+      if (execStartPath.length > 0) {
         this.systemd['path'] = path.resolve(execStartPath, '../../../../')
       }
     }
     return true
-  }
-
-  public collectFromSystemdAutoFindUser(config: Config): boolean {
-    const user = config.getString('ENEBULAR_AGENT_USER')
-    const ret = this.collectFromSystemd(user)
-    if (!ret && !config.isOverridden('ENEBULAR_AGENT_USER')) {
-      // TODO: try to list enebular-agent* and check if it is under another user
-      return false
-    }
-    return ret
   }
 }

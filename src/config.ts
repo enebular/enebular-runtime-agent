@@ -52,7 +52,7 @@ export default class Config {
         value: 'info',
         description: 'Debug level, used to control logging',
         userExpose: true
-      },
+      }
     }
   }
 

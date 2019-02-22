@@ -1,39 +1,37 @@
 import { execSync, spawn } from 'child_process'
 import AgentInfo from './agent-info'
-import Config from './config'
 import Log from './log'
 
 export default class Utils {
   public static exec(cmd: string): boolean {
-    const { ret } = Utils.execReturnStdout(cmd)
-    return ret
+    return Utils.execReturnStdout(cmd) == undefined ? false : true
   }
 
-  public static execReturnStdout(
-    cmd: string
-  ): { ret: boolean; stdout?: string } {
+  public static execReturnStdout(cmd: string): string | undefined {
     try {
       const stdout = execSync(cmd)
-      return { ret: true, stdout: stdout.toString() }
-      /* return { ret: true, stdout: "dsad"} */
+      return stdout.toString()
     } catch (err) {
-      return { ret: false }
+      return undefined
     }
   }
 
   public static spawn(
     cmd: string,
     args: string[],
-    cwd: string,
-    env: NodeJS.ProcessEnv,
-    log: Log
+    log: Log,
+    options?: {
+      cwd?: string
+      env?: NodeJS.ProcessEnv
+      uid?: number
+      gid?: number
+    }
   ): Promise<{}> {
     return new Promise((resolve, reject) => {
-      const cproc = spawn(cmd, args, {
-        stdio: 'pipe',
-        env: env,
-        cwd: cwd
-      })
+      const ops = options
+        ? Object.assign({ stdio: 'pipe' }, options)
+        : { stdio: 'pipe' }
+      const cproc = spawn(cmd, args, ops)
       let stdout = '',
         stderr = ''
       cproc.stdout.on('data', data => {
@@ -46,11 +44,12 @@ export default class Utils {
       })
       cproc.once('exit', (code, signal) => {
         if (code !== 0) {
+          let stdio = ''
+          stdio += stderr ? `stderr:\n${stderr}` : ''
+          stdio += stdout ? `stdout:\n${stdout}` : ''
           reject(
             new Error(
-              `Exited with (${
-                code !== null ? code : signal
-              })\n stderr:\n${stderr} stdout:\n${stdout}`
+              `Exited with (${code !== null ? code : signal})\n${stdio}`
             )
           )
         } else {
@@ -63,14 +62,36 @@ export default class Utils {
     })
   }
 
+  public static getUserId(
+    user: string
+  ): {
+    gid: number
+    uid: number
+  } {
+    let ret = Utils.execReturnStdout(`id -u ${user}`)
+    if (!ret) {
+      throw new Error('Failed to get user uid')
+    }
+    const uid = parseInt(ret)
+    ret = Utils.execReturnStdout(`id -u ${user}`)
+    if (!ret) {
+      throw new Error('Failed to get user gid')
+    }
+    const gid = parseInt(ret)
+    return {
+      gid: gid,
+      uid: uid
+    }
+  }
+
   public static getSupportedNodeJSVersion(agentVersion: string): string {
     return 'v9.2.1'
   }
 
-  public static dumpAgentInfo(path: string, config?: Config): AgentInfo {
+  public static dumpAgentInfo(path: string, user?: string): AgentInfo {
     const info = new AgentInfo()
     info.collectFromSrc(path)
-    if (config) info.collectFromSystemdAutoFindUser(config)
+    if (user) info.collectFromSystemd(user)
     return info
   }
 
@@ -80,8 +101,8 @@ export default class Utils {
     interval: number,
     timeout: number
   ): Promise<boolean> {
-    return new Promise((resolve, reject) => {
-      const cb = () => {
+    return new Promise(resolve => {
+      const cb = (): void => {
         const intervalObj = setInterval(async () => {
           if (await callback()) {
             clearInterval(intervalObj)
@@ -100,5 +121,38 @@ export default class Utils {
         cb()
       }
     })
+  }
+
+  public static randomString(): string {
+    return Math.random()
+      .toString(36)
+      .substr(2, 10)
+  }
+
+  public static async taskAsync(
+    name: string,
+    log: Log,
+    cb: () => Promise<boolean> | Promise<{}>
+  ): Promise<boolean> {
+    log.info(name)
+    try {
+      await cb()
+      log.info('\x1b[32mOK\x1b[0m')
+    } catch (err) {
+      log.info('\x1b[31mFailed\x1b[0m')
+      throw err
+    }
+    return true
+  }
+
+  public static task(name: string, log: Log, cb: () => boolean): void {
+    log.info(name)
+    try {
+      cb()
+      log.info('\x1b[32mOK\x1b[0m')
+    } catch (err) {
+      log.info('\x1b[31mFailed\x1b[0m')
+      throw err
+    }
   }
 }

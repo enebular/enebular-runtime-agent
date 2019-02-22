@@ -5,8 +5,6 @@ import * as rimraf from 'rimraf'
 import checkDiskSpace from 'check-disk-space'
 import request from 'request'
 import progress from 'request-progress'
-import tar from 'tar'
-import { spawn } from 'child_process'
 
 import Config from './config'
 import AgentInfo from './agent-info'
@@ -20,15 +18,27 @@ export default class AgentInstaller {
   private _fetchRetryCount: number = 0
   private _buildEnv: NodeJS.ProcessEnv = {}
   private _log: Log
+  private _userId: {
+    gid: number
+    uid: number
+  }
 
-  public constructor(config: Config, log: Log) {
+  public constructor(
+    config: Config,
+    log: Log,
+    userId: {
+      gid: number
+      uid: number
+    }
+  ) {
     this._config = config
     this._log = log
+    this._userId = userId
   }
 
   private _download(url: string, path: string): Promise<{}> {
     const onProgress = (state): void => {
-      this._log.info(
+      this._log.debug(
         util.format(
           'Download progress: %f%% @ %fKB/s, %fsec',
           state.percent ? Math.round(state.percent * 100) : 0,
@@ -37,7 +47,7 @@ export default class AgentInstaller {
         )
       )
     }
-    this._log.info(`Downloading ${url} to ${path} ...`)
+    this._log.debug(`Downloading ${url} to ${path} ...`)
     return new Promise((resolve, reject) => {
       const fileStream = fs.createWriteStream(path)
       fileStream.on('error', err => {
@@ -48,7 +58,7 @@ export default class AgentInstaller {
         throttle: 5000
       })
         .on('response', response => {
-          console.log(
+          this._log.debug(
             `Response: ${response.statusCode}: ${response.statusMessage}`
           )
           if (response.statusCode >= 400) {
@@ -72,7 +82,7 @@ export default class AgentInstaller {
     })
   }
 
-  private async _fetch(url: string, path: string) {
+  private async _fetch(url: string, path: string): Promise<boolean> {
     let usageInfo
     try {
       usageInfo = await checkDiskSpace(path)
@@ -104,15 +114,14 @@ export default class AgentInstaller {
     }
 
     try {
-      await tar.t({
-        /* file: "/home/suyouxin/enebular-agent-latest-broken.tar.gz", */
-        file: path,
-        strict: true,
-        gzip: true
+      await Utils.spawn('tar', ['-tf', path], this._log, {
+        uid: this._userId.uid,
+        gid: this._userId.gid
       })
     } catch (err) {
       throw new Error(`Tarball integrity check failed: ${path}\n${err.message}`)
     }
+    return true
   }
 
   public async _fetchWithRetry(url: string, path: string): Promise<boolean> {
@@ -124,7 +133,7 @@ export default class AgentInstaller {
       } catch (err) {
         this._fetchRetryCount++
         if (this._fetchRetryCount <= this._maxFetchRetryCount) {
-          this._log.info(
+          this._log.debug(
             `Failed to fetch agent, retry in 1 second ...\n${err.message}`
           )
           setTimeout(async () => {
@@ -143,29 +152,36 @@ export default class AgentInstaller {
     })
   }
 
-  private _extract(tarball: string, dst: string) {
+  private _extract(tarball: string, dst: string): Promise<{}> {
     try {
       if (fs.existsSync(dst)) {
         rimraf.sync(dst)
       }
       fs.mkdirSync(dst)
+      fs.chownSync(dst, this._userId.uid, this._userId.gid)
     } catch (err) {
       throw new Error(`Failed to create agent directory:\n${err.message}`)
     }
 
-    this._log.info(`Extracting ${tarball} to ${dst} ...`)
-
-    return tar.x({
-      file: tarball,
-      C: dst,
-      strip: 1,
-      strict: true,
-      gzip: true
-    })
+    this._log.debug(`Extracting ${tarball} to ${dst} ...`)
+    return Utils.spawn(
+      'tar',
+      ['-xzf', tarball, '-C', dst, '--strip-components', '1'],
+      this._log,
+      {
+        uid: this._userId.uid,
+        gid: this._userId.gid
+      }
+    )
   }
 
   private _buildNpmPackage(path: string): Promise<{}> {
-    return Utils.spawn('npm', ['i'], path, this._buildEnv, this._log)
+    return Utils.spawn('npm', ['i'], this._log, {
+      cwd: path,
+      env: this._buildEnv,
+      uid: this._userId.uid,
+      gid: this._userId.gid
+    })
   }
 
   private async _build(
@@ -190,18 +206,42 @@ export default class AgentInstaller {
       )
     }
     this._buildEnv['PATH'] = `${nodejsPath}/bin:${process.env['PATH']}`
-    this._log.info(`Building agent ...`)
-    await this._buildNpmPackage(`${installPath}/agent`)
+    await Utils.taskAsync(
+      'Building agent ...',
+      this._log,
+      async (): Promise<{}> => {
+        return this._buildNpmPackage(`${installPath}/agent`)
+      }
+    )
 
     if (agentInfo.awsiot) {
-      this._log.info(`Building awsiot port ...`)
-      await this._buildNpmPackage(`${installPath}//ports/awsiot`)
-      this._log.info(`Building awsiot-thing-creator port ...`)
-      await this._buildNpmPackage(`${installPath}/tools/awsiot-thing-creator`)
+      await Utils.taskAsync(
+        'Building awsiot port ...',
+        this._log,
+        async (): Promise<{}> => {
+          return this._buildNpmPackage(`${installPath}//ports/awsiot`)
+        }
+      )
+      await Utils.taskAsync(
+        'Building awsiot-thing-creator port ...',
+        this._log,
+        async (): Promise<{}> => {
+          return this._buildNpmPackage(
+            `${installPath}/tools/awsiot-thing-creator`
+          )
+        }
+      )
     }
+
     if (agentInfo.pelion) {
-      this._log.info(`Building pelion port ...`)
-      await this._buildNpmPackage(`${installPath}//ports/pelion`)
+      await Utils.taskAsync(
+        'Building pelion port ...',
+        this._log,
+        async (): Promise<{}> => {
+          return this._buildNpmPackage(`${installPath}//ports/pelion`)
+        }
+      )
+
       this._log.info(`Building mbed-cloud-connector ...`)
       if (agentInfo.mbedCloudConnectorFCC) {
         this._log.info(`Building mbed-cloud-connector-fcc ...`)
@@ -219,29 +259,35 @@ export default class AgentInstaller {
     cachePath: string,
     installPath: string
   ): Promise<boolean> {
-    const tarball = cachePath + '/enebular-agent-latest.tar.gz'
-    if (
-      !(await this._fetchWithRetry(
-        this._config.getString('ENEBULAR_AGENT_DOWNLOAD_URL'),
-        tarball
-      ))
-    ) {
-      this._log.error(`Failed to fetch agent`)
-      return false
-    }
+    await Utils.taskAsync(
+      'Fetching new agent ...',
+      this._log,
+      async (): Promise<boolean> => {
+        if (
+          !(await this._fetchWithRetry(
+            this._config.getString('ENEBULAR_AGENT_DOWNLOAD_URL'),
+            cachePath
+          ))
+        ) {
+          throw new Error(`Failed to fetch agent`)
+        }
+        return true
+      }
+    )
 
-    try {
-      await this._extract(tarball, installPath)
-    } catch (err) {
-      this._log.error(`Failed to extract agent:\n${err.message}`)
-      return false
-    }
+    await Utils.taskAsync(
+      'Extracting new agent ...',
+      this._log,
+      async (): Promise<boolean> => {
+        await this._extract(cachePath, installPath)
+        return true
+      }
+    )
 
     try {
       await this._build(agentInfo, installPath)
     } catch (err) {
-      this._log.error(`Failed to build agent:\n${err.message}`)
-      return false
+      throw new Error(`Failed to build agent:\n${err.message}`)
     }
     return true
   }
