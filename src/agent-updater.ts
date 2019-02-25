@@ -159,10 +159,11 @@ export default class AgentUpdater {
     }
 
     // download and build new version
+    const userInfo = Utils.getUserInfo(user)
     const cachePath = '/tmp/enebular-runtime-agent-' + Utils.randomString()
     const newAgentDirName = 'enebular-runtime-agent.new'
     const newAgentInstallPath = path.resolve(agentPath, `../${newAgentDirName}`)
-    const agentInstaller = new AgentInstaller(this._config, this._log, user)
+    const agentInstaller = new AgentInstaller(this._config, this._log, userInfo)
 
     let newAgentInfo
     try {
@@ -189,15 +190,14 @@ export default class AgentUpdater {
 
     // config copying, migrate
     const migrator = new Migrator(
+      agentInfo,
+      newAgentInfo,
       this._config,
       this._log,
-      user
+      userInfo
     )
     try {
-      await migrator.migrate(
-        agentInfo,
-        newAgentInfo,
-      )
+      await migrator.migrate()
     } catch (err) {
       throw new Error('Failed to migrate agent, reason: ' + err.message)
     }

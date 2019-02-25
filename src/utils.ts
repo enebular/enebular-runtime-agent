@@ -2,6 +2,12 @@ import { execSync, spawn } from 'child_process'
 import AgentInfo from './agent-info'
 import Log from './log'
 
+export interface UserInfo {
+  user: string
+  gid: number
+  uid: number
+}
+
 export default class Utils {
   public static exec(cmd: string): boolean {
     return Utils.execReturnStdout(cmd) == undefined ? false : true
@@ -62,12 +68,7 @@ export default class Utils {
     })
   }
 
-  public static getUserId(
-    user: string
-  ): {
-    gid: number
-    uid: number
-  } {
+  public static getUserInfo(user: string): UserInfo {
     let ret = Utils.execReturnStdout(`id -u ${user}`)
     if (!ret) {
       throw new Error('Failed to get user uid')
@@ -79,6 +80,7 @@ export default class Utils {
     }
     const gid = parseInt(ret)
     return {
+      user: user,
       gid: gid,
       uid: uid
     }

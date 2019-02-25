@@ -8,7 +8,7 @@ import progress from 'request-progress'
 
 import Config from './config'
 import AgentInfo from './agent-info'
-import Utils from './utils'
+import { UserInfo, default as Utils }  from './utils'
 import Log from './log'
 
 export default class AgentInstaller {
@@ -19,17 +19,12 @@ export default class AgentInstaller {
   private _npmBuildEnv: NodeJS.ProcessEnv = {}
   private _binBuildEnv: NodeJS.ProcessEnv = {}
   private _log: Log
-  private _user: string
-  private _userId: {
-    gid: number
-    uid: number
-  }
+  private _userInfo: UserInfo
 
-  public constructor(config: Config, log: Log, user: string) {
+  public constructor(config: Config, log: Log, userInfo: UserInfo) {
     this._config = config
     this._log = log
-    this._user = user
-    this._userId = Utils.getUserId(user)
+    this._userInfo = userInfo
   }
 
   private _download(url: string, path: string): Promise<{}> {
@@ -111,8 +106,8 @@ export default class AgentInstaller {
 
     try {
       await Utils.spawn('tar', ['-tf', path], this._log, {
-        uid: this._userId.uid,
-        gid: this._userId.gid
+        uid: this._userInfo.uid,
+        gid: this._userInfo.gid
       })
     } catch (err) {
       throw new Error(`Tarball integrity check failed: ${path}\n${err.message}`)
@@ -154,7 +149,7 @@ export default class AgentInstaller {
         rimraf.sync(dst)
       }
       fs.mkdirSync(dst)
-      fs.chownSync(dst, this._userId.uid, this._userId.gid)
+      fs.chownSync(dst, this._userInfo.uid, this._userInfo.gid)
     } catch (err) {
       throw new Error(`Failed to create agent directory:\n${err.message}`)
     }
@@ -165,8 +160,8 @@ export default class AgentInstaller {
       ['-xzf', tarball, '-C', dst, '--strip-components', '1'],
       this._log,
       {
-        uid: this._userId.uid,
-        gid: this._userId.gid
+        uid: this._userInfo.uid,
+        gid: this._userInfo.gid
       }
     )
   }
@@ -175,8 +170,8 @@ export default class AgentInstaller {
     return Utils.spawn('npm', ['i'], this._log, {
       cwd: path,
       env: this._npmBuildEnv,
-      uid: this._userId.uid,
-      gid: this._userId.gid
+      uid: this._userInfo.uid,
+      gid: this._userInfo.gid
     })
   }
 
@@ -188,8 +183,8 @@ export default class AgentInstaller {
     return Utils.spawn(cmd, args, this._log, {
       cwd: path,
       env: this._binBuildEnv,
-      uid: this._userId.uid,
-      gid: this._userId.gid
+      uid: this._userInfo.uid,
+      gid: this._userInfo.gid
     })
   }
 
@@ -249,7 +244,7 @@ export default class AgentInstaller {
           return this._buildNpmPackage(`${installPath}//ports/pelion`)
         }
       )
-      this._binBuildEnv['PATH'] = `/home/${this._user}/.local/bin:${
+      this._binBuildEnv['PATH'] = `/home/${this._userInfo.user}/.local/bin:${
         process.env['PATH']
       }`
       await Utils.taskAsync(
