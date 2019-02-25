@@ -89,10 +89,7 @@ export default class Utils {
   }
 
   public static dumpAgentInfo(path: string, user?: string): AgentInfo {
-    const info = new AgentInfo()
-    info.collectFromSrc(path)
-    if (user) info.collectFromSystemd(user)
-    return info
+    return user ? AgentInfo.createFromSystemd(user) : AgentInfo.createFromSrc(path)
   }
 
   public static polling(

@@ -16,24 +16,20 @@ export default class AgentInstaller {
   private _minimumRequiredDiskSpace: number = 400 * 1024 * 1024 // 400 MiB
   private _maxFetchRetryCount: number = 3
   private _fetchRetryCount: number = 0
-  private _buildEnv: NodeJS.ProcessEnv = {}
+  private _npmBuildEnv: NodeJS.ProcessEnv = {}
+  private _binBuildEnv: NodeJS.ProcessEnv = {}
   private _log: Log
+  private _user: string
   private _userId: {
     gid: number
     uid: number
   }
 
-  public constructor(
-    config: Config,
-    log: Log,
-    userId: {
-      gid: number
-      uid: number
-    }
-  ) {
+  public constructor(config: Config, log: Log, user: string) {
     this._config = config
     this._log = log
-    this._userId = userId
+    this._user = user
+    this._userId = Utils.getUserId(user)
   }
 
   private _download(url: string, path: string): Promise<{}> {
@@ -178,7 +174,20 @@ export default class AgentInstaller {
   private _buildNpmPackage(path: string): Promise<{}> {
     return Utils.spawn('npm', ['i'], this._log, {
       cwd: path,
-      env: this._buildEnv,
+      env: this._npmBuildEnv,
+      uid: this._userId.uid,
+      gid: this._userId.gid
+    })
+  }
+
+  private _buildConnector(
+    path: string,
+    cmd: string,
+    args: string[]
+  ): Promise<{}> {
+    return Utils.spawn(cmd, args, this._log, {
+      cwd: path,
+      env: this._binBuildEnv,
       uid: this._userId.uid,
       gid: this._userId.gid
     })
@@ -187,11 +196,10 @@ export default class AgentInstaller {
   private async _build(
     agentInfo: AgentInfo,
     installPath: string
-  ): Promise<boolean> {
+  ): Promise<AgentInfo> {
     this._log.debug('Current agent info:')
     this._log.debug(agentInfo)
-    let newAgentInfo = new AgentInfo()
-    newAgentInfo.collectFromSrc(installPath)
+    let newAgentInfo = AgentInfo.createFromSrc(installPath)
     this._log.debug('New agent info, before building:')
     this._log.debug(newAgentInfo)
     const nodejsPath = path.resolve(
@@ -205,9 +213,9 @@ export default class AgentInstaller {
         `Installing nodejs-${newAgentInfo.nodejsVersion} to ${nodejsPath} ...`
       )
     }
-    this._buildEnv['PATH'] = `${nodejsPath}/bin:${process.env['PATH']}`
+    this._npmBuildEnv['PATH'] = `${nodejsPath}/bin:${process.env['PATH']}`
     await Utils.taskAsync(
-      'Building agent ...',
+      `Building agent ${newAgentInfo.version} ...`,
       this._log,
       async (): Promise<{}> => {
         return this._buildNpmPackage(`${installPath}/agent`)
@@ -223,7 +231,7 @@ export default class AgentInstaller {
         }
       )
       await Utils.taskAsync(
-        'Building awsiot-thing-creator port ...',
+        'Building awsiot-thing-creator ...',
         this._log,
         async (): Promise<{}> => {
           return this._buildNpmPackage(
@@ -241,24 +249,61 @@ export default class AgentInstaller {
           return this._buildNpmPackage(`${installPath}//ports/pelion`)
         }
       )
+      this._binBuildEnv['PATH'] = `/home/${this._user}/.local/bin:${
+        process.env['PATH']
+      }`
+      await Utils.taskAsync(
+        'Configuring mbed-cloud-connector ...',
+        this._log,
+        async (): Promise<{}> => {
+          return this._buildConnector(
+            `${installPath}/tools/mbed-cloud-connector`,
+            'mbed',
+            ['config', 'root', '.']
+          )
+        }
+      )
 
-      this._log.info(`Building mbed-cloud-connector ...`)
+      await Utils.taskAsync(
+        'Deploying mbed-cloud-connector ...',
+        this._log,
+        async (): Promise<{}> => {
+          return this._buildConnector(
+            `${installPath}/tools/mbed-cloud-connector`,
+            'mbed',
+            ['deploy']
+          )
+        }
+      )
+
+      // TODO: dev or factory mode
+      /* await Utils.taskAsync( */
+      /* 'Deploying mbed-cloud-connector ...', */
+      /* this._log, */
+      /* async (): Promise<{}> => { */
+      /* const args = ("pal-platform/pal-platform.py fullbuild --target x86_x64_NativeLinux_mbedtls --toolchain GCC" + */
+      /* "--external ./../define.txt --name enebular-agent-mbed-cloud-connector.elf").split(' ') */
+      /* console.log(args) */
+      /* return this._buildConnector(`${installPath}/tools/mbed-cloud-connector`, 'python', args) */
+      /* } */
+      /* ) */
+
       if (agentInfo.mbedCloudConnectorFCC) {
         this._log.info(`Building mbed-cloud-connector-fcc ...`)
       }
     }
 
-    newAgentInfo.collectFromSrc(installPath)
+    newAgentInfo = AgentInfo.createFromSrc(installPath)
     this._log.debug('New agent info, after building:')
     this._log.debug(newAgentInfo)
-    return true
+    return newAgentInfo
   }
 
   public async install(
     agentInfo: AgentInfo,
     cachePath: string,
     installPath: string
-  ): Promise<boolean> {
+  ): Promise<AgentInfo> {
     await Utils.taskAsync(
       'Fetching new agent ...',
       this._log,
@@ -284,11 +329,12 @@ export default class AgentInstaller {
       }
     )
 
+    let newAgentInfo
     try {
-      await this._build(agentInfo, installPath)
+      newAgentInfo = await this._build(agentInfo, installPath)
     } catch (err) {
       throw new Error(`Failed to build agent:\n${err.message}`)
     }
-    return true
+    return newAgentInfo
   }
 }

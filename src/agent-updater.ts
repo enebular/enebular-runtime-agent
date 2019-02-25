@@ -3,6 +3,7 @@ import CommandLine from './command-line'
 import Log from './log'
 import AgentInfo from './agent-info'
 import AgentInstaller from './agent-installer'
+import Migrator from './migrator'
 import Utils from './utils'
 import { version as updaterVer } from '../package.json'
 import * as path from 'path'
@@ -26,6 +27,10 @@ export default class AgentUpdater {
       this._config.getString('DEBUG'),
       this._config.getBoolean('ENEBULAR_AGENT_UPDATER_ENABLE_LOG')
     )
+  }
+
+  public getLogFilePath(): string {
+    return this._log.getLogFilePath()
   }
 
   private _requireRootUser(user: string): void {
@@ -76,6 +81,12 @@ export default class AgentUpdater {
             info.systemd.active
           } failed: ${info.systemd.failed}`
         )
+        if (!info.systemd.active) {
+          this._log.debug('enebular-agent failed to active')
+        }
+        if (info.systemd.failed) {
+          this._log.debug('enebular-agent status is failed')
+        }
         return info.systemd.failed || !info.systemd.active ? true : false
       },
       2000,
@@ -108,20 +119,23 @@ export default class AgentUpdater {
       )
       return false
     }
-    const agentInfo = new AgentInfo()
+
+    let agentInfo
     // Detect where existing agent is
-    if (!agentInfo.collectFromSystemd(user) || !agentInfo.systemd) {
-      // For now we only support enebular-agent with systemd
-      throw new Error(
-        'Failed to find an enebular-agent registered with systemd\n'
-      )
-    }
+    Utils.task(
+      'Checking enebular-agent in systemd ...',
+      this._log,
+      (): boolean => {
+        agentInfo = AgentInfo.createFromSystemd(user)
+        return true
+      }
+    )
 
     if (this._config.isOverridden('ENEBULAR_AGENT_INSTALL_DIR')) {
       // We are enforced to use user specified path
       agentInfo.path = this._config.getString('ENEBULAR_AGENT_INSTALL_DIR')
     } else {
-      if (agentInfo.systemd.path) {
+      if (agentInfo.systemd && agentInfo.systemd.path) {
         agentInfo.path = agentInfo.systemd.path
       } else {
         // TODO: scan to find agent, now we only use default path
@@ -130,26 +144,33 @@ export default class AgentUpdater {
     }
 
     this._log.info('enebular-agent install directory is: ' + agentInfo.path)
-    this._log.info('enebular-agent user is: ' + agentInfo.systemd.user)
+    this._log.info('enebular-agent user is: ' + user)
 
     const agentPath: string = agentInfo.path
-    Utils.task(
-      'Checking existing agent ...',
-      this._log,
-      (): boolean => {
-        agentInfo.collectFromSrc(agentPath)
-        return true
-      }
-    )
+    if (agentInfo.path != agentInfo.systemd.path) {
+      Utils.task(
+        `Checking enebular-agent by path (${agentInfo.path}) ...`,
+        this._log,
+        (): boolean => {
+          agentInfo = AgentInfo.createFromSrc(agentPath)
+          return true
+        }
+      )
+    }
 
     // download and build new version
     const cachePath = '/tmp/enebular-runtime-agent-' + Utils.randomString()
     const newAgentDirName = 'enebular-runtime-agent.new'
     const newAgentInstallPath = path.resolve(agentPath, `../${newAgentDirName}`)
-    const userId = Utils.getUserId(user)
-    const agentInstaller = new AgentInstaller(this._config, this._log, userId)
+    const agentInstaller = new AgentInstaller(this._config, this._log, user)
+
+    let newAgentInfo
     try {
-      await agentInstaller.install(agentInfo, cachePath, newAgentInstallPath)
+      newAgentInfo = await agentInstaller.install(
+        agentInfo,
+        cachePath,
+        newAgentInstallPath
+      )
     } catch (err) {
       throw new Error('Failed to install agent, reason: ' + err.message)
     }
@@ -158,7 +179,7 @@ export default class AgentUpdater {
     // shutdown current agent
     if (agentInfo.systemd.active) {
       await Utils.taskAsync(
-        'Stopping old version ...',
+        `Stopping enebular-agent ${agentInfo.version} ...`,
         this._log,
         (): Promise<boolean> => {
           return this.systemdServiceCtl(serviceName, 'stop')
@@ -166,14 +187,27 @@ export default class AgentUpdater {
       )
     }
 
-    // config copying
-
-    // migrate
+    // config copying, migrate
+    const migrator = new Migrator(
+      this._config,
+      this._log,
+      user
+    )
+    try {
+      await migrator.migrate(
+        agentInfo,
+        newAgentInfo,
+      )
+    } catch (err) {
+      throw new Error('Failed to migrate agent, reason: ' + err.message)
+    }
 
     const oldAgentDirName = 'enebular-runtime-agent.old'
     const oldAgentBackupPath = path.resolve(agentPath, `../${oldAgentDirName}`)
     Utils.task(
-      'Switching to new version ...',
+      `Switching enebular-agent from ${agentInfo.version} to ${
+        newAgentInfo.version
+      } ...`,
       this._log,
       (): boolean => {
         if (fs.existsSync(oldAgentBackupPath)) {
@@ -188,7 +222,7 @@ export default class AgentUpdater {
       }
     )
     await Utils.taskAsync(
-      'Starting new version ...',
+      `Starting enebular-agent ${newAgentInfo.version} ...`,
       this._log,
       (): Promise<boolean> => {
         return this.systemdServiceCtl(serviceName, 'start')
@@ -196,19 +230,27 @@ export default class AgentUpdater {
     )
     try {
       await Utils.taskAsync(
-        'Verifying new version ...',
+        `Verifying enebular-agent ${newAgentInfo.version} ...`,
         this._log,
         async (): Promise<boolean> => {
           if (await this.checkIfAgentDead(agentPath)) {
-            throw new Error('New version failed to boot!')
+            throw new Error(`Version ${newAgentInfo.version} failed to boot!`)
           }
           return true
         }
       )
     } catch (err) {
-      this._log.info('Flip back to old version')
+      const toVersion = agentInfo.version
+      const fromVersion = newAgentInfo.version
+      this._log.info(
+        `Failed to update enebular-agent ${fromVersion}, Flip back to ${toVersion} ...`
+      )
+      this._log.debug(`${agentInfo.systemd.serviceName} status:\n${Utils.execReturnStdout(
+        `journalctl -n 100 --no-pager -ex -u ${agentInfo.systemd.serviceName}`
+      )}`)
+
       await Utils.taskAsync(
-        'Stopping old version ...',
+        `Stopping enebular-agent ${fromVersion} ...`,
         this._log,
         (): Promise<boolean> => {
           return this.systemdServiceCtl(serviceName, 'stop')
@@ -216,7 +258,7 @@ export default class AgentUpdater {
       )
 
       Utils.task(
-        'Switching to old version ...',
+        `Switching to enebular-agent ${toVersion} ...`,
         this._log,
         (): boolean => {
           this.replaceFolderWithBackup(
@@ -229,14 +271,14 @@ export default class AgentUpdater {
       )
 
       await Utils.taskAsync(
-        'Starting old version ...',
+        `Starting enebular-agent ${toVersion} ...`,
         this._log,
         (): Promise<boolean> => {
           return this.systemdServiceCtl(serviceName, 'start')
         }
       )
       await Utils.taskAsync(
-        'Verifying old version ...',
+        `Verifying enebular-agent ${toVersion} ...`,
         this._log,
         async (): Promise<boolean> => {
           if (await this.checkIfAgentDead(agentPath)) {
@@ -245,7 +287,7 @@ export default class AgentUpdater {
           return true
         }
       )
-      throw new Error('New version booting failed!')
+      throw err
     }
     this._log.debug(
       'Enebular-agent status:\n' +

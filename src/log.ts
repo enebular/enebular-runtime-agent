@@ -1,3 +1,6 @@
+import Utils from './utils'
+import * as fs from 'fs'
+
 export enum LogLevel {
   ERROR = 1,
   INFO,
@@ -7,10 +10,16 @@ export enum LogLevel {
 export default class Logger {
   private _level: LogLevel
   private _enable: boolean
+  private _logFilePath: string
 
   public constructor(level: string, enable: boolean) {
     this._level = this._string2Level(level)
     this._enable = enable
+    this._logFilePath = `/tmp/enebular-agent-updater-${Utils.randomString()}.log`
+  }
+
+  public getLogFilePath(): string {
+    return this._logFilePath
   }
 
   public setLevel(level: string): void {
@@ -27,15 +36,27 @@ export default class Logger {
     console.log(msg)
   }
 
+  private _logFile(msg: string | object): void {
+    try {
+      fs.appendFileSync(this._logFilePath, msg)
+      fs.appendFileSync(this._logFilePath, '\n')
+    } catch (err) {
+      /* Handle the error */
+    }
+  }
+
   public error(msg: string | object): void {
     if (this._enable) this._log(msg)
+    this._logFile(msg)
   }
 
   public info(msg: string | object): void {
     if (this._enable && this._level > LogLevel.ERROR) this._log(msg)
+    this._logFile(msg)
   }
 
   public debug(msg: string | object): void {
     if (this._enable && this._level > LogLevel.INFO) this._log(msg)
+    this._logFile(msg)
   }
 }

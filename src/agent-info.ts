@@ -3,14 +3,14 @@ import * as path from 'path'
 import Utils from './utils'
 
 export default class AgentInfo {
-  public path?: string
-  public version?: string
-  public awsiot?: boolean
-  public pelion?: boolean
-  public awsiotThingCreator?: boolean
-  public mbedCloudConnector?: boolean
-  public mbedCloudConnectorFCC?: boolean
-  public nodejsVersion?: string
+  public path: string
+  public version: string
+  public awsiot: boolean
+  public pelion: boolean
+  public awsiotThingCreator: boolean
+  public mbedCloudConnector: boolean
+  public mbedCloudConnectorFCC: boolean
+  public nodejsVersion: string
   public systemd?: {
     user: string
     serviceName: string
@@ -20,7 +20,26 @@ export default class AgentInfo {
     path?: string
   }
 
-  public collectFromSrc(path: string): void {
+  private constructor(
+    path: string,
+    version: string,
+    awsiot: boolean,
+    pelion: boolean,
+    awsiotThingCreator: boolean,
+    mbedCloudConnector: boolean,
+    mbedCloudConnectorFCC: boolean,
+    nodejsVersion: string) {
+    this.path = path
+    this.version = version
+    this.awsiot = awsiot
+    this.pelion = pelion
+    this.awsiotThingCreator = awsiotThingCreator
+    this.mbedCloudConnector = mbedCloudConnector
+    this.mbedCloudConnectorFCC = mbedCloudConnectorFCC
+    this.nodejsVersion = nodejsVersion
+  }
+
+  public static createFromSrc(path: string): AgentInfo {
     if (!fs.existsSync(path)) {
       throw new Error(`The enebular-agent directory was not found: ${path}`)
     }
@@ -30,31 +49,32 @@ export default class AgentInfo {
       throw new Error(`Cannot found package.json, path is ${packageFile}`)
     }
     const pkg = JSON.parse(fs.readFileSync(packageFile, 'utf8'))
-    ;(this.path = path),
-      (this.version = pkg.version),
-      (this.awsiot = fs.existsSync(`${path}/ports/awsiot/node_modules`)),
-      (this.pelion =
-        fs.existsSync(`${path}/ports/pelion/node_modules`) ||
-        fs.existsSync(`${path}/ports/local/node_modules`)),
-      (this.awsiotThingCreator = fs.existsSync(
+
+    return new AgentInfo(
+      path,
+      pkg.version,
+      fs.existsSync(`${path}/ports/awsiot/node_modules`),
+      fs.existsSync(`${path}/ports/pelion/node_modules`) || fs.existsSync(`${path}/ports/local/node_modules`),
+      fs.existsSync(
         `${path}/tools/awsiot-thing-creator/node_modules`
-      )),
-      (this.mbedCloudConnector = fs.existsSync(
+      ),
+      fs.existsSync(
         `${path}/tools/mbed-cloud-connector/out/Release/enebular-agent-mbed-cloud-connector.elf`
-      )),
-      (this.mbedCloudConnectorFCC = fs.existsSync(
+      ),
+      fs.existsSync(
         `${path}tools/mbed-cloud-connector-fcc/__x86_x64_NativeLinux_mbedtls/Release/factory-configurator-client-enebular.elf`
-      )),
-      (this.nodejsVersion = Utils.getSupportedNodeJSVersion(pkg.version))
+      ),
+      Utils.getSupportedNodeJSVersion(pkg.version))
   }
 
-  public collectFromSystemd(user: string): boolean {
+  public static createFromSystemd(user: string): AgentInfo {
     const serviceName = `enebular-agent-${user}`
-    if (!fs.existsSync(`/etc/systemd/system/${serviceName}.service`)) {
-      return false
+    const serviceConfigPath = `/etc/systemd/system/${serviceName}.service`
+    if (!fs.existsSync(serviceConfigPath)) {
+      throw new Error(`Failed to find registered service unit: ${serviceConfigPath}`)
     }
 
-    this.systemd = {
+    const systemd = {
       user: user,
       serviceName: serviceName,
       enabled: Utils.exec(`systemctl is-enabled --quiet ${serviceName}`),
@@ -66,7 +86,7 @@ export default class AgentInfo {
       `systemctl show --no-pager -p User --value ${serviceName}`
     )
     if (ret) {
-      this.systemd['user'] = ret.replace(/(\n|\r)+$/, '')
+      systemd['user'] = ret.replace(/(\n|\r)+$/, '')
     }
     ret = Utils.execReturnStdout(
       `systemctl show --no-pager -p ExecStart --value ${serviceName}`
@@ -74,9 +94,15 @@ export default class AgentInfo {
     if (ret) {
       const execStartPath = ret.split(';')[0].substring(7)
       if (execStartPath.length > 0) {
-        this.systemd['path'] = path.resolve(execStartPath, '../../../../')
+        systemd['path'] = path.resolve(execStartPath, '../../../../')
       }
     }
-    return true
+
+    if (!systemd['path'] || !fs.existsSync(systemd['path'])) {
+      throw new Error(`Failed to find enebular-agent, path: ${systemd['path']}`)
+    }
+    const agentInfo = AgentInfo.createFromSrc(systemd['path'])
+    agentInfo.systemd = systemd
+    return agentInfo
   }
 }
