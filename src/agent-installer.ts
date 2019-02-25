@@ -217,6 +217,14 @@ export default class AgentInstaller {
       }
     )
 
+    await Utils.taskAsync(
+      `Building Node-RED ...`,
+      this._log,
+      async (): Promise<{}> => {
+        return this._buildNpmPackage(`${installPath}/node-red`)
+      }
+    )
+
     if (agentInfo.awsiot) {
       await Utils.taskAsync(
         'Building awsiot port ...',
