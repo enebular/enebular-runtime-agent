@@ -2,34 +2,97 @@ import * as fs from 'fs'
 import * as path from 'path'
 
 import AgentInfo from './agent-info'
-import { UserInfo, default as Utils }  from './utils'
+import { UserInfo, default as Utils } from './utils'
 import Config from './config'
 import Log from './log'
 
-export class CopyMigration implements Migration {
-  type: string
-  copyFrom: string
-  copyTo: string
+export abstract class Migration {
+  protected _name: string
+  protected _type: string
 
-  constructor(copyFrom: string, copyTo: string) {
-    this.type = 'copy'
-    this.copyFrom = copyFrom
-    this.copyTo = copyTo
+  protected constructor(name: string, type: string) {
+    this._name = name
+    this._type = type
+  }
+  public abstract _do(): Promise<{}>
+}
+
+export class CopyMigration extends Migration {
+  protected _copyFrom: string
+  protected _copyTo: string
+  protected _migrator: Migrator
+
+  public constructor(
+    name: string,
+    copyFrom: string,
+    copyTo: string,
+    migrator: Migrator
+  ) {
+    super(name, 'copy')
+    this._name = name
+    this._migrator = migrator
+    this._copyFrom = migrator.migrateConfig[copyFrom]
+    this._copyTo = migrator.migrateConfig[copyTo]
+  }
+
+  public async _do(): Promise<{}> {
+    return Utils.copy(
+      this._migrator.log,
+      `${this._copyFrom}/${this._name}`,
+      `${this._copyTo}/${this._name}`,
+      this._migrator.userInfo
+    )
   }
 }
 
-export interface Migration {
-  type: string
+export class AwsiotConfigMigration extends CopyMigration {
+  public constructor(
+    name: string,
+    copyFrom: string,
+    copyTo: string,
+    migrator: Migrator
+  ) {
+    super(name, copyFrom, copyTo, migrator)
+    this._type = 'copy-awsiot-config'
+  }
+
+  public async _do(): Promise<{}> {
+    const awsiotConfigPath = path.resolve(this._copyFrom, this._name)
+    const awsiotConfig = JSON.parse(fs.readFileSync(awsiotConfigPath, 'utf8'))
+
+    // TODO: check isAbsolute path
+    const filesToCopy = [
+      this._name,
+      awsiotConfig.caCert,
+      awsiotConfig.clientCert,
+      awsiotConfig.privateKey
+    ]
+
+    let promises: Promise<{}>[] = []
+    filesToCopy.forEach(file => {
+      promises.push(
+        Utils.copy(
+          this._migrator.log,
+          path.resolve(this._copyFrom, file),
+          path.resolve(this._copyTo, file),
+          this._migrator.userInfo
+        )
+      )
+    })
+    return Promise.all(promises)
+  }
 }
 
 export interface Migrations {
-  [key: string]: CopyMigration
+  [key: string]: Migration
 }
 
 export interface MigrateConfig {
   projectPath: string
+  nodeRedPath: string
   portBasePath: string
   newProjectPath: string
+  newNodeRedPath: string
   newPortBasePath: string
   port: string
 }
@@ -40,27 +103,12 @@ export default class Migrator {
   private _userInfo: UserInfo
   private _migrateConfig: MigrateConfig
 
-  private _standardConfigs = [
-    '.enebular-config.json',
-    '.node-red-config',
-    'assets',
-    '.enebular-assets.json',
-  ]
-
-  private _awsiotConfigs = [
-    'config.json',
-  ]
-
-  private _pelionConfigs = [
-    '.pelion-connector',
-  ]
-
   public constructor(
     agentInfo: AgentInfo,
     newAgentInfo: AgentInfo,
     config: Config,
     log: Log,
-    userInfo: UserInfo,
+    userInfo: UserInfo
   ) {
     this._config = config
     this._log = log
@@ -73,29 +121,42 @@ export default class Migrator {
       throw new Error(`Failed to detect enebular-agent version`)
     }
 
-    const port = agentInfo.awsiot ? "awsiot" : "pelion"
+    const port = agentInfo.awsiot ? 'awsiot' : 'pelion'
     this._migrateConfig = {
       port: port,
       projectPath: agentInfo.path,
+      nodeRedPath: `${agentInfo.path}/node-red`,
       portBasePath: `${agentInfo.path}/ports/${port}`,
       newProjectPath: newAgentInfo.path,
+      newNodeRedPath: `${newAgentInfo.path}/node-red`,
       newPortBasePath: `${newAgentInfo.path}/ports/${port}`
     }
+  }
+
+  public get log(): Log {
+    return this._log
+  }
+
+  public get userInfo(): UserInfo {
+    return this._userInfo
+  }
+
+  public get migrateConfig(): MigrateConfig {
+    return this._migrateConfig
   }
 
   private _applyMigrationFiles(migrations: Migrations): boolean {
     let migrationFiles
     try {
       migrationFiles = fs.readdirSync(path.resolve(__dirname, './migrations'))
-      migrationFiles = migrationFiles.filter((file) => {
+      migrationFiles = migrationFiles.filter(file => {
         return path.extname(file).toLowerCase() === '.js'
       })
       // TODO: find version specific migrations only
-    }
-    catch (err) {
+    } catch (err) {
       return false
     }
-    migrationFiles.forEach((file) => {
+    migrationFiles.forEach(file => {
       const current = require(path.resolve(__dirname, './migrations/', file))
       // TODO: up/down migration according to version
       current.up(this._migrateConfig, migrations)
@@ -104,38 +165,61 @@ export default class Migrator {
   }
 
   private async _resolveConfigs(port: string): Promise<boolean> {
-    let configs = this._standardConfigs
-    if (port == 'pelion') configs = configs.concat(this._pelionConfigs)
-    if (port == 'awsiot') {
-      configs = configs.concat(this._awsiotConfigs)
+    let migrations: Migrations = {
+      '.enebular-config.json': new CopyMigration(
+        '.enebular-config.json',
+        'portBasePath',
+        'newPortBasePath',
+        this
+      ),
+      '.node-red-config': new CopyMigration(
+        '.node-red-config',
+        'nodeRedPath',
+        'newNodeRedPath',
+        this
+      ),
+      '.enebular-assets.json': new CopyMigration(
+        '.enebular-assets.json',
+        'portBasePath',
+        'newPortBasePath',
+        this
+      ),
+      assets: new CopyMigration(
+        'assets',
+        'portBasePath',
+        'newPortBasePath',
+        this
+      )
     }
-
-    let migrations = {} as Migrations
-    for (const config of configs) { 
-      migrations[config] = new CopyMigration(
-        `${this._migrateConfig.portBasePath}/${config}`,
-        `${this._migrateConfig.newPortBasePath}/${config}`,
+    if (port == 'awsiot') {
+      migrations['config.json'] = new AwsiotConfigMigration(
+        'config.json',
+        'portBasePath',
+        'newPortBasePath',
+        this
+      )
+    }
+    if (port == 'pelion') {
+      migrations['.pelion-connector'] = new CopyMigration(
+        '.pelion-connector',
+        'portBasePath',
+        'newPortBasePath',
+        this
       )
     }
 
     this._applyMigrationFiles(migrations)
 
-    for (const migration of Object.entries(migrations)) { 
-      const name = migration[0]
-      const value = migration[1]
-      switch (value.type) {
-        case 'copy':
-          await Utils.taskAsync(
-            `Copying ${name} ...`,
-            this._log,
-            (): Promise<{}> => {
-              return this._copy(value.copyFrom, value.copyTo)
-            }
-          )
-          break
-        default:
-          break
-      }
+    for (const migrationObject of Object.entries(migrations)) {
+      const name = migrationObject[0]
+      const migration = migrationObject[1]
+      await Utils.taskAsync(
+        `Migrating ${name} ...`,
+        this._log,
+        (): Promise<{}> => {
+          return migration._do()
+        }
+      )
     }
     return true
   }
@@ -147,22 +231,5 @@ export default class Migrator {
       throw new Error(`Failed to resolve config files:\n${err.message}`)
     }
     return true
-  }
-
-  private _copy(src?: string, dst?: string): Promise<{}> {
-    if (!src || !dst) {
-      throw new Error(`src (${src}) and dst (${dst}) must be set`)
-    }
-    if (!fs.existsSync(src)) {
-      throw new Error(`Failed to find config: ${src}`)
-    }
-    let args = [src, dst]
-    if (fs.lstatSync(src).isDirectory()) {
-      args.unshift('-r')
-    }
-    return Utils.spawn('cp', args, this._log, {
-      uid: this._userInfo.uid,
-      gid: this._userInfo.gid
-    })
   }
 }

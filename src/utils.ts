@@ -1,3 +1,6 @@
+import * as fs from 'fs'
+import * as path from 'path'
+
 import { execSync, spawn } from 'child_process'
 import AgentInfo from './agent-info'
 import Log from './log'
@@ -91,7 +94,9 @@ export default class Utils {
   }
 
   public static dumpAgentInfo(path: string, user?: string): AgentInfo {
-    return user ? AgentInfo.createFromSystemd(user) : AgentInfo.createFromSrc(path)
+    return user
+      ? AgentInfo.createFromSystemd(user)
+      : AgentInfo.createFromSrc(path)
   }
 
   public static polling(
@@ -153,5 +158,57 @@ export default class Utils {
       log.info('\x1b[31mFailed\x1b[0m')
       throw err
     }
+  }
+
+  public static mkdirp(
+    log: Log,
+    path: string,
+    userInfo?: UserInfo
+  ): Promise<{}> {
+    return Utils.spawn(
+      'mkdir',
+      ['-p', path],
+      log,
+      userInfo
+        ? {
+            uid: userInfo.uid,
+            gid: userInfo.gid
+          }
+        : {}
+    )
+  }
+
+  public static async copy(
+    log: Log,
+    src?: string,
+    dst?: string,
+    userInfo?: UserInfo
+  ): Promise<{}> {
+    if (!src || !dst) {
+      throw new Error(`src (${src}) and dst (${dst}) must be set`)
+    }
+    if (!fs.existsSync(src)) {
+      throw new Error(`Failed to find config: ${src}`)
+    }
+
+    const parentDir = path.resolve(dst, '../')
+    if (!fs.existsSync(parentDir)) {
+      await Utils.mkdirp(log, parentDir, userInfo)
+    }
+    let args = [src, dst]
+    if (fs.lstatSync(src).isDirectory()) {
+      args.unshift('-r')
+    }
+    return Utils.spawn(
+      'cp',
+      args,
+      log,
+      userInfo
+        ? {
+            uid: userInfo.uid,
+            gid: userInfo.gid
+          }
+        : {}
+    )
   }
 }

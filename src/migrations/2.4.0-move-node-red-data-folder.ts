@@ -1,13 +1,8 @@
 import { Migrations, MigrateConfig } from '../migrator'
 
 module.exports = {
-  up: (config: MigrateConfig, migrations: Migrations) =>
-  {
-    migrations['.node-red-config'].copyFrom = `${config.projectPath}/node-red/.node-red-config`
-
+  up: (config: MigrateConfig, migrations: Migrations) => {
     delete migrations['assets']
     delete migrations['.enebular-assets.json']
   }
 }
-
-

@@ -245,9 +245,11 @@ export default class AgentUpdater {
       this._log.info(
         `Failed to update enebular-agent ${fromVersion}, Flip back to ${toVersion} ...`
       )
-      this._log.debug(`${agentInfo.systemd.serviceName} status:\n${Utils.execReturnStdout(
-        `journalctl -n 100 --no-pager -ex -u ${agentInfo.systemd.serviceName}`
-      )}`)
+      this._log.debug(
+        `${agentInfo.systemd.serviceName} status:\n${Utils.execReturnStdout(
+          `journalctl -n 100 --no-pager -ex -u ${agentInfo.systemd.serviceName}`
+        )}`
+      )
 
       await Utils.taskAsync(
         `Stopping enebular-agent ${fromVersion} ...`,

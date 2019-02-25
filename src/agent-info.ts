@@ -28,7 +28,8 @@ export default class AgentInfo {
     awsiotThingCreator: boolean,
     mbedCloudConnector: boolean,
     mbedCloudConnectorFCC: boolean,
-    nodejsVersion: string) {
+    nodejsVersion: string
+  ) {
     this.path = path
     this.version = version
     this.awsiot = awsiot
@@ -54,24 +55,26 @@ export default class AgentInfo {
       path,
       pkg.version,
       fs.existsSync(`${path}/ports/awsiot/node_modules`),
-      fs.existsSync(`${path}/ports/pelion/node_modules`) || fs.existsSync(`${path}/ports/local/node_modules`),
-      fs.existsSync(
-        `${path}/tools/awsiot-thing-creator/node_modules`
-      ),
+      fs.existsSync(`${path}/ports/pelion/node_modules`) ||
+        fs.existsSync(`${path}/ports/local/node_modules`),
+      fs.existsSync(`${path}/tools/awsiot-thing-creator/node_modules`),
       fs.existsSync(
         `${path}/tools/mbed-cloud-connector/out/Release/enebular-agent-mbed-cloud-connector.elf`
       ),
       fs.existsSync(
         `${path}tools/mbed-cloud-connector-fcc/__x86_x64_NativeLinux_mbedtls/Release/factory-configurator-client-enebular.elf`
       ),
-      Utils.getSupportedNodeJSVersion(pkg.version))
+      Utils.getSupportedNodeJSVersion(pkg.version)
+    )
   }
 
   public static createFromSystemd(user: string): AgentInfo {
     const serviceName = `enebular-agent-${user}`
     const serviceConfigPath = `/etc/systemd/system/${serviceName}.service`
     if (!fs.existsSync(serviceConfigPath)) {
-      throw new Error(`Failed to find registered service unit: ${serviceConfigPath}`)
+      throw new Error(
+        `Failed to find registered service unit: ${serviceConfigPath}`
+      )
     }
 
     const systemd = {
