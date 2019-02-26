@@ -32,18 +32,21 @@ download() {
   fi
 }
 
-USER=enebular
 UPDATER_DOWNLOAD_URL="https://s3-ap-southeast-2.amazonaws.com/enebular-agent-update-youxin-test/enebular-agent-updater-release.tar.gz"
 
 for i in "$@"
 do
 case $i in
-  -u=*|--user=*)
+  --user=*)
   USER="${i#*=}"
   shift
   ;;
   --updater-download-path=*)
   UPDATER_DOWNLOAD_URL="${i#*=}"
+  shift
+  ;;
+  --agent-download-url=*)
+  AGENT_DOWNLOAD_URL="${i#*=}"
   shift
   ;;
   *)
@@ -86,7 +89,14 @@ if (
   _echo_g "OK"
 fi 
 
-${TEMP_UPDATER_DST}/bin/enebular-agent-update --user=${USER}
+if [ ! -z ${USER} ]; then
+  UPDATER_PARAMETER="--user=${USER}"
+fi
+if [ ! -z ${AGENT_DOWNLOAD_URL} ]; then
+  UPDATER_PARAMETER="--agent-download-url=${AGENT_DOWNLOAD_URL} ${UPDATER_PARAMETER}"
+fi
+
+${TEMP_UPDATER_DST}/bin/enebular-agent-update ${UPDATER_PARAMETER}
 
 
 
