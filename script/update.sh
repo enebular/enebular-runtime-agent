@@ -33,6 +33,7 @@ download() {
 }
 
 UPDATER_DOWNLOAD_URL="https://s3-ap-southeast-2.amazonaws.com/enebular-agent-update-youxin-test/enebular-agent-updater-release.tar.gz"
+USER=enebular
 
 for i in "$@"
 do
@@ -96,6 +97,8 @@ if [ ! -z ${AGENT_DOWNLOAD_URL} ]; then
   UPDATER_PARAMETER="--agent-download-url=${AGENT_DOWNLOAD_URL} ${UPDATER_PARAMETER}"
 fi
 
+NODEJS_ENV=`systemctl show --no-pager -p Environment --value enebular-agent-${USER}.service`
+export ${NODEJS_ENV}
 ${TEMP_UPDATER_DST}/bin/enebular-agent-update ${UPDATER_PARAMETER}
 
 
