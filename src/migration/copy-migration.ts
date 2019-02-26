@@ -11,9 +11,10 @@ export default class CopyMigration extends Migration {
     name: string,
     copyFrom: string,
     copyTo: string,
-    migrator: Migrator
+    migrator: Migrator,
+    optional = false
   ) {
-    super(name, 'copy')
+    super(name, 'copy', optional)
     this._name = name
     this._migrator = migrator
     this._copyFrom = migrator.migrateConfig[copyFrom]

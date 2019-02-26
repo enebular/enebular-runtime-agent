@@ -34,7 +34,7 @@ export default class Config {
       },
       ENEBULAR_AGENT_DOWNLOAD_URL: {
         value:
-          'https://s3-ap-southeast-2.amazonaws.com/enebular-agent-update-youxin-test/2.4.0-rc1-prebuilt.tar.gz',
+          'https://s3-ap-southeast-2.amazonaws.com/enebular-agent-update-youxin-test/2.4.0-prebuilt.tar.gz',
         description: 'The URL where to download enebular-agent',
         userExpose: true
       },

@@ -109,13 +109,15 @@ export default class Migrator {
         '.enebular-assets.json',
         'portBasePath',
         'newPortBasePath',
-        this
+        this,
+        true
       ),
-      assets: new CopyMigration(
+      'assets': new CopyMigration(
         'assets',
         'portBasePath',
         'newPortBasePath',
-        this
+        this,
+        true
       )
     }
     if (this._migrateConfig.port == 'awsiot') {
@@ -143,8 +145,19 @@ export default class Migrator {
       await Utils.taskAsync(
         `Migrating ${name} ...`,
         this._log,
-        (): Promise<{}> => {
-          return migration._do()
+        async (): Promise<{}> => {
+          if (migration.optional) {
+            try {
+              await migration._do()
+            }
+            catch(err) {
+              console.log("migration error but ignore it ...")
+            }
+            return {}
+          }
+          else {
+            return migration._do()
+          }
         }
       )
     }

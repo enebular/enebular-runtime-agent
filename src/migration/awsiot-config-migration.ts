@@ -12,7 +12,7 @@ export default class AwsiotConfigMigration extends CopyMigration {
     copyTo: string,
     migrator: Migrator
   ) {
-    super(name, copyFrom, copyTo, migrator)
+    super(name, copyFrom, copyTo, migrator, false)
     this._type = 'copy-awsiot-config'
   }
 
