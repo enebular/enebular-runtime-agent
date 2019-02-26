@@ -86,16 +86,18 @@ export default class AgentInfo {
     }
 
     let ret = Utils.execReturnStdout(
-      `systemctl show --no-pager -p User --value ${serviceName}`
+      `systemctl show --no-pager -p User ${serviceName}`
     )
     if (ret) {
-      systemd['user'] = ret.replace(/(\n|\r)+$/, '')
+      const userProp = ret.slice(ret.indexOf('=') + 1)
+      systemd['user'] = userProp.replace(/(\n|\r)+$/, '')
     }
     ret = Utils.execReturnStdout(
-      `systemctl show --no-pager -p ExecStart --value ${serviceName}`
+      `systemctl show --no-pager -p ExecStart ${serviceName}`
     )
     if (ret) {
-      const execStartPath = ret.split(';')[0].substring(7)
+      const execStartProp = ret.slice(ret.indexOf('=') + 1)
+      const execStartPath = execStartProp.split(';')[0].substring(7)
       if (execStartPath.length > 0) {
         systemd['path'] = path.resolve(execStartPath, '../../../../')
       }
