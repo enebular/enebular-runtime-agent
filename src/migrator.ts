@@ -5,83 +5,9 @@ import AgentInfo from './agent-info'
 import { UserInfo, default as Utils } from './utils'
 import Config from './config'
 import Log from './log'
-
-export abstract class Migration {
-  protected _name: string
-  protected _type: string
-
-  protected constructor(name: string, type: string) {
-    this._name = name
-    this._type = type
-  }
-  public abstract _do(): Promise<{}>
-}
-
-export class CopyMigration extends Migration {
-  protected _copyFrom: string
-  protected _copyTo: string
-  protected _migrator: Migrator
-
-  public constructor(
-    name: string,
-    copyFrom: string,
-    copyTo: string,
-    migrator: Migrator
-  ) {
-    super(name, 'copy')
-    this._name = name
-    this._migrator = migrator
-    this._copyFrom = migrator.migrateConfig[copyFrom]
-    this._copyTo = migrator.migrateConfig[copyTo]
-  }
-
-  public async _do(): Promise<{}> {
-    return Utils.copy(
-      this._migrator.log,
-      `${this._copyFrom}/${this._name}`,
-      `${this._copyTo}/${this._name}`,
-      this._migrator.userInfo
-    )
-  }
-}
-
-export class AwsiotConfigMigration extends CopyMigration {
-  public constructor(
-    name: string,
-    copyFrom: string,
-    copyTo: string,
-    migrator: Migrator
-  ) {
-    super(name, copyFrom, copyTo, migrator)
-    this._type = 'copy-awsiot-config'
-  }
-
-  public async _do(): Promise<{}> {
-    const awsiotConfigPath = path.resolve(this._copyFrom, this._name)
-    const awsiotConfig = JSON.parse(fs.readFileSync(awsiotConfigPath, 'utf8'))
-
-    // TODO: check isAbsolute path
-    const filesToCopy = [
-      this._name,
-      awsiotConfig.caCert,
-      awsiotConfig.clientCert,
-      awsiotConfig.privateKey
-    ]
-
-    let promises: Promise<{}>[] = []
-    filesToCopy.forEach(file => {
-      promises.push(
-        Utils.copy(
-          this._migrator.log,
-          path.resolve(this._copyFrom, file),
-          path.resolve(this._copyTo, file),
-          this._migrator.userInfo
-        )
-      )
-    })
-    return Promise.all(promises)
-  }
-}
+import Migration from './migration/migration'
+import CopyMigration from './migration/copy-migration'
+import AwsiotConfigMigration from './migration/awsiot-config-migration'
 
 export interface Migrations {
   [key: string]: Migration
@@ -148,6 +74,7 @@ export default class Migrator {
   private _applyMigrationFiles(migrations: Migrations): boolean {
     let migrationFiles
     try {
+      // TODO: read from enebular-runtime-agent
       migrationFiles = fs.readdirSync(path.resolve(__dirname, './migrations'))
       migrationFiles = migrationFiles.filter(file => {
         return path.extname(file).toLowerCase() === '.js'

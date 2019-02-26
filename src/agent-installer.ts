@@ -208,6 +208,9 @@ export default class AgentInstaller {
         `Installing nodejs-${newAgentInfo.nodejsVersion} to ${nodejsPath} ...`
       )
     }
+
+    // TODO: install dependencies
+
     this._npmBuildEnv['PATH'] = `${nodejsPath}/bin:${process.env['PATH']}`
     await Utils.taskAsync(
       `Building agent ${newAgentInfo.version} ...`,
