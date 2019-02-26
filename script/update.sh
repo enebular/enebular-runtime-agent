@@ -97,7 +97,8 @@ if [ ! -z ${AGENT_DOWNLOAD_URL} ]; then
   UPDATER_PARAMETER="--agent-download-url=${AGENT_DOWNLOAD_URL} ${UPDATER_PARAMETER}"
 fi
 
-NODEJS_ENV=`systemctl show --no-pager -p Environment --value enebular-agent-${USER}.service`
+NODEJS_ENV=`systemctl show --no-pager -p Environment enebular-agent-${USER}.service`
+NODEJS_ENV=${NODEJS_ENV#Environment=}
 export ${NODEJS_ENV}
 ${TEMP_UPDATER_DST}/bin/enebular-agent-update ${UPDATER_PARAMETER}
 
