@@ -136,27 +136,38 @@ export default class Utils {
   public static async taskAsync(
     name: string,
     log: Log,
-    cb: () => Promise<boolean> | Promise<{}>
+    cb: () => Promise<boolean> | Promise<{}>,
+    ignore = false
   ): Promise<boolean> {
     log.info(name)
     try {
       await cb()
       log.info('\x1b[32mOK\x1b[0m')
     } catch (err) {
-      log.info('\x1b[31mFailed\x1b[0m')
-      throw err
+      if (ignore) {
+        log.info('\x1b[33mFailed (Ignore)\x1b[0m')
+      }
+      else {
+        log.info('\x1b[31mFailed\x1b[0m')
+        throw err
+      }
     }
     return true
   }
 
-  public static task(name: string, log: Log, cb: () => boolean): void {
+  public static task(name: string, log: Log, cb: () => boolean, ignore = false): void {
     log.info(name)
     try {
       cb()
       log.info('\x1b[32mOK\x1b[0m')
     } catch (err) {
-      log.info('\x1b[31mFailed\x1b[0m')
-      throw err
+      if (ignore) {
+        log.info('\x1b[33mFailed (Ignore)\x1b[0m')
+      }
+      else {
+        log.info('\x1b[31mFailed\x1b[0m')
+        throw err
+      }
     }
   }
 

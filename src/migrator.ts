@@ -146,19 +146,9 @@ export default class Migrator {
         `Migrating ${name} ...`,
         this._log,
         async (): Promise<{}> => {
-          if (migration.optional) {
-            try {
-              await migration._do()
-            }
-            catch(err) {
-              console.log("migration error but ignore it ...")
-            }
-            return {}
-          }
-          else {
-            return migration._do()
-          }
-        }
+          return migration._do()
+        },
+        migration.optional
       )
     }
     return true
