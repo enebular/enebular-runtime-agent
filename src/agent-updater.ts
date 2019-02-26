@@ -176,6 +176,7 @@ export default class AgentUpdater {
       throw new Error('Failed to install agent, reason: ' + err.message)
     }
 
+    // TODO: Fork child process
     const serviceName = agentInfo.systemd.serviceName
     // shutdown current agent
     if (agentInfo.systemd.active) {

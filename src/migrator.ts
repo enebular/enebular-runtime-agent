@@ -91,7 +91,7 @@ export default class Migrator {
     return true
   }
 
-  private async _resolveConfigs(port: string): Promise<boolean> {
+  public async migrate(): Promise<boolean> {
     let migrations: Migrations = {
       '.enebular-config.json': new CopyMigration(
         '.enebular-config.json',
@@ -118,7 +118,7 @@ export default class Migrator {
         this
       )
     }
-    if (port == 'awsiot') {
+    if (this._migrateConfig.port == 'awsiot') {
       migrations['config.json'] = new AwsiotConfigMigration(
         'config.json',
         'portBasePath',
@@ -126,7 +126,7 @@ export default class Migrator {
         this
       )
     }
-    if (port == 'pelion') {
+    if (this._migrateConfig.port == 'pelion') {
       migrations['.pelion-connector'] = new CopyMigration(
         '.pelion-connector',
         'portBasePath',
@@ -147,15 +147,6 @@ export default class Migrator {
           return migration._do()
         }
       )
-    }
-    return true
-  }
-
-  public async migrate(): Promise<boolean> {
-    try {
-      await this._resolveConfigs(this._migrateConfig.port)
-    } catch (err) {
-      throw new Error(`Failed to resolve config files:\n${err.message}`)
     }
     return true
   }
