@@ -5,17 +5,21 @@ import AgentInfo from './agent-info'
 import AgentInstaller from './agent-installer'
 import Migrator from './migrator'
 import Utils from './utils'
+import System from './system'
 import { version as updaterVer } from '../package.json'
 import * as path from 'path'
 import * as fs from 'fs'
 import * as rimraf from 'rimraf'
 
 export default class AgentUpdater {
+  private _minimumRunningTime: number = 30 * 1000 // 30 seconds
   private _config: Config
   private _commandLine: CommandLine
   private _log: Log
+  private _system: System
 
-  public constructor() {
+  public constructor(system: System) {
+    this._system = system
     this._config = new Config()
     this._config.importConfigStrings(process.env)
 
@@ -57,24 +61,15 @@ export default class AgentUpdater {
     )
   }
 
-  private replaceFolderWithBackup(
-    from: string,
-    to: string,
-    backup: string
-  ): void {
-    const cmd = `mv ${to} ${backup} && mv ${from} ${to}`
-    if (!Utils.exec(cmd)) {
-      throw new Error(`${cmd} failed`)
-    }
-  }
-
-  private checkIfAgentDead(path: string): Promise<boolean> {
+  private checkIfAgentDead(
+    path: string,
+    user: string,
+    initDelay: number,
+    timeout: number
+  ): Promise<boolean> {
     return Utils.polling(
       async (): Promise<boolean> => {
-        const info = Utils.dumpAgentInfo(
-          path,
-          this._config.getString('ENEBULAR_AGENT_USER')
-        )
+        const info = Utils.dumpAgentInfo(path, user)
         if (!info.systemd) return true
         this._log.debug(
           `enebular-agent status: enabled:${info.systemd.enabled} active:${
@@ -89,22 +84,44 @@ export default class AgentUpdater {
         }
         return info.systemd.failed || !info.systemd.active ? true : false
       },
-      2000,
+      initDelay,
       1000,
-      30 * 1000 // stable to run 30 seconds
+      timeout
     )
   }
 
-  private async systemdServiceCtl(
-    name: string,
-    action: string
-  ): Promise<boolean> {
-    try {
-      await Utils.spawn('service', [name, action], this._log)
-    } catch (err) {
-      throw new Error(`Failed to ${action} ${name}:\n${err.message}`)
-    }
-    return true
+  private async _startAgent(
+    version: string,
+    path: string,
+    user: string,
+    serviceName: string,
+    prefix = ''
+  ): Promise<{}> {
+    await Utils.taskAsync(
+      `${prefix}Starting enebular-agent ${version} ...`,
+      this._log,
+      (): Promise<boolean> => {
+        return this._system.serviceCtl(serviceName, 'start')
+      }
+    )
+
+    return Utils.taskAsync(
+      `${prefix}Verifying enebular-agent ${version} ...`,
+      this._log,
+      async (): Promise<boolean> => {
+        if (
+          await this.checkIfAgentDead(
+            path,
+            user,
+            2000,
+            this._minimumRunningTime
+          )
+        ) {
+          throw new Error(`enebular-agent ${version} failed to start!`)
+        }
+        return true
+      }
+    )
   }
 
   public async update(): Promise<boolean> {
@@ -145,15 +162,18 @@ export default class AgentUpdater {
 
     this._log.info('enebular-agent install directory is: ' + agentInfo.path)
     this._log.info('enebular-agent user is: ' + user)
+    if (agentInfo.systemd) {
+      this._log.info('enebular-agent is enabled: ' + agentInfo.systemd.enabled)
+      this._log.info('enebular-agent is active: ' + agentInfo.systemd.active)
+    }
 
     const agentPath: string = agentInfo.path
     if (agentInfo.path != agentInfo.systemd.path) {
       Utils.task(
         `Checking enebular-agent by path (${agentInfo.path}) ...`,
         this._log,
-        (): boolean => {
+        (): void => {
           agentInfo = AgentInfo.createFromSrc(agentPath)
-          return true
         }
       )
     }
@@ -178,118 +198,106 @@ export default class AgentUpdater {
 
     // TODO: Fork child process
     const serviceName = agentInfo.systemd.serviceName
-    // shutdown current agent
-    if (agentInfo.systemd.active) {
-      await Utils.taskAsync(
-        `Stopping enebular-agent ${agentInfo.version} ...`,
-        this._log,
-        (): Promise<boolean> => {
-          return this.systemdServiceCtl(serviceName, 'stop')
-        }
-      )
-    }
-
-    // config copying, migrate
-    const migrator = new Migrator(
-      agentInfo,
-      newAgentInfo,
-      this._config,
-      this._log,
-      userInfo
-    )
-    try {
-      await migrator.migrate()
-    } catch (err) {
-      throw new Error('Failed to migrate agent, reason: ' + err.message)
-    }
-
     const oldAgentDirName = 'enebular-runtime-agent.old'
     const oldAgentBackupPath = path.resolve(agentPath, `../${oldAgentDirName}`)
-    Utils.task(
-      `Switching enebular-agent from ${agentInfo.version} to ${
-        newAgentInfo.version
-      } ...`,
-      this._log,
-      (): boolean => {
-        if (fs.existsSync(oldAgentBackupPath)) {
-          rimraf.sync(oldAgentBackupPath)
-        }
-        this.replaceFolderWithBackup(
-          newAgentInstallPath,
-          agentPath,
-          oldAgentBackupPath
-        )
-        return true
-      }
-    )
-    await Utils.taskAsync(
-      `Starting enebular-agent ${newAgentInfo.version} ...`,
-      this._log,
-      (): Promise<boolean> => {
-        return this.systemdServiceCtl(serviceName, 'start')
-      }
-    )
+    let switched = false
+
     try {
-      await Utils.taskAsync(
-        `Verifying enebular-agent ${newAgentInfo.version} ...`,
-        this._log,
-        async (): Promise<boolean> => {
-          if (await this.checkIfAgentDead(agentPath)) {
-            throw new Error(`Version ${newAgentInfo.version} failed to boot!`)
+      // shutdown current agent
+      if (agentInfo.systemd.active) {
+        await Utils.taskAsync(
+          `Stopping enebular-agent ${agentInfo.version} ...`,
+          this._log,
+          (): Promise<boolean> => {
+            return this._system.serviceCtl(serviceName, 'stop')
           }
-          return true
+        )
+      }
+      // config copying, migrate
+      const migrator = new Migrator(
+        agentInfo,
+        newAgentInfo,
+        this._config,
+        this._log,
+        userInfo
+      )
+      await migrator.migrate()
+
+      Utils.task(
+        `Switching enebular-agent from ${agentInfo.version} to ${
+          newAgentInfo.version
+        } ...`,
+        this._log,
+        (): Promise<boolean> => {
+          if (fs.existsSync(oldAgentBackupPath)) {
+            rimraf.sync(oldAgentBackupPath)
+          }
+          return this._system.replaceDirWithBackup(
+            newAgentInstallPath,
+            agentPath,
+            oldAgentBackupPath
+          )
         }
       )
+
+      switched = true
+      await this._startAgent(newAgentInfo.version, agentPath, user, serviceName)
     } catch (err) {
-      const toVersion = agentInfo.version
-      const fromVersion = newAgentInfo.version
-      this._log.info(
-        `Failed to update enebular-agent ${fromVersion}, Flip back to ${toVersion} ...`
-      )
+      const version = agentInfo.version
+      const newVersion = newAgentInfo.version
       this._log.debug(
         `${agentInfo.systemd.serviceName} status:\n${Utils.execReturnStdout(
           `journalctl -n 100 --no-pager -ex -u ${agentInfo.systemd.serviceName}`
         )}`
       )
-
-      await Utils.taskAsync(
-        `Stopping enebular-agent ${fromVersion} ...`,
-        this._log,
-        (): Promise<boolean> => {
-          return this.systemdServiceCtl(serviceName, 'stop')
-        }
+      this._log.info(
+        `[RESTORE] Failed to start enebular-agent ${newVersion}, Flip back to ${version} ...`
       )
 
-      Utils.task(
-        `Switching to enebular-agent ${toVersion} ...`,
-        this._log,
-        (): boolean => {
-          this.replaceFolderWithBackup(
-            oldAgentBackupPath,
-            agentPath,
-            newAgentInstallPath
+      try {
+        if (switched) {
+          await Utils.taskAsync(
+            `[RESTORE] Stopping enebular-agent ${newVersion} ...`,
+            this._log,
+            (): Promise<boolean> => {
+              return this._system.serviceCtl(serviceName, 'stop')
+            }
           )
-          return true
-        }
-      )
 
-      await Utils.taskAsync(
-        `Starting enebular-agent ${toVersion} ...`,
-        this._log,
-        (): Promise<boolean> => {
-          return this.systemdServiceCtl(serviceName, 'start')
+          await Utils.taskAsync(
+            `[RESTORE] Flipping back to enebular-agent ${version} ...`,
+            this._log,
+            (): Promise<boolean> => {
+              return this._system.replaceDirWithBackup(
+                oldAgentBackupPath,
+                agentPath,
+                newAgentInstallPath
+              )
+            }
+          )
         }
-      )
-      await Utils.taskAsync(
-        `Verifying enebular-agent ${toVersion} ...`,
-        this._log,
-        async (): Promise<boolean> => {
-          if (await this.checkIfAgentDead(agentPath)) {
-            throw new Error('[Faulty] Recovery to previous version failed!')
-          }
-          return true
+
+        if (agentInfo.systemd.active) {
+          await this._startAgent(
+            version,
+            agentPath,
+            user,
+            serviceName,
+            '[RESTORE] '
+          )
+        } else {
+          this._log.info(
+            `[RESTORE] enebular-agent is NOT active since it was not active in systemd before updating ...`
+          )
         }
-      )
+      } catch (err1) {
+        throw new Error(
+          err.message +
+            `\n[Faulty] restore to ${version} failed! error message:\n${
+              err1.message
+            }`
+        )
+      }
       throw err
     }
     this._log.debug(

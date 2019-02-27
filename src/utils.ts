@@ -18,8 +18,7 @@ export default class Utils {
 
   public static execReturnStdout(cmd: string): string | undefined {
     try {
-      const stdout = execSync(cmd)
-      return stdout.toString()
+      return execSync(cmd).toString()
     } catch (err) {
       return undefined
     }
@@ -28,7 +27,7 @@ export default class Utils {
   public static spawn(
     cmd: string,
     args: string[],
-    log: Log,
+    log?: Log,
     options?: {
       cwd?: string
       env?: NodeJS.ProcessEnv
@@ -45,11 +44,11 @@ export default class Utils {
         stderr = ''
       cproc.stdout.on('data', data => {
         stdout = data.toString().replace(/(\n|\r)+$/, '')
-        log.debug(stdout)
+        if (log) log.debug(stdout)
       })
       cproc.stderr.on('data', data => {
         stderr = data.toString().replace(/(\n|\r)+$/, '')
-        log.debug(stderr)
+        if (log) log.debug(stderr)
       })
       cproc.once('exit', (code, signal) => {
         if (code !== 0) {
@@ -146,8 +145,7 @@ export default class Utils {
     } catch (err) {
       if (ignore) {
         log.info('\x1b[33mFailed (Ignore)\x1b[0m')
-      }
-      else {
+      } else {
         log.info('\x1b[31mFailed\x1b[0m')
         throw err
       }
@@ -155,7 +153,12 @@ export default class Utils {
     return true
   }
 
-  public static task(name: string, log: Log, cb: () => boolean, ignore = false): void {
+  public static task(
+    name: string,
+    log: Log,
+    cb: () => void,
+    ignore = false
+  ): void {
     log.info(name)
     try {
       cb()
@@ -163,8 +166,7 @@ export default class Utils {
     } catch (err) {
       if (ignore) {
         log.info('\x1b[33mFailed (Ignore)\x1b[0m')
-      }
-      else {
+      } else {
         log.info('\x1b[31mFailed\x1b[0m')
         throw err
       }

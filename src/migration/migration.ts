@@ -9,11 +9,9 @@ export default abstract class Migration {
     this._optional = optional
   }
 
-  get optional(): boolean {
+  public get optional(): boolean {
     return this._optional
   }
 
   public abstract _do(): Promise<{}>
 }
-
-

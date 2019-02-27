@@ -1,9 +1,9 @@
 import AgentUpdater from './agent-updater'
+import System from './system'
 
 function main(): Promise<boolean> {
-  const updater = new AgentUpdater()
+  const updater = new AgentUpdater(new System())
   return updater.update().catch((err: Error) => {
-    console.log(err)
     throw new Error(
       `\x1b[31mERROR\x1b[0m: Failed to update, reason: ${
         err.message

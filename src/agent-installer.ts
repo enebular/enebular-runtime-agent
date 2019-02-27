@@ -8,7 +8,7 @@ import progress from 'request-progress'
 
 import Config from './config'
 import AgentInfo from './agent-info'
-import { UserInfo, default as Utils } from './utils'
+import { UserInfo, Utils } from './utils'
 import Log from './log'
 
 export default class AgentInstaller {

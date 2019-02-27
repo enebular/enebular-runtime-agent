@@ -42,5 +42,3 @@ export default class AwsiotConfigMigration extends CopyMigration {
     return Promise.all(promises)
   }
 }
-
-

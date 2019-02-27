@@ -2,7 +2,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 
 import AgentInfo from './agent-info'
-import { UserInfo, default as Utils } from './utils'
+import { UserInfo, Utils } from './utils'
 import Config from './config'
 import Log from './log'
 import Migration from './migration/migration'
@@ -112,7 +112,7 @@ export default class Migrator {
         this,
         true
       ),
-      'assets': new CopyMigration(
+      assets: new CopyMigration(
         'assets',
         'portBasePath',
         'newPortBasePath',
