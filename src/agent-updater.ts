@@ -196,12 +196,12 @@ export default class AgentUpdater {
       throw new Error('Failed to install agent, reason: ' + err.message)
     }
 
-    // TODO: Fork child process
     const serviceName = agentInfo.systemd.serviceName
     const oldAgentDirName = 'enebular-runtime-agent.old'
     const oldAgentBackupPath = path.resolve(agentPath, `../${oldAgentDirName}`)
     let switched = false
 
+    // setup and switch to the new agent
     try {
       // shutdown current agent
       if (agentInfo.systemd.active) {
@@ -254,6 +254,7 @@ export default class AgentUpdater {
         `[RESTORE] Failed to start enebular-agent ${newVersion}, Flip back to ${version} ...`
       )
 
+      // restore
       try {
         if (switched) {
           await Utils.taskAsync(

@@ -11,7 +11,7 @@ export interface UserInfo {
   uid: number
 }
 
-export default class Utils {
+export class Utils {
   public static exec(cmd: string): boolean {
     return Utils.execReturnStdout(cmd) == undefined ? false : true
   }
@@ -225,3 +225,5 @@ export default class Utils {
     )
   }
 }
+
+export default Utils

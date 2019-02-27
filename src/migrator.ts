@@ -71,7 +71,7 @@ export default class Migrator {
     return this._migrateConfig
   }
 
-  private _applyMigrationFiles(migrations: Migrations): boolean {
+  private async _applyMigrationFiles(migrations: Migrations): Promise<boolean> {
     let migrationFiles
     try {
       // TODO: read from enebular-runtime-agent
@@ -83,11 +83,16 @@ export default class Migrator {
     } catch (err) {
       return false
     }
-    migrationFiles.forEach(file => {
-      const current = require(path.resolve(__dirname, './migrations/', file))
+
+    for (let index = 0; index < migrationFiles.length; index++) {
+      const migration = await import(path.resolve(
+        __dirname,
+        './migrations/',
+        migrationFiles[index]
+      ))
       // TODO: up/down migration according to version
-      current.up(this._migrateConfig, migrations)
-    })
+      migration.up(this._migrateConfig, migrations)
+    }
     return true
   }
 
@@ -137,7 +142,7 @@ export default class Migrator {
       )
     }
 
-    this._applyMigrationFiles(migrations)
+    await this._applyMigrationFiles(migrations)
 
     for (const migrationObject of Object.entries(migrations)) {
       const name = migrationObject[0]
