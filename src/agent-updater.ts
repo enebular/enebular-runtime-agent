@@ -98,7 +98,7 @@ export default class AgentUpdater {
     prefix = ''
   ): Promise<{}> {
     await Utils.taskAsync(
-      `${prefix}Starting enebular-agent ${version} ...`,
+      `${prefix}Starting enebular-agent ${version}`,
       this._log,
       (): Promise<boolean> => {
         return this._system.serviceCtl(serviceName, 'start')
@@ -106,7 +106,7 @@ export default class AgentUpdater {
     )
 
     return Utils.taskAsync(
-      `${prefix}Verifying enebular-agent ${version} ...`,
+      `${prefix}Verifying enebular-agent ${version}`,
       this._log,
       async (): Promise<boolean> => {
         if (
@@ -160,17 +160,10 @@ export default class AgentUpdater {
       }
     }
 
-    this._log.info('enebular-agent install directory is: ' + agentInfo.path)
-    this._log.info('enebular-agent user is: ' + user)
-    if (agentInfo.systemd) {
-      this._log.info('enebular-agent is enabled: ' + agentInfo.systemd.enabled)
-      this._log.info('enebular-agent is active: ' + agentInfo.systemd.active)
-    }
-
     const agentPath: string = agentInfo.path
     if (agentInfo.path != agentInfo.systemd.path) {
       Utils.task(
-        `Checking enebular-agent by path (${agentInfo.path}) ...`,
+        `Checking enebular-agent by path (${agentInfo.path})`,
         this._log,
         (): void => {
           agentInfo = AgentInfo.createFromSrc(agentPath)
@@ -178,9 +171,11 @@ export default class AgentUpdater {
       )
     }
 
+    agentInfo.prettyStatus(this._log)
+
     // download and build new version
     const userInfo = Utils.getUserInfo(user)
-    const cachePath = '/tmp/enebular-runtime-agent-' + Utils.randomString()
+    const tarballPath = '/tmp/enebular-runtime-agent-' + Utils.randomString()
     const newAgentDirName = 'enebular-runtime-agent.new'
     const newAgentInstallPath = path.resolve(agentPath, `../${newAgentDirName}`)
     const agentInstaller = new AgentInstaller(this._config, this._log, userInfo)
@@ -188,12 +183,20 @@ export default class AgentUpdater {
     let newAgentInfo
     try {
       newAgentInfo = await agentInstaller.install(
-        agentInfo,
-        cachePath,
+        tarballPath,
         newAgentInstallPath
       )
     } catch (err) {
       throw new Error('Failed to install agent, reason: ' + err.message)
+    }
+
+    // TODO: check if we need to update
+    this._log.info('Updating ' + Utils.echo_g(agentInfo.version) + ' to ' + Utils.echo_g(newAgentInfo.version))
+
+    try {
+      newAgentInfo = await agentInstaller.build(agentInfo, newAgentInstallPath)
+    } catch (err) {
+      throw new Error(`Failed to build agent:\n${err.message}`)
     }
 
     const serviceName = agentInfo.systemd.serviceName
@@ -206,7 +209,7 @@ export default class AgentUpdater {
       // shutdown current agent
       if (agentInfo.systemd.active) {
         await Utils.taskAsync(
-          `Stopping enebular-agent ${agentInfo.version} ...`,
+          `Stopping enebular-agent ${agentInfo.version}`,
           this._log,
           (): Promise<boolean> => {
             return this._system.serviceCtl(serviceName, 'stop')
@@ -226,7 +229,7 @@ export default class AgentUpdater {
       Utils.task(
         `Switching enebular-agent from ${agentInfo.version} to ${
           newAgentInfo.version
-        } ...`,
+        }`,
         this._log,
         (): Promise<boolean> => {
           if (fs.existsSync(oldAgentBackupPath)) {
@@ -258,7 +261,7 @@ export default class AgentUpdater {
       try {
         if (switched) {
           await Utils.taskAsync(
-            `[RESTORE] Stopping enebular-agent ${newVersion} ...`,
+            `[RESTORE] Stopping enebular-agent ${newVersion}`,
             this._log,
             (): Promise<boolean> => {
               return this._system.serviceCtl(serviceName, 'stop')
@@ -266,7 +269,7 @@ export default class AgentUpdater {
           )
 
           await Utils.taskAsync(
-            `[RESTORE] Flipping back to enebular-agent ${version} ...`,
+            `[RESTORE] Flipping back to enebular-agent ${version}`,
             this._log,
             (): Promise<boolean> => {
               return this._system.replaceDirWithBackup(
@@ -301,11 +304,9 @@ export default class AgentUpdater {
       }
       throw err
     }
-    this._log.debug(
-      'Enebular-agent status:\n' +
-        JSON.stringify(Utils.dumpAgentInfo(agentPath, user), null, 2)
-    )
-    this._log.info('Update succeed.')
+    
+    this._log.info(Utils.echo_g('Update succeed ✔'))
+    Utils.dumpAgentInfo(agentPath, user).prettyStatus(this._log)
     return true
   }
 }

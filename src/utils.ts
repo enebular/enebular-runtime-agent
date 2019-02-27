@@ -138,15 +138,15 @@ export class Utils {
     cb: () => Promise<boolean> | Promise<{}>,
     ignore = false
   ): Promise<boolean> {
-    log.info(name)
+    log.info(`==== ${name} ====`)
     try {
       await cb()
-      log.info('\x1b[32mOK\x1b[0m')
+      log.info(Utils.echo_g('OK'))
     } catch (err) {
       if (ignore) {
-        log.info('\x1b[33mFailed (Ignore)\x1b[0m')
+        log.info(Utils.echo_y('Failed (Ignore)'))
       } else {
-        log.info('\x1b[31mFailed\x1b[0m')
+        log.info(Utils.echo_r('Failed'))
         throw err
       }
     }
@@ -159,18 +159,34 @@ export class Utils {
     cb: () => void,
     ignore = false
   ): void {
-    log.info(name)
+    log.info(`==== ${name} ====`)
     try {
       cb()
-      log.info('\x1b[32mOK\x1b[0m')
+      log.info(Utils.echo_g('OK'))
     } catch (err) {
       if (ignore) {
-        log.info('\x1b[33mFailed (Ignore)\x1b[0m')
+        log.info(Utils.echo_y('Failed (Ignore)'))
       } else {
-        log.info('\x1b[31mFailed\x1b[0m')
+        log.info(Utils.echo_r('Failed'))
         throw err
       }
     }
+  }
+
+  public static echo_color(str: string, color: string) {
+    return `\x1b[${color}m${str}\x1b[0m`
+  }
+
+  public static echo_g(str: string) {
+    return Utils.echo_color(str, '32')
+  }
+
+  public static echo_r(str: string) {
+    return Utils.echo_color(str, '31')
+  }
+
+  public static echo_y(str: string) {
+    return Utils.echo_color(str, '33')
   }
 
   public static mkdirp(

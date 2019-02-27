@@ -38,7 +38,7 @@ export default class AgentInstaller {
         )
       )
     }
-    this._log.debug(`Downloading ${url} to ${path} ...`)
+    this._log.debug(`Downloading ${url} to ${path} `)
     return new Promise((resolve, reject) => {
       const fileStream = fs.createWriteStream(path)
       fileStream.on('error', err => {
@@ -188,7 +188,7 @@ export default class AgentInstaller {
     })
   }
 
-  private async _build(
+  public async build(
     agentInfo: AgentInfo,
     installPath: string
   ): Promise<AgentInfo> {
@@ -213,7 +213,7 @@ export default class AgentInstaller {
 
     this._npmBuildEnv['PATH'] = `${nodejsPath}/bin:${process.env['PATH']}`
     await Utils.taskAsync(
-      `Building agent ${newAgentInfo.version} ...`,
+      `Building agent ${newAgentInfo.version} `,
       this._log,
       async (): Promise<{}> => {
         return this._buildNpmPackage(`${installPath}/agent`)
@@ -221,7 +221,7 @@ export default class AgentInstaller {
     )
 
     await Utils.taskAsync(
-      `Building Node-RED ...`,
+      `Building Node-RED`,
       this._log,
       async (): Promise<{}> => {
         return this._buildNpmPackage(`${installPath}/node-red`)
@@ -230,14 +230,14 @@ export default class AgentInstaller {
 
     if (agentInfo.awsiot) {
       await Utils.taskAsync(
-        'Building awsiot port ...',
+        'Building awsiot port',
         this._log,
         async (): Promise<{}> => {
           return this._buildNpmPackage(`${installPath}//ports/awsiot`)
         }
       )
       await Utils.taskAsync(
-        'Building awsiot-thing-creator ...',
+        'Building awsiot-thing-creator',
         this._log,
         async (): Promise<{}> => {
           return this._buildNpmPackage(
@@ -249,7 +249,7 @@ export default class AgentInstaller {
 
     if (agentInfo.pelion) {
       await Utils.taskAsync(
-        'Building pelion port ...',
+        'Building pelion port ',
         this._log,
         async (): Promise<{}> => {
           return this._buildNpmPackage(`${installPath}//ports/pelion`)
@@ -259,7 +259,7 @@ export default class AgentInstaller {
         process.env['PATH']
       }`
       await Utils.taskAsync(
-        'Configuring mbed-cloud-connector ...',
+        'Configuring mbed-cloud-connector',
         this._log,
         async (): Promise<{}> => {
           return this._buildConnector(
@@ -271,7 +271,7 @@ export default class AgentInstaller {
       )
 
       await Utils.taskAsync(
-        'Deploying mbed-cloud-connector ...',
+        'Deploying mbed-cloud-connector',
         this._log,
         async (): Promise<{}> => {
           return this._buildConnector(
@@ -284,7 +284,7 @@ export default class AgentInstaller {
 
       // TODO: dev or factory mode
       /* await Utils.taskAsync( */
-      /* 'Deploying mbed-cloud-connector ...', */
+      /* 'Deploying mbed-cloud-connector ', */
       /* this._log, */
       /* async (): Promise<{}> => { */
       /* const args = ("pal-platform/pal-platform.py fullbuild --target x86_x64_NativeLinux_mbedtls --toolchain GCC" + */
@@ -295,7 +295,7 @@ export default class AgentInstaller {
       /* ) */
 
       if (agentInfo.mbedCloudConnectorFCC) {
-        this._log.info(`Building mbed-cloud-connector-fcc ...`)
+        this._log.info(`Building mbed-cloud-connector-fcc`)
       }
     }
 
@@ -306,12 +306,11 @@ export default class AgentInstaller {
   }
 
   public async install(
-    agentInfo: AgentInfo,
     cachePath: string,
     installPath: string
   ): Promise<AgentInfo> {
     await Utils.taskAsync(
-      'Fetching new agent ...',
+      'Fetching new agent',
       this._log,
       async (): Promise<boolean> => {
         if (
@@ -327,7 +326,7 @@ export default class AgentInstaller {
     )
 
     await Utils.taskAsync(
-      'Extracting new agent ...',
+      'Extracting new agent',
       this._log,
       async (): Promise<boolean> => {
         await this._extract(cachePath, installPath)
@@ -335,12 +334,6 @@ export default class AgentInstaller {
       }
     )
 
-    let newAgentInfo
-    try {
-      newAgentInfo = await this._build(agentInfo, installPath)
-    } catch (err) {
-      throw new Error(`Failed to build agent:\n${err.message}`)
-    }
-    return newAgentInfo
+    return AgentInfo.createFromSrc(installPath)
   }
 }

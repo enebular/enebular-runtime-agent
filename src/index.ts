@@ -5,7 +5,7 @@ function main(): Promise<boolean> {
   const updater = new AgentUpdater(new System())
   return updater.update().catch((err: Error) => {
     throw new Error(
-      `\x1b[31mERROR\x1b[0m: Failed to update, reason: ${
+      `\x1b[31mERROR\x1b[0m: Update failed , reason: ${
         err.message
       }\n    See details in full update log file:${updater.getLogFilePath()}`
     )

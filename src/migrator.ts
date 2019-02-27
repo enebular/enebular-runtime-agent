@@ -148,7 +148,7 @@ export default class Migrator {
       const name = migrationObject[0]
       const migration = migrationObject[1]
       await Utils.taskAsync(
-        `Migrating ${name} ...`,
+        `Migrating ${name}`,
         this._log,
         async (): Promise<{}> => {
           return migration._do()
