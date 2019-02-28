@@ -22,7 +22,7 @@ test('Updater.1: Throws if install fail', async t => {
     new MockMigrator()
   )
   const error = await t.throwsAsync(updater.update())
-  t.true(error.message.startsWith('Failed to install agent'))
+  t.true(error.message.startsWith('Agent Install failed'))
 })
 
 test('Updater.2: Throws if build fail', async t => {
@@ -35,7 +35,7 @@ test('Updater.2: Throws if build fail', async t => {
     new MockMigrator()
   )
   const error = await t.throwsAsync(updater.update())
-  t.true(error.message.startsWith('Failed to build agent'))
+  t.true(error.message.startsWith('Agent Build failed'))
 })
 
 test.serial(

@@ -181,20 +181,12 @@ export default class AgentUpdater {
     const newAgentDirName = 'enebular-runtime-agent.new'
     const newAgentInstallPath = path.resolve(agentPath, `../${newAgentDirName}`)
 
-    if (this._installer == undefined) {
-      this._installer = new AgentInstaller(this._config, this._log)
-    }
-    let newAgentInfo
-    try {
-      newAgentInfo = await this._installer.install(
+    this._installer = this._installer ? this._installer : new AgentInstaller(this._config, this._log)
+    let newAgentInfo = await this._installer.install(
         tarballPath,
         newAgentInstallPath,
         userInfo
       )
-    } catch (err) {
-      throw new Error('Failed to install agent, reason: ' + err.message)
-    }
-
     // TODO: check if we need to update
     this._log.info(
       'Updating ' +
@@ -202,16 +194,11 @@ export default class AgentUpdater {
         ' to ' +
         Utils.echoGreen(newAgentInfo.version)
     )
-
-    try {
-      newAgentInfo = await this._installer.build(
-        agentInfo,
-        newAgentInstallPath,
-        userInfo
-      )
-    } catch (err) {
-      throw new Error(`Failed to build agent:\n${err.message}`)
-    }
+    newAgentInfo = await this._installer.build(
+      agentInfo,
+      newAgentInstallPath,
+      userInfo
+    )
 
     const serviceName = agentInfo.systemd.serviceName
     const oldAgentDirName = 'enebular-runtime-agent.old'

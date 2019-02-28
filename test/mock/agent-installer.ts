@@ -44,7 +44,7 @@ export default class MockAgentInstaller implements AgentInstallerIf {
     userInfo: UserInfo
   ): Promise<AgentInfo> {
     if (this.failBuild) {
-      throw new Error('Agent Install failed.')
+      throw new Error('Agent Build failed.')
     }
 
     return new AgentInfo(
