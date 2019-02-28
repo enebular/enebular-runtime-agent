@@ -12,7 +12,7 @@
     "lint-fix": "eslint ./src --ext .js,.ts --fix",
     "lint-test": "eslint ./test --ext .js,.ts --fix",
     "typecheck": "tsc --noEmit",
-    "test": "tsc && ava"
+    "test": "tsc && ava --tap | tap-spec"
   },
   "keywords": [],
   "author": "",
@@ -30,6 +30,7 @@
     "eslint-plugin-promise": "^4.0.1",
     "eslint-plugin-standard": "^4.0.0",
     "prettier": "^1.16.4",
+    "tap-spec": "^5.0.0",
     "typescript": "^3.3.3"
   },
   "dependencies": {

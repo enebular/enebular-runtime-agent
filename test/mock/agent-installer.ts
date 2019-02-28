@@ -1,4 +1,5 @@
 import AgentInfo from '../../src/agent-info'
+import AgentVerion from '../../src/agent-version'
 import { AgentInstallerIf } from '../../src/agent-installer'
 import { UserInfo } from '../../src/utils'
 
@@ -28,7 +29,7 @@ export default class MockAgentInstaller implements AgentInstallerIf {
        */
     return new AgentInfo(
       'path',
-      '0.0.2',
+      new AgentVerion(10000, 0, 2),
       true,
       false,
       'pelion',
@@ -49,7 +50,7 @@ export default class MockAgentInstaller implements AgentInstallerIf {
 
     return new AgentInfo(
       'path',
-      '0.0.2',
+      new AgentVerion(10000, 0, 2),
       true,
       false,
       'pelion',

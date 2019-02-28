@@ -3,7 +3,7 @@ export default class AgentVerion {
   private _minor: number
   private _patch: number
 
-  private constructor(major: number, minor: number, patch: number) {
+  public constructor(major: number, minor: number, patch: number) {
     this._major = major
     this._minor = minor
     this._patch = patch

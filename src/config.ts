@@ -147,10 +147,6 @@ export default class Config {
 
   public set(key: string, value: string | number | boolean): boolean {
     if (typeof this._items[key].value !== typeof value) {
-      /* console.log( */
-      /* `${key} type mismatch, expected: ${typeof this._items[key] */
-      /* .value}, but got ${typeof value}` */
-      /* ) */
       return false
     }
     this._items[key].override = true
