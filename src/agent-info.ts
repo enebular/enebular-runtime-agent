@@ -22,7 +22,7 @@ export default class AgentInfo {
     path?: string
   }
 
-  private constructor(
+  public constructor(
     path: string,
     version: string,
     awsiot: boolean,
@@ -55,10 +55,13 @@ export default class AgentInfo {
     }
     const pkg = JSON.parse(fs.readFileSync(packageFile, 'utf8'))
     const awsiot = fs.existsSync(`${path}/ports/awsiot/node_modules`)
-    const pelion = fs.existsSync(`${path}/ports/pelion/node_modules`) ||
-        fs.existsSync(`${path}/ports/local/node_modules`)
-    const port = (!awsiot && !pelion) ? "unknown" : (pelion ? "pelion" : "awsiot")
-    const awsiotThingCreator = fs.existsSync(`${path}/tools/awsiot-thing-creator/node_modules`)
+    const pelion =
+      fs.existsSync(`${path}/ports/pelion/node_modules`) ||
+      fs.existsSync(`${path}/ports/local/node_modules`)
+    const port = !awsiot && !pelion ? 'unknown' : pelion ? 'pelion' : 'awsiot'
+    const awsiotThingCreator = fs.existsSync(
+      `${path}/tools/awsiot-thing-creator/node_modules`
+    )
     const mbedCloudConnector = fs.existsSync(
       `${path}/tools/mbed-cloud-connector/out/Release/enebular-agent-mbed-cloud-connector.elf`
     )
@@ -121,16 +124,16 @@ export default class AgentInfo {
     return agentInfo
   }
 
-  prettyStatus(log: Log): void {
+  public prettyStatus(log: Log): void {
     log.info('================================================================')
-    log.info(` ${Utils.echo_g('enebular-agent information:')}`)
+    log.info(` ${Utils.echoGreen('enebular-agent information:')}`)
     log.info('   - Version: ' + this.version)
     log.info('   - NodeJS version: ' + this.nodejsVersion)
     log.info('   - Install destination: ' + this.path)
     log.info('   - Install port: ' + this.port)
     if (this.systemd) {
       log.info('   - Install user: ' + this.systemd.user)
-      log.info(` ${Utils.echo_g('systemd information:')}`)
+      log.info(` ${Utils.echoGreen('systemd information:')}`)
       log.info('   - enabled: ' + this.systemd.enabled)
       log.info('   - active: ' + this.systemd.active)
     }

@@ -43,6 +43,11 @@ export default class Config {
         description: 'Install location of enebular-agent',
         userExpose: true
       },
+      MINIMUM_CHECKING_TIME: {
+        value: 30,
+        description: 'Minimum wait seconds that agent has to stablely running',
+        userExpose: false
+      },
       ENEBULAR_AGENT_UPDATER_ENABLE_LOG: {
         value: true,
         description: 'Install location of enebular-agent',
@@ -52,6 +57,11 @@ export default class Config {
         value: 'info',
         description: 'Debug level, used to control logging',
         userExpose: true
+      },
+      ROOT_REQUIRED: {
+        value: true,
+        description: 'Updater has to be run by privileged user or not',
+        userExpose: false
       }
     }
   }

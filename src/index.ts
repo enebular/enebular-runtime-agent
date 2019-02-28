@@ -1,11 +1,10 @@
 import AgentUpdater from './agent-updater'
-import System from './system'
 
 function main(): Promise<boolean> {
-  const updater = new AgentUpdater(new System())
+  const updater = new AgentUpdater()
   return updater.update().catch((err: Error) => {
     throw new Error(
-      `\x1b[31mERROR\x1b[0m: Update failed , reason: ${
+      `\x1b[31mERROR\x1b[0m: Update failed, reason: ${
         err.message
       }\n    See details in full update log file:${updater.getLogFilePath()}`
     )

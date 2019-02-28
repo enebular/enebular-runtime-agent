@@ -104,12 +104,17 @@ export class Utils {
     interval: number,
     timeout: number
   ): Promise<boolean> {
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
       const cb = (): void => {
         const intervalObj = setInterval(async () => {
-          if (await callback()) {
-            clearInterval(intervalObj)
-            resolve(true)
+          try {
+            if (await callback()) {
+              clearInterval(intervalObj)
+              resolve(true)
+            }
+          }
+          catch(err) {
+            reject(err)
           }
         }, interval)
         setTimeout(async () => {
@@ -141,12 +146,12 @@ export class Utils {
     log.info(`==== ${name} ====`)
     try {
       await cb()
-      log.info(Utils.echo_g('OK'))
+      log.info(Utils.echoGreen('OK'))
     } catch (err) {
       if (ignore) {
-        log.info(Utils.echo_y('Failed (Ignore)'))
+        log.info(Utils.echoYellow('Failed (Ignore)'))
       } else {
-        log.info(Utils.echo_r('Failed'))
+        log.info(Utils.echoRed('Failed'))
         throw err
       }
     }
@@ -162,31 +167,31 @@ export class Utils {
     log.info(`==== ${name} ====`)
     try {
       cb()
-      log.info(Utils.echo_g('OK'))
+      log.info(Utils.echoGreen('OK'))
     } catch (err) {
       if (ignore) {
-        log.info(Utils.echo_y('Failed (Ignore)'))
+        log.info(Utils.echoYellow('Failed (Ignore)'))
       } else {
-        log.info(Utils.echo_r('Failed'))
+        log.info(Utils.echoRed('Failed'))
         throw err
       }
     }
   }
 
-  public static echo_color(str: string, color: string) {
+  public static echoColor(str: string, color: string): string {
     return `\x1b[${color}m${str}\x1b[0m`
   }
 
-  public static echo_g(str: string) {
-    return Utils.echo_color(str, '32')
+  public static echoGreen(str: string): string {
+    return Utils.echoColor(str, '32')
   }
 
-  public static echo_r(str: string) {
-    return Utils.echo_color(str, '31')
+  public static echoRed(str: string): string {
+    return Utils.echoColor(str, '31')
   }
 
-  public static echo_y(str: string) {
-    return Utils.echo_color(str, '33')
+  public static echoYellow(str: string): string {
+    return Utils.echoColor(str, '33')
   }
 
   public static mkdirp(

@@ -1,14 +1,58 @@
 import Utils from './utils'
 import Log from './log'
 
-export default class System {
-  private _log?: Log
+export interface SystemIf {
+  getServiceLogIgnoreError(serviceName: string, lines: number): string
 
-  public set log(log: Log) {
+  stopAgent(service: string): Promise<boolean>
+  stopNewAgent(service: string): Promise<boolean>
+  startAgent(service: string): Promise<boolean>
+  startNewAgent(service: string): Promise<boolean>
+  flipToNewAgent(
+    newAgent: string,
+    agent: string,
+    agentBackup: string
+  ): Promise<boolean>
+  flipToOriginalAgent(
+    originalAgent: string,
+    newAgent: string,
+    newAgentBackup: string
+  ): Promise<boolean>
+  isAgentDead(path: string, user: string)
+  isNewAgentDead(path: string, user: string)
+}
+
+export class System implements SystemIf {
+  _log: Log
+
+  public constructor(log: Log) {
     this._log = log
   }
 
-  public async serviceCtl(name: string, action: string): Promise<boolean> {
+  public getServiceLogIgnoreError(serviceName: string, lines: number): string {
+    const ret = Utils.execReturnStdout(
+      `journalctl -n ${lines} --no-pager -ex -u ${serviceName}`
+    )
+    return ret ? ret : ''
+  }
+
+  public async stopAgent(service: string): Promise<boolean> {
+    return this._serviceCtl(service, 'stop')
+  }
+
+  public async stopNewAgent(service: string): Promise<boolean> {
+    return this._serviceCtl(service, 'stop')
+  }
+
+  public async startAgent(service: string): Promise<boolean> {
+    return this._serviceCtl(service, 'start')
+  }
+
+  public async startNewAgent(service: string): Promise<boolean> {
+    return this._serviceCtl(service, 'start')
+  }
+
+  private async _serviceCtl(name: string, action: string): Promise<boolean> {
     try {
       await Utils.spawn('service', [name, action], this._log)
     } catch (err) {
@@ -17,7 +61,48 @@ export default class System {
     return true
   }
 
-  public async replaceDirWithBackup(
+  public isAgentDead(path: string, user: string) {
+    return this._isAgentDead(path, user)
+  }
+
+  public isNewAgentDead(path: string, user: string) {
+    return this._isAgentDead(path, user)
+  }
+
+  private _isAgentDead(path: string, user: string) {
+    const info = Utils.dumpAgentInfo(path, user)
+    if (!info.systemd) return true
+    this._log.debug(
+      `enebular-agent status: enabled:${info.systemd.enabled} active:${
+        info.systemd.active
+      } failed: ${info.systemd.failed}`
+    )
+    if (!info.systemd.active) {
+      this._log.debug('enebular-agent failed to active')
+    }
+    if (info.systemd.failed) {
+      this._log.debug('enebular-agent status is failed')
+    }
+    return info.systemd.failed || !info.systemd.active ? true : false
+  }
+
+  public async flipToNewAgent(
+    newAgent: string,
+    agent: string,
+    agentBackup: string
+  ): Promise<boolean> {
+    return this._replaceDirWithBackup(newAgent, agent, agentBackup)
+  }
+
+  public async flipToOriginalAgent(
+    originalAgent: string,
+    newAgent: string,
+    newAgentBackup: string
+  ): Promise<boolean> {
+    return this._replaceDirWithBackup(originalAgent, newAgent, newAgentBackup)
+  }
+
+  private async _replaceDirWithBackup(
     from: string,
     to: string,
     backup: string
@@ -36,3 +121,5 @@ export default class System {
     return true
   }
 }
+
+export default System

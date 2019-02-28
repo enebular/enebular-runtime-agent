@@ -11,7 +11,20 @@ import AgentInfo from './agent-info'
 import { UserInfo, Utils } from './utils'
 import Log from './log'
 
-export default class AgentInstaller {
+export interface AgentInstallerIf {
+  install(
+    cachePath: string,
+    installPath: string,
+    userInfo: UserInfo
+  ): Promise<AgentInfo>
+  build(
+    agentInfo: AgentInfo,
+    installPath: string,
+    userInfo: UserInfo
+  ): Promise<AgentInfo>
+}
+
+export class AgentInstaller implements AgentInstallerIf {
   private _config: Config
   private _minimumRequiredDiskSpace: number = 400 * 1024 * 1024 // 400 MiB
   private _maxFetchRetryCount: number = 3
@@ -19,12 +32,10 @@ export default class AgentInstaller {
   private _npmBuildEnv: NodeJS.ProcessEnv = {}
   private _binBuildEnv: NodeJS.ProcessEnv = {}
   private _log: Log
-  private _userInfo: UserInfo
 
-  public constructor(config: Config, log: Log, userInfo: UserInfo) {
+  public constructor(config: Config, log: Log) {
     this._config = config
     this._log = log
-    this._userInfo = userInfo
   }
 
   private _download(url: string, path: string): Promise<{}> {
@@ -73,7 +84,11 @@ export default class AgentInstaller {
     })
   }
 
-  private async _fetch(url: string, path: string): Promise<boolean> {
+  private async _fetch(
+    url: string,
+    path: string,
+    userInfo: UserInfo
+  ): Promise<boolean> {
     let usageInfo
     try {
       usageInfo = await checkDiskSpace(path)
@@ -106,8 +121,8 @@ export default class AgentInstaller {
 
     try {
       await Utils.spawn('tar', ['-tf', path], this._log, {
-        uid: this._userInfo.uid,
-        gid: this._userInfo.gid
+        uid: userInfo.uid,
+        gid: userInfo.gid
       })
     } catch (err) {
       throw new Error(`Tarball integrity check failed: ${path}\n${err.message}`)
@@ -115,10 +130,14 @@ export default class AgentInstaller {
     return true
   }
 
-  public async _fetchWithRetry(url: string, path: string): Promise<boolean> {
+  public async _fetchWithRetry(
+    url: string,
+    path: string,
+    userInfo: UserInfo
+  ): Promise<boolean> {
     return new Promise(async resolve => {
       try {
-        await this._fetch(url, path)
+        await this._fetch(url, path, userInfo)
         this._fetchRetryCount = 0
         resolve(true)
       } catch (err) {
@@ -128,7 +147,7 @@ export default class AgentInstaller {
             `Failed to fetch agent, retry in 1 second ...\n${err.message}`
           )
           setTimeout(async () => {
-            resolve(await this._fetchWithRetry(url, path))
+            resolve(await this._fetchWithRetry(url, path, userInfo))
           }, 1000)
         } else {
           this._fetchRetryCount = 0
@@ -143,13 +162,17 @@ export default class AgentInstaller {
     })
   }
 
-  private _extract(tarball: string, dst: string): Promise<{}> {
+  private _extract(
+    tarball: string,
+    dst: string,
+    userInfo: UserInfo
+  ): Promise<{}> {
     try {
       if (fs.existsSync(dst)) {
         rimraf.sync(dst)
       }
       fs.mkdirSync(dst)
-      fs.chownSync(dst, this._userInfo.uid, this._userInfo.gid)
+      fs.chownSync(dst, userInfo.uid, userInfo.gid)
     } catch (err) {
       throw new Error(`Failed to create agent directory:\n${err.message}`)
     }
@@ -160,37 +183,39 @@ export default class AgentInstaller {
       ['-xzf', tarball, '-C', dst, '--strip-components', '1'],
       this._log,
       {
-        uid: this._userInfo.uid,
-        gid: this._userInfo.gid
+        uid: userInfo.uid,
+        gid: userInfo.gid
       }
     )
   }
 
-  private _buildNpmPackage(path: string): Promise<{}> {
+  private _buildNpmPackage(path: string, userInfo: UserInfo): Promise<{}> {
     return Utils.spawn('npm', ['i', '--production'], this._log, {
       cwd: path,
       env: this._npmBuildEnv,
-      uid: this._userInfo.uid,
-      gid: this._userInfo.gid
+      uid: userInfo.uid,
+      gid: userInfo.gid
     })
   }
 
   private _buildConnector(
     path: string,
     cmd: string,
-    args: string[]
+    args: string[],
+    userInfo: UserInfo
   ): Promise<{}> {
     return Utils.spawn(cmd, args, this._log, {
       cwd: path,
       env: this._binBuildEnv,
-      uid: this._userInfo.uid,
-      gid: this._userInfo.gid
+      uid: userInfo.uid,
+      gid: userInfo.gid
     })
   }
 
   public async build(
     agentInfo: AgentInfo,
-    installPath: string
+    installPath: string,
+    userInfo: UserInfo
   ): Promise<AgentInfo> {
     this._log.debug('Current agent info:')
     this._log.debug(agentInfo)
@@ -198,9 +223,7 @@ export default class AgentInstaller {
     this._log.debug('New agent info, before building:')
     this._log.debug(newAgentInfo)
     const nodejsPath = path.resolve(
-      `/home/${this._config.getString('ENEBULAR_AGENT_USER')}/nodejs-${
-        newAgentInfo.nodejsVersion
-      }`
+      `/home/${userInfo.user}/nodejs-${newAgentInfo.nodejsVersion}`
     )
     if (!fs.existsSync(nodejsPath)) {
       // TODO: install nodejs
@@ -216,7 +239,7 @@ export default class AgentInstaller {
       `Building agent ${newAgentInfo.version} `,
       this._log,
       async (): Promise<{}> => {
-        return this._buildNpmPackage(`${installPath}/agent`)
+        return this._buildNpmPackage(`${installPath}/agent`, userInfo)
       }
     )
 
@@ -224,7 +247,7 @@ export default class AgentInstaller {
       `Building Node-RED`,
       this._log,
       async (): Promise<{}> => {
-        return this._buildNpmPackage(`${installPath}/node-red`)
+        return this._buildNpmPackage(`${installPath}/node-red`, userInfo)
       }
     )
 
@@ -233,7 +256,7 @@ export default class AgentInstaller {
         'Building awsiot port',
         this._log,
         async (): Promise<{}> => {
-          return this._buildNpmPackage(`${installPath}//ports/awsiot`)
+          return this._buildNpmPackage(`${installPath}//ports/awsiot`, userInfo)
         }
       )
       await Utils.taskAsync(
@@ -241,7 +264,8 @@ export default class AgentInstaller {
         this._log,
         async (): Promise<{}> => {
           return this._buildNpmPackage(
-            `${installPath}/tools/awsiot-thing-creator`
+            `${installPath}/tools/awsiot-thing-creator`,
+            userInfo
           )
         }
       )
@@ -252,10 +276,10 @@ export default class AgentInstaller {
         'Building pelion port ',
         this._log,
         async (): Promise<{}> => {
-          return this._buildNpmPackage(`${installPath}//ports/pelion`)
+          return this._buildNpmPackage(`${installPath}//ports/pelion`, userInfo)
         }
       )
-      this._binBuildEnv['PATH'] = `/home/${this._userInfo.user}/.local/bin:${
+      this._binBuildEnv['PATH'] = `/home/${userInfo.user}/.local/bin:${
         process.env['PATH']
       }`
       await Utils.taskAsync(
@@ -265,7 +289,8 @@ export default class AgentInstaller {
           return this._buildConnector(
             `${installPath}/tools/mbed-cloud-connector`,
             'mbed',
-            ['config', 'root', '.']
+            ['config', 'root', '.'],
+            userInfo
           )
         }
       )
@@ -277,7 +302,8 @@ export default class AgentInstaller {
           return this._buildConnector(
             `${installPath}/tools/mbed-cloud-connector`,
             'mbed',
-            ['deploy']
+            ['deploy'],
+            userInfo
           )
         }
       )
@@ -307,7 +333,8 @@ export default class AgentInstaller {
 
   public async install(
     cachePath: string,
-    installPath: string
+    installPath: string,
+    userInfo: UserInfo
   ): Promise<AgentInfo> {
     await Utils.taskAsync(
       'Fetching new agent',
@@ -316,7 +343,8 @@ export default class AgentInstaller {
         if (
           !(await this._fetchWithRetry(
             this._config.getString('ENEBULAR_AGENT_DOWNLOAD_URL'),
-            cachePath
+            cachePath,
+            userInfo
           ))
         ) {
           throw new Error(`Failed to fetch agent`)
@@ -329,7 +357,7 @@ export default class AgentInstaller {
       'Extracting new agent',
       this._log,
       async (): Promise<boolean> => {
-        await this._extract(cachePath, installPath)
+        await this._extract(cachePath, installPath, userInfo)
         return true
       }
     )
@@ -337,3 +365,5 @@ export default class AgentInstaller {
     return AgentInfo.createFromSrc(installPath)
   }
 }
+
+export default AgentInstaller

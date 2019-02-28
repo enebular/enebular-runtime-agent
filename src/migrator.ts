@@ -9,6 +9,10 @@ import Migration from './migration/migration'
 import CopyMigration from './migration/copy-migration'
 import AwsiotConfigMigration from './migration/awsiot-config-migration'
 
+export interface MigratorIf {
+  migrate(): Promise<boolean>
+}
+
 export interface Migrations {
   [key: string]: Migration
 }
@@ -23,7 +27,7 @@ export interface MigrateConfig {
   port: string
 }
 
-export default class Migrator {
+export class Migrator implements MigratorIf {
   private _config: Config
   private _log: Log
   private _userInfo: UserInfo
@@ -159,3 +163,5 @@ export default class Migrator {
     return true
   }
 }
+
+export default Migrator
