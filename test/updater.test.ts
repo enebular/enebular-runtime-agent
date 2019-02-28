@@ -87,7 +87,10 @@ test.serial('Updater.5: Throws if new agent flip fail', async t => {
     new MockMigrator()
   )
   const error = await t.throwsAsync(updater.update())
-  t.true(error.message.startsWith('flip new agent failed'), 'failed because of flipping failed')
+  t.true(
+    error.message.startsWith('flip new agent failed'),
+    'failed because of flipping failed'
+  )
   t.is(system.attemptStopAgent, 1, 'Tried to stop agent before updating')
   t.is(system.attemptFlipNewAgent, 1, 'Tried to flip to new agent')
   t.is(system.attemptStartAgent, 1, 'Tried to restart original agent')
@@ -107,9 +110,17 @@ test.serial('Updater.6: Throws if new agent start fail', async t => {
   t.is(system.attemptStopAgent, 1, 'Tried to stop agent before updating')
   t.is(system.attemptFlipNewAgent, 1, 'Tried to flip to new agent')
   t.is(system.attemptStopNewAgent, 1, 'Tried to stop new agent before restore')
-  t.is(system.attemptFlipOriginalAgent, 1, 'Tried to flip back to original new agent')
+  t.is(
+    system.attemptFlipOriginalAgent,
+    1,
+    'Tried to flip back to original new agent'
+  )
   t.is(system.attemptStartAgent, 1, 'Tried to restart original agent')
-  t.is(system.attemptVerifyAgent, 1, 'Tried to make sure original agent restarted')
+  t.is(
+    system.attemptVerifyAgent,
+    1,
+    'Tried to make sure original agent restarted'
+  )
 })
 
 test.serial('Updater.7: Throws if new agent verify fail', async t => {
@@ -126,29 +137,52 @@ test.serial('Updater.7: Throws if new agent verify fail', async t => {
   t.is(system.attemptStopAgent, 1, 'Tried to stop agent before updating')
   t.is(system.attemptFlipNewAgent, 1, 'Tried to flip to new agent')
   t.is(system.attemptStopNewAgent, 1, 'Tried to stop new agent before restore')
-  t.is(system.attemptFlipOriginalAgent, 1, 'Tried to flip back to original new agent')
-  t.is(system.attemptStartAgent, 1, 'Tried to restart original agent')
-  t.is(system.attemptVerifyAgent, 1, 'Tried to make sure original agent restarted')
-})
-
-test.serial('Updater.8: Throws if new agent verification throws error', async t => {
-  const system = new MockSystem()
-  system.newAgentIsDeadThrows = true
-
-  const updater = new AgentUpdater(
-    system,
-    new MockAgentInstaller(),
-    new MockMigrator()
+  t.is(
+    system.attemptFlipOriginalAgent,
+    1,
+    'Tried to flip back to original new agent'
   )
-  const error = await t.throwsAsync(updater.update())
-  t.true(error.message.startsWith('expection: new agent is dead'))
-  t.is(system.attemptStopAgent, 1, 'Tried to stop agent before updating')
-  t.is(system.attemptFlipNewAgent, 1, 'Tried to flip to new agent')
-  t.is(system.attemptStopNewAgent, 1, 'Tried to stop new agent before restore')
-  t.is(system.attemptFlipOriginalAgent, 1, 'Tried to flip back to original new agent')
   t.is(system.attemptStartAgent, 1, 'Tried to restart original agent')
-  t.is(system.attemptVerifyAgent, 1, 'Tried to make sure original agent restarted')
+  t.is(
+    system.attemptVerifyAgent,
+    1,
+    'Tried to make sure original agent restarted'
+  )
 })
+
+test.serial(
+  'Updater.8: Throws if new agent verification throws error',
+  async t => {
+    const system = new MockSystem()
+    system.newAgentIsDeadThrows = true
+
+    const updater = new AgentUpdater(
+      system,
+      new MockAgentInstaller(),
+      new MockMigrator()
+    )
+    const error = await t.throwsAsync(updater.update())
+    t.true(error.message.startsWith('expection: new agent is dead'))
+    t.is(system.attemptStopAgent, 1, 'Tried to stop agent before updating')
+    t.is(system.attemptFlipNewAgent, 1, 'Tried to flip to new agent')
+    t.is(
+      system.attemptStopNewAgent,
+      1,
+      'Tried to stop new agent before restore'
+    )
+    t.is(
+      system.attemptFlipOriginalAgent,
+      1,
+      'Tried to flip back to original new agent'
+    )
+    t.is(system.attemptStartAgent, 1, 'Tried to restart original agent')
+    t.is(
+      system.attemptVerifyAgent,
+      1,
+      'Tried to make sure original agent restarted'
+    )
+  }
+)
 
 test.serial('Updater.9: Ignore new agent stop failure in restore', async t => {
   const system = new MockSystem()
@@ -165,50 +199,83 @@ test.serial('Updater.9: Ignore new agent stop failure in restore', async t => {
   t.is(system.attemptStopAgent, 1, 'Tried to stop agent before updating')
   t.is(system.attemptFlipNewAgent, 1, 'Tried to flip to new agent')
   t.is(system.attemptStopNewAgent, 1, 'Tried to stop new agent before restore')
-  t.is(system.attemptFlipOriginalAgent, 1, 'Tried to flip back to original new agent')
-  t.is(system.attemptStartAgent, 1, 'Tried to restart original agent')
-  t.is(system.attemptVerifyAgent, 1, 'Tried to make sure original agent restarted')
-})
-
-test.serial('Updater.10: If flipping back to original agent fail in restore', async t => {
-  const system = new MockSystem()
-  system.newAgentIsDead = true
-  system.failFlipOriginalAgent = true
-
-  const updater = new AgentUpdater(
-    system,
-    new MockAgentInstaller(),
-    new MockMigrator()
+  t.is(
+    system.attemptFlipOriginalAgent,
+    1,
+    'Tried to flip back to original new agent'
   )
-  const error = await t.throwsAsync(updater.update())
-  t.true(error.message.startsWith('Verification failed'))
-  t.true(error.message.indexOf('[Faulty] restore') > -1)
-  t.is(system.attemptStopAgent, 1, 'Tried to stop agent before updating')
-  t.is(system.attemptFlipNewAgent, 1, 'Tried to flip to new agent')
-  t.is(system.attemptStopNewAgent, 1, 'Tried to stop new agent before restore')
-  t.is(system.attemptFlipOriginalAgent, 1, 'Tried to flip back to original new agent')
-  t.is(system.attemptStartAgent, 0)
-  t.is(system.attemptVerifyAgent, 0)
-})
-
-test.serial('Updater.11: If both new and original agent fail to start', async t => {
-  const system = new MockSystem()
-  system.newAgentIsDead = true
-  system.agentIsDead = true
-
-  const updater = new AgentUpdater(
-    system,
-    new MockAgentInstaller(),
-    new MockMigrator()
-  )
-  const error = await t.throwsAsync(updater.update())
-  t.true(error.message.startsWith('Verification failed'))
-  t.true(error.message.indexOf('[Faulty] restore') > -1)
-  t.is(system.attemptStopAgent, 1, 'Tried to stop agent before updating')
-  t.is(system.attemptFlipNewAgent, 1, 'Tried to flip to new agent')
-  t.is(system.attemptStopNewAgent, 1, 'Tried to stop new agent before restore')
-  t.is(system.attemptFlipOriginalAgent, 1, 'Tried to flip back to original new agent')
   t.is(system.attemptStartAgent, 1, 'Tried to restart original agent')
-  t.is(system.attemptVerifyAgent, 1, 'Tried to make sure original agent restarted')
+  t.is(
+    system.attemptVerifyAgent,
+    1,
+    'Tried to make sure original agent restarted'
+  )
 })
 
+test.serial(
+  'Updater.10: If flipping back to original agent fail in restore',
+  async t => {
+    const system = new MockSystem()
+    system.newAgentIsDead = true
+    system.failFlipOriginalAgent = true
+
+    const updater = new AgentUpdater(
+      system,
+      new MockAgentInstaller(),
+      new MockMigrator()
+    )
+    const error = await t.throwsAsync(updater.update())
+    t.true(error.message.startsWith('Verification failed'))
+    t.true(error.message.indexOf('[Faulty] restore') > -1)
+    t.is(system.attemptStopAgent, 1, 'Tried to stop agent before updating')
+    t.is(system.attemptFlipNewAgent, 1, 'Tried to flip to new agent')
+    t.is(
+      system.attemptStopNewAgent,
+      1,
+      'Tried to stop new agent before restore'
+    )
+    t.is(
+      system.attemptFlipOriginalAgent,
+      1,
+      'Tried to flip back to original new agent'
+    )
+    t.is(system.attemptStartAgent, 0)
+    t.is(system.attemptVerifyAgent, 0)
+  }
+)
+
+test.serial(
+  'Updater.11: If both new and original agent fail to start',
+  async t => {
+    const system = new MockSystem()
+    system.newAgentIsDead = true
+    system.agentIsDead = true
+
+    const updater = new AgentUpdater(
+      system,
+      new MockAgentInstaller(),
+      new MockMigrator()
+    )
+    const error = await t.throwsAsync(updater.update())
+    t.true(error.message.startsWith('Verification failed'))
+    t.true(error.message.indexOf('[Faulty] restore') > -1)
+    t.is(system.attemptStopAgent, 1, 'Tried to stop agent before updating')
+    t.is(system.attemptFlipNewAgent, 1, 'Tried to flip to new agent')
+    t.is(
+      system.attemptStopNewAgent,
+      1,
+      'Tried to stop new agent before restore'
+    )
+    t.is(
+      system.attemptFlipOriginalAgent,
+      1,
+      'Tried to flip back to original new agent'
+    )
+    t.is(system.attemptStartAgent, 1, 'Tried to restart original agent')
+    t.is(
+      system.attemptVerifyAgent,
+      1,
+      'Tried to make sure original agent restarted'
+    )
+  }
+)

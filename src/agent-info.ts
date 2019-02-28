@@ -116,8 +116,11 @@ export default class AgentInfo {
       }
     }
 
-    if (!systemd['path'] || !fs.existsSync(systemd['path'])) {
-      throw new Error(`Failed to find enebular-agent, path: ${systemd['path']}`)
+    if (!systemd['path']) {
+      throw new Error(`Failed to find enebular-agent path in systemd`)
+    }
+    if (!fs.existsSync(systemd['path'])) {
+      throw new Error(`enebular-agent path not existed: ${systemd['path']}`)
     }
     const agentInfo = AgentInfo.createFromSrc(systemd['path'])
     agentInfo.systemd = systemd

@@ -309,6 +309,8 @@ export class AgentInstaller implements AgentInstallerIf {
       )
 
       // TODO: dev or factory mode
+      const developerMode = this._config.getString('PELION_MODE')
+
       /* await Utils.taskAsync( */
       /* 'Deploying mbed-cloud-connector ', */
       /* this._log, */

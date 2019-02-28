@@ -110,17 +110,17 @@ export default class AgentUpdater {
       `${prefix}Verifying enebular-agent ${version}`,
       this._log,
       async (): Promise<boolean> => {
-          if (
-            await this.checkIfAgentDead(
-              path,
-              user,
-              2000,
-              this._config.getNumber('MINIMUM_CHECKING_TIME') * 1000,
-              newAgent
-            )
-          ) {
-            throw new Error(`Verification failed, ${version} failed to start!`)
-          }
+        if (
+          await this.checkIfAgentDead(
+            path,
+            user,
+            2000,
+            this._config.getNumber('MINIMUM_CHECKING_TIME') * 1000,
+            newAgent
+          )
+        ) {
+          throw new Error(`Verification failed, ${version} failed to start!`)
+        }
         return true
       }
     )
@@ -181,12 +181,14 @@ export default class AgentUpdater {
     const newAgentDirName = 'enebular-runtime-agent.new'
     const newAgentInstallPath = path.resolve(agentPath, `../${newAgentDirName}`)
 
-    this._installer = this._installer ? this._installer : new AgentInstaller(this._config, this._log)
+    this._installer = this._installer
+      ? this._installer
+      : new AgentInstaller(this._config, this._log)
     let newAgentInfo = await this._installer.install(
-        tarballPath,
-        newAgentInstallPath,
-        userInfo
-      )
+      tarballPath,
+      newAgentInstallPath,
+      userInfo
+    )
     // TODO: check if we need to update
     this._log.info(
       'Updating ' +
@@ -259,8 +261,7 @@ export default class AgentUpdater {
               100
             )
         )
-      }
-      catch (err) {
+      } catch (err) {
         // ignore error if we have
       }
       this._log.info(

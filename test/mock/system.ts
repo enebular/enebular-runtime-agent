@@ -82,12 +82,12 @@ export default class MockSystem implements SystemIf {
     return true
   }
 
-  public isAgentDead(path: string, user: string) {
+  public isAgentDead(path: string, user: string): boolean {
     this.attemptVerifyAgent++
     return this.agentIsDead
   }
 
-  public isNewAgentDead(path: string, user: string) {
+  public isNewAgentDead(path: string, user: string): boolean {
     this.attemptVerifyNewAgent++
     if (this.newAgentIsDeadThrows) {
       throw new Error(`expection: new agent is dead`)

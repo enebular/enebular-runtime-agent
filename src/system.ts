@@ -18,12 +18,12 @@ export interface SystemIf {
     newAgent: string,
     newAgentBackup: string
   ): Promise<boolean>
-  isAgentDead(path: string, user: string)
-  isNewAgentDead(path: string, user: string)
+  isAgentDead(path: string, user: string): boolean
+  isNewAgentDead(path: string, user: string): boolean
 }
 
 export class System implements SystemIf {
-  _log: Log
+  private _log: Log
 
   public constructor(log: Log) {
     this._log = log
@@ -61,15 +61,15 @@ export class System implements SystemIf {
     return true
   }
 
-  public isAgentDead(path: string, user: string) {
+  public isAgentDead(path: string, user: string): boolean {
     return this._isAgentDead(path, user)
   }
 
-  public isNewAgentDead(path: string, user: string) {
+  public isNewAgentDead(path: string, user: string): boolean {
     return this._isAgentDead(path, user)
   }
 
-  private _isAgentDead(path: string, user: string) {
+  private _isAgentDead(path: string, user: string): boolean {
     const info = Utils.dumpAgentInfo(path, user)
     if (!info.systemd) return true
     this._log.debug(

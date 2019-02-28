@@ -112,8 +112,7 @@ export class Utils {
               clearInterval(intervalObj)
               resolve(true)
             }
-          }
-          catch(err) {
+          } catch (err) {
             reject(err)
           }
         }, interval)
