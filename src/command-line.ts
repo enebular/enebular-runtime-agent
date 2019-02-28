@@ -23,12 +23,13 @@ export default class CommandLine {
     this.addConfigOption('ENEBULAR_AGENT_USER', '--user <user>')
     this.addConfigOption('ENEBULAR_AGENT_UPDATER_ENABLE_LOG', '--enable-log')
     this.addConfigOption('DEBUG', '--debug-level <level>')
+    this.addConfigOption('FORCE_UPDATE', '--force')
   }
 
   public addConfigOption(
     configName: string,
     option: string,
-    coercion?: ((arg1: any, arg2: any) => void) | RegExp
+    coercion?: (() => void) | RegExp
   ): void {
     this._commander.option(
       option,

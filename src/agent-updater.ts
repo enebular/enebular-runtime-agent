@@ -2,6 +2,7 @@ import CommandLine from './command-line'
 import Config from './config'
 import Log from './log'
 import AgentInfo from './agent-info'
+import AgentVersion from './agent-version'
 import { AgentInstaller, AgentInstallerIf } from './agent-installer'
 import { Migrator, MigratorIf } from './migrator'
 import { System, SystemIf } from './system'
@@ -89,7 +90,7 @@ export default class AgentUpdater {
   }
 
   private async _startAgent(
-    version: string,
+    version: AgentVersion,
     path: string,
     user: string,
     serviceName: string,
@@ -189,13 +190,22 @@ export default class AgentUpdater {
       newAgentInstallPath,
       userInfo
     )
-    // TODO: check if we need to update
+    if (
+      !newAgentInfo.version.greaterThan(agentInfo.version) &&
+      !this._config.getBoolean('FORCE_UPDATE')
+    ) {
+      this._log.info(
+        `enebular-agent is is already the newest version (${agentInfo.version})`
+      )
+      return false
+    }
     this._log.info(
       'Updating ' +
-        Utils.echoGreen(agentInfo.version) +
+        Utils.echoGreen(`${agentInfo.version}`) +
         ' to ' +
-        Utils.echoGreen(newAgentInfo.version)
+        Utils.echoGreen(`${newAgentInfo.version}`)
     )
+
     newAgentInfo = await this._installer.build(
       agentInfo,
       newAgentInstallPath,

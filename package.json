@@ -8,8 +8,9 @@
     "prepare": "npm run build",
     "start": "node lib/src/index.js",
     "build": "tsc -p tsconfig.build.json",
-    "lint": "eslint . --ext .js,.ts",
-    "lint-fix": "eslint . --ext .js,.ts --fix",
+    "lint": "eslint ./src --ext .js,.ts",
+    "lint-fix": "eslint ./src --ext .js,.ts --fix",
+    "lint-test": "eslint ./test --ext .js,.ts --fix",
     "typecheck": "tsc --noEmit",
     "test": "tsc && ava"
   },

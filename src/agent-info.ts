@@ -2,10 +2,11 @@ import * as fs from 'fs'
 import * as path from 'path'
 import Utils from './utils'
 import Log from './log'
+import AgentVersion from './agent-version'
 
 export default class AgentInfo {
   public path: string
-  public version: string
+  public version: AgentVersion
   public awsiot: boolean
   public pelion: boolean
   public port: string
@@ -24,7 +25,7 @@ export default class AgentInfo {
 
   public constructor(
     path: string,
-    version: string,
+    version: AgentVersion,
     awsiot: boolean,
     pelion: boolean,
     port: string,
@@ -54,6 +55,11 @@ export default class AgentInfo {
       throw new Error(`Cannot found package.json, path is ${packageFile}`)
     }
     const pkg = JSON.parse(fs.readFileSync(packageFile, 'utf8'))
+
+    const version = AgentVersion.parse(pkg.version)
+    if (!version) {
+      throw new Error(`enebular-agent version is invalid: ${pkg.version}`)
+    }
     const awsiot = fs.existsSync(`${path}/ports/awsiot/node_modules`)
     const pelion =
       fs.existsSync(`${path}/ports/pelion/node_modules`) ||
@@ -70,7 +76,7 @@ export default class AgentInfo {
     )
     return new AgentInfo(
       path,
-      pkg.version,
+      version,
       awsiot,
       pelion,
       port,

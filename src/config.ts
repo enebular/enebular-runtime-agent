@@ -53,6 +53,12 @@ export default class Config {
         description: 'Install location of enebular-agent',
         userExpose: true
       },
+      FORCE_UPDATE: {
+        value: false,
+        description:
+          'Force update to latest version without checking exiting agent version',
+        userExpose: true
+      },
       DEBUG: {
         value: 'info',
         description: 'Debug level, used to control logging',
