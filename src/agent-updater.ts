@@ -135,14 +135,20 @@ export default class AgentUpdater {
         `enebular-agent is is already the newest version (${agentInfo.version})`
       )
     }
-    if (
-      !newAgentInfo.version.greaterThan(new AgentVersion(2, 4, 0)) &&
-      agentInfo.pelion &&
-      !this._config.isOverridden('PELION_MODE')
-    ) {
-      throw new Error(
-        `Updating enebular-agent 2.4.0 or older requires to set --pelion-mode (developer or factory)`
-      )
+    if (agentInfo.pelion) {
+      if (agentInfo.version.lessThan(new AgentVersion(2, 4, 0))) {
+        throw new Error(
+          `Updating enebular-agent pelion port is only supported from version 2.4.0`
+        )
+      }
+      if (
+        !newAgentInfo.version.greaterThan(new AgentVersion(2, 4, 0)) &&
+        !this._config.isOverridden('PELION_MODE')
+      ) {
+        throw new Error(
+          `Updating enebular-agent pelion port in 2.4.0 requires to set --pelion-mode (developer or factory)`
+        )
+      }
     }
 
     this._log.info(
