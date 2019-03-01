@@ -16,6 +16,7 @@ results
 
 /lib
 assets/
+ai-models/
 certs/
 config.json
 

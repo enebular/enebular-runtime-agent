@@ -88,6 +88,11 @@ export default class Config {
         description: 'Assets data directory path',
         userExpose: true
       },
+      ENEBULAR_AI_MODELS_DATA_PATH: {
+        value: p.resolve(portBasePath, 'ai-models'),
+        description: 'Ai Model data directory path',
+        userExpose: true
+      },
       ENEBULAR_ASSETS_STATE_PATH: {
         value: p.resolve(portBasePath, '.enebular-assets.json'),
         description: 'Assets state file path',
@@ -178,9 +183,15 @@ export default class Config {
         this._items[key] = {}
       }
 
-      if (typeof value == 'string' && typeof this._items[key].value == 'boolean') {
-        this._items[key].value = (value == 'true')
-      } else if (typeof value == 'string' && typeof this._items[key].value == 'number') {
+      if (
+        typeof value === 'string' &&
+        typeof this._items[key].value === 'boolean'
+      ) {
+        this._items[key].value = value == 'true'
+      } else if (
+        typeof value === 'string' &&
+        typeof this._items[key].value === 'number'
+      ) {
         this._items[key].value = parseInt(value)
       } else {
         this._items[key].value = value

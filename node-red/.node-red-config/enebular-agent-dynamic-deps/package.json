@@ -1,5 +1,7 @@
 {
   "name": "enebular-agent-dynamic-deps",
   "version": "0.0.1",
-  "dependencies": {}
+  "dependencies": {
+    "enebular-contrib-ai-b9439ad6-3d2e-4a18-bee6-84c779bbd36a": "0.0.1"
+  }
 }

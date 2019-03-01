@@ -16,6 +16,7 @@ results
 
 /lib
 assets/
+ai-models/
 
 npm-debug.log
 node_modules

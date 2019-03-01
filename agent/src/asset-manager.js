@@ -4,12 +4,13 @@ import fs from 'fs'
 import path from 'path'
 import mkdirp from 'mkdirp'
 import objectHash from 'object-hash'
+import type { Logger } from 'winston'
 import Asset from './asset'
 import FileAsset from './file-asset'
+import AiModel from './ai-model'
 import { delay } from './utils'
 import type DeviceStateManager from './device-state-manager'
 import type AgentManagerMediator from './agent-manager-mediator'
-import type { Logger } from 'winston'
 import type Config from './config'
 
 const moduleName = 'asset-man'
@@ -108,6 +109,7 @@ export default class AssetManager {
     log: Logger
   ) {
     this._dataDir = path.resolve(config.get('ENEBULAR_ASSETS_DATA_PATH'))
+    this._aiModelDir = path.resolve(config.get('ENEBULAR_AI_MODELS_DATA_PATH'))
     this._stateFilePath = config.get('ENEBULAR_ASSETS_STATE_PATH')
     if (!this._dataDir || !this._stateFilePath) {
       throw new Error('Missing asset-man configuration')
@@ -124,6 +126,10 @@ export default class AssetManager {
 
   dataDir(): string {
     return this._dataDir
+  }
+
+  aiModelDir(): string {
+    return this._aiModelDir
   }
 
   debug(msg: string, ...args: Array<mixed>) {
@@ -180,14 +186,17 @@ export default class AssetManager {
   }
 
   _deserializeAsset(serializedAsset: Object): Asset {
+    let asset
     switch (serializedAsset.type) {
       case 'file':
+        asset = new FileAsset(serializedAsset.type, serializedAsset.id, this)
+        break
+      case 'ai':
+        asset = new AiModel(serializedAsset.type, serializedAsset.id, this)
         break
       default:
         throw new Error('Unsupported asset type: ' + serializedAsset.type)
     }
-
-    let asset = new FileAsset(serializedAsset.type, serializedAsset.id, this)
 
     asset.updateId = serializedAsset.updateId
     asset.config = serializedAsset.config
@@ -302,6 +311,15 @@ export default class AssetManager {
               desiredAssetId,
               this
             )
+            asset.state = 'notDeployed'
+            asset.setPendingChange(
+              'deploy',
+              desiredAsset.updateId,
+              desiredAsset.config
+            )
+            break
+          case 'ai':
+            asset = new AiModel(desiredAsset.config.type, desiredAssetId, this)
             asset.state = 'notDeployed'
             asset.setPendingChange(
               'deploy',
