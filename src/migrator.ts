@@ -51,7 +51,7 @@ export class Migrator implements MigratorIf {
       throw new Error(`Failed to detect enebular-agent version`)
     }
 
-    const port = agentInfo.awsiot ? 'awsiot' : 'pelion'
+    const port = agentInfo.port
     this._migrateConfig = {
       port: port,
       projectPath: agentInfo.path,
@@ -119,14 +119,14 @@ export class Migrator implements MigratorIf {
         'portBasePath',
         'newPortBasePath',
         this,
-        true
+        true // might not be created yet
       ),
       assets: new CopyMigration(
         'assets',
         'portBasePath',
         'newPortBasePath',
         this,
-        true
+        true // might not be created yet
       )
     }
     if (this._migrateConfig.port == 'awsiot') {

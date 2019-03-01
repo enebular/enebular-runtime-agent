@@ -141,7 +141,7 @@ export class Utils {
     log: Log,
     cb: () => Promise<boolean> | Promise<{}>,
     ignore = false
-  ): Promise<boolean> {
+  ): Promise<void> {
     log.info(`==== ${name} ====`)
     try {
       await cb()
@@ -154,7 +154,6 @@ export class Utils {
         throw err
       }
     }
-    return true
   }
 
   public static task(

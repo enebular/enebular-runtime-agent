@@ -308,19 +308,56 @@ export class AgentInstaller implements AgentInstallerIf {
         }
       )
 
-      // TODO: dev or factory mode
-      const developerMode = this._config.getString('PELION_MODE')
+      const factoryMode = this._config.getString('PELION_MODE') == 'factory'
+      if (!factoryMode) {
+        await Utils.taskAsync(
+          'Copy mbed-cloud-connector developer credentials',
+          this._log,
+          async (): Promise<{}> => {
+            return Utils.copy(
+              this._log,
+              `${
+                agentInfo.path
+              }/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c`,
+              `${installPath}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c`,
+              userInfo
+            )
+          }
+        )
+      }
 
-      /* await Utils.taskAsync( */
-      /* 'Deploying mbed-cloud-connector ', */
-      /* this._log, */
-      /* async (): Promise<{}> => { */
-      /* const args = ("pal-platform/pal-platform.py fullbuild --target x86_x64_NativeLinux_mbedtls --toolchain GCC" + */
-      /* "--external ./../define.txt --name enebular-agent-mbed-cloud-connector.elf").split(' ') */
-      /* console.log(args) */
-      /* return this._buildConnector(`${installPath}/tools/mbed-cloud-connector`, 'python', args) */
-      /* } */
-      /* ) */
+      await Utils.taskAsync(
+        'Building mbed-cloud-connector',
+        this._log,
+        async (): Promise<{}> => {
+          const cmakeConfig = factoryMode ? 'define_factory.txt' : 'define.txt'
+          const args = (
+            'pal-platform/pal-platform.py fullbuild --target x86_x64_NativeLinux_mbedtls --toolchain GCC' +
+            ` --external ./../${cmakeConfig} --name enebular-agent-mbed-cloud-connector.elf`
+          ).split(' ')
+          return this._buildConnector(
+            `${installPath}/tools/mbed-cloud-connector`,
+            'python',
+            args,
+            userInfo
+          )
+        }
+      )
+
+      Utils.task(
+        `Verifying mbed-cloud-connector`,
+        this._log,
+        (): void => {
+          if (
+            !fs.existsSync(
+              `${installPath}/tools/mbed-cloud-connector` +
+                '/out/Release/enebular-agent-mbed-cloud-connector.elf'
+            )
+          ) {
+            throw new Error('Verifying mbed-cloud-connector failed.')
+          }
+        }
+      )
 
       if (agentInfo.mbedCloudConnectorFCC) {
         this._log.info(`Building mbed-cloud-connector-fcc`)

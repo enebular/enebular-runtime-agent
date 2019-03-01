@@ -83,6 +83,7 @@ export class System implements SystemIf {
     if (info.systemd.failed) {
       this._log.debug('enebular-agent status is failed')
     }
+    // TODO: should we check other things like if it connected to port or not.
     return info.systemd.failed || !info.systemd.active ? true : false
   }
 

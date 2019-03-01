@@ -47,7 +47,6 @@ export default class AgentUpdater {
   }
 
   private _requireRootUser(user: string): void {
-    this._log.info('You have to run this with root permission.')
     this._log.info(
       'To update enebular-agent, copy/paste the following command:'
     )
@@ -95,7 +94,7 @@ export default class AgentUpdater {
     user: string,
     serviceName: string,
     newAgent = true
-  ): Promise<{}> {
+  ): Promise<void> {
     const prefix = newAgent ? '' : '[RESTORE] '
     await Utils.taskAsync(
       `${prefix}Starting enebular-agent ${version}`,
@@ -127,28 +126,23 @@ export default class AgentUpdater {
     )
   }
 
-  private _preupdateCheck(
-    newAgentInfo: AgentInfo,
-    agentInfo: AgentInfo
-  ): boolean {
+  private _preupdateCheck(newAgentInfo: AgentInfo, agentInfo: AgentInfo): void {
     if (
       !newAgentInfo.version.greaterThan(agentInfo.version) &&
       !this._config.getBoolean('FORCE_UPDATE')
     ) {
-      this._log.info(
+      throw new Error(
         `enebular-agent is is already the newest version (${agentInfo.version})`
       )
-      return false
     }
     if (
       !newAgentInfo.version.greaterThan(new AgentVersion(2, 4, 0)) &&
       agentInfo.pelion &&
       !this._config.isOverridden('PELION_MODE')
     ) {
-      this._log.info(
+      throw new Error(
         `Updating enebular-agent 2.4.0 or older requires to set --pelion-mode (developer or factory)`
       )
-      return false
     }
 
     this._log.info(
@@ -157,7 +151,6 @@ export default class AgentUpdater {
         ' to ' +
         Utils.echoGreen(`${newAgentInfo.version}`)
     )
-    return true
   }
 
   public async update(): Promise<boolean> {
@@ -170,7 +163,7 @@ export default class AgentUpdater {
           ? user
           : process.env.USER || user
       )
-      return false
+      throw new Error('You have to run this with root permission.')
     }
 
     let agentInfo
@@ -224,7 +217,7 @@ export default class AgentUpdater {
       userInfo
     )
 
-    if (!this._preupdateCheck(newAgentInfo, agentInfo)) return false
+    this._preupdateCheck(newAgentInfo, agentInfo)
 
     newAgentInfo = await this._installer.build(
       agentInfo,

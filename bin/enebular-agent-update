@@ -14,9 +14,11 @@ process.on('SIGTERM', () => {
 })
 
 updater.update().then(function (success) {
+    updater.printLogInfo()
     process.exit(success ? 0 : 1)
   })
   .catch(function (err) {
     console.log(err.message)
+    updater.printLogInfo()
     process.exit(1);
 });

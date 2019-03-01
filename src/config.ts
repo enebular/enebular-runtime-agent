@@ -53,6 +53,11 @@ export default class Config {
         description: 'Install location of enebular-agent',
         userExpose: true
       },
+      PELION_MODE: {
+        value: 'factory',
+        description: 'Pelion mode (developer or factory)',
+        userExpose: true
+      },
       FORCE_UPDATE: {
         value: false,
         description:

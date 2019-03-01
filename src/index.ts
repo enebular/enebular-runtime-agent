@@ -2,27 +2,28 @@ import AgentUpdater from './agent-updater'
 
 let updater: AgentUpdater
 
+function printLogInfo(): void {
+  console.log(`See details in full update log file:${updater.getLogFilePath()}`)
+}
+
 function update(): Promise<boolean> {
   updater = new AgentUpdater()
   return updater.update().catch((err: Error) => {
     throw new Error(
-      `\x1b[31mERROR\x1b[0m: Update failed, reason: ${
-        err.message
-      }\n    See details in full update log file:${updater.getLogFilePath()}`
+      `\x1b[31mERROR\x1b[0m: Update failed, reason: ${err.message}`
     )
   })
 }
 
-async function cancel(): Promise<boolean> {
+async function cancel(): Promise<void> {
   try {
     await updater.cancel()
   } catch (err) {
     // ignore
   }
-  return true
 }
 
-async function exit() {
+async function exit(): Promise<void> {
   await cancel()
   process.exit(0)
 }
@@ -37,12 +38,14 @@ if (require.main === module) {
 
   update()
     .then(success => {
+      printLogInfo()
       process.exit(success ? 0 : 1)
     })
     .catch(err => {
       console.error(err)
+      printLogInfo()
       process.exit(1)
     })
 }
 
-export { update, cancel }
+export { update, cancel, printLogInfo }
