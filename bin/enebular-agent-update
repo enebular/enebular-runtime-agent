@@ -2,6 +2,7 @@
 var updater = require('..')
 
 async function exit() {
+  await updater.cancel()
   process.exit(0)
 }
 
@@ -12,7 +13,10 @@ process.on('SIGTERM', () => {
   exit()
 })
 
-updater.main().catch(function (err) {
+updater.update().then(function (success) {
+    process.exit(success ? 0 : 1)
+  })
+  .catch(function (err) {
     console.log(err.message)
     process.exit(1);
 });

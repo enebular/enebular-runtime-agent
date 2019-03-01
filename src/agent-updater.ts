@@ -127,6 +127,39 @@ export default class AgentUpdater {
     )
   }
 
+  private _preupdateCheck(
+    newAgentInfo: AgentInfo,
+    agentInfo: AgentInfo
+  ): boolean {
+    if (
+      !newAgentInfo.version.greaterThan(agentInfo.version) &&
+      !this._config.getBoolean('FORCE_UPDATE')
+    ) {
+      this._log.info(
+        `enebular-agent is is already the newest version (${agentInfo.version})`
+      )
+      return false
+    }
+    if (
+      !newAgentInfo.version.greaterThan(new AgentVersion(2, 4, 0)) &&
+      agentInfo.pelion &&
+      !this._config.isOverridden('PELION_MODE')
+    ) {
+      this._log.info(
+        `Updating enebular-agent 2.4.0 or older requires to set --pelion-mode (developer or factory)`
+      )
+      return false
+    }
+
+    this._log.info(
+      'Updating ' +
+        Utils.echoGreen(`${agentInfo.version}`) +
+        ' to ' +
+        Utils.echoGreen(`${newAgentInfo.version}`)
+    )
+    return true
+  }
+
   public async update(): Promise<boolean> {
     this._log.info('enebular-agent-updater version: ' + updaterVer)
 
@@ -190,21 +223,8 @@ export default class AgentUpdater {
       newAgentInstallPath,
       userInfo
     )
-    if (
-      !newAgentInfo.version.greaterThan(agentInfo.version) &&
-      !this._config.getBoolean('FORCE_UPDATE')
-    ) {
-      this._log.info(
-        `enebular-agent is is already the newest version (${agentInfo.version})`
-      )
-      return false
-    }
-    this._log.info(
-      'Updating ' +
-        Utils.echoGreen(`${agentInfo.version}`) +
-        ' to ' +
-        Utils.echoGreen(`${newAgentInfo.version}`)
-    )
+
+    if (!this._preupdateCheck(newAgentInfo, agentInfo)) return false
 
     newAgentInfo = await this._installer.build(
       agentInfo,
@@ -316,6 +336,11 @@ export default class AgentUpdater {
 
     this._log.info(Utils.echoGreen('Update succeed ✔'))
     Utils.dumpAgentInfo(agentPath, user).prettyStatus(this._log)
+    return true
+  }
+
+  public async cancel(): Promise<boolean> {
+    this._log.info(Utils.echoYellow('Update canceled ✔'))
     return true
   }
 }
