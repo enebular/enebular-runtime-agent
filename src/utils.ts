@@ -87,13 +87,6 @@ export class Utils {
     }
   }
 
-  public static getSupportedNodeJSVersion(agentVersion: string): string {
-    switch (agentVersion) {
-      default:
-        return 'v9.2.1'
-    }
-  }
-
   public static polling(
     callback: () => Promise<boolean>,
     initialDelay: number,

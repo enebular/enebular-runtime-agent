@@ -140,7 +140,7 @@ export default class AgentUpdater {
         )
       }
       if (
-        !newAgentInfo.version.greaterThan(new AgentVersion(2, 4, 0)) &&
+        !agentInfo.version.greaterThan(new AgentVersion(2, 4, 0)) &&
         !this._config.isOverridden('PELION_MODE')
       ) {
         throw new Error(

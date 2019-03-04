@@ -244,15 +244,15 @@ test.serial(
   'Updater.12: Update fails if current agent version is newer or same to the version to be updated',
   async t => {
     const { system, installer, migrator } = Mockhelper.createDefaultMocks()
-    system.version = '2.0.0'
-    system.newVersion = '2.0.0'
+    system.agent.version = '2.0.0'
+    system.newAgent.version = '2.0.0'
 
     let updater = new AgentUpdater(system, installer, migrator)
     let error = await t.throwsAsync(updater.update())
     t.true(error.message.startsWith('enebular-agent is already the newest version'))
 
-    system.version = '2.0.1'
-    system.newVersion = '2.0.0'
+    system.agent.version = '2.0.1'
+    system.newAgent.version = '2.0.0'
 
     updater = new AgentUpdater(system, installer, migrator)
     error = await t.throwsAsync(updater.update())
@@ -264,8 +264,8 @@ test.serial(
   'Updater.13: Update fails if current agent with pelion port and version is older than 2.4.0',
   async t => {
     const { system, installer, migrator } = Mockhelper.createDefaultMocks()
-    system.version = '2.3.0'
-    system.newVersion = '2.4.0'
+    system.agent.version = '2.3.0'
+    system.newAgent.version = '2.4.0'
     system.port = 'pelion'
 
     const updater = new AgentUpdater(system, installer, migrator)
@@ -275,7 +275,25 @@ test.serial(
 )
 
 test.serial(
-  'Updater.14: Handles scan agent source failure',
+  'Updater.14: Requuires --pelion-mode if current agent with pelion port and version is not greater than 2.4.0',
+  async t => {
+    const { system, installer, migrator } = Mockhelper.createDefaultMocks()
+    system.agent.version = '2.4.0'
+    system.newAgent.version = '2.4.1'
+    system.port = 'pelion'
+
+    let updater = new AgentUpdater(system, installer, migrator)
+    let error = await t.throwsAsync(updater.update())
+    t.true(error.message.startsWith('Updating enebular-agent pelion port in 2.4.0 requires to set --pelion-mode'))
+
+    process.env['PELION_MODE'] = 'factory'
+    updater = new AgentUpdater(system, installer, migrator)
+    await t.notThrowsAsync(updater.update())
+  }
+)
+
+test.serial(
+  'Updater.15: Handles agent source scan failure',
   async t => {
     const { system, installer, migrator } = Mockhelper.createDefaultMocks()
     system.throwsWhenScanOriginalAgent = true

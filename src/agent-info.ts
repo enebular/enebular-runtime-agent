@@ -80,7 +80,7 @@ export default class AgentInfo {
       awsiotThingCreator,
       mbedCloudConnector,
       mbedCloudConnectorFCC,
-      Utils.getSupportedNodeJSVersion(version),
+      system.getSupportedNodeJSVersion(agentVersion),
       systemd
     )
   }

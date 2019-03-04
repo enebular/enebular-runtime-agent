@@ -2,7 +2,7 @@ import AgentInfo from '../../src/agent-info'
 import AgentVersion from '../../src/agent-version'
 import { AgentInstallerIf } from '../../src/agent-installer'
 import { SystemIf } from '../../src/system'
-import { UserInfo, Utils } from '../../src/utils'
+import { UserInfo } from '../../src/utils'
 
 export default class MockAgentInstaller implements AgentInstallerIf {
   public failInstall: boolean = false
@@ -38,7 +38,7 @@ export default class MockAgentInstaller implements AgentInstallerIf {
       awsiotThingCreator,
       mbedCloudConnector,
       mbedCloudConnectorFCC,
-      Utils.getSupportedNodeJSVersion(version),
+      this._system.getSupportedNodeJSVersion(agentVersion),
     )
   }
 
@@ -56,11 +56,9 @@ export default class MockAgentInstaller implements AgentInstallerIf {
     agentInfo: AgentInfo,
     newAgentInfo: AgentInfo,
     userInfo: UserInfo
-  ): Promise<AgentInfo> {
+  ): Promise<void> {
     if (this.failBuild) {
       throw new Error('Agent Build failed.')
     }
-
-    return this.fakeAgentInfo()
   }
 }

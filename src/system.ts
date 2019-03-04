@@ -1,6 +1,7 @@
 import * as path from 'path'
 import * as fs from 'fs'
 
+import AgentVersion from './agent-version'
 import Utils from './utils'
 import Log from './log'
 
@@ -41,6 +42,7 @@ export interface SystemIf {
     mbedCloudConnector: boolean
     mbedCloudConnectorFCC: boolean
   }
+  getSupportedNodeJSVersion(agentVersion: AgentVersion): string
 }
 
 export class System implements SystemIf {
@@ -231,6 +233,13 @@ export class System implements SystemIf {
       throw new Error(`Failed to move ${from} to ${to}:\n${err.message}`)
     }
     return true
+  }
+
+  public getSupportedNodeJSVersion(agentVersion: AgentVersion): string {
+    switch (agentVersion.toString()) {
+      default:
+        return 'v9.2.1'
+    }
   }
 }
 

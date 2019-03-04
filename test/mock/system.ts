@@ -2,6 +2,7 @@ import * as fs from 'fs'
 
 import Log from '../../src/log'
 import { SystemIf } from '../../src/system'
+import AgentVersion from '../../src/agent-version'
 
 export default class MockSystem implements SystemIf {
   public failStartAgent = false
@@ -35,13 +36,23 @@ export default class MockSystem implements SystemIf {
   public path = '/tmp/enebular-agent-test-virtual'
   public port = 'awsiot'
   public user = 'enebular'
-  public version = '1.0.0'
-  public newVersion = '1.0.1'
+  public agent = {
+    version: '1.0.0',
+    nodejsVersion: '9.2.1'
+  }
+  public newAgent = {
+    version: '1.0.1',
+    nodejsVersion: '9.2.1'
+  }
 
   public constructor() {
     if (!fs.existsSync(this.path)) {
       fs.mkdirSync(this.path)
     }
+  }
+
+  public getSupportedNodeJSVersion(agentVersion: AgentVersion): string {
+    return agentVersion.toString() == this.agent.version ? this.agent.nodejsVersion : this.newAgent.nodejsVersion
   }
 
   public getServiceLogIgnoreError(serviceName: string, lines: number): string {
@@ -161,12 +172,12 @@ export default class MockSystem implements SystemIf {
     if (path == 'fake-new-agent') {
       if (this.throwsWhenScanNewAgent)
         throw new Error('Scan new agent source return error')
-      agentVersion = this.newVersion
+      agentVersion = this.newAgent.version
     }
     else {
       if (this.throwsWhenScanOriginalAgent)
         throw new Error('Scan agent source return error')
-      agentVersion = this.version
+      agentVersion = this.agent.version
     }
     return {
       version: agentVersion,
