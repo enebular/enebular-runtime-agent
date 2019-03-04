@@ -15,24 +15,11 @@ export default class MockAgentInstaller implements AgentInstallerIf {
     if (this.failInstall) {
       throw new Error('Agent Install failed.')
     }
-    /*
-    path: string,
-    version: string,
-    awsiot: boolean,
-    pelion: boolean,
-    port: string,
-    awsiotThingCreator: boolean,
-    mbedCloudConnector: boolean,
-    mbedCloudConnectorFCC: boolean,
-    nodejsVersion: string
-
-       */
     return new AgentInfo(
       'path',
       new AgentVerion(10000, 0, 2),
       true,
       false,
-      'pelion',
       true,
       true,
       true,
@@ -53,7 +40,6 @@ export default class MockAgentInstaller implements AgentInstallerIf {
       new AgentVerion(10000, 0, 2),
       true,
       false,
-      'pelion',
       true,
       true,
       true,

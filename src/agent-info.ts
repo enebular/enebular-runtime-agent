@@ -1,136 +1,120 @@
 import * as fs from 'fs'
-import * as path from 'path'
 import Utils from './utils'
 import Log from './log'
 import AgentVersion from './agent-version'
+import { SystemIf } from './system'
+
+export interface SystemdAgentInfo {
+  path: string
+  user: string
+  port: string
+  serviceName: string
+  enabled: boolean
+  active: boolean
+  failed: boolean
+}
+
+export interface ComponentsInstalled {
+  awsiot: boolean
+  pelion: boolean
+  awsiotThingCreator: boolean
+  mbedCloudConnector: boolean
+  mbedCloudConnectorFCC: boolean
+}
 
 export default class AgentInfo {
   public path: string
   public version: AgentVersion
-  public awsiot: boolean
-  public pelion: boolean
-  public port: string
-  public awsiotThingCreator: boolean
-  public mbedCloudConnector: boolean
-  public mbedCloudConnectorFCC: boolean
   public nodejsVersion: string
-  public systemd?: {
-    user: string
-    serviceName: string
-    enabled: boolean
-    active: boolean
-    failed: boolean
-    path?: string
-  }
+  public installed: ComponentsInstalled
+  public systemd?: SystemdAgentInfo
 
   public constructor(
     path: string,
     version: AgentVersion,
     awsiot: boolean,
     pelion: boolean,
-    port: string,
     awsiotThingCreator: boolean,
     mbedCloudConnector: boolean,
     mbedCloudConnectorFCC: boolean,
-    nodejsVersion: string
+    nodejsVersion: string,
+    systemd?: SystemdAgentInfo
   ) {
     this.path = path
     this.version = version
-    this.awsiot = awsiot
-    this.pelion = pelion
-    this.port = port
-    this.awsiotThingCreator = awsiotThingCreator
-    this.mbedCloudConnector = mbedCloudConnector
-    this.mbedCloudConnectorFCC = mbedCloudConnectorFCC
+    this.installed = {
+      awsiot: awsiot,
+      pelion: pelion,
+      awsiotThingCreator: awsiotThingCreator,
+      mbedCloudConnector: mbedCloudConnector,
+      mbedCloudConnectorFCC: mbedCloudConnectorFCC
+    }
     this.nodejsVersion = nodejsVersion
+    this.systemd = systemd
   }
 
-  public static createFromSrc(path: string): AgentInfo {
-    if (!fs.existsSync(path)) {
-      throw new Error(`The enebular-agent directory was not found: ${path}`)
-    }
-    // version info
-    const packageFile = path + '/agent/package.json'
-    if (!fs.existsSync(packageFile)) {
-      throw new Error(`Cannot found package.json, path is ${packageFile}`)
-    }
-    const pkg = JSON.parse(fs.readFileSync(packageFile, 'utf8'))
-
-    const version = AgentVersion.parse(pkg.version)
-    if (!version) {
-      throw new Error(`enebular-agent version is invalid: ${pkg.version}`)
-    }
-    const awsiot = fs.existsSync(`${path}/ports/awsiot/node_modules`)
-    const pelion =
-      fs.existsSync(`${path}/ports/pelion/node_modules`) ||
-      fs.existsSync(`${path}/ports/local/node_modules`)
-    const port = !awsiot && !pelion ? 'unknown' : pelion ? 'pelion' : 'awsiot'
-    const awsiotThingCreator = fs.existsSync(
-      `${path}/tools/awsiot-thing-creator/node_modules`
-    )
-    const mbedCloudConnector = fs.existsSync(
-      `${path}/tools/mbed-cloud-connector/out/Release/enebular-agent-mbed-cloud-connector.elf`
-    )
-    const mbedCloudConnectorFCC = fs.existsSync(
-      `${path}tools/mbed-cloud-connector-fcc/__x86_x64_NativeLinux_mbedtls/Release/factory-configurator-client-enebular.elf`
-    )
-    return new AgentInfo(
-      path,
+  public static createFromSrc(
+    system: SystemIf,
+    path: string,
+    systemd?: SystemdAgentInfo
+  ): AgentInfo {
+    const {
       version,
       awsiot,
       pelion,
-      port,
+      awsiotThingCreator,
+      mbedCloudConnector,
+      mbedCloudConnectorFCC
+    } = system.scanAgentSource(path)
+
+    const agentVersion = AgentVersion.parse(version)
+    if (!agentVersion) {
+      throw new Error(`enebular-agent version is invalid: ${version}`)
+    }
+
+    return new AgentInfo(
+      path,
+      agentVersion,
+      awsiot,
+      pelion,
       awsiotThingCreator,
       mbedCloudConnector,
       mbedCloudConnectorFCC,
-      Utils.getSupportedNodeJSVersion(pkg.version)
+      Utils.getSupportedNodeJSVersion(version),
+      systemd
     )
   }
 
-  public static createFromSystemd(user: string): AgentInfo {
+  public static createFromSystemd(system: SystemIf, user: string): AgentInfo {
     const serviceName = `enebular-agent-${user}`
-    const serviceConfigPath = `/etc/systemd/system/${serviceName}.service`
-    if (!fs.existsSync(serviceConfigPath)) {
+    if (!system.isServiceRegistered(serviceName)) {
       throw new Error(
-        `Failed to find registered service unit: ${serviceConfigPath}`
+        `Failed to find registered enebular-agent service unit: ${serviceName}`
       )
     }
 
+    const userFromSystemd = system.getAgentUserFromSystemd(serviceName)
+    if (user != userFromSystemd) {
+      throw new Error(`enebular-agent user mismatches`)
+    }
+
+    const { agentPath, agentPort } = system.getAgentPathAndPortFromSystemd(
+      serviceName
+    )
+    if (!fs.existsSync(agentPath)) {
+      throw new Error(`enebular-agent path absents: ${agentPath}`)
+    }
+
     const systemd = {
-      user: user,
+      path: agentPath,
+      port: agentPort,
+      user: userFromSystemd,
       serviceName: serviceName,
-      enabled: Utils.exec(`systemctl is-enabled --quiet ${serviceName}`),
-      active: Utils.exec(`systemctl is-active --quiet ${serviceName}`),
-      failed: Utils.exec(`systemctl is-failed --quiet ${serviceName}`)
+      enabled: system.isServiceEnabled(serviceName),
+      active: system.isServiceActive(serviceName),
+      failed: system.isServiceFailed(serviceName)
     }
-
-    let ret = Utils.execReturnStdout(
-      `systemctl show --no-pager -p User ${serviceName}`
-    )
-    if (ret) {
-      const userProp = ret.slice(ret.indexOf('=') + 1)
-      systemd['user'] = userProp.replace(/(\n|\r)+$/, '')
-    }
-    ret = Utils.execReturnStdout(
-      `systemctl show --no-pager -p ExecStart ${serviceName}`
-    )
-    if (ret) {
-      const execStartProp = ret.slice(ret.indexOf('=') + 1)
-      const execStartPath = execStartProp.split(';')[0].substring(7)
-      if (execStartPath.length > 0) {
-        systemd['path'] = path.resolve(execStartPath, '../../../../')
-      }
-    }
-
-    if (!systemd['path']) {
-      throw new Error(`Failed to find enebular-agent path in systemd`)
-    }
-    if (!fs.existsSync(systemd['path'])) {
-      throw new Error(`enebular-agent path not existed: ${systemd['path']}`)
-    }
-    const agentInfo = AgentInfo.createFromSrc(systemd['path'])
-    agentInfo.systemd = systemd
-    return agentInfo
+    return AgentInfo.createFromSrc(system, agentPath, systemd)
   }
 
   public prettyStatus(log: Log): void {
@@ -139,8 +123,8 @@ export default class AgentInfo {
     log.info('   - Version: ' + this.version)
     log.info('   - NodeJS version: ' + this.nodejsVersion)
     log.info('   - Install destination: ' + this.path)
-    log.info('   - Install port: ' + this.port)
     if (this.systemd) {
+      log.info('   - Install port: ' + this.systemd.port)
       log.info('   - Install user: ' + this.systemd.user)
       log.info(` ${Utils.echoGreen('systemd information:')}`)
       log.info('   - enabled: ' + this.systemd.enabled)

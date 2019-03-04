@@ -2,7 +2,6 @@ import * as fs from 'fs'
 import * as path from 'path'
 
 import { execSync, spawn } from 'child_process'
-import AgentInfo from './agent-info'
 import Log from './log'
 
 export interface UserInfo {
@@ -89,13 +88,10 @@ export class Utils {
   }
 
   public static getSupportedNodeJSVersion(agentVersion: string): string {
-    return 'v9.2.1'
-  }
-
-  public static dumpAgentInfo(path: string, user?: string): AgentInfo {
-    return user
-      ? AgentInfo.createFromSystemd(user)
-      : AgentInfo.createFromSrc(path)
+    switch (agentVersion) {
+      default:
+        return 'v9.2.1'
+    }
   }
 
   public static polling(

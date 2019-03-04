@@ -5,6 +5,7 @@ import AgentUpdater from '../src/agent-updater'
 import MockSystem from './mock/system'
 import MockAgentInstaller from './mock/agent-installer'
 import MockMigrator from './mock/migrator'
+import Mockhelper from './helper/mock-helper'
 
 test.before(t => {
   process.env['ROOT_REQUIRED'] = 'false'
@@ -13,27 +14,19 @@ test.before(t => {
 })
 
 test('Updater.1: Throws if install fail', async t => {
-  const installer = new MockAgentInstaller()
+  const { system, installer, migrator } = Mockhelper.createDefaultMocks()
   installer.failInstall = true
 
-  const updater = new AgentUpdater(
-    new MockSystem(),
-    installer,
-    new MockMigrator()
-  )
+  const updater = new AgentUpdater(system, installer, migrator)
   const error = await t.throwsAsync(updater.update())
   t.true(error.message.startsWith('Agent Install failed'))
 })
 
 test('Updater.2: Throws if build fail', async t => {
-  const installer = new MockAgentInstaller()
+  const { system, installer, migrator } = Mockhelper.createDefaultMocks()
   installer.failBuild = true
 
-  const updater = new AgentUpdater(
-    new MockSystem(),
-    installer,
-    new MockMigrator()
-  )
+  const updater = new AgentUpdater(system, installer, migrator)
   const error = await t.throwsAsync(updater.update())
   t.true(error.message.startsWith('Agent Build failed'))
 })
@@ -41,14 +34,10 @@ test('Updater.2: Throws if build fail', async t => {
 test.serial(
   'Updater.3: Throws if old agent stop fail then tries to restart the agent',
   async t => {
-    const system = new MockSystem()
+    const { system, installer, migrator } = Mockhelper.createDefaultMocks()
     system.failStopAgent = true
 
-    const updater = new AgentUpdater(
-      system,
-      new MockAgentInstaller(),
-      new MockMigrator()
-    )
+    const updater = new AgentUpdater(system, installer, migrator)
     const error = await t.throwsAsync(updater.update())
     t.true(
       error.message.startsWith('stop agent failed'),
@@ -62,11 +51,10 @@ test.serial(
 test.serial(
   'Updater.4: Throws if migrate fail then tries to restart the agent',
   async t => {
-    const system = new MockSystem()
-    const migrator = new MockMigrator()
+    const { system, installer, migrator } = Mockhelper.createDefaultMocks()
     migrator.failMigrate = true
 
-    const updater = new AgentUpdater(system, new MockAgentInstaller(), migrator)
+    const updater = new AgentUpdater(system, installer, migrator)
     const error = await t.throwsAsync(updater.update())
     t.true(
       error.message.startsWith('migrate failed'),

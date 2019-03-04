@@ -44,14 +44,14 @@ export class Migrator implements MigratorIf {
     this._log = log
     this._userInfo = userInfo
 
-    if (!agentInfo.awsiot && !agentInfo.pelion) {
+    if (!agentInfo.systemd) {
       throw new Error(`Failed to detect enebular-agent port type`)
     }
     if (!agentInfo.version || !newAgentInfo.version) {
       throw new Error(`Failed to detect enebular-agent version`)
     }
 
-    const port = agentInfo.port
+    const port = agentInfo.systemd.port
     this._migrateConfig = {
       port: port,
       projectPath: agentInfo.path,

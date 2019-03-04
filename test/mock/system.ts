@@ -1,3 +1,5 @@
+import * as fs from 'fs'
+
 import Log from '../../src/log'
 import { SystemIf } from '../../src/system'
 
@@ -21,6 +23,23 @@ export default class MockSystem implements SystemIf {
   public agentIsDead = false
   public newAgentIsDeadThrows = false
   public newAgentIsDead = false
+
+  public serviceIsRegistered = true
+  public serviceIsEnabled = true
+  public serviceIsActive = true
+  public serviceIsFailed = false
+
+  public path = '/tmp/enebular-agent-test-virtual'
+  public port = 'awsiot'
+  public user = 'enebular'
+  public version = '1.0.0'
+  public newVersion = '1.0.1'
+
+  public constructor() {
+    if (!fs.existsSync(this.path)) {
+      fs.mkdirSync(this.path)
+    }
+  }
 
   public getServiceLogIgnoreError(serviceName: string, lines: number): string {
     return ''
@@ -82,16 +101,65 @@ export default class MockSystem implements SystemIf {
     return true
   }
 
-  public isAgentDead(path: string, user: string): boolean {
+  public isAgentDead(serviceName: string): boolean {
     this.attemptVerifyAgent++
     return this.agentIsDead
   }
 
-  public isNewAgentDead(path: string, user: string): boolean {
+  public isNewAgentDead(serviceName: string): boolean {
     this.attemptVerifyNewAgent++
     if (this.newAgentIsDeadThrows) {
       throw new Error(`expection: new agent is dead`)
     }
     return this.newAgentIsDead
+  }
+
+  public isServiceRegistered(serviceName: string): boolean {
+    return this.serviceIsRegistered 
+  }
+
+  public isServiceEnabled(serviceName: string): boolean {
+    return this.serviceIsEnabled 
+  }
+
+  public isServiceActive(serviceName: string): boolean {
+    return this.serviceIsActive 
+  }
+
+  public isServiceFailed(serviceName: string): boolean {
+    return this.serviceIsFailed 
+  }
+
+  public getAgentPathAndPortFromSystemd(
+    serviceName: string
+  ): { agentPath: string; agentPort: string } {
+
+    return {
+      agentPath: this.path,
+      agentPort: this.port
+    }
+  }
+  public getAgentUserFromSystemd(serviceName: string): string {
+    return this.user
+  }
+
+  public scanAgentSource(
+    path: string
+  ): {
+    version: string
+    awsiot: boolean
+    pelion: boolean
+    awsiotThingCreator: boolean
+    mbedCloudConnector: boolean
+    mbedCloudConnectorFCC: boolean
+  } {
+    return {
+      version: this.version,
+      awsiot: true,
+      pelion: true,
+      awsiotThingCreator: true,
+      mbedCloudConnector: true,
+      mbedCloudConnectorFCC: true,
+    }
   }
 }

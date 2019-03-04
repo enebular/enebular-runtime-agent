@@ -9,6 +9,7 @@ import progress from 'request-progress'
 import Config from './config'
 import AgentInfo from './agent-info'
 import { UserInfo, Utils } from './utils'
+import { SystemIf } from './system'
 import Log from './log'
 
 export interface AgentInstallerIf {
@@ -32,10 +33,12 @@ export class AgentInstaller implements AgentInstallerIf {
   private _npmBuildEnv: NodeJS.ProcessEnv = {}
   private _binBuildEnv: NodeJS.ProcessEnv = {}
   private _log: Log
+  private _system: SystemIf
 
-  public constructor(config: Config, log: Log) {
+  public constructor(config: Config, log: Log, system: SystemIf) {
     this._config = config
     this._log = log
+    this._system = system
   }
 
   private _download(url: string, path: string): Promise<{}> {
@@ -212,6 +215,110 @@ export class AgentInstaller implements AgentInstallerIf {
     })
   }
 
+  private async _buildAWSIot(
+    installPath: string,
+    userInfo: UserInfo
+  ): Promise<void> {
+    await Utils.taskAsync(
+      'Building awsiot port',
+      this._log,
+      async (): Promise<{}> => {
+        return this._buildNpmPackage(`${installPath}//ports/awsiot`, userInfo)
+      }
+    )
+    await Utils.taskAsync(
+      'Building awsiot-thing-creator',
+      this._log,
+      async (): Promise<{}> => {
+        return this._buildNpmPackage(
+          `${installPath}/tools/awsiot-thing-creator`,
+          userInfo
+        )
+      }
+    )
+  }
+
+  private async _buildMbedCloudConnector(
+    agentPath: string,
+    installPath: string,
+    userInfo: UserInfo
+  ): Promise<void> {
+    await Utils.taskAsync(
+      'Configuring mbed-cloud-connector',
+      this._log,
+      async (): Promise<{}> => {
+        return this._buildConnector(
+          `${installPath}/tools/mbed-cloud-connector`,
+          'mbed',
+          ['config', 'root', '.'],
+          userInfo
+        )
+      }
+    )
+
+    await Utils.taskAsync(
+      'Deploying mbed-cloud-connector',
+      this._log,
+      async (): Promise<{}> => {
+        return this._buildConnector(
+          `${installPath}/tools/mbed-cloud-connector`,
+          'mbed',
+          ['deploy'],
+          userInfo
+        )
+      }
+    )
+
+    const factoryMode = this._config.getString('PELION_MODE') == 'factory'
+    if (!factoryMode) {
+      await Utils.taskAsync(
+        'Copy mbed-cloud-connector developer credentials',
+        this._log,
+        async (): Promise<{}> => {
+          return Utils.copy(
+            this._log,
+            `${agentPath}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c`,
+            `${installPath}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c`,
+            userInfo
+          )
+        }
+      )
+    }
+
+    await Utils.taskAsync(
+      'Building mbed-cloud-connector',
+      this._log,
+      async (): Promise<{}> => {
+        const cmakeConfig = factoryMode ? 'define_factory.txt' : 'define.txt'
+        const args = (
+          'pal-platform/pal-platform.py fullbuild --target x86_x64_NativeLinux_mbedtls --toolchain GCC' +
+          ` --external ./../${cmakeConfig} --name enebular-agent-mbed-cloud-connector.elf`
+        ).split(' ')
+        return this._buildConnector(
+          `${installPath}/tools/mbed-cloud-connector`,
+          'python',
+          args,
+          userInfo
+        )
+      }
+    )
+
+    Utils.task(
+      `Verifying mbed-cloud-connector`,
+      this._log,
+      (): void => {
+        if (
+          !fs.existsSync(
+            `${installPath}/tools/mbed-cloud-connector` +
+              '/out/Release/enebular-agent-mbed-cloud-connector.elf'
+          )
+        ) {
+          throw new Error('Verifying mbed-cloud-connector failed.')
+        }
+      }
+    )
+  }
+
   public async build(
     agentInfo: AgentInfo,
     installPath: string,
@@ -219,7 +326,7 @@ export class AgentInstaller implements AgentInstallerIf {
   ): Promise<AgentInfo> {
     this._log.debug('Current agent info:')
     this._log.debug(agentInfo)
-    let newAgentInfo = AgentInfo.createFromSrc(installPath)
+    let newAgentInfo = AgentInfo.createFromSrc(this._system, installPath)
     this._log.debug('New agent info, before building:')
     this._log.debug(newAgentInfo)
     const nodejsPath = path.resolve(
@@ -251,120 +358,37 @@ export class AgentInstaller implements AgentInstallerIf {
       }
     )
 
-    if (agentInfo.awsiot) {
-      await Utils.taskAsync(
-        'Building awsiot port',
-        this._log,
-        async (): Promise<{}> => {
-          return this._buildNpmPackage(`${installPath}//ports/awsiot`, userInfo)
-        }
-      )
-      await Utils.taskAsync(
-        'Building awsiot-thing-creator',
-        this._log,
-        async (): Promise<{}> => {
-          return this._buildNpmPackage(
-            `${installPath}/tools/awsiot-thing-creator`,
-            userInfo
-          )
-        }
-      )
+    if (agentInfo.installed.awsiot) {
+      await this._buildAWSIot(installPath, userInfo)
     }
 
-    if (agentInfo.pelion) {
+    if (agentInfo.installed.pelion) {
+      // TODO: install dependencies
       await Utils.taskAsync(
         'Building pelion port ',
         this._log,
         async (): Promise<{}> => {
-          return this._buildNpmPackage(`${installPath}//ports/pelion`, userInfo)
+          return this._buildNpmPackage(`${installPath}/ports/pelion`, userInfo)
         }
       )
       this._binBuildEnv['PATH'] = `/home/${userInfo.user}/.local/bin:${
         process.env['PATH']
       }`
-      await Utils.taskAsync(
-        'Configuring mbed-cloud-connector',
-        this._log,
-        async (): Promise<{}> => {
-          return this._buildConnector(
-            `${installPath}/tools/mbed-cloud-connector`,
-            'mbed',
-            ['config', 'root', '.'],
-            userInfo
-          )
-        }
-      )
 
-      await Utils.taskAsync(
-        'Deploying mbed-cloud-connector',
-        this._log,
-        async (): Promise<{}> => {
-          return this._buildConnector(
-            `${installPath}/tools/mbed-cloud-connector`,
-            'mbed',
-            ['deploy'],
-            userInfo
-          )
-        }
-      )
-
-      const factoryMode = this._config.getString('PELION_MODE') == 'factory'
-      if (!factoryMode) {
-        await Utils.taskAsync(
-          'Copy mbed-cloud-connector developer credentials',
-          this._log,
-          async (): Promise<{}> => {
-            return Utils.copy(
-              this._log,
-              `${
-                agentInfo.path
-              }/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c`,
-              `${installPath}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c`,
-              userInfo
-            )
-          }
+      if (agentInfo.installed.mbedCloudConnector) {
+        await this._buildMbedCloudConnector(
+          agentInfo.path,
+          installPath,
+          userInfo
         )
       }
 
-      await Utils.taskAsync(
-        'Building mbed-cloud-connector',
-        this._log,
-        async (): Promise<{}> => {
-          const cmakeConfig = factoryMode ? 'define_factory.txt' : 'define.txt'
-          const args = (
-            'pal-platform/pal-platform.py fullbuild --target x86_x64_NativeLinux_mbedtls --toolchain GCC' +
-            ` --external ./../${cmakeConfig} --name enebular-agent-mbed-cloud-connector.elf`
-          ).split(' ')
-          return this._buildConnector(
-            `${installPath}/tools/mbed-cloud-connector`,
-            'python',
-            args,
-            userInfo
-          )
-        }
-      )
-
-      Utils.task(
-        `Verifying mbed-cloud-connector`,
-        this._log,
-        (): void => {
-          if (
-            !fs.existsSync(
-              `${installPath}/tools/mbed-cloud-connector` +
-                '/out/Release/enebular-agent-mbed-cloud-connector.elf'
-            )
-          ) {
-            throw new Error('Verifying mbed-cloud-connector failed.')
-          }
-        }
-      )
-
-      if (agentInfo.mbedCloudConnectorFCC) {
+      if (agentInfo.installed.mbedCloudConnectorFCC) {
         this._log.info(`Building mbed-cloud-connector-fcc`)
       }
     }
 
-    newAgentInfo = AgentInfo.createFromSrc(installPath)
+    newAgentInfo = AgentInfo.createFromSrc(this._system, installPath)
     this._log.debug('New agent info, after building:')
     this._log.debug(newAgentInfo)
     return newAgentInfo
@@ -401,7 +425,7 @@ export class AgentInstaller implements AgentInstallerIf {
       }
     )
 
-    return AgentInfo.createFromSrc(installPath)
+    return AgentInfo.createFromSrc(this._system, installPath)
   }
 }
 

@@ -70,8 +70,7 @@ export default class AgentUpdater {
   }
 
   private checkIfAgentDead(
-    path: string,
-    user: string,
+    serviceName: string,
     initDelay: number,
     timeout: number,
     newAgent: boolean
@@ -79,8 +78,8 @@ export default class AgentUpdater {
     return Utils.polling(
       async (): Promise<boolean> => {
         return newAgent
-          ? this._system.isNewAgentDead(path, user)
-          : this._system.isAgentDead(path, user)
+          ? this._system.isNewAgentDead(serviceName)
+          : this._system.isAgentDead(serviceName)
       },
       initDelay,
       1000,
@@ -112,8 +111,7 @@ export default class AgentUpdater {
       async (): Promise<boolean> => {
         if (
           await this.checkIfAgentDead(
-            path,
-            user,
+            serviceName,
             2000,
             this._config.getNumber('MINIMUM_CHECKING_TIME') * 1000,
             newAgent
@@ -135,7 +133,7 @@ export default class AgentUpdater {
         `enebular-agent is is already the newest version (${agentInfo.version})`
       )
     }
-    if (agentInfo.pelion) {
+    if (agentInfo.systemd && agentInfo.systemd.port == 'pelion') {
       if (agentInfo.version.lessThan(new AgentVersion(2, 4, 0))) {
         throw new Error(
           `Updating enebular-agent pelion port is only supported from version 2.4.0`
@@ -175,10 +173,10 @@ export default class AgentUpdater {
     let agentInfo
     // Detect where existing agent is
     Utils.task(
-      'Checking enebular-agent in systemd ...',
+      'Checking enebular-agent in systemd',
       this._log,
       (): boolean => {
-        agentInfo = AgentInfo.createFromSystemd(user)
+        agentInfo = AgentInfo.createFromSystemd(this._system, user)
         return true
       }
     )
@@ -201,7 +199,7 @@ export default class AgentUpdater {
         `Checking enebular-agent by path (${agentInfo.path})`,
         this._log,
         (): void => {
-          agentInfo = AgentInfo.createFromSrc(agentPath)
+          agentInfo = AgentInfo.createFromSrc(this._system, agentPath)
         }
       )
     }
@@ -216,7 +214,7 @@ export default class AgentUpdater {
 
     this._installer = this._installer
       ? this._installer
-      : new AgentInstaller(this._config, this._log)
+      : new AgentInstaller(this._config, this._log, this._system)
     let newAgentInfo = await this._installer.install(
       tarballPath,
       newAgentInstallPath,
@@ -334,7 +332,6 @@ export default class AgentUpdater {
     }
 
     this._log.info(Utils.echoGreen('Update succeed ✔'))
-    Utils.dumpAgentInfo(agentPath, user).prettyStatus(this._log)
     return true
   }
 
