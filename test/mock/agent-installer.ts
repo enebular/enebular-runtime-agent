@@ -1,49 +1,66 @@
 import AgentInfo from '../../src/agent-info'
-import AgentVerion from '../../src/agent-version'
+import AgentVersion from '../../src/agent-version'
 import { AgentInstallerIf } from '../../src/agent-installer'
-import { UserInfo } from '../../src/utils'
+import { SystemIf } from '../../src/system'
+import { UserInfo, Utils } from '../../src/utils'
 
 export default class MockAgentInstaller implements AgentInstallerIf {
   public failInstall: boolean = false
   public failBuild: boolean = false
 
+  private _system: SystemIf
+
+  public constructor(system: SystemIf) {
+    this._system = system
+  }
+
+  private fakeAgentInfo(): AgentInfo {
+    const path = 'fake-new-agent'
+    const {
+      version,
+      awsiot,
+      pelion,
+      awsiotThingCreator,
+      mbedCloudConnector,
+      mbedCloudConnectorFCC
+    } = this._system.scanAgentSource(path)
+
+    const agentVersion = AgentVersion.parse(version)
+    if (!agentVersion) {
+      throw new Error(`enebular-agent version is invalid: ${version}`)
+    }
+
+    return new AgentInfo(
+      path,
+      agentVersion,
+      awsiot,
+      pelion,
+      awsiotThingCreator,
+      mbedCloudConnector,
+      mbedCloudConnectorFCC,
+      Utils.getSupportedNodeJSVersion(version),
+    )
+  }
+
   public async install(
-    cachePath: string,
+    tallball: string,
     installPath: string,
     userInfo: UserInfo
   ): Promise<AgentInfo> {
     if (this.failInstall) {
       throw new Error('Agent Install failed.')
     }
-    return new AgentInfo(
-      'path',
-      new AgentVerion(10000, 0, 2),
-      true,
-      false,
-      true,
-      true,
-      true,
-      'v9.2.1'
-    )
+    return this.fakeAgentInfo()
   }
   public async build(
     agentInfo: AgentInfo,
-    installPath: string,
+    newAgentInfo: AgentInfo,
     userInfo: UserInfo
   ): Promise<AgentInfo> {
     if (this.failBuild) {
       throw new Error('Agent Build failed.')
     }
 
-    return new AgentInfo(
-      'path',
-      new AgentVerion(10000, 0, 2),
-      true,
-      false,
-      true,
-      true,
-      true,
-      'v9.2.1'
-    )
+    return this.fakeAgentInfo()
   }
 }

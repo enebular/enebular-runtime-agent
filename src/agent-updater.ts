@@ -130,7 +130,7 @@ export default class AgentUpdater {
       !this._config.getBoolean('FORCE_UPDATE')
     ) {
       throw new Error(
-        `enebular-agent is is already the newest version (${agentInfo.version})`
+        `enebular-agent is already the newest version (${agentInfo.version})`
       )
     }
     if (agentInfo.systemd && agentInfo.systemd.port == 'pelion') {
@@ -215,7 +215,7 @@ export default class AgentUpdater {
     this._installer = this._installer
       ? this._installer
       : new AgentInstaller(this._config, this._log, this._system)
-    let newAgentInfo = await this._installer.install(
+    const newAgentInfo = await this._installer.install(
       tarballPath,
       newAgentInstallPath,
       userInfo
@@ -223,9 +223,9 @@ export default class AgentUpdater {
 
     this._preupdateCheck(newAgentInfo, agentInfo)
 
-    newAgentInfo = await this._installer.build(
+    await this._installer.build(
       agentInfo,
-      newAgentInstallPath,
+      newAgentInfo,
       userInfo
     )
 

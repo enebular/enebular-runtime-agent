@@ -8,9 +8,10 @@ export default class Mockhelper {
     installer: MockAgentInstaller,
     migrator: MockMigrator,
   }{
+    const system = new MockSystem()
     return {
-      system: new MockSystem(),
-      installer: new MockAgentInstaller(),
+      system,
+      installer: new MockAgentInstaller(system),
       migrator: new MockMigrator()
     }
   }

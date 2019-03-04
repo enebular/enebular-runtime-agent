@@ -29,6 +29,9 @@ export default class MockSystem implements SystemIf {
   public serviceIsActive = true
   public serviceIsFailed = false
 
+  public throwsWhenScanOriginalAgent = false
+  public throwsWhenScanNewAgent = false
+
   public path = '/tmp/enebular-agent-test-virtual'
   public port = 'awsiot'
   public user = 'enebular'
@@ -139,6 +142,7 @@ export default class MockSystem implements SystemIf {
       agentPort: this.port
     }
   }
+
   public getAgentUserFromSystemd(serviceName: string): string {
     return this.user
   }
@@ -153,8 +157,19 @@ export default class MockSystem implements SystemIf {
     mbedCloudConnector: boolean
     mbedCloudConnectorFCC: boolean
   } {
+    let agentVersion
+    if (path == 'fake-new-agent') {
+      if (this.throwsWhenScanNewAgent)
+        throw new Error('Scan new agent source return error')
+      agentVersion = this.newVersion
+    }
+    else {
+      if (this.throwsWhenScanOriginalAgent)
+        throw new Error('Scan agent source return error')
+      agentVersion = this.version
+    }
     return {
-      version: this.version,
+      version: agentVersion,
       awsiot: true,
       pelion: true,
       awsiotThingCreator: true,

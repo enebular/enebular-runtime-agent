@@ -14,15 +14,15 @@ import Log from './log'
 
 export interface AgentInstallerIf {
   install(
-    cachePath: string,
+    tallball: string,
     installPath: string,
     userInfo: UserInfo
   ): Promise<AgentInfo>
   build(
     agentInfo: AgentInfo,
-    installPath: string,
+    newAgentInfo: AgentInfo,
     userInfo: UserInfo
-  ): Promise<AgentInfo>
+  ): Promise<void>
 }
 
 export class AgentInstaller implements AgentInstallerIf {
@@ -321,14 +321,10 @@ export class AgentInstaller implements AgentInstallerIf {
 
   public async build(
     agentInfo: AgentInfo,
-    installPath: string,
+    newAgentInfo: AgentInfo,
     userInfo: UserInfo
-  ): Promise<AgentInfo> {
-    this._log.debug('Current agent info:')
-    this._log.debug(agentInfo)
-    let newAgentInfo = AgentInfo.createFromSrc(this._system, installPath)
-    this._log.debug('New agent info, before building:')
-    this._log.debug(newAgentInfo)
+  ): Promise<void> {
+    const installPath = newAgentInfo.path
     const nodejsPath = path.resolve(
       `/home/${userInfo.user}/nodejs-${newAgentInfo.nodejsVersion}`
     )
@@ -387,15 +383,10 @@ export class AgentInstaller implements AgentInstallerIf {
         this._log.info(`Building mbed-cloud-connector-fcc`)
       }
     }
-
-    newAgentInfo = AgentInfo.createFromSrc(this._system, installPath)
-    this._log.debug('New agent info, after building:')
-    this._log.debug(newAgentInfo)
-    return newAgentInfo
   }
 
   public async install(
-    cachePath: string,
+    tallball: string,
     installPath: string,
     userInfo: UserInfo
   ): Promise<AgentInfo> {
@@ -406,7 +397,7 @@ export class AgentInstaller implements AgentInstallerIf {
         if (
           !(await this._fetchWithRetry(
             this._config.getString('ENEBULAR_AGENT_DOWNLOAD_URL'),
-            cachePath,
+            tallball,
             userInfo
           ))
         ) {
@@ -420,7 +411,7 @@ export class AgentInstaller implements AgentInstallerIf {
       'Extracting new agent',
       this._log,
       async (): Promise<boolean> => {
-        await this._extract(cachePath, installPath, userInfo)
+        await this._extract(tallball, installPath, userInfo)
         return true
       }
     )
