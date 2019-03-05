@@ -235,17 +235,79 @@ export class AgentInstaller implements AgentInstallerIf {
     )
   }
 
+  private async _buildMbedCloudConnectorFCC(
+    agentPath: string,
+    installPath: string,
+    userInfo: UserInfo
+  ): Promise<void> {
+    const fccPath = `${installPath}/tools/mbed-cloud-connector-fcc`
+    await Utils.taskAsync(
+      'Configuring mbed-cloud-connector-fcc',
+      this._log,
+      async (): Promise<{}> => {
+        return this._buildConnector(
+          fccPath,
+          'mbed',
+          ['config', 'root', '.'],
+          userInfo
+        )
+      }
+    )
+
+    await Utils.taskAsync(
+      'Deploying mbed-cloud-connector-fcc (mbed)',
+      this._log,
+      async (): Promise<{}> => {
+        return this._buildConnector(fccPath, 'mbed', ['deploy'], userInfo)
+      }
+    )
+
+    await Utils.taskAsync(
+      'Deploying mbed-cloud-connector-fcc (platform)',
+      this._log,
+      async (): Promise<{}> => {
+        const args = (
+          'pal-platform/pal-platform.py -v deploy --target=x86_x64_NativeLinux_mbedtls generate'
+        ).split(' ')
+        return this._buildConnector(fccPath, 'python', args, userInfo)
+      }
+    )
+
+    await Utils.taskAsync(
+      'Building mbed-cloud-connector-fcc',
+      this._log,
+      async (): Promise<{}> => {
+        return this._buildConnector(fccPath, './build-linux-release.sh', [], userInfo)
+      }
+    )
+
+    Utils.task(
+      `Verifying mbed-cloud-connector`,
+      this._log,
+      (): void => {
+        if (
+          !fs.existsSync(
+            fccPath + '/__x86_x64_NativeLinux_mbedtls/Release/factory-configurator-client-enebular.elf'
+          )
+        ) {
+          throw new Error('Verifying mbed-cloud-connector-fcc failed.')
+        }
+      }
+    )
+  }
+
   private async _buildMbedCloudConnector(
     agentPath: string,
     installPath: string,
     userInfo: UserInfo
   ): Promise<void> {
+    const connectorPath = `${installPath}/tools/mbed-cloud-connector`
     await Utils.taskAsync(
       'Configuring mbed-cloud-connector',
       this._log,
       async (): Promise<{}> => {
         return this._buildConnector(
-          `${installPath}/tools/mbed-cloud-connector`,
+          connectorPath,
           'mbed',
           ['config', 'root', '.'],
           userInfo
@@ -257,12 +319,7 @@ export class AgentInstaller implements AgentInstallerIf {
       'Deploying mbed-cloud-connector',
       this._log,
       async (): Promise<{}> => {
-        return this._buildConnector(
-          `${installPath}/tools/mbed-cloud-connector`,
-          'mbed',
-          ['deploy'],
-          userInfo
-        )
+        return this._buildConnector(connectorPath, 'mbed', ['deploy'], userInfo)
       }
     )
 
@@ -291,12 +348,7 @@ export class AgentInstaller implements AgentInstallerIf {
           'pal-platform/pal-platform.py fullbuild --target x86_x64_NativeLinux_mbedtls --toolchain GCC' +
           ` --external ./../${cmakeConfig} --name enebular-agent-mbed-cloud-connector.elf`
         ).split(' ')
-        return this._buildConnector(
-          `${installPath}/tools/mbed-cloud-connector`,
-          'python',
-          args,
-          userInfo
-        )
+        return this._buildConnector(connectorPath, 'python', args, userInfo)
       }
     )
 
@@ -306,7 +358,7 @@ export class AgentInstaller implements AgentInstallerIf {
       (): void => {
         if (
           !fs.existsSync(
-            `${installPath}/tools/mbed-cloud-connector` +
+            connectorPath +
               '/out/Release/enebular-agent-mbed-cloud-connector.elf'
           )
         ) {
@@ -417,7 +469,11 @@ export class AgentInstaller implements AgentInstallerIf {
       }
 
       if (agentInfo.installed.mbedCloudConnectorFCC) {
-        this._log.info(`Building mbed-cloud-connector-fcc`)
+        await this._buildMbedCloudConnectorFCC(
+          agentInfo.path,
+          installPath,
+          userInfo
+        )
       }
     }
   }

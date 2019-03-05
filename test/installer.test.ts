@@ -16,6 +16,5 @@ test('Installer.1: ', async t => {
   system.newAgent.nodejsVersion = 'v9.2.0'
 
   const updater = new AgentUpdater(system, undefined, migrator)
-  const error = await t.throwsAsync(updater.update())
-  t.true(error.message.startsWith('Agent Install failed'))
+  await t.notThrowsAsync(updater.update())
 })
