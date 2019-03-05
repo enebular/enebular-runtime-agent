@@ -43,6 +43,7 @@ export interface SystemIf {
     mbedCloudConnectorFCC: boolean
   }
   getSupportedNodeJSVersion(agentVersion: AgentVersion): string
+  installDebianPackages(packages: string[]): Promise<void>
 }
 
 export class System implements SystemIf {
@@ -239,6 +240,21 @@ export class System implements SystemIf {
     switch (agentVersion.toString()) {
       default:
         return 'v9.2.1'
+    }
+  }
+
+  public async installDebianPackages(packages: string[]): Promise<void> {
+    for (let i = 0; i < packages.length; i++) {
+      const ret = Utils.execReturnStdout(
+        "dpkg-query --show --showformat='${db:Status-Status}\n' " + packages[i]
+      )
+      if (ret && ret.startsWith('installed')) continue
+
+      try {
+        await Utils.spawn('apt-get', ['-y', 'install', packages[i]], this._log)
+      } catch (err) {
+        throw new Error(`Failed to install ${packages[i]}:\n${err.message}`)
+      }
     }
   }
 }

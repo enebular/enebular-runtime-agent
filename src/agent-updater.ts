@@ -130,7 +130,9 @@ export default class AgentUpdater {
       !this._config.getBoolean('FORCE_UPDATE')
     ) {
       throw new Error(
-        `enebular-agent is already the newest version (${agentInfo.version})`
+        `enebular-agent is already the newest version (${
+          agentInfo.version
+        } => ${newAgentInfo.version})`
       )
     }
     if (agentInfo.systemd && agentInfo.systemd.port == 'pelion') {
@@ -193,7 +195,7 @@ export default class AgentUpdater {
       }
     }
 
-    const agentPath: string = agentInfo.path
+    const agentPath = agentInfo.path
     if (agentInfo.path != agentInfo.systemd.path) {
       Utils.task(
         `Checking enebular-agent by path (${agentInfo.path})`,
@@ -208,30 +210,24 @@ export default class AgentUpdater {
 
     // download and build new version
     const userInfo = Utils.getUserInfo(user)
-    const tarballPath = '/tmp/enebular-runtime-agent-' + Utils.randomString()
     const newAgentDirName = 'enebular-runtime-agent.new'
-    const newAgentInstallPath = path.resolve(agentPath, `../${newAgentDirName}`)
-
+    const cachePath = `/home/${user}`
+    const newAgentInstallPath = path.resolve(cachePath, `./${newAgentDirName}`)
     this._installer = this._installer
       ? this._installer
       : new AgentInstaller(this._config, this._log, this._system)
     const newAgentInfo = await this._installer.install(
-      tarballPath,
       newAgentInstallPath,
       userInfo
     )
 
     this._preupdateCheck(newAgentInfo, agentInfo)
 
-    await this._installer.build(
-      agentInfo,
-      newAgentInfo,
-      userInfo
-    )
+    await this._installer.build(agentInfo, newAgentInfo, userInfo)
 
     const serviceName = agentInfo.systemd.serviceName
     const oldAgentDirName = 'enebular-runtime-agent.old'
-    const oldAgentBackupPath = path.resolve(agentPath, `../${oldAgentDirName}`)
+    const oldAgentBackupPath = path.resolve(cachePath, `./${oldAgentDirName}`)
     let switched = false
 
     // setup and switch to the new agent
@@ -256,6 +252,7 @@ export default class AgentUpdater {
           userInfo
         )
       }
+      // TODO: handle nodejs difference in systemd
       await this._migrator.migrate()
 
       await Utils.taskAsync(

@@ -1,6 +1,6 @@
 import * as fs from 'fs'
+import * as os from 'os'
 
-import Log from '../../src/log'
 import { SystemIf } from '../../src/system'
 import AgentVersion from '../../src/agent-version'
 
@@ -35,14 +35,14 @@ export default class MockSystem implements SystemIf {
 
   public path = '/tmp/enebular-agent-test-virtual'
   public port = 'awsiot'
-  public user = 'enebular'
+  public user = os.userInfo().username
   public agent = {
     version: '1.0.0',
-    nodejsVersion: '9.2.1'
+    nodejsVersion: 'v9.2.1'
   }
   public newAgent = {
     version: '1.0.1',
-    nodejsVersion: '9.2.1'
+    nodejsVersion: 'v9.2.1'
   }
 
   public constructor() {
@@ -52,7 +52,9 @@ export default class MockSystem implements SystemIf {
   }
 
   public getSupportedNodeJSVersion(agentVersion: AgentVersion): string {
-    return agentVersion.toString() == this.agent.version ? this.agent.nodejsVersion : this.newAgent.nodejsVersion
+    return agentVersion.toString() == this.agent.version
+      ? this.agent.nodejsVersion
+      : this.newAgent.nodejsVersion
   }
 
   public getServiceLogIgnoreError(serviceName: string, lines: number): string {
@@ -129,25 +131,24 @@ export default class MockSystem implements SystemIf {
   }
 
   public isServiceRegistered(serviceName: string): boolean {
-    return this.serviceIsRegistered 
+    return this.serviceIsRegistered
   }
 
   public isServiceEnabled(serviceName: string): boolean {
-    return this.serviceIsEnabled 
+    return this.serviceIsEnabled
   }
 
   public isServiceActive(serviceName: string): boolean {
-    return this.serviceIsActive 
+    return this.serviceIsActive
   }
 
   public isServiceFailed(serviceName: string): boolean {
-    return this.serviceIsFailed 
+    return this.serviceIsFailed
   }
 
   public getAgentPathAndPortFromSystemd(
     serviceName: string
   ): { agentPath: string; agentPort: string } {
-
     return {
       agentPath: this.path,
       agentPort: this.port
@@ -169,12 +170,11 @@ export default class MockSystem implements SystemIf {
     mbedCloudConnectorFCC: boolean
   } {
     let agentVersion
-    if (path == 'fake-new-agent') {
+    if (path == 'fake-new-agent' || path.indexOf('.new') > -1) {
       if (this.throwsWhenScanNewAgent)
         throw new Error('Scan new agent source return error')
       agentVersion = this.newAgent.version
-    }
-    else {
+    } else {
       if (this.throwsWhenScanOriginalAgent)
         throw new Error('Scan agent source return error')
       agentVersion = this.agent.version
@@ -185,7 +185,9 @@ export default class MockSystem implements SystemIf {
       pelion: true,
       awsiotThingCreator: true,
       mbedCloudConnector: true,
-      mbedCloudConnectorFCC: true,
+      mbedCloudConnectorFCC: true
     }
   }
+
+  public async installDebianPackages(packages: string[]): Promise<void> {}
 }

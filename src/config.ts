@@ -73,6 +73,11 @@ export default class Config {
         value: true,
         description: 'Updater has to be run by privileged user or not',
         userExpose: false
+      },
+      NODE_JS_DOWNLOAD_BASE_URL: {
+        value: 'https://nodejs.org/dist',
+        description: 'NodeJS download base URL',
+        userExpose: true
       }
     }
   }

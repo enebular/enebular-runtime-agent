@@ -4,10 +4,10 @@ import MockMigrator from '../mock/migrator'
 
 export default class Mockhelper {
   public static createDefaultMocks(): {
-    system: MockSystem,
-    installer: MockAgentInstaller,
-    migrator: MockMigrator,
-  }{
+    system: MockSystem
+    installer: MockAgentInstaller
+    migrator: MockMigrator
+  } {
     const system = new MockSystem()
     return {
       system,
@@ -16,5 +16,3 @@ export default class Mockhelper {
     }
   }
 }
-
-

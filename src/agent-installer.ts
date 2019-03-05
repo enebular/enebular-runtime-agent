@@ -2,6 +2,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as util from 'util'
 import * as rimraf from 'rimraf'
+import * as os from 'os'
 import checkDiskSpace from 'check-disk-space'
 import request from 'request'
 import progress from 'request-progress'
@@ -13,11 +14,7 @@ import { SystemIf } from './system'
 import Log from './log'
 
 export interface AgentInstallerIf {
-  install(
-    tallball: string,
-    installPath: string,
-    userInfo: UserInfo
-  ): Promise<AgentInfo>
+  install(installPath: string, userInfo: UserInfo): Promise<AgentInfo>
   build(
     agentInfo: AgentInfo,
     newAgentInfo: AgentInfo,
@@ -319,6 +316,41 @@ export class AgentInstaller implements AgentInstallerIf {
     )
   }
 
+  private async _installFromURL(
+    url: string,
+    tallballPath: string,
+    installPath: string,
+    userInfo: UserInfo
+  ): Promise<void> {
+    await Utils.taskAsync(
+      'Fetching new agent',
+      this._log,
+      async (): Promise<boolean> => {
+        if (!(await this._fetchWithRetry(url, tallballPath, userInfo))) {
+          throw new Error(`Failed to fetch agent`)
+        }
+        return true
+      }
+    )
+
+    await Utils.taskAsync(
+      'Extracting new agent',
+      this._log,
+      async (): Promise<boolean> => {
+        await this._extract(tallballPath, installPath, userInfo)
+        return true
+      }
+    )
+  }
+
+  private _getNodeJSDownloadURL(version: string): string {
+    const arch = os.arch() == 'x32' ? 'x86' : os.arch()
+    const platform = os.platform()
+    return `${this._config.getString(
+      'NODE_JS_DOWNLOAD_BASE_URL'
+    )}/${version}/node-${version}-${platform}-${arch}.tar.gz`
+  }
+
   public async build(
     agentInfo: AgentInfo,
     newAgentInfo: AgentInfo,
@@ -329,13 +361,18 @@ export class AgentInstaller implements AgentInstallerIf {
       `/home/${userInfo.user}/nodejs-${newAgentInfo.nodejsVersion}`
     )
     if (!fs.existsSync(nodejsPath)) {
-      // TODO: install nodejs
       this._log.info(
         `Installing nodejs-${newAgentInfo.nodejsVersion} to ${nodejsPath} ...`
       )
+      await this._installFromURL(
+        this._getNodeJSDownloadURL(newAgentInfo.nodejsVersion),
+        '/tmp/nodejs-' + Utils.randomString(),
+        nodejsPath,
+        userInfo
+      )
     }
 
-    // TODO: install dependencies
+    await this._system.installDebianPackages(['build-essential', 'tree'])
 
     this._npmBuildEnv['PATH'] = `${nodejsPath}/bin:${process.env['PATH']}`
     await Utils.taskAsync(
@@ -359,7 +396,7 @@ export class AgentInstaller implements AgentInstallerIf {
     }
 
     if (agentInfo.installed.pelion) {
-      // TODO: install dependencies
+      await this._system.installDebianPackages(['git', 'cmake', 'python-pip'])
       await Utils.taskAsync(
         'Building pelion port ',
         this._log,
@@ -386,36 +423,15 @@ export class AgentInstaller implements AgentInstallerIf {
   }
 
   public async install(
-    tallball: string,
     installPath: string,
     userInfo: UserInfo
   ): Promise<AgentInfo> {
-    await Utils.taskAsync(
-      'Fetching new agent',
-      this._log,
-      async (): Promise<boolean> => {
-        if (
-          !(await this._fetchWithRetry(
-            this._config.getString('ENEBULAR_AGENT_DOWNLOAD_URL'),
-            tallball,
-            userInfo
-          ))
-        ) {
-          throw new Error(`Failed to fetch agent`)
-        }
-        return true
-      }
+    await this._installFromURL(
+      this._config.getString('ENEBULAR_AGENT_DOWNLOAD_URL'),
+      '/tmp/enebular-runtime-agent-' + Utils.randomString(),
+      installPath,
+      userInfo
     )
-
-    await Utils.taskAsync(
-      'Extracting new agent',
-      this._log,
-      async (): Promise<boolean> => {
-        await this._extract(tallball, installPath, userInfo)
-        return true
-      }
-    )
-
     return AgentInfo.createFromSrc(this._system, installPath)
   }
 }

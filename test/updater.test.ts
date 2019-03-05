@@ -1,16 +1,13 @@
+import * as os from 'os'
 import test from 'ava'
-import Config from '../src/config'
-import Log from '../src/log'
 import AgentUpdater from '../src/agent-updater'
-import MockSystem from './mock/system'
-import MockAgentInstaller from './mock/agent-installer'
-import MockMigrator from './mock/migrator'
 import Mockhelper from './helper/mock-helper'
 
-test.before(t => {
+test.before(() => {
   process.env['ROOT_REQUIRED'] = 'false'
   process.env['DEBUG'] = 'debug'
   process.env['MINIMUM_CHECKING_TIME'] = '2'
+  process.env['ENEBULAR_AGENT_USER'] = os.userInfo().username
 })
 
 test('Updater.1: Throws if install fail', async t => {
@@ -249,14 +246,18 @@ test.serial(
 
     let updater = new AgentUpdater(system, installer, migrator)
     let error = await t.throwsAsync(updater.update())
-    t.true(error.message.startsWith('enebular-agent is already the newest version'))
+    t.true(
+      error.message.startsWith('enebular-agent is already the newest version')
+    )
 
     system.agent.version = '2.0.1'
     system.newAgent.version = '2.0.0'
 
     updater = new AgentUpdater(system, installer, migrator)
     error = await t.throwsAsync(updater.update())
-    t.true(error.message.startsWith('enebular-agent is already the newest version'))
+    t.true(
+      error.message.startsWith('enebular-agent is already the newest version')
+    )
   }
 )
 
@@ -270,7 +271,11 @@ test.serial(
 
     const updater = new AgentUpdater(system, installer, migrator)
     const error = await t.throwsAsync(updater.update())
-    t.true(error.message.startsWith('Updating enebular-agent pelion port is only supported from version 2.4.0'))
+    t.true(
+      error.message.startsWith(
+        'Updating enebular-agent pelion port is only supported from version 2.4.0'
+      )
+    )
   }
 )
 
@@ -284,7 +289,11 @@ test.serial(
 
     let updater = new AgentUpdater(system, installer, migrator)
     let error = await t.throwsAsync(updater.update())
-    t.true(error.message.startsWith('Updating enebular-agent pelion port in 2.4.0 requires to set --pelion-mode'))
+    t.true(
+      error.message.startsWith(
+        'Updating enebular-agent pelion port in 2.4.0 requires to set --pelion-mode'
+      )
+    )
 
     process.env['PELION_MODE'] = 'factory'
     updater = new AgentUpdater(system, installer, migrator)
@@ -292,21 +301,18 @@ test.serial(
   }
 )
 
-test.serial(
-  'Updater.15: Handles agent source scan failure',
-  async t => {
-    const { system, installer, migrator } = Mockhelper.createDefaultMocks()
-    system.throwsWhenScanOriginalAgent = true
+test.serial('Updater.15: Handles agent source scan failure', async t => {
+  const { system, installer, migrator } = Mockhelper.createDefaultMocks()
+  system.throwsWhenScanOriginalAgent = true
 
-    let updater = new AgentUpdater(system, installer, migrator)
-    let error = await t.throwsAsync(updater.update())
-    t.true(error.message.startsWith('Scan agent source return error'))
+  let updater = new AgentUpdater(system, installer, migrator)
+  let error = await t.throwsAsync(updater.update())
+  t.true(error.message.startsWith('Scan agent source return error'))
 
-    system.throwsWhenScanOriginalAgent = false
-    system.throwsWhenScanNewAgent = true
+  system.throwsWhenScanOriginalAgent = false
+  system.throwsWhenScanNewAgent = true
 
-    updater = new AgentUpdater(system, installer, migrator)
-    error = await t.throwsAsync(updater.update())
-    t.true(error.message.startsWith('Scan new agent source return error'))
-  }
-)
+  updater = new AgentUpdater(system, installer, migrator)
+  error = await t.throwsAsync(updater.update())
+  t.true(error.message.startsWith('Scan new agent source return error'))
+})

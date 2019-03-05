@@ -38,12 +38,11 @@ export default class MockAgentInstaller implements AgentInstallerIf {
       awsiotThingCreator,
       mbedCloudConnector,
       mbedCloudConnectorFCC,
-      this._system.getSupportedNodeJSVersion(agentVersion),
+      this._system.getSupportedNodeJSVersion(agentVersion)
     )
   }
 
   public async install(
-    tallball: string,
     installPath: string,
     userInfo: UserInfo
   ): Promise<AgentInfo> {
