@@ -22,7 +22,7 @@ export default class ThingCreator {
     this._awsAccessKeyId = config.awsAccessKeyId
     this._awsSecretAccessKey = config.awsSecretAccessKey
     this._awsIotRegion = config.awsIotRegion
-    this._disableRuleCreation = (config.disableRuleCreation == 'true')
+    this._disableRuleCreation = config.disableRuleCreation === 'true'
   }
 
   async _attachPolicy(
@@ -54,7 +54,10 @@ export default class ThingCreator {
           `./role-policies/${policyName}.json`,
           'utf8'
         )
-        policyDocument = policyDocument.replace('<$$TOPIC_ARN_BASE$$>', iotArnBase)
+        policyDocument = policyDocument.replace(
+          '<$$TOPIC_ARN_BASE$$>',
+          iotArnBase
+        )
         const ret = await iam
           .createPolicy({
             PolicyName: policyName,
@@ -156,7 +159,9 @@ export default class ThingCreator {
       endPoint = await iot.describeEndpoint().promise()
     } catch (err) {
       throw new Error(
-        'Get AWS IoT unique endpoint failed. Please check your aws iot configuration.'
+        `Get AWS IoT unique endpoint failed. Please check your aws iot configuration, reason:\n${
+          err.message
+        }`
       )
     }
 
@@ -166,7 +171,9 @@ export default class ThingCreator {
         .createKeysAndCertificate({ setAsActive: true })
         .promise()
     } catch (err) {
-      throw new Error('Create key pairs and certificate failed.')
+      throw new Error(
+        `Create key pairs and certificate failed, reason:\n${err.message}`
+      )
     }
 
     const policyName = 'enebular_policy'
@@ -182,7 +189,7 @@ export default class ThingCreator {
           })
           .promise()
       } catch (err) {
-        throw new Error('Failed to create policy.')
+        throw new Error(`Failed to create policy, reason:\n${err.message}`)
       }
     }
 
@@ -194,14 +201,16 @@ export default class ThingCreator {
         })
         .promise()
     } catch (err) {
-      throw new Error('Attach policy to certificate failed.')
+      throw new Error(
+        `Attach policy to certificate failed, reason:\n${err.message}`
+      )
     }
 
     let thingRet
     try {
       thingRet = await iot.createThing({ thingName: thingName }).promise()
     } catch (err) {
-      throw new Error('Create thing failed.')
+      throw new Error(`Create thing failed, reason:\n${err.message}`)
     }
 
     try {
@@ -212,7 +221,9 @@ export default class ThingCreator {
         })
         .promise()
     } catch (err) {
-      throw new Error('Attach thing to certificate failed.')
+      throw new Error(
+        `Attach thing to certificate failed, reason:\n${err.message}`
+      )
     }
 
     if (!this._disableRuleCreation) {
