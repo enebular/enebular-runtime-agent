@@ -14,14 +14,14 @@ export default class CopyMigration extends Migration {
     migrator: Migrator,
     optional = false
   ) {
-    super(name, 'copy', optional)
+    super(name, optional)
     this._name = name
     this._migrator = migrator
-    this._copyFrom = migrator.migrateConfig[copyFrom]
-    this._copyTo = migrator.migrateConfig[copyTo]
+    this._copyFrom = copyFrom
+    this._copyTo = copyTo
   }
 
-  public async _do(): Promise<{}> {
+  public async _do(): Promise<void> {
     return Utils.copy(
       this._migrator.log,
       `${this._copyFrom}/${this._name}`,

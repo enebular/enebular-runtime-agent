@@ -39,11 +39,11 @@ export default class MockSystem implements SystemIf {
   public port = 'awsiot'
   public user = os.userInfo().username
   public agent = {
-    version: '1.0.0',
+    version: '2.3.0',
     nodejsVersion: 'v9.2.1'
   }
   public newAgent = {
-    version: '1.0.1',
+    version: '2.4.0',
     nodejsVersion: 'v9.2.1'
   }
 

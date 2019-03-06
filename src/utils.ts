@@ -33,7 +33,7 @@ export class Utils {
       uid?: number
       gid?: number
     }
-  ): Promise<{}> {
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
       const ops = options
         ? Object.assign({ stdio: 'pipe' }, options)
@@ -185,7 +185,7 @@ export class Utils {
     log: Log,
     path: string,
     userInfo?: UserInfo
-  ): Promise<{}> {
+  ): Promise<void> {
     return Utils.spawn(
       'mkdir',
       ['-p', path],
@@ -204,7 +204,7 @@ export class Utils {
     src?: string,
     dst?: string,
     userInfo?: UserInfo
-  ): Promise<{}> {
+  ): Promise<void> {
     if (!src || !dst) {
       throw new Error(
         `Failed to copy, src (${src}) and dst (${dst}) must be set`

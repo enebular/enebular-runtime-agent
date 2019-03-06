@@ -8,10 +8,12 @@ import Log from './log'
 import Migration from './migration/migration'
 import CopyMigration from './migration/copy-migration'
 import AwsiotConfigMigration from './migration/awsiot-config-migration'
+import NodeJSMigration from './migration/nodejs-migration'
 import { SystemIf } from './system'
 
 export interface MigratorIf {
   migrate(): Promise<void>
+  reverse(): Promise<void>
 }
 
 export interface Migrations {
@@ -37,6 +39,7 @@ export class Migrator implements MigratorIf {
   private _newAgentInfo: AgentInfo
   private _system: SystemIf
   private _upgrade: boolean
+  private _migrations: Migrations = {}
 
   public constructor(
     system: SystemIf,
@@ -81,6 +84,10 @@ export class Migrator implements MigratorIf {
     return this._userInfo
   }
 
+  public get system(): SystemIf {
+    return this._system
+  }
+
   public get migrateConfig(): MigrateConfig {
     return this._migrateConfig
   }
@@ -114,78 +121,90 @@ export class Migrator implements MigratorIf {
   }
 
   public async migrate(): Promise<void> {
-    let migrations: Migrations = {
+    this._migrations = {
       '.enebular-config.json': new CopyMigration(
         '.enebular-config.json',
-        'portBasePath',
-        'newPortBasePath',
+        this._migrateConfig['portBasePath'],
+        this._migrateConfig['newPortBasePath'],
         this,
         true // might not be created yet
       ),
       '.node-red-config': new CopyMigration(
         '.node-red-config',
-        'nodeRedPath',
-        'newNodeRedPath',
+        this._migrateConfig['nodeRedPath'],
+        this._migrateConfig['newNodeRedPath'],
         this
       ),
       '.enebular-assets.json': new CopyMigration(
         '.enebular-assets.json',
-        'portBasePath',
-        'newPortBasePath',
+        this._migrateConfig['portBasePath'],
+        this._migrateConfig['newPortBasePath'],
         this,
         true // might not be created yet
       ),
       assets: new CopyMigration(
         'assets',
-        'portBasePath',
-        'newPortBasePath',
+        this._migrateConfig['portBasePath'],
+        this._migrateConfig['newPortBasePath'],
         this,
         true // might not be created yet
       )
     }
     if (this._migrateConfig.port == 'awsiot') {
-      migrations['config.json'] = new AwsiotConfigMigration(
+      this._migrations['config.json'] = new AwsiotConfigMigration(
         'config.json',
-        'portBasePath',
-        'newPortBasePath',
+        this._migrateConfig['portBasePath'],
+        this._migrateConfig['newPortBasePath'],
         this
       )
     }
     if (this._migrateConfig.port == 'pelion') {
-      migrations['.pelion-connector'] = new CopyMigration(
+      this._migrations['.pelion-connector'] = new CopyMigration(
         '.pelion-connector',
-        'portBasePath',
-        'newPortBasePath',
+        this._migrateConfig['portBasePath'],
+        this._migrateConfig['newPortBasePath'],
         this
       )
     }
     if (this._agentInfo.nodejsVersion !== this._newAgentInfo.nodejsVersion) {
-      Utils.task(
-        `Updating NodeJS version in systemd`,
-        this._log,
-        (): void => {
-          this._system.updateNodeJSVersionInSystemd(
-            this._userInfo.user,
-            this._agentInfo.nodejsVersion,
-            this._newAgentInfo.nodejsVersion
-          )
-        }
+      this._migrations['nodejs'] = new NodeJSMigration(
+        `nodejs ${this._agentInfo.nodejsVersion} => ${
+          this._newAgentInfo.nodejsVersion
+        }`,
+        this._agentInfo.nodejsVersion,
+        this._newAgentInfo.nodejsVersion,
+        this
       )
     }
 
-    await this._applyMigrationFiles(migrations)
+    await this._applyMigrationFiles(this._migrations)
 
-    for (const migrationObject of Object.entries(migrations)) {
-      const name = migrationObject[0]
+    for (const migrationObject of Object.entries(this._migrations)) {
       const migration = migrationObject[1]
       await Utils.taskAsync(
-        `Migrating ${name}`,
+        `Migrating ${migration.name}`,
         this._log,
-        async (): Promise<{}> => {
+        async (): Promise<void> => {
           return migration._do()
         },
         migration.optional
       )
+    }
+  }
+
+  public async reverse(): Promise<void> {
+    for (const migrationObject of Object.entries(this._migrations)) {
+      const migration = migrationObject[1]
+      if (migration.reverse) {
+        await Utils.taskAsync(
+          `[RESTORE] Migration ${migration.name}`,
+          this._log,
+          async (): Promise<void> => {
+            if (migration.reverse) migration.reverse()
+          },
+          migration.optional
+        )
+      }
     }
   }
 }

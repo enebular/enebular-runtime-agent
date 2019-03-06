@@ -1,6 +1,7 @@
 import * as path from 'path'
 import * as os from 'os'
 import * as fs from 'fs'
+import * as rimraf from 'rimraf'
 import test from 'ava'
 import AgentUpdater from '../src/agent-updater'
 import Mockhelper from './helper/mock-helper'
@@ -20,6 +21,17 @@ test('Migrator.1: migrate awsiot port', async t => {
 
   const updater = new AgentUpdater(system, installer, undefined)
   await t.notThrowsAsync(updater.update())
+
+  t.true(fs.existsSync(`${system.newPath}/node-red/.node-red-config`))
+  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/.enebular-config.json`))
+  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/.enebular-assets.json`))
+  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/assets`))
+  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/config.json`))
+  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/certs/ca-cert`))
+  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/certs/client-cert`))
+  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/certs/private-key`))
+
+  rimraf.sync(system.newPath)
 })
 
 test('Migrator.2: migrate pelion port', async t => {
@@ -31,6 +43,13 @@ test('Migrator.2: migrate pelion port', async t => {
 
   const updater = new AgentUpdater(system, installer, undefined)
   await t.notThrowsAsync(updater.update())
+
+  t.true(fs.existsSync(`${system.newPath}/node-red/.node-red-config`))
+  t.true(fs.existsSync(`${system.newPath}/ports/pelion/.enebular-config.json`))
+  t.true(fs.existsSync(`${system.newPath}/ports/pelion/.enebular-assets.json`))
+  t.true(fs.existsSync(`${system.newPath}/ports/pelion/assets`))
+  t.true(fs.existsSync(`${system.newPath}/ports/pelion/.pelion-connector`))
+  rimraf.sync(system.newPath)
 })
 
 test('Migrator.3: migrator handles nodejs version change in systemd', async t => {
@@ -44,6 +63,20 @@ test('Migrator.3: migrator handles nodejs version change in systemd', async t =>
   t.true(
     fs
       .readFileSync(updater.getLogFilePath(), 'utf8')
-      .indexOf('Updating NodeJS version in systemd') > -1
+      .indexOf('Migrating nodejs') > -1
   )
+})
+
+test('Migrator.4: migrator handles nodejs version reverse when new agent fails to start', async t => {
+  const { system, installer } = Mockhelper.createDefaultMocks()
+  system.newAgent.nodejsVersion = 'v9.2.0'
+  system.failStartNewAgent = true
+  system.path = path.resolve('./test/data/fake_agent_awsiot')
+
+  const updater = new AgentUpdater(system, installer, undefined)
+  await t.throwsAsync(updater.update())
+
+  const log = fs.readFileSync(updater.getLogFilePath(), 'utf8')
+  t.true(log.indexOf('Migrating nodejs') > -1)
+  t.true(log.indexOf('[RESTORE] Migration nodejs') > -1)
 })

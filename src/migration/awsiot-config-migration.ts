@@ -13,10 +13,9 @@ export default class AwsiotConfigMigration extends CopyMigration {
     migrator: Migrator
   ) {
     super(name, copyFrom, copyTo, migrator, false)
-    this._type = 'copy-awsiot-config'
   }
 
-  public async _do(): Promise<{}> {
+  public async _do(): Promise<void> {
     const awsiotConfigPath = path.resolve(this._copyFrom, this._name)
     const awsiotConfig = JSON.parse(fs.readFileSync(awsiotConfigPath, 'utf8'))
 
@@ -28,7 +27,7 @@ export default class AwsiotConfigMigration extends CopyMigration {
       awsiotConfig.privateKey
     ]
 
-    let promises: Promise<{}>[] = []
+    let promises: Promise<void>[] = []
     filesToCopy.forEach(file => {
       promises.push(
         Utils.copy(
@@ -39,6 +38,6 @@ export default class AwsiotConfigMigration extends CopyMigration {
         )
       )
     })
-    return Promise.all(promises)
+    await Promise.all(promises)
   }
 }

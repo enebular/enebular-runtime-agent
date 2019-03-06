@@ -166,7 +166,7 @@ export class AgentInstaller implements AgentInstallerIf {
     tarball: string,
     dst: string,
     userInfo: UserInfo
-  ): Promise<{}> {
+  ): Promise<void> {
     try {
       if (fs.existsSync(dst)) {
         rimraf.sync(dst)
@@ -189,7 +189,7 @@ export class AgentInstaller implements AgentInstallerIf {
     )
   }
 
-  private _buildNpmPackage(path: string, userInfo: UserInfo): Promise<{}> {
+  private _buildNpmPackage(path: string, userInfo: UserInfo): Promise<void> {
     return Utils.spawn('npm', ['i', '--production'], this._log, {
       cwd: path,
       env: this._npmBuildEnv,
@@ -203,7 +203,7 @@ export class AgentInstaller implements AgentInstallerIf {
     cmd: string,
     args: string[],
     userInfo: UserInfo
-  ): Promise<{}> {
+  ): Promise<void> {
     return Utils.spawn(cmd, args, this._log, {
       cwd: path,
       env: this._binBuildEnv,
@@ -219,14 +219,14 @@ export class AgentInstaller implements AgentInstallerIf {
     await Utils.taskAsync(
       'Building awsiot port',
       this._log,
-      async (): Promise<{}> => {
+      async (): Promise<void> => {
         return this._buildNpmPackage(`${installPath}//ports/awsiot`, userInfo)
       }
     )
     await Utils.taskAsync(
       'Building awsiot-thing-creator',
       this._log,
-      async (): Promise<{}> => {
+      async (): Promise<void> => {
         return this._buildNpmPackage(
           `${installPath}/tools/awsiot-thing-creator`,
           userInfo
@@ -244,7 +244,7 @@ export class AgentInstaller implements AgentInstallerIf {
     await Utils.taskAsync(
       'Configuring mbed-cloud-connector-fcc',
       this._log,
-      async (): Promise<{}> => {
+      async (): Promise<void> => {
         return this._buildConnector(
           fccPath,
           'mbed',
@@ -257,7 +257,7 @@ export class AgentInstaller implements AgentInstallerIf {
     await Utils.taskAsync(
       'Deploying mbed-cloud-connector-fcc (mbed)',
       this._log,
-      async (): Promise<{}> => {
+      async (): Promise<void> => {
         return this._buildConnector(fccPath, 'mbed', ['deploy'], userInfo)
       }
     )
@@ -265,7 +265,7 @@ export class AgentInstaller implements AgentInstallerIf {
     await Utils.taskAsync(
       'Deploying mbed-cloud-connector-fcc (platform)',
       this._log,
-      async (): Promise<{}> => {
+      async (): Promise<void> => {
         const args = 'pal-platform/pal-platform.py -v deploy --target=x86_x64_NativeLinux_mbedtls generate'.split(
           ' '
         )
@@ -276,7 +276,7 @@ export class AgentInstaller implements AgentInstallerIf {
     await Utils.taskAsync(
       'Building mbed-cloud-connector-fcc',
       this._log,
-      async (): Promise<{}> => {
+      async (): Promise<void> => {
         return this._buildConnector(
           fccPath,
           './build-linux-release.sh',
@@ -311,7 +311,7 @@ export class AgentInstaller implements AgentInstallerIf {
     await Utils.taskAsync(
       'Configuring mbed-cloud-connector',
       this._log,
-      async (): Promise<{}> => {
+      async (): Promise<void> => {
         return this._buildConnector(
           connectorPath,
           'mbed',
@@ -324,7 +324,7 @@ export class AgentInstaller implements AgentInstallerIf {
     await Utils.taskAsync(
       'Deploying mbed-cloud-connector',
       this._log,
-      async (): Promise<{}> => {
+      async (): Promise<void> => {
         return this._buildConnector(connectorPath, 'mbed', ['deploy'], userInfo)
       }
     )
@@ -334,7 +334,7 @@ export class AgentInstaller implements AgentInstallerIf {
       await Utils.taskAsync(
         'Copy mbed-cloud-connector developer credentials',
         this._log,
-        async (): Promise<{}> => {
+        async (): Promise<void> => {
           return Utils.copy(
             this._log,
             `${agentPath}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c`,
@@ -348,7 +348,7 @@ export class AgentInstaller implements AgentInstallerIf {
     await Utils.taskAsync(
       'Building mbed-cloud-connector',
       this._log,
-      async (): Promise<{}> => {
+      async (): Promise<void> => {
         const cmakeConfig = factoryMode ? 'define_factory.txt' : 'define.txt'
         const args = (
           'pal-platform/pal-platform.py fullbuild --target x86_x64_NativeLinux_mbedtls --toolchain GCC' +
@@ -383,20 +383,18 @@ export class AgentInstaller implements AgentInstallerIf {
     await Utils.taskAsync(
       'Fetching new agent',
       this._log,
-      async (): Promise<boolean> => {
+      async (): Promise<void> => {
         if (!(await this._fetchWithRetry(url, tallballPath, userInfo))) {
           throw new Error(`Failed to fetch agent`)
         }
-        return true
       }
     )
 
     await Utils.taskAsync(
       'Extracting new agent',
       this._log,
-      async (): Promise<boolean> => {
+      async (): Promise<void> => {
         await this._extract(tallballPath, installPath, userInfo)
-        return true
       }
     )
   }
@@ -436,7 +434,7 @@ export class AgentInstaller implements AgentInstallerIf {
     await Utils.taskAsync(
       `Building agent ${newAgentInfo.version} `,
       this._log,
-      async (): Promise<{}> => {
+      async (): Promise<void> => {
         return this._buildNpmPackage(`${installPath}/agent`, userInfo)
       }
     )
@@ -444,7 +442,7 @@ export class AgentInstaller implements AgentInstallerIf {
     await Utils.taskAsync(
       `Building Node-RED`,
       this._log,
-      async (): Promise<{}> => {
+      async (): Promise<void> => {
         return this._buildNpmPackage(`${installPath}/node-red`, userInfo)
       }
     )
@@ -458,7 +456,7 @@ export class AgentInstaller implements AgentInstallerIf {
       await Utils.taskAsync(
         'Building pelion port ',
         this._log,
-        async (): Promise<{}> => {
+        async (): Promise<void> => {
           return this._buildNpmPackage(`${installPath}/ports/pelion`, userInfo)
         }
       )

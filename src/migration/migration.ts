@@ -1,11 +1,11 @@
 export default abstract class Migration {
   protected _name: string
-  protected _type: string
   protected _optional: boolean
 
-  protected constructor(name: string, type: string, optional: boolean) {
+  public reverse?: () => Promise<void> | void
+
+  protected constructor(name: string, optional: boolean) {
     this._name = name
-    this._type = type
     this._optional = optional
   }
 
@@ -13,5 +13,9 @@ export default abstract class Migration {
     return this._optional
   }
 
-  public abstract _do(): Promise<{}>
+  public get name(): string {
+    return this._name
+  }
+
+  public abstract _do(): Promise<void> | void
 }
