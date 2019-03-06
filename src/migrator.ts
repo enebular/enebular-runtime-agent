@@ -2,12 +2,11 @@ import * as fs from 'fs'
 import * as path from 'path'
 
 import AgentInfo from './agent-info'
+import AgentVersion from './agent-version'
 import { UserInfo, Utils } from './utils'
 import Config from './config'
 import Log from './log'
 import Migration from './migration/migration'
-import CopyMigration from './migration/copy-migration'
-import AwsiotConfigMigration from './migration/awsiot-config-migration'
 import NodeJSMigration from './migration/nodejs-migration'
 import { SystemIf } from './system'
 
@@ -94,11 +93,22 @@ export class Migrator implements MigratorIf {
 
   private async _applyMigrationFiles(migrations: Migrations): Promise<boolean> {
     let migrationFiles
+    const migrationFilePath = this._config.getString('MIGRATION_FILE_PATH')
     try {
       // TODO: read from enebular-runtime-agent not updater ?
-      migrationFiles = fs.readdirSync(path.resolve(__dirname, './migrations'))
+      migrationFiles = fs.readdirSync(migrationFilePath)
       migrationFiles = migrationFiles.filter(file => {
-        return path.extname(file).toLowerCase() === '.js'
+        if (path.extname(file).toLowerCase() === '.js') {
+          let version = file.slice(0, -3)
+          const migrationVersion = AgentVersion.parse(version.split('-')[0])
+          if (
+            migrationVersion &&
+            !migrationVersion.greaterThan(this._newAgentInfo.version)
+          ) {
+            return true
+          }
+        }
+        return false
       })
       // TODO: find version specific migrations only
     } catch (err) {
@@ -107,65 +117,19 @@ export class Migrator implements MigratorIf {
 
     for (let index = 0; index < migrationFiles.length; index++) {
       const migration = await import(path.resolve(
-        __dirname,
-        './migrations/',
+        migrationFilePath,
         migrationFiles[index]
       ))
       if (this._upgrade) {
-        migration.up(this._migrateConfig, migrations)
+        migration.up(this, migrations)
       } else {
-        migration.down(this._migrateConfig, migrations)
+        migration.down()
       }
     }
     return true
   }
 
   public async migrate(): Promise<void> {
-    this._migrations = {
-      '.enebular-config.json': new CopyMigration(
-        '.enebular-config.json',
-        this._migrateConfig['portBasePath'],
-        this._migrateConfig['newPortBasePath'],
-        this,
-        true // might not be created yet
-      ),
-      '.node-red-config': new CopyMigration(
-        '.node-red-config',
-        this._migrateConfig['nodeRedPath'],
-        this._migrateConfig['newNodeRedPath'],
-        this
-      ),
-      '.enebular-assets.json': new CopyMigration(
-        '.enebular-assets.json',
-        this._migrateConfig['portBasePath'],
-        this._migrateConfig['newPortBasePath'],
-        this,
-        true // might not be created yet
-      ),
-      assets: new CopyMigration(
-        'assets',
-        this._migrateConfig['portBasePath'],
-        this._migrateConfig['newPortBasePath'],
-        this,
-        true // might not be created yet
-      )
-    }
-    if (this._migrateConfig.port == 'awsiot') {
-      this._migrations['config.json'] = new AwsiotConfigMigration(
-        'config.json',
-        this._migrateConfig['portBasePath'],
-        this._migrateConfig['newPortBasePath'],
-        this
-      )
-    }
-    if (this._migrateConfig.port == 'pelion') {
-      this._migrations['.pelion-connector'] = new CopyMigration(
-        '.pelion-connector',
-        this._migrateConfig['portBasePath'],
-        this._migrateConfig['newPortBasePath'],
-        this
-      )
-    }
     if (this._agentInfo.nodejsVersion !== this._newAgentInfo.nodejsVersion) {
       this._migrations['nodejs'] = new NodeJSMigration(
         `nodejs ${this._agentInfo.nodejsVersion} => ${

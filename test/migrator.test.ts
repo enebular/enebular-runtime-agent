@@ -36,8 +36,9 @@ test('Migrator.1: migrate awsiot port', async t => {
 
 test('Migrator.2: migrate pelion port', async t => {
   const { system, installer } = Mockhelper.createDefaultMocks()
-  system.agent.version = '2.4.1'
-  system.newAgent.version = '2.4.2'
+  system.agent.version = '2.4.0'
+  system.newAgent.version = '2.4.1'
+  process.env['PELION_MODE'] = 'developer'
   system.port = 'pelion'
   system.path = path.resolve('./test/data/fake_agent_pelion')
 
@@ -65,6 +66,7 @@ test('Migrator.3: migrator handles nodejs version change in systemd', async t =>
       .readFileSync(updater.getLogFilePath(), 'utf8')
       .indexOf('Migrating nodejs') > -1
   )
+  rimraf.sync(system.newPath)
 })
 
 test('Migrator.4: migrator handles nodejs version reverse when new agent fails to start', async t => {
@@ -79,4 +81,49 @@ test('Migrator.4: migrator handles nodejs version reverse when new agent fails t
   const log = fs.readFileSync(updater.getLogFilePath(), 'utf8')
   t.true(log.indexOf('Migrating nodejs') > -1)
   t.true(log.indexOf('[RESTORE] Migration nodejs') > -1)
+  rimraf.sync(system.newPath)
+})
+
+test('Migrator.5: migrator applies migrations according to version', async t => {
+  const { system, installer } = Mockhelper.createDefaultMocks()
+  process.env['MIGRATION_FILE_PATH'] = path.resolve(__dirname, './data/test_migrations')
+  system.agent.version = '2.3.0'
+  system.newAgent.version = '2.4.0'
+  system.path = path.resolve('./test/data/fake_agent_awsiot')
+
+  const updater = new AgentUpdater(system, installer, undefined)
+  await t.notThrowsAsync(updater.update())
+
+  t.true(fs.existsSync(`${system.newPath}/node-red/.node-red-config`))
+  t.true(fs.existsSync(`/home/${system.user}/.enebular-agent/.enebular-config.json`))
+  t.true(fs.existsSync(`${system.newPath}/.enebular-assets.json`))
+  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/assets`))
+  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/config.json`))
+  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/certs/ca-cert`))
+  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/certs/client-cert`))
+  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/certs/private-key`))
+
+  rimraf.sync(system.newPath)
+})
+
+test('Migrator.6: migrator applies migrations according to version', async t => {
+  const { system, installer } = Mockhelper.createDefaultMocks()
+  process.env['MIGRATION_FILE_PATH'] = path.resolve(__dirname, './data/test_migrations')
+  system.agent.version = '2.3.0'
+  system.newAgent.version = '2.4.1'
+  system.path = path.resolve('./test/data/fake_agent_awsiot')
+
+  const updater = new AgentUpdater(system, installer, undefined)
+  await t.notThrowsAsync(updater.update())
+
+  t.true(fs.existsSync(`${system.newPath}/node-red/.node-red-config`))
+  t.true(fs.existsSync(`/home/${system.user}/.enebular-agent/.enebular-config.json`))
+  t.true(fs.existsSync(`${system.newPath}/.enebular-assets.json`))
+  t.true(fs.existsSync(`${system.newPath}/assets`))
+  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/config.json`))
+  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/certs/ca-cert`))
+  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/certs/client-cert`))
+  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/certs/private-key`))
+
+  rimraf.sync(system.newPath)
 })

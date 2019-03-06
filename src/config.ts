@@ -1,3 +1,5 @@
+import * as path from 'path'
+
 export interface ConfigItem {
   value: string | number | boolean
   description: string
@@ -51,6 +53,11 @@ export default class Config {
       ENEBULAR_AGENT_UPDATER_ENABLE_LOG: {
         value: true,
         description: 'Install location of enebular-agent',
+        userExpose: true
+      },
+      MIGRATION_FILE_PATH: {
+        value: path.resolve(__dirname, './migrations'),
+        description: 'Path to find migrations files',
         userExpose: true
       },
       PELION_MODE: {
