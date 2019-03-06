@@ -245,6 +245,7 @@ export default class AgentUpdater {
       // config copying, migrate
       if (this._migrator == undefined) {
         this._migrator = new Migrator(
+          this._system,
           agentInfo,
           newAgentInfo,
           this._config,
@@ -252,7 +253,6 @@ export default class AgentUpdater {
           userInfo
         )
       }
-      // TODO: handle nodejs difference in systemd
       await this._migrator.migrate()
 
       await Utils.taskAsync(
@@ -288,9 +288,6 @@ export default class AgentUpdater {
       } catch (err) {
         // ignore error if we have
       }
-      this._log.info(
-        `[RESTORE] Failed to start enebular-agent ${newVersion}, Flip back to ${version} ...`
-      )
       // restore
       try {
         if (switched) {

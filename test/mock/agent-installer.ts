@@ -1,21 +1,21 @@
 import AgentInfo from '../../src/agent-info'
 import AgentVersion from '../../src/agent-version'
 import { AgentInstallerIf } from '../../src/agent-installer'
-import { SystemIf } from '../../src/system'
+import MockSystem from './system'
 import { UserInfo } from '../../src/utils'
 
 export default class MockAgentInstaller implements AgentInstallerIf {
   public failInstall: boolean = false
   public failBuild: boolean = false
 
-  private _system: SystemIf
+  private _system: MockSystem
 
-  public constructor(system: SystemIf) {
+  public constructor(system: MockSystem) {
     this._system = system
   }
 
-  private fakeAgentInfo(): AgentInfo {
-    const path = 'fake-new-agent'
+  private fakeNewAgentInfo(): AgentInfo {
+    const path = this._system.newPath
     const {
       version,
       awsiot,
@@ -49,7 +49,7 @@ export default class MockAgentInstaller implements AgentInstallerIf {
     if (this.failInstall) {
       throw new Error('Agent Install failed.')
     }
-    return this.fakeAgentInfo()
+    return this.fakeNewAgentInfo()
   }
   public async build(
     agentInfo: AgentInfo,

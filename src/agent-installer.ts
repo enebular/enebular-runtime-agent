@@ -266,9 +266,9 @@ export class AgentInstaller implements AgentInstallerIf {
       'Deploying mbed-cloud-connector-fcc (platform)',
       this._log,
       async (): Promise<{}> => {
-        const args = (
-          'pal-platform/pal-platform.py -v deploy --target=x86_x64_NativeLinux_mbedtls generate'
-        ).split(' ')
+        const args = 'pal-platform/pal-platform.py -v deploy --target=x86_x64_NativeLinux_mbedtls generate'.split(
+          ' '
+        )
         return this._buildConnector(fccPath, 'python', args, userInfo)
       }
     )
@@ -277,7 +277,12 @@ export class AgentInstaller implements AgentInstallerIf {
       'Building mbed-cloud-connector-fcc',
       this._log,
       async (): Promise<{}> => {
-        return this._buildConnector(fccPath, './build-linux-release.sh', [], userInfo)
+        return this._buildConnector(
+          fccPath,
+          './build-linux-release.sh',
+          [],
+          userInfo
+        )
       }
     )
 
@@ -287,7 +292,8 @@ export class AgentInstaller implements AgentInstallerIf {
       (): void => {
         if (
           !fs.existsSync(
-            fccPath + '/__x86_x64_NativeLinux_mbedtls/Release/factory-configurator-client-enebular.elf'
+            fccPath +
+              '/__x86_x64_NativeLinux_mbedtls/Release/factory-configurator-client-enebular.elf'
           )
         ) {
           throw new Error('Verifying mbed-cloud-connector-fcc failed.')

@@ -44,6 +44,12 @@ export interface SystemIf {
   }
   getSupportedNodeJSVersion(agentVersion: AgentVersion): string
   installDebianPackages(packages: string[]): Promise<void>
+  updateNodeJSVersionInSystemd(
+    user: string,
+    version: string,
+    newVersion: string,
+    file?: string
+  ): void
 }
 
 export class System implements SystemIf {
@@ -105,6 +111,32 @@ export class System implements SystemIf {
     }
     // TODO: should we check other things like if it connected to port or not.
     return failed || !active ? true : false
+  }
+
+  public updateNodeJSVersionInSystemd(
+    user: string,
+    version: string,
+    newVersion: string,
+    file?: string
+  ): void {
+    const serviceFile = file
+      ? file
+      : `/etc/systemd/system/enebular-agent-${user}.service`
+    const envToReplace = `Environment=PATH=/home/${user}/nodejs-${version}/bin`
+    const newEnv = `Environment=PATH=/home/${user}/nodejs-${newVersion}/bin`
+
+    try {
+      let content = fs.readFileSync(serviceFile, 'utf8')
+      fs.writeFileSync(
+        serviceFile,
+        content.replace(envToReplace, newEnv),
+        'utf8'
+      )
+    } catch (err) {
+      throw new Error(
+        `Failed to update nodejs version in systemd: ${err.message}`
+      )
+    }
   }
 
   public isServiceRegistered(serviceName: string): boolean {

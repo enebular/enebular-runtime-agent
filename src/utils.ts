@@ -128,7 +128,7 @@ export class Utils {
   public static async taskAsync(
     name: string,
     log: Log,
-    cb: () => Promise<boolean> | Promise<{}>,
+    cb: () => Promise<boolean> | Promise<{}> | Promise<void>,
     ignore = false
   ): Promise<void> {
     log.info(`==== ${name} ====`)
@@ -206,10 +206,12 @@ export class Utils {
     userInfo?: UserInfo
   ): Promise<{}> {
     if (!src || !dst) {
-      throw new Error(`src (${src}) and dst (${dst}) must be set`)
+      throw new Error(
+        `Failed to copy, src (${src}) and dst (${dst}) must be set`
+      )
     }
     if (!fs.existsSync(src)) {
-      throw new Error(`Failed to find config: ${src}`)
+      throw new Error(`Failed to find: ${src}`)
     }
 
     const parentDir = path.resolve(dst, '../')

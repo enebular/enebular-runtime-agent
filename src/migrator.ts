@@ -8,9 +8,10 @@ import Log from './log'
 import Migration from './migration/migration'
 import CopyMigration from './migration/copy-migration'
 import AwsiotConfigMigration from './migration/awsiot-config-migration'
+import { SystemIf } from './system'
 
 export interface MigratorIf {
-  migrate(): Promise<boolean>
+  migrate(): Promise<void>
 }
 
 export interface Migrations {
@@ -32,17 +33,25 @@ export class Migrator implements MigratorIf {
   private _log: Log
   private _userInfo: UserInfo
   private _migrateConfig: MigrateConfig
+  private _agentInfo: AgentInfo
+  private _newAgentInfo: AgentInfo
+  private _system: SystemIf
+  private _upgrade: boolean
 
   public constructor(
+    system: SystemIf,
     agentInfo: AgentInfo,
     newAgentInfo: AgentInfo,
     config: Config,
     log: Log,
     userInfo: UserInfo
   ) {
+    this._system = system
     this._config = config
     this._log = log
     this._userInfo = userInfo
+    this._agentInfo = agentInfo
+    this._newAgentInfo = newAgentInfo
 
     if (!agentInfo.systemd) {
       throw new Error(`Failed to detect enebular-agent port type`)
@@ -51,6 +60,7 @@ export class Migrator implements MigratorIf {
       throw new Error(`Failed to detect enebular-agent version`)
     }
 
+    this._upgrade = newAgentInfo.version.greaterThan(agentInfo.version)
     const port = agentInfo.systemd.port
     this._migrateConfig = {
       port: port,
@@ -78,7 +88,7 @@ export class Migrator implements MigratorIf {
   private async _applyMigrationFiles(migrations: Migrations): Promise<boolean> {
     let migrationFiles
     try {
-      // TODO: read from enebular-runtime-agent
+      // TODO: read from enebular-runtime-agent not updater ?
       migrationFiles = fs.readdirSync(path.resolve(__dirname, './migrations'))
       migrationFiles = migrationFiles.filter(file => {
         return path.extname(file).toLowerCase() === '.js'
@@ -94,19 +104,23 @@ export class Migrator implements MigratorIf {
         './migrations/',
         migrationFiles[index]
       ))
-      // TODO: up/down migration according to version
-      migration.up(this._migrateConfig, migrations)
+      if (this._upgrade) {
+        migration.up(this._migrateConfig, migrations)
+      } else {
+        migration.down(this._migrateConfig, migrations)
+      }
     }
     return true
   }
 
-  public async migrate(): Promise<boolean> {
+  public async migrate(): Promise<void> {
     let migrations: Migrations = {
       '.enebular-config.json': new CopyMigration(
         '.enebular-config.json',
         'portBasePath',
         'newPortBasePath',
-        this
+        this,
+        true // might not be created yet
       ),
       '.node-red-config': new CopyMigration(
         '.node-red-config',
@@ -145,6 +159,19 @@ export class Migrator implements MigratorIf {
         this
       )
     }
+    if (this._agentInfo.nodejsVersion !== this._newAgentInfo.nodejsVersion) {
+      Utils.task(
+        `Updating NodeJS version in systemd`,
+        this._log,
+        (): void => {
+          this._system.updateNodeJSVersionInSystemd(
+            this._userInfo.user,
+            this._agentInfo.nodejsVersion,
+            this._newAgentInfo.nodejsVersion
+          )
+        }
+      )
+    }
 
     await this._applyMigrationFiles(migrations)
 
@@ -160,7 +187,6 @@ export class Migrator implements MigratorIf {
         migration.optional
       )
     }
-    return true
   }
 }
 

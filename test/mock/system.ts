@@ -3,6 +3,7 @@ import * as os from 'os'
 
 import { SystemIf } from '../../src/system'
 import AgentVersion from '../../src/agent-version'
+import Utils from '../../src/utils'
 
 export default class MockSystem implements SystemIf {
   public failStartAgent = false
@@ -33,7 +34,8 @@ export default class MockSystem implements SystemIf {
   public throwsWhenScanOriginalAgent = false
   public throwsWhenScanNewAgent = false
 
-  public path = '/tmp/enebular-agent-test-virtual'
+  public path = '/tmp/enebular-agent-test-' + Utils.randomString()
+  public newPath = '/tmp/enebular-new-agent-test-' + Utils.randomString()
   public port = 'awsiot'
   public user = os.userInfo().username
   public agent = {
@@ -170,7 +172,7 @@ export default class MockSystem implements SystemIf {
     mbedCloudConnectorFCC: boolean
   } {
     let agentVersion
-    if (path == 'fake-new-agent' || path.indexOf('.new') > -1) {
+    if (path == this.newPath || path.indexOf('.new') > -1) {
       if (this.throwsWhenScanNewAgent)
         throw new Error('Scan new agent source return error')
       agentVersion = this.newAgent.version
@@ -181,13 +183,20 @@ export default class MockSystem implements SystemIf {
     }
     return {
       version: agentVersion,
-      awsiot: true,
-      pelion: true,
-      awsiotThingCreator: true,
-      mbedCloudConnector: true,
-      mbedCloudConnectorFCC: true
+      awsiot: this.port == 'awsiot',
+      pelion: this.port == 'pelion',
+      awsiotThingCreator: this.port == 'awsiot',
+      mbedCloudConnector: this.port == 'pelion',
+      mbedCloudConnectorFCC: this.port == 'pelion'
     }
   }
 
   public async installDebianPackages(packages: string[]): Promise<void> {}
+
+  public updateNodeJSVersionInSystemd(
+    user: string,
+    version: string,
+    newVersion: string,
+    file?: string
+  ): void {}
 }
