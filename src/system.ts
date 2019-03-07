@@ -83,6 +83,14 @@ export class System implements SystemIf {
   }
 
   private async _serviceCtl(name: string, action: string): Promise<boolean> {
+    if (action == 'start') {
+      try {
+        await Utils.spawn('systemctl', ['daemon-reload'], this._log)
+      } catch (err) {
+        throw new Error(`Failed to reload service config:\n${err.message}`)
+      }
+    }
+
     try {
       await Utils.spawn('service', [name, action], this._log)
     } catch (err) {

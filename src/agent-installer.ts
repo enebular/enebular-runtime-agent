@@ -381,7 +381,7 @@ export class AgentInstaller implements AgentInstallerIf {
     userInfo: UserInfo
   ): Promise<void> {
     await Utils.taskAsync(
-      'Fetching new agent',
+      `Fetching ${url}`,
       this._log,
       async (): Promise<void> => {
         if (!(await this._fetchWithRetry(url, tallballPath, userInfo))) {
@@ -391,12 +391,13 @@ export class AgentInstaller implements AgentInstallerIf {
     )
 
     await Utils.taskAsync(
-      'Extracting new agent',
+      `Extracting ${tallballPath}`,
       this._log,
       async (): Promise<void> => {
         await this._extract(tallballPath, installPath, userInfo)
       }
     )
+    fs.unlinkSync(tallballPath)
   }
 
   private _getNodeJSDownloadURL(version: string): string {
