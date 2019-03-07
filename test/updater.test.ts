@@ -5,7 +5,7 @@ import Mockhelper from './helper/mock-helper'
 
 test.before(() => {
   process.env['ROOT_REQUIRED'] = 'false'
-  process.env['DEBUG'] = 'debug'
+  /* process.env['DEBUG'] = 'debug' */
   process.env['MINIMUM_CHECKING_TIME'] = '2'
   process.env['ENEBULAR_AGENT_USER'] = os.userInfo().username
 })

@@ -13,7 +13,7 @@
     "lint-fix": "eslint ./src --ext .js,.ts --fix",
     "lint-test": "eslint ./test --ext .js,.ts --fix",
     "typecheck": "tsc --noEmit",
-    "test": "tsc && ava",
+    "test": "npm run build:clean && tsc && ava",
     "test-report": "npm run test -- --tap | npx tap-spec"
   },
   "keywords": [],

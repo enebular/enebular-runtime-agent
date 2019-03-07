@@ -27,6 +27,7 @@ export interface MigrateConfig {
   newNodeRedPath: string
   newPortBasePath: string
   port: string
+  user: string
 }
 
 export class Migrator implements MigratorIf {
@@ -65,6 +66,7 @@ export class Migrator implements MigratorIf {
     this._upgrade = newAgentInfo.version.greaterThan(agentInfo.version)
     const port = agentInfo.systemd.port
     this._migrateConfig = {
+      user: this._userInfo.user,
       port: port,
       projectPath: agentInfo.path,
       nodeRedPath: `${agentInfo.path}/node-red`,
@@ -91,53 +93,110 @@ export class Migrator implements MigratorIf {
     return this._migrateConfig
   }
 
-  private async _applyMigrationFiles(migrations: Migrations): Promise<boolean> {
-    let migrationFiles
-    const migrationFilePath = this._config.getString('MIGRATION_FILE_PATH')
-    try {
-      // TODO: read from enebular-runtime-agent not updater ?
-      migrationFiles = fs.readdirSync(migrationFilePath)
-      migrationFiles = migrationFiles.filter(file => {
-        if (path.extname(file).toLowerCase() === '.js') {
-          let version = file.slice(0, -3)
-          const migrationVersion = AgentVersion.parse(version.split('-')[0])
-          if (
-            migrationVersion &&
-            !migrationVersion.greaterThan(this._newAgentInfo.version)
-          ) {
-            return true
-          }
+  /* example:  */
+  /* file list: [2.3.0, 2.4.0, 2.4.1] */
+  /* if start = 2.3.0 end = 2.4.0, return list = [2.4.0] */
+  /* if start = 2.4.0 end = 2.4.1, return list = [2.4.1] */
+  /* if start = 0.0.0 end = 2.4.0, return list = [2.3.0, 2.4.0] */
+  private _filterMigrationFiles(
+    migrationFiles: string[],
+    start: AgentVersion,
+    end: AgentVersion
+  ): string[] {
+    return migrationFiles.filter(file => {
+      if (path.extname(file).toLowerCase() === '.js') {
+        let version = file.slice(0, -3)
+        const migrationVersion = AgentVersion.parse(version.split('-')[0])
+        if (
+          migrationVersion &&
+          !migrationVersion.greaterThan(end) &&
+          migrationVersion.greaterThan(start)
+        ) {
+          return true
         }
-        return false
-      })
-      // TODO: find version specific migrations only
-    } catch (err) {
+      }
       return false
-    }
+    })
+  }
 
+  private async _importMigrations(
+    migrations: Migrations,
+    config: MigrateConfig,
+    migrationFilePath: string,
+    migrationFiles: string[]
+  ): Promise<void> {
     for (let index = 0; index < migrationFiles.length; index++) {
       const migration = await import(path.resolve(
         migrationFilePath,
         migrationFiles[index]
       ))
-      if (this._upgrade) {
-        migration.up(this, migrations)
-      } else {
-        migration.down()
-      }
+      migration.up(config, migrations)
     }
-    return true
+  }
+
+  private async _applyMigrationFiles(migrations: Migrations): Promise<void> {
+    let migrationFiles
+    const migrationFilePath = this._config.getString('MIGRATION_FILE_PATH')
+
+    try {
+      // TODO: read from enebular-runtime-agent not updater ?
+      migrationFiles = fs.readdirSync(migrationFilePath)
+
+      const tmp = { 
+        ...this._migrateConfig,
+        newProjectPath: this._migrateConfig.projectPath,
+        newNodeRedPath: this._migrateConfig.nodeRedPath,
+        newPortBasePath: this._migrateConfig.portBasePath
+      }
+
+      let currentStates: Migrations = {}
+      await this._importMigrations(
+        currentStates,
+        tmp,
+        migrationFilePath,
+        this._filterMigrationFiles(
+          migrationFiles,
+          new AgentVersion(0, 0, 0),
+          this._agentInfo.version
+        )
+      )
+      this._log.debug(currentStates)
+      await this._importMigrations(
+        migrations,
+        this._migrateConfig,
+        migrationFilePath,
+        this._filterMigrationFiles(
+          migrationFiles,
+          new AgentVersion(0, 0, 0),
+          this._newAgentInfo.version
+        )
+      )
+      this._log.debug(migrations)
+
+      for (const migrationObject of Object.entries(migrations)) {
+        const key = migrationObject[0]
+        if (currentStates[key]) {
+          migrations[key].currentState = currentStates[key].deserveState
+        }
+      }
+      this._log.debug(migrations)
+    } catch (err) {
+      throw new Error(`Apply migration files failed: ${err.message}`)
+    }
   }
 
   public async migrate(): Promise<void> {
+    if (!this._upgrade) {
+      throw new Error(`Migrator only supports upgrade.`)
+    }
+
     if (this._agentInfo.nodejsVersion !== this._newAgentInfo.nodejsVersion) {
       this._migrations['nodejs'] = new NodeJSMigration(
         `nodejs ${this._agentInfo.nodejsVersion} => ${
           this._newAgentInfo.nodejsVersion
         }`,
         this._agentInfo.nodejsVersion,
-        this._newAgentInfo.nodejsVersion,
-        this
+        this._newAgentInfo.nodejsVersion
       )
     }
 
@@ -149,7 +208,7 @@ export class Migrator implements MigratorIf {
         `Migrating ${migration.name}`,
         this._log,
         async (): Promise<void> => {
-          return migration._do()
+          return migration._do(this)
         },
         migration.optional
       )
@@ -164,7 +223,7 @@ export class Migrator implements MigratorIf {
           `[RESTORE] Migration ${migration.name}`,
           this._log,
           async (): Promise<void> => {
-            if (migration.reverse) migration.reverse()
+            if (migration.reverse) migration.reverse(this)
           },
           migration.optional
         )

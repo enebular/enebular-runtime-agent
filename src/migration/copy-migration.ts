@@ -1,32 +1,31 @@
-import Migration from './migration'
+import { Migration, MigrationState } from './migration'
 import Migrator from '../migrator'
 import Utils from '../utils'
 
-export default class CopyMigration extends Migration {
-  protected _copyFrom: string
-  protected _copyTo: string
-  protected _migrator: Migrator
+export interface CopyState extends MigrationState {
+  path: string
+}
 
+export class CopyMigration extends Migration {
   public constructor(
     name: string,
     copyFrom: string,
     copyTo: string,
-    migrator: Migrator,
     optional = false
   ) {
-    super(name, optional)
-    this._name = name
-    this._migrator = migrator
-    this._copyFrom = copyFrom
-    this._copyTo = copyTo
+    const current: CopyState = { path: copyFrom }
+    const deserve: CopyState = { path: copyTo }
+    super(name, current, deserve, optional)
   }
 
-  public async _do(): Promise<void> {
+  public async _do(migrator: Migrator): Promise<void> {
     return Utils.copy(
-      this._migrator.log,
-      `${this._copyFrom}/${this._name}`,
-      `${this._copyTo}/${this._name}`,
-      this._migrator.userInfo
+      migrator.log,
+      `${(this._currentState as CopyState).path}/${this._name}`,
+      `${(this._deserveState as CopyState).path}/${this._name}`,
+      migrator.userInfo
     )
   }
 }
+
+export default CopyMigration

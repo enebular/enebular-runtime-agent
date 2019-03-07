@@ -1,38 +1,35 @@
-import Migration from './migration'
+import { Migration, MigrationState } from './migration'
 import Migrator from '../migrator'
 
-export default class NodeJSMigration extends Migration {
-  protected _oldVersion: string
-  protected _newVersion: string
-  protected _migrator: Migrator
+export interface NodeJSState extends MigrationState {
+  version: string
+}
 
+export default class NodeJSMigration extends Migration {
   public constructor(
     name: string,
-    oldVersion: string,
+    currentVersion: string,
     newVersion: string,
-    migrator: Migrator,
     optional = false
   ) {
-    super(name, optional)
-    this._name = name
-    this._migrator = migrator
-    this._oldVersion = oldVersion
-    this._newVersion = newVersion
+    const current: NodeJSState = { version: currentVersion }
+    const deserve: NodeJSState = { version: newVersion }
+    super(name, current, deserve, optional)
 
-    this.reverse = (): void => {
-      this._migrator.system.updateNodeJSVersionInSystemd(
-        this._migrator.userInfo.user,
-        this._newVersion,
-        this._oldVersion
+    this.reverse = (migrator: Migrator): void => {
+      migrator.system.updateNodeJSVersionInSystemd(
+        migrator.userInfo.user,
+        (this._deserveState as NodeJSState).version,
+        (this._currentState as NodeJSState).version
       )
     }
   }
 
-  public _do(): void {
-    this._migrator.system.updateNodeJSVersionInSystemd(
-      this._migrator.userInfo.user,
-      this._oldVersion,
-      this._newVersion
+  public _do(migrator: Migrator): void {
+    migrator.system.updateNodeJSVersionInSystemd(
+      migrator.userInfo.user,
+      (this._currentState as NodeJSState).version,
+      (this._deserveState as NodeJSState).version
     )
   }
 }

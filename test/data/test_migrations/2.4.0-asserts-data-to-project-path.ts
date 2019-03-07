@@ -3,8 +3,8 @@ import CopyMigration from '../../../src/migration/copy-migration'
 
 module.exports = {
   up: (config: MigrateConfig, migrations: Migrations) => {
-    migrations['.enebular-assets.json'] = new CopyMigration(
-      '.enebular-assets.json',
+    migrations['assets'] = new CopyMigration(
+      'assets',
       config['portBasePath'],
       config['newProjectPath'],
       true // might not be created yet

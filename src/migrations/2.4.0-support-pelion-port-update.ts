@@ -1,14 +1,13 @@
-import { Migrations, Migrator } from '../migrator'
+import { Migrations, MigrateConfig } from '../migrator'
 import CopyMigration from '../migration/copy-migration'
 
 module.exports = {
-  up: (migrator: Migrator, migrations: Migrations) => {
-    if (migrator.migrateConfig.port == 'pelion') {
+  up: (config: MigrateConfig, migrations: Migrations) => {
+    if (config.port == 'pelion') {
       migrations['.pelion-connector'] = new CopyMigration(
         '.pelion-connector',
-        migrator.migrateConfig['portBasePath'],
-        migrator.migrateConfig['newPortBasePath'],
-        migrator
+        config['portBasePath'],
+        config['newPortBasePath']
       )
     }
   },
