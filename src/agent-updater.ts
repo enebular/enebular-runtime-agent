@@ -126,11 +126,11 @@ export default class AgentUpdater {
 
   private _preupdateCheck(newAgentInfo: AgentInfo, agentInfo: AgentInfo): void {
     if (
-      !newAgentInfo.version.greaterThan(agentInfo.version) &&
+      newAgentInfo.version.lessThan(agentInfo.version) &&
       !this._config.getBoolean('FORCE_UPDATE')
     ) {
       throw new Error(
-        `enebular-agent is already the newest version (${
+        `Downgrading enebular-agent is not support yet. (${
           agentInfo.version
         } => ${newAgentInfo.version})`
       )
@@ -275,8 +275,8 @@ export default class AgentUpdater {
           )
         }
       )
-
       switched = true
+
       await this._startAgent(newAgentInfo.version, agentPath, user, serviceName)
     } catch (err) {
       const version = agentInfo.version
