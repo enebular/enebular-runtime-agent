@@ -32,7 +32,7 @@ download() {
   fi
 }
 
-UPDATER_DOWNLOAD_URL="https://s3-ap-southeast-2.amazonaws.com/enebular-agent-update-youxin-test/enebular-agent-updater-release.tar.gz"
+UPDATER_DOWNLOAD_URL="http://enebular-agent-update-youxin-test.s3-website-ap-southeast-2.amazonaws.com/enebular-agent-updater-latest.tar.gz"
 USER=enebular
 
 for i in "$@"
