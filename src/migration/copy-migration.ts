@@ -13,8 +13,8 @@ export class CopyMigration extends Migration {
     copyTo: string,
     optional = false
   ) {
-    const current: CopyState = { path: copyFrom }
-    const deserve: CopyState = { path: copyTo }
+    const current: CopyState = { type: 'copy', path: copyFrom }
+    const deserve: CopyState = { type: 'copy', path: copyTo }
     super(name, current, deserve, optional)
   }
 

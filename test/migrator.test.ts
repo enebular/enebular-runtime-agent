@@ -69,7 +69,7 @@ test('Migrator.3: migrator handles nodejs version change in systemd', async t =>
   rimraf.sync(system.newPath)
 })
 
-test('Migrator.4: migrator handles nodejs version reverse when new agent fails to start', async t => {
+test('Migrator.4: migrator handles nodejs version reversion when new agent fails to start', async t => {
   const { system, installer } = Mockhelper.createDefaultMocks()
   system.newAgent.nodejsVersion = 'v9.2.0'
   system.failStartNewAgent = true
@@ -84,7 +84,7 @@ test('Migrator.4: migrator handles nodejs version reverse when new agent fails t
   rimraf.sync(system.newPath)
 })
 
-test('Migrator.5: migrator applies migrations according to version', async t => {
+test('Migrator.5: migrator applies migrations according to version #1', async t => {
   const { system, installer } = Mockhelper.createDefaultMocks()
   process.env['MIGRATION_FILE_PATH'] = path.resolve(__dirname, './data/test_migrations')
   system.agent.version = '2.3.0'
@@ -106,7 +106,7 @@ test('Migrator.5: migrator applies migrations according to version', async t => 
   rimraf.sync(system.newPath)
 })
 
-test('Migrator.6: migrator applies migrations according to version', async t => {
+test('Migrator.6: migrator applies migrations according to version #2', async t => {
   const { system, installer } = Mockhelper.createDefaultMocks()
   process.env['MIGRATION_FILE_PATH'] = path.resolve(__dirname, './data/test_migrations')
   system.agent.version = '2.3.0'
@@ -128,7 +128,7 @@ test('Migrator.6: migrator applies migrations according to version', async t => 
   rimraf.sync(system.newPath)
 })
 
-test('Migrator.7: migrator applies migrations according to version', async t => {
+test('Migrator.7: migrator applies migrations according to version #3', async t => {
   const { system, installer } = Mockhelper.createDefaultMocks()
   process.env['MIGRATION_FILE_PATH'] = path.resolve(__dirname, './data/test_migrations')
   system.agent.version = '2.4.0'
@@ -146,6 +146,46 @@ test('Migrator.7: migrator applies migrations according to version', async t => 
   t.true(fs.existsSync(`${system.newPath}/ports/awsiot/certs/ca-cert`))
   t.true(fs.existsSync(`${system.newPath}/ports/awsiot/certs/client-cert`))
   t.true(fs.existsSync(`${system.newPath}/ports/awsiot/certs/private-key`))
+
+  rimraf.sync(system.newPath)
+})
+
+test('Migrator.8: migrator applies migrations according to version #4', async t => {
+  const { system, installer } = Mockhelper.createDefaultMocks()
+  process.env['MIGRATION_FILE_PATH'] = path.resolve(__dirname, './data/test_migrations')
+  system.agent.version = '2.4.0'
+  system.newAgent.version = '2.4.10'
+  system.path = path.resolve('./test/data/fake_agent_awsiot_2.4.0')
+
+  const updater = new AgentUpdater(system, installer, undefined)
+  await t.notThrowsAsync(updater.update())
+
+  t.true(fs.existsSync(`${system.newPath}/node-red/.node-red-config`))
+  t.true(fs.existsSync(`/home/${system.user}/.enebular-agent/.enebular-config.json`))
+  t.true(fs.existsSync(`${system.newPath}/.enebular-assets.json`))
+  t.true(fs.existsSync(`${system.newPath}/assets`))
+  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/config.json`))
+  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/certs/ca-cert`))
+  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/certs/client-cert`))
+  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/certs/private-key`))
+
+  rimraf.sync(system.newPath)
+})
+
+test('Migrator.9: Migration fails if migration file parsing fail', async t => {
+  const { system, installer } = Mockhelper.createDefaultMocks()
+  process.env['MIGRATION_FILE_PATH'] = path.resolve(__dirname, './data/test_migrations')
+  system.agent.version = '2.4.0'
+  system.newAgent.version = '8.0.0'
+  system.path = path.resolve('./test/data/fake_agent_awsiot_2.4.0')
+
+  const updater = new AgentUpdater(system, installer, undefined)
+  const error = await t.throwsAsync(updater.update())
+  t.true(
+    error.message.startsWith(
+      'Apply migration files failed'
+    )
+  )
 
   rimraf.sync(system.newPath)
 })

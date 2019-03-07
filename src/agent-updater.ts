@@ -135,6 +135,9 @@ export default class AgentUpdater {
         } => ${newAgentInfo.version})`
       )
     }
+    if (agentInfo.version.lessThan(new AgentVersion(2, 3, 0))) {
+      throw new Error(`Only support updating enebular-agent 2.3.0 and above`)
+    }
     if (agentInfo.systemd && agentInfo.systemd.port == 'pelion') {
       if (agentInfo.version.lessThan(new AgentVersion(2, 4, 0))) {
         throw new Error(

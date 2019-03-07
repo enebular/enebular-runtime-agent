@@ -141,8 +141,7 @@ export class Migrator implements MigratorIf {
     try {
       // TODO: read from enebular-runtime-agent not updater ?
       migrationFiles = fs.readdirSync(migrationFilePath)
-
-      const tmp = { 
+      const calcCurrentStateConfig = {
         ...this._migrateConfig,
         newProjectPath: this._migrateConfig.projectPath,
         newNodeRedPath: this._migrateConfig.nodeRedPath,
@@ -152,7 +151,7 @@ export class Migrator implements MigratorIf {
       let currentStates: Migrations = {}
       await this._importMigrations(
         currentStates,
-        tmp,
+        calcCurrentStateConfig,
         migrationFilePath,
         this._filterMigrationFiles(
           migrationFiles,
@@ -160,7 +159,6 @@ export class Migrator implements MigratorIf {
           this._agentInfo.version
         )
       )
-      this._log.debug(currentStates)
       await this._importMigrations(
         migrations,
         this._migrateConfig,
@@ -171,15 +169,12 @@ export class Migrator implements MigratorIf {
           this._newAgentInfo.version
         )
       )
-      this._log.debug(migrations)
-
       for (const migrationObject of Object.entries(migrations)) {
         const key = migrationObject[0]
         if (currentStates[key]) {
           migrations[key].currentState = currentStates[key].deserveState
         }
       }
-      this._log.debug(migrations)
     } catch (err) {
       throw new Error(`Apply migration files failed: ${err.message}`)
     }

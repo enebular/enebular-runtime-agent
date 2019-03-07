@@ -12,8 +12,8 @@ export default class NodeJSMigration extends Migration {
     newVersion: string,
     optional = false
   ) {
-    const current: NodeJSState = { version: currentVersion }
-    const deserve: NodeJSState = { version: newVersion }
+    const current: NodeJSState = { type: 'nodejs', version: currentVersion }
+    const deserve: NodeJSState = { type: 'nodejs', version: newVersion }
     super(name, current, deserve, optional)
 
     this.reverse = (migrator: Migrator): void => {

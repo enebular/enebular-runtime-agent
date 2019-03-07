@@ -1,6 +1,7 @@
 import Migrator from '../migrator'
 
 export interface MigrationState {
+  type: string
 }
 
 export abstract class Migration {
