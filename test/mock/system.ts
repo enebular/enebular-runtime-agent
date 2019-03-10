@@ -63,34 +63,34 @@ export default class MockSystem implements SystemIf {
     return ''
   }
 
-  public async stopAgent(service: string): Promise<boolean> {
-    this.attemptStopAgent++
-    if (this.failStopAgent) {
-      throw new Error(`stop agent failed`)
+  public async stopAgent(service: string, newAgent: boolean): Promise<boolean> {
+    if (newAgent) {
+      this.attemptStopNewAgent++
+      if (this.failStopNewAgent) {
+        throw new Error(`stop new agent failed`)
+      }
+    }
+    else {
+      this.attemptStopAgent++
+      if (this.failStopAgent) {
+        throw new Error(`stop agent failed`)
+      }
     }
     return true
   }
 
-  public async stopNewAgent(service: string): Promise<boolean> {
-    this.attemptStopNewAgent++
-    if (this.failStopNewAgent) {
-      throw new Error(`stop new agent failed`)
+  public async startAgent(service: string, newAgent: boolean): Promise<boolean> {
+    if (newAgent) {
+      this.attemptStartNewAgent++
+      if (this.failStartNewAgent) {
+        throw new Error(`start new agent failed`)
+      }
     }
-    return true
-  }
-
-  public async startAgent(service: string): Promise<boolean> {
-    this.attemptStartAgent++
-    if (this.failStartAgent) {
-      throw new Error(`start agent failed`)
-    }
-    return true
-  }
-
-  public async startNewAgent(service: string): Promise<boolean> {
-    this.attemptStartNewAgent++
-    if (this.failStartNewAgent) {
-      throw new Error(`start new agent failed`)
+    else {
+      this.attemptStartAgent++
+      if (this.failStartAgent) {
+        throw new Error(`start agent failed`)
+      }
     }
     return true
   }
@@ -119,17 +119,18 @@ export default class MockSystem implements SystemIf {
     return true
   }
 
-  public isAgentDead(serviceName: string): boolean {
-    this.attemptVerifyAgent++
-    return this.agentIsDead
-  }
-
-  public isNewAgentDead(serviceName: string): boolean {
-    this.attemptVerifyNewAgent++
-    if (this.newAgentIsDeadThrows) {
-      throw new Error(`expection: new agent is dead`)
+  public isAgentDead(serviceName: string, newAgent: boolean): boolean {
+    if (newAgent) {
+      this.attemptVerifyNewAgent++
+      if (this.newAgentIsDeadThrows) {
+        throw new Error(`expection: new agent is dead`)
+      }
+      return this.newAgentIsDead
     }
-    return this.newAgentIsDead
+    else {
+      this.attemptVerifyAgent++
+      return this.agentIsDead
+    }
   }
 
   public isServiceRegistered(serviceName: string): boolean {

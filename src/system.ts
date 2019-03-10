@@ -8,10 +8,8 @@ import Log from './log'
 export interface SystemIf {
   getServiceLogIgnoreError(serviceName: string, lines: number): string
 
-  stopAgent(service: string): Promise<boolean>
-  stopNewAgent(service: string): Promise<boolean>
-  startAgent(service: string): Promise<boolean>
-  startNewAgent(service: string): Promise<boolean>
+  stopAgent(service: string, newAgent: boolean): Promise<boolean>
+  startAgent(service: string, newAgent: boolean): Promise<boolean>
   flipToNewAgent(
     newAgent: string,
     agent: string,
@@ -22,8 +20,7 @@ export interface SystemIf {
     newAgent: string,
     newAgentBackup: string
   ): Promise<boolean>
-  isAgentDead(serviceName: string): boolean
-  isNewAgentDead(serviceName: string): boolean
+  isAgentDead(serviceName: string, newAgent: boolean): boolean
   isServiceRegistered(serviceName: string): boolean
   isServiceEnabled(serviceName: string): boolean
   isServiceActive(serviceName: string): boolean
@@ -66,19 +63,11 @@ export class System implements SystemIf {
     return ret ? ret : ''
   }
 
-  public async stopAgent(service: string): Promise<boolean> {
+  public async stopAgent(service: string, newAgent: boolean): Promise<boolean> {
     return this._serviceCtl(service, 'stop')
   }
 
-  public async stopNewAgent(service: string): Promise<boolean> {
-    return this._serviceCtl(service, 'stop')
-  }
-
-  public async startAgent(service: string): Promise<boolean> {
-    return this._serviceCtl(service, 'start')
-  }
-
-  public async startNewAgent(service: string): Promise<boolean> {
+  public async startAgent(service: string, newAgent: boolean): Promise<boolean> {
     return this._serviceCtl(service, 'start')
   }
 

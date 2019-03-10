@@ -89,9 +89,7 @@ export default class AgentUpdater {
   ): Promise<boolean> {
     return Utils.polling(
       async (): Promise<boolean> => {
-        return newAgent
-          ? this._system.isNewAgentDead(serviceName)
-          : this._system.isAgentDead(serviceName)
+        return this._system.isAgentDead(serviceName, newAgent)
       },
       initDelay,
       1000,
@@ -101,9 +99,7 @@ export default class AgentUpdater {
 
   private _stopAgent(newAgent = false): Promise<boolean> {
     const serviceName = `enebular-agent-${this._userInfo.user}`
-    return newAgent
-      ? this._system.stopNewAgent(serviceName)
-      : this._system.stopAgent(serviceName)
+    return this._system.stopAgent(serviceName, newAgent)
   }
 
   private async _startAgent(
@@ -117,9 +113,7 @@ export default class AgentUpdater {
       `${prefix}Starting enebular-agent ${version}`,
       this._log,
       (): Promise<boolean> => {
-        return newAgent
-          ? this._system.startNewAgent(serviceName)
-          : this._system.startAgent(serviceName)
+        return this._system.startAgent(serviceName, newAgent)
       }
     )
 
