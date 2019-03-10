@@ -67,7 +67,10 @@ export class System implements SystemIf {
     return this._serviceCtl(service, 'stop')
   }
 
-  public async startAgent(service: string, newAgent: boolean): Promise<boolean> {
+  public async startAgent(
+    service: string,
+    newAgent: boolean
+  ): Promise<boolean> {
     return this._serviceCtl(service, 'start')
   }
 

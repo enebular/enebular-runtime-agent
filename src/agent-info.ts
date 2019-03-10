@@ -5,7 +5,6 @@ import AgentVersion from './agent-version'
 import { SystemIf } from './system'
 
 export interface SystemdAgentInfo {
-  path: string
   user: string
   port: string
   serviceName: string
@@ -51,6 +50,20 @@ export default class AgentInfo {
     }
     this.nodejsVersion = nodejsVersion
     this.systemd = systemd
+  }
+
+  public detectPortType(): string {
+    if (this.systemd) {
+      return this.systemd.port
+    } else {
+      if (
+        (this.installed.awsiot && this.installed.pelion) ||
+        (!this.installed.awsiot && !this.installed.pelion)
+      ) {
+        throw new Error(`Failed to detect enebular-agent port type`)
+      }
+      return this.installed.awsiot ? 'awsiot' : 'pelion'
+    }
   }
 
   public static createFromSrc(
@@ -106,7 +119,6 @@ export default class AgentInfo {
     }
 
     const systemd = {
-      path: agentPath,
       port: agentPort,
       user: userFromSystemd,
       serviceName: serviceName,
@@ -123,8 +135,8 @@ export default class AgentInfo {
     log.info('   - Version: ' + this.version)
     log.info('   - NodeJS version: ' + this.nodejsVersion)
     log.info('   - Install destination: ' + this.path)
+    log.info('   - Install port: ' + this.detectPortType())
     if (this.systemd) {
-      log.info('   - Install port: ' + this.systemd.port)
       log.info('   - Install user: ' + this.systemd.user)
       log.info(` ${Utils.echoGreen('systemd information:')}`)
       log.info('   - enabled: ' + this.systemd.enabled)

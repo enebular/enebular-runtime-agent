@@ -136,7 +136,7 @@ export default class AgentUpdater {
     )
   }
 
-  private _preupdateCheck(newAgentInfo: AgentInfo, agentInfo: AgentInfo): void {
+  private _preUpdateCheck(newAgentInfo: AgentInfo, agentInfo: AgentInfo): void {
     if (
       newAgentInfo.version.lessThan(agentInfo.version) &&
       !this._config.getBoolean('FORCE_UPDATE')
@@ -150,7 +150,7 @@ export default class AgentUpdater {
     if (agentInfo.version.lessThan(new AgentVersion(2, 3, 0))) {
       throw new Error(`Only support updating enebular-agent 2.3.0 and above`)
     }
-    if (agentInfo.systemd && agentInfo.systemd.port == 'pelion') {
+    if (agentInfo.detectPortType() == 'pelion') {
       if (agentInfo.version.lessThan(new AgentVersion(2, 4, 0))) {
         throw new Error(
           `Updating enebular-agent pelion port is only supported from version 2.4.0`
@@ -205,14 +205,16 @@ export default class AgentUpdater {
     )
 
     this._switchAgentOnFailure = true
-    await this._startAgent(newAgentInfo.version, agentInfo.path)
+    if (agentInfo.systemd) {
+      await this._startAgent(newAgentInfo.version, agentInfo.path)
+    }
   }
 
   private async _postInstall(
     agentInfo: AgentInfo,
     newAgentInfo: AgentInfo
   ): Promise<void> {
-    this._preupdateCheck(newAgentInfo, agentInfo)
+    this._preUpdateCheck(newAgentInfo, agentInfo)
 
     if (
       newAgentInfo.version.equals(agentInfo.version) &&
@@ -221,8 +223,11 @@ export default class AgentUpdater {
       this._log.info(
         `enebular-agent is already the latest (${agentInfo.version}) version`
       )
+      // No need to start the agent if it is not registered
+      if (!agentInfo.systemd) return
+      // No need to start the agent if it is active
       if (agentInfo.systemd && agentInfo.systemd.active) return
-      // we will only try to start it if it is not started, since the current version may have
+      // we will only try to start agent if it is not started, since the current version may have
       // a rare chance was a updated version without being started.
       return this._startAgent(agentInfo.version, agentInfo.path)
     }
@@ -287,7 +292,10 @@ export default class AgentUpdater {
           }
 
           await this._migrator.reverse()
-          await this._startAgent(version, agentInfo.path, false)
+
+          if (agentInfo.systemd) {
+            await this._startAgent(version, agentInfo.path, false)
+          }
         } catch (err1) {
           throw new Error(
             err.message +
@@ -315,36 +323,34 @@ export default class AgentUpdater {
     }
 
     let agentInfo
-    // Detect where existing agent is
+    const agentPath = this._config.getString('ENEBULAR_AGENT_INSTALL_DIR')
     Utils.task(
       'Checking enebular-agent in systemd',
       this._log,
-      (): boolean => {
+      (): void => {
         agentInfo = AgentInfo.createFromSystemd(this._system, user)
-        return true
-      }
+      },
+      true
     )
 
-    if (this._config.isOverridden('ENEBULAR_AGENT_INSTALL_DIR')) {
-      // We are enforced to use user specified path
-      agentInfo.path = this._config.getString('ENEBULAR_AGENT_INSTALL_DIR')
-    } else {
-      if (agentInfo.systemd && agentInfo.systemd.path) {
-        agentInfo.path = agentInfo.systemd.path
-      } else {
-        // TODO: scan to find agent, now we only use default path
-        agentInfo.path = this._config.getString('ENEBULAR_AGENT_INSTALL_DIR')
-      }
-    }
-
-    const agentPath = agentInfo.path
-    if (agentInfo.path != agentInfo.systemd.path) {
+    if (!agentInfo) {
       Utils.task(
-        `Checking enebular-agent by path (${agentInfo.path})`,
+        `Checking enebular-agent by path`,
         this._log,
         (): void => {
           agentInfo = AgentInfo.createFromSrc(this._system, agentPath)
         }
+      )
+    }
+
+    if (
+      this._config.isOverridden('ENEBULAR_AGENT_INSTALL_DIR') &&
+      agentInfo.path != agentPath
+    ) {
+      throw new Error(
+        `Registered systemd service path (${
+          agentInfo.path
+        }) under ${user} is differnet from specified path (${agentPath}).`
       )
     }
 

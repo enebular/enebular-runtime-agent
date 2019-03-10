@@ -160,16 +160,13 @@ export class Migrator implements MigratorIf {
       `Pre-migrating check`,
       this._log,
       async (): Promise<void> => {
-        if (!agentInfo.systemd) {
-          throw new Error(`Failed to detect enebular-agent port type`)
-        }
         if (!agentInfo.version || !newAgentInfo.version) {
           throw new Error(`Failed to detect enebular-agent version`)
         }
         if (newAgentInfo.version.lessThan(agentInfo.version)) {
           throw new Error(`Migration only supports upgrade.`)
         }
-        const port = agentInfo.systemd.port
+        const port = agentInfo.detectPortType()
         const migrateConfig = {
           user: this._userInfo.user,
           port: port,
