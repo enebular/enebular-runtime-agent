@@ -487,8 +487,13 @@ export class AgentInstaller implements AgentInstallerIf {
     installPath: string,
     userInfo: UserInfo
   ): Promise<AgentInfo> {
+    const url = `${this._config.getString(
+      'ENEBULAR_AGENT_DOWNLOAD_PATH'
+    )}/enebular-agent-${this._config.getString(
+      'ENEBULAR_AGENT_VERSION'
+    )}-prebuilt.tar.gz`
     await this._installFromURL(
-      this._config.getString('ENEBULAR_AGENT_DOWNLOAD_URL'),
+      url,
       '/tmp/enebular-runtime-agent-' + Utils.randomString(),
       installPath,
       userInfo

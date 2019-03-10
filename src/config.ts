@@ -34,10 +34,15 @@ export default class Config {
         description: 'Install location of enebular-agent',
         userExpose: true
       },
-      ENEBULAR_AGENT_DOWNLOAD_URL: {
-        value:
-          'http://enebular-agent-update-youxin-test.s3-website-ap-southeast-2.amazonaws.com/enebular-agent-latest-prebuilt.tar.gz',
+      ENEBULAR_AGENT_VERSION: {
+        value: 'latest',
         description: 'The URL where to download enebular-agent',
+        userExpose: true
+      },
+      ENEBULAR_AGENT_DOWNLOAD_PATH: {
+        value:
+          'http://enebular-agent-update-youxin-test.s3-website-ap-southeast-2.amazonaws.com',
+        description: 'The URL PATH to download enebular-agent',
         userExpose: true
       },
       ENEBULAR_AGENT_USER: {

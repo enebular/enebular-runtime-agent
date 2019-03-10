@@ -16,9 +16,10 @@ export default class CommandLine {
     this._commander.version(pkg.version, '-v, --version')
 
     this.addConfigOption('ENEBULAR_AGENT_INSTALL_DIR', '--install-dir <path>')
+    this.addConfigOption('ENEBULAR_AGENT_VERSION', '--release-version <version>')
     this.addConfigOption(
-      'ENEBULAR_AGENT_DOWNLOAD_URL',
-      '--agent-download-url <url>'
+      'ENEBULAR_AGENT_DOWNLOAD_PATH',
+      '--agent-download-PATH <url>'
     )
     this.addConfigOption('ENEBULAR_AGENT_USER', '--user <user>')
     this.addConfigOption('ENEBULAR_AGENT_UPDATER_ENABLE_LOG', '--enable-log')

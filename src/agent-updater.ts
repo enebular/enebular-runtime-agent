@@ -142,7 +142,7 @@ export default class AgentUpdater {
       !this._config.getBoolean('FORCE_UPDATE')
     ) {
       throw new Error(
-        `Downgrading enebular-agent is not support yet. (${
+        `Downgrading enebular-agent is not supported yet. (${
           agentInfo.version
         } => ${newAgentInfo.version})`
       )
