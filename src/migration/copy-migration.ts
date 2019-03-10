@@ -18,7 +18,7 @@ export class CopyMigration extends Migration {
     super(name, current, deserve, optional)
   }
 
-  public async _do(migrator: Migrator): Promise<void> {
+  public async do(migrator: Migrator): Promise<void> {
     return Utils.copy(
       migrator.log,
       `${(this._currentState as CopyState).path}/${this._name}`,

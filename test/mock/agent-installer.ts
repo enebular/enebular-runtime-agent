@@ -7,6 +7,7 @@ import { UserInfo } from '../../src/utils'
 export default class MockAgentInstaller implements AgentInstallerIf {
   public failInstall: boolean = false
   public failBuild: boolean = false
+  public attemptBuild: boolean = false
 
   private _system: MockSystem
 
@@ -56,6 +57,7 @@ export default class MockAgentInstaller implements AgentInstallerIf {
     newAgentInfo: AgentInfo,
     userInfo: UserInfo
   ): Promise<void> {
+    this.attemptBuild = true
     if (this.failBuild) {
       throw new Error('Agent Build failed.')
     }

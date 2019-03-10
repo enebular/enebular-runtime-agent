@@ -11,7 +11,7 @@ import NodeJSMigration from './migration/nodejs-migration'
 import { SystemIf } from './system'
 
 export interface MigratorIf {
-  migrate(): Promise<void>
+  migrate(agentInfo: AgentInfo, newAgentInfo: AgentInfo): Promise<void>
   reverse(): Promise<void>
 }
 
@@ -34,17 +34,11 @@ export class Migrator implements MigratorIf {
   private _config: Config
   private _log: Log
   private _userInfo: UserInfo
-  private _migrateConfig: MigrateConfig
-  private _agentInfo: AgentInfo
-  private _newAgentInfo: AgentInfo
   private _system: SystemIf
-  private _upgrade: boolean
   private _migrations: Migrations = {}
 
   public constructor(
     system: SystemIf,
-    agentInfo: AgentInfo,
-    newAgentInfo: AgentInfo,
     config: Config,
     log: Log,
     userInfo: UserInfo
@@ -53,28 +47,6 @@ export class Migrator implements MigratorIf {
     this._config = config
     this._log = log
     this._userInfo = userInfo
-    this._agentInfo = agentInfo
-    this._newAgentInfo = newAgentInfo
-
-    if (!agentInfo.systemd) {
-      throw new Error(`Failed to detect enebular-agent port type`)
-    }
-    if (!agentInfo.version || !newAgentInfo.version) {
-      throw new Error(`Failed to detect enebular-agent version`)
-    }
-
-    this._upgrade = newAgentInfo.version.greaterThan(agentInfo.version)
-    const port = agentInfo.systemd.port
-    this._migrateConfig = {
-      user: this._userInfo.user,
-      port: port,
-      projectPath: agentInfo.path,
-      nodeRedPath: `${agentInfo.path}/node-red`,
-      portBasePath: `${agentInfo.path}/ports/${port}`,
-      newProjectPath: newAgentInfo.path,
-      newNodeRedPath: `${newAgentInfo.path}/node-red`,
-      newPortBasePath: `${newAgentInfo.path}/ports/${port}`
-    }
   }
 
   public get log(): Log {
@@ -87,10 +59,6 @@ export class Migrator implements MigratorIf {
 
   public get system(): SystemIf {
     return this._system
-  }
-
-  public get migrateConfig(): MigrateConfig {
-    return this._migrateConfig
   }
 
   /* example:  */
@@ -134,7 +102,11 @@ export class Migrator implements MigratorIf {
     }
   }
 
-  private async _applyMigrationFiles(migrations: Migrations): Promise<void> {
+  private async _applyMigrationFiles(
+    agentInfo: AgentInfo,
+    newAgentInfo: AgentInfo,
+    config: MigrateConfig
+  ): Promise<void> {
     let migrationFiles
     const migrationFilePath = this._config.getString('MIGRATION_FILE_PATH')
 
@@ -142,10 +114,10 @@ export class Migrator implements MigratorIf {
       // TODO: read from enebular-runtime-agent not updater ?
       migrationFiles = fs.readdirSync(migrationFilePath)
       const calcCurrentStateConfig = {
-        ...this._migrateConfig,
-        newProjectPath: this._migrateConfig.projectPath,
-        newNodeRedPath: this._migrateConfig.nodeRedPath,
-        newPortBasePath: this._migrateConfig.portBasePath
+        ...config,
+        newProjectPath: config.projectPath,
+        newNodeRedPath: config.nodeRedPath,
+        newPortBasePath: config.portBasePath
       }
 
       let currentStates: Migrations = {}
@@ -156,23 +128,23 @@ export class Migrator implements MigratorIf {
         this._filterMigrationFiles(
           migrationFiles,
           new AgentVersion(0, 0, 0),
-          this._agentInfo.version
+          agentInfo.version
         )
       )
       await this._importMigrations(
-        migrations,
-        this._migrateConfig,
+        this._migrations,
+        config,
         migrationFilePath,
         this._filterMigrationFiles(
           migrationFiles,
           new AgentVersion(0, 0, 0),
-          this._newAgentInfo.version
+          newAgentInfo.version
         )
       )
-      for (const migrationObject of Object.entries(migrations)) {
+      for (const migrationObject of Object.entries(this._migrations)) {
         const key = migrationObject[0]
         if (currentStates[key]) {
-          migrations[key].currentState = currentStates[key].deserveState
+          this._migrations[key].currentState = currentStates[key].deserveState
         }
       }
     } catch (err) {
@@ -180,22 +152,47 @@ export class Migrator implements MigratorIf {
     }
   }
 
-  public async migrate(): Promise<void> {
-    if (!this._upgrade) {
-      throw new Error(`Migrator only supports upgrade.`)
-    }
+  public async migrate(
+    agentInfo: AgentInfo,
+    newAgentInfo: AgentInfo
+  ): Promise<void> {
+    await Utils.taskAsync(
+      `Pre-migrating check`,
+      this._log,
+      async (): Promise<void> => {
+        if (!agentInfo.systemd) {
+          throw new Error(`Failed to detect enebular-agent port type`)
+        }
+        if (!agentInfo.version || !newAgentInfo.version) {
+          throw new Error(`Failed to detect enebular-agent version`)
+        }
+        if (newAgentInfo.version.lessThan(agentInfo.version)) {
+          throw new Error(`Migration only supports upgrade.`)
+        }
+        const port = agentInfo.systemd.port
+        const migrateConfig = {
+          user: this._userInfo.user,
+          port: port,
+          projectPath: agentInfo.path,
+          nodeRedPath: `${agentInfo.path}/node-red`,
+          portBasePath: `${agentInfo.path}/ports/${port}`,
+          newProjectPath: newAgentInfo.path,
+          newNodeRedPath: `${newAgentInfo.path}/node-red`,
+          newPortBasePath: `${newAgentInfo.path}/ports/${port}`
+        }
 
-    if (this._agentInfo.nodejsVersion !== this._newAgentInfo.nodejsVersion) {
-      this._migrations['nodejs'] = new NodeJSMigration(
-        `nodejs ${this._agentInfo.nodejsVersion} => ${
-          this._newAgentInfo.nodejsVersion
-        }`,
-        this._agentInfo.nodejsVersion,
-        this._newAgentInfo.nodejsVersion
-      )
-    }
-
-    await this._applyMigrationFiles(this._migrations)
+        if (agentInfo.nodejsVersion !== newAgentInfo.nodejsVersion) {
+          this._migrations['nodejs'] = new NodeJSMigration(
+            `nodejs ${agentInfo.nodejsVersion} => ${
+              newAgentInfo.nodejsVersion
+            }`,
+            agentInfo.nodejsVersion,
+            newAgentInfo.nodejsVersion
+          )
+        }
+        return this._applyMigrationFiles(agentInfo, newAgentInfo, migrateConfig)
+      }
+    )
 
     for (const migrationObject of Object.entries(this._migrations)) {
       const migration = migrationObject[1]
@@ -203,10 +200,11 @@ export class Migrator implements MigratorIf {
         `Migrating ${migration.name}`,
         this._log,
         async (): Promise<void> => {
-          return migration._do(this)
+          return migration.do(this)
         },
         migration.optional
       )
+      migration.done = true
     }
   }
 
@@ -218,7 +216,7 @@ export class Migrator implements MigratorIf {
           `[RESTORE] Migration ${migration.name}`,
           this._log,
           async (): Promise<void> => {
-            if (migration.reverse) migration.reverse(this)
+            if (migration.reverse && migration.done) migration.reverse(this)
           },
           migration.optional
         )

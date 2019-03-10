@@ -6,7 +6,7 @@ import AgentVersion from './agent-version'
 import { AgentInstaller, AgentInstallerIf } from './agent-installer'
 import { Migrator, MigratorIf } from './migrator'
 import { System, SystemIf } from './system'
-import Utils from './utils'
+import { UserInfo, Utils } from './utils'
 import { version as updaterVer } from '../package.json'
 import * as path from 'path'
 import * as fs from 'fs'
@@ -17,8 +17,12 @@ export default class AgentUpdater {
   private _config: Config
   private _log: Log
   private _system: SystemIf
-  private _installer?: AgentInstallerIf
-  private _migrator?: MigratorIf
+  private _installer: AgentInstallerIf
+  private _migrator: MigratorIf
+  private _userInfo: UserInfo
+  private _cachePath: string
+  private _restoreAgentOnFailure = false
+  private _switchAgentOnFailure = false
 
   public constructor(
     system?: SystemIf,
@@ -37,9 +41,17 @@ export default class AgentUpdater {
       this._config.getBoolean('ENEBULAR_AGENT_UPDATER_ENABLE_LOG')
     )
 
+    this._userInfo = Utils.getUserInfo(
+      this._config.getString('ENEBULAR_AGENT_USER')
+    )
+    this._cachePath = `/home/${this._userInfo.user}`
     this._system = system ? system : new System(this._log)
     this._installer = installer
+      ? installer
+      : new AgentInstaller(this._config, this._log, this._system)
     this._migrator = migrator
+      ? migrator
+      : new Migrator(this._system, this._config, this._log, this._userInfo)
   }
 
   public getLogFilePath(): string {
@@ -87,13 +99,19 @@ export default class AgentUpdater {
     )
   }
 
+  private _stopAgent(newAgent = false): Promise<boolean> {
+    const serviceName = `enebular-agent-${this._userInfo.user}`
+    return newAgent
+      ? this._system.stopNewAgent(serviceName)
+      : this._system.stopAgent(serviceName)
+  }
+
   private async _startAgent(
     version: AgentVersion,
     path: string,
-    user: string,
-    serviceName: string,
     newAgent = true
   ): Promise<void> {
+    const serviceName = `enebular-agent-${this._userInfo.user}`
     const prefix = newAgent ? '' : '[RESTORE] '
     await Utils.taskAsync(
       `${prefix}Starting enebular-agent ${version}`,
@@ -153,6 +171,67 @@ export default class AgentUpdater {
         )
       }
     }
+  }
+
+  private async _setupAndStartNewAgant(
+    agentInfo: AgentInfo,
+    newAgentInfo: AgentInfo,
+    oldAgentBackupPath: string
+  ): Promise<void> {
+    await this._installer.build(agentInfo, newAgentInfo, this._userInfo)
+    this._restoreAgentOnFailure = true
+    // shutdown current agent
+    if (agentInfo.systemd && agentInfo.systemd.active) {
+      await Utils.taskAsync(
+        `Stopping enebular-agent ${agentInfo.version}`,
+        this._log,
+        (): Promise<boolean> => {
+          return this._stopAgent()
+        }
+      )
+    }
+    // migrate enebular-agent and systemd config
+    await this._migrator.migrate(agentInfo, newAgentInfo)
+
+    await Utils.taskAsync(
+      `Switching enebular-agent from ${agentInfo.version} to ${
+        newAgentInfo.version
+      }`,
+      this._log,
+      (): Promise<boolean> => {
+        if (fs.existsSync(oldAgentBackupPath)) {
+          rimraf.sync(oldAgentBackupPath)
+        }
+        return this._system.flipToNewAgent(
+          newAgentInfo.path,
+          agentInfo.path,
+          oldAgentBackupPath
+        )
+      }
+    )
+
+    this._switchAgentOnFailure = true
+    await this._startAgent(newAgentInfo.version, agentInfo.path)
+  }
+
+  private async _postInstall(
+    agentInfo: AgentInfo,
+    newAgentInfo: AgentInfo
+  ): Promise<void> {
+    this._preupdateCheck(newAgentInfo, agentInfo)
+
+    if (
+      newAgentInfo.version.equals(agentInfo.version) &&
+      !this._config.getBoolean('FORCE_UPDATE')
+    ) {
+      this._log.info(
+        `enebular-agent is already the latest (${agentInfo.version}) version`
+      )
+      if (agentInfo.systemd && agentInfo.systemd.active) return
+      // we will only try to start it if it is not started, since the current version may have
+      // a rare chance was a updated version without being started.
+      return this._startAgent(agentInfo.version, agentInfo.path)
+    }
 
     this._log.info(
       'Updating ' +
@@ -160,12 +239,78 @@ export default class AgentUpdater {
         ' to ' +
         Utils.echoGreen(`${newAgentInfo.version}`)
     )
+
+    const oldAgentDirName = 'enebular-runtime-agent.old'
+    const oldAgentBackupPath = path.resolve(
+      this._cachePath,
+      `./${oldAgentDirName}`
+    )
+    try {
+      await this._setupAndStartNewAgant(
+        agentInfo,
+        newAgentInfo,
+        oldAgentBackupPath
+      )
+    } catch (err) {
+      if (this._restoreAgentOnFailure) {
+        const version = agentInfo.version
+        const newVersion = newAgentInfo.version
+        // restore
+        try {
+          if (this._switchAgentOnFailure) {
+            try {
+              this._log.debug(
+                `Start enebular-agent failed, status from journal:\n` +
+                  this._system.getServiceLogIgnoreError(
+                    `enebular-agent-${this._userInfo.user}`,
+                    100
+                  )
+              )
+            } catch (err) {
+              // ignore error if we have
+            }
+
+            await Utils.taskAsync(
+              `[RESTORE] Stopping enebular-agent ${newVersion}`,
+              this._log,
+              (): Promise<boolean> => {
+                return this._stopAgent(true)
+              },
+              true
+            )
+
+            await Utils.taskAsync(
+              `[RESTORE] Flipping back to enebular-agent ${version}`,
+              this._log,
+              (): Promise<boolean> => {
+                return this._system.flipToOriginalAgent(
+                  oldAgentBackupPath,
+                  agentInfo.path,
+                  newAgentInfo.path
+                )
+              }
+            )
+          }
+
+          await this._migrator.reverse()
+          await this._startAgent(version, agentInfo.path, false)
+        } catch (err1) {
+          throw new Error(
+            err.message +
+              `\n[Faulty] restore to ${version} failed! error message:\n${
+                err1.message
+              }`
+          )
+        }
+      }
+      throw err
+    }
   }
 
   public async update(): Promise<boolean> {
     this._log.info('enebular-agent-updater version: ' + updaterVer)
 
-    const user = this._config.getString('ENEBULAR_AGENT_USER')
+    const user = this._userInfo.user
     if (this._config.getBoolean('ROOT_REQUIRED') && process.getuid() !== 0) {
       this._requireRootUser(
         this._config.isOverridden('ENEBULAR_AGENT_USER')
@@ -211,121 +356,20 @@ export default class AgentUpdater {
 
     agentInfo.prettyStatus(this._log)
 
-    // download and build new version
-    const userInfo = Utils.getUserInfo(user)
-    const newAgentDirName = 'enebular-runtime-agent.new'
-    const cachePath = `/home/${user}`
-    const newAgentInstallPath = path.resolve(cachePath, `./${newAgentDirName}`)
-    this._installer = this._installer
-      ? this._installer
-      : new AgentInstaller(this._config, this._log, this._system)
+    const newAgentInstallPath = path.resolve(
+      this._cachePath,
+      `./enebular-runtime-agent.new`
+    )
     const newAgentInfo = await this._installer.install(
       newAgentInstallPath,
-      userInfo
+      this._userInfo
     )
 
-    this._preupdateCheck(newAgentInfo, agentInfo)
-
-    await this._installer.build(agentInfo, newAgentInfo, userInfo)
-
-    const serviceName = agentInfo.systemd.serviceName
-    const oldAgentDirName = 'enebular-runtime-agent.old'
-    const oldAgentBackupPath = path.resolve(cachePath, `./${oldAgentDirName}`)
-    let switched = false
-
-    // setup and switch to the new agent
-    if (this._migrator == undefined) {
-      this._migrator = new Migrator(
-        this._system,
-        agentInfo,
-        newAgentInfo,
-        this._config,
-        this._log,
-        userInfo
-      )
-    }
-
     try {
-      // shutdown current agent
-      if (agentInfo.systemd.active) {
-        await Utils.taskAsync(
-          `Stopping enebular-agent ${agentInfo.version}`,
-          this._log,
-          (): Promise<boolean> => {
-            return this._system.stopAgent(serviceName)
-          }
-        )
-      }
-      // config copying, migrate
-      await this._migrator.migrate()
-
-      await Utils.taskAsync(
-        `Switching enebular-agent from ${agentInfo.version} to ${
-          newAgentInfo.version
-        }`,
-        this._log,
-        (): Promise<boolean> => {
-          if (fs.existsSync(oldAgentBackupPath)) {
-            rimraf.sync(oldAgentBackupPath)
-          }
-          return this._system.flipToNewAgent(
-            newAgentInstallPath,
-            agentPath,
-            oldAgentBackupPath
-          )
-        }
-      )
-      switched = true
-
-      await this._startAgent(newAgentInfo.version, agentPath, user, serviceName)
+      await this._postInstall(agentInfo, newAgentInfo)
     } catch (err) {
-      const version = agentInfo.version
-      const newVersion = newAgentInfo.version
-      try {
-        this._log.debug(
-          `${agentInfo.systemd.serviceName} status from journal:\n` +
-            this._system.getServiceLogIgnoreError(
-              agentInfo.systemd.serviceName,
-              100
-            )
-        )
-      } catch (err) {
-        // ignore error if we have
-      }
-      // restore
-      try {
-        if (switched) {
-          await Utils.taskAsync(
-            `[RESTORE] Stopping enebular-agent ${newVersion}`,
-            this._log,
-            (): Promise<boolean> => {
-              return this._system.stopNewAgent(serviceName)
-            },
-            true
-          )
-
-          await Utils.taskAsync(
-            `[RESTORE] Flipping back to enebular-agent ${version}`,
-            this._log,
-            (): Promise<boolean> => {
-              return this._system.flipToOriginalAgent(
-                oldAgentBackupPath,
-                agentPath,
-                newAgentInstallPath
-              )
-            }
-          )
-        }
-
-        await this._migrator.reverse()
-        await this._startAgent(version, agentPath, user, serviceName, false)
-      } catch (err1) {
-        throw new Error(
-          err.message +
-            `\n[Faulty] restore to ${version} failed! error message:\n${
-              err1.message
-            }`
-        )
+      if (fs.existsSync(newAgentInstallPath)) {
+        rimraf.sync(newAgentInstallPath)
       }
       throw err
     }

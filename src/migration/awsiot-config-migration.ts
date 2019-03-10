@@ -10,7 +10,7 @@ export default class AwsiotConfigMigration extends CopyMigration {
     super(name, copyFrom, copyTo, false)
   }
 
-  public async _do(migrator: Migrator): Promise<void> {
+  public async do(migrator: Migrator): Promise<void> {
     const awsiotConfigPath = path.resolve(
       (this._currentState as CopyState).path,
       this._name

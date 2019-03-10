@@ -11,9 +11,8 @@ test.before(() => {
   process.env['FORCE_UPDATE'] = 'true'
 })
 
-test('Installer.1: ', async t => {
+test.skip('Installer.1: ', async t => {
   const { system, migrator } = Mockhelper.createDefaultMocks()
-  system.newAgent.nodejsVersion = 'v9.2.0'
 
   const updater = new AgentUpdater(system, undefined, migrator)
   await t.notThrowsAsync(updater.update())

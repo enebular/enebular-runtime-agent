@@ -7,6 +7,7 @@ export interface MigrationState {
 export abstract class Migration {
   protected _name: string
   protected _optional: boolean
+  protected _done: boolean
   protected _currentState: MigrationState
   protected _deserveState: MigrationState
 
@@ -18,6 +19,7 @@ export abstract class Migration {
     deserveState: MigrationState,
     optional: boolean
   ) {
+    this._done = false
     this._name = name
     this._currentState = currentState
     this._deserveState = deserveState
@@ -32,6 +34,14 @@ export abstract class Migration {
     return this._name
   }
 
+  public get done(): boolean {
+    return this._done
+  }
+
+  public set done(done: boolean) {
+    this._done = done
+  }
+
   public get deserveState(): MigrationState {
     return this._deserveState
   }
@@ -40,7 +50,7 @@ export abstract class Migration {
     this._currentState = state
   }
 
-  public abstract _do(migrator: Migrator): Promise<void> | void
+  public abstract do(migrator: Migrator): Promise<void> | void
 }
 
 export default Migration

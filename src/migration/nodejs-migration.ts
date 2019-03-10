@@ -25,7 +25,7 @@ export default class NodeJSMigration extends Migration {
     }
   }
 
-  public _do(migrator: Migrator): void {
+  public do(migrator: Migrator): void {
     migrator.system.updateNodeJSVersionInSystemd(
       migrator.userInfo.user,
       (this._currentState as NodeJSState).version,

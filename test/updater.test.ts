@@ -238,25 +238,16 @@ test.serial(
 )
 
 test.serial(
-  'Updater.12: Update fails if current agent version is newer or same to the version to be updated',
+  'Updater.12: Refuse to downgrade',
   async t => {
     const { system, installer, migrator } = Mockhelper.createDefaultMocks()
-    system.agent.version = '2.0.0'
-    system.newAgent.version = '2.0.0'
+    system.agent.version = '2.3.1'
+    system.newAgent.version = '2.3.0'
 
     let updater = new AgentUpdater(system, installer, migrator)
     let error = await t.throwsAsync(updater.update())
     t.true(
-      error.message.startsWith('enebular-agent is already the newest version')
-    )
-
-    system.agent.version = '2.0.1'
-    system.newAgent.version = '2.0.0'
-
-    updater = new AgentUpdater(system, installer, migrator)
-    error = await t.throwsAsync(updater.update())
-    t.true(
-      error.message.startsWith('enebular-agent is already the newest version')
+      error.message.startsWith('Downgrading enebular-agent is not support yet')
     )
   }
 )
@@ -316,3 +307,22 @@ test.serial('Updater.15: Handles agent source scan failure', async t => {
   error = await t.throwsAsync(updater.update())
   t.true(error.message.startsWith('Scan new agent source return error'))
 })
+
+test.serial(
+  'Updater.16: If the version is same as the version to be updated, skip build and switch only try to start it if not active',
+  async t => {
+    const { system, installer, migrator } = Mockhelper.createDefaultMocks()
+    system.agent.version = '2.4.0'
+    system.newAgent.version = '2.4.0'
+    system.serviceIsActive = false
+
+    let updater = new AgentUpdater(system, installer, migrator)
+    await t.notThrowsAsync(updater.update())
+
+    t.is(installer.attemptBuild, false, 'Skip build')
+    t.is(system.attemptFlipNewAgent, 0, 'Skip flip to new agent')
+    t.is(system.attemptStartNewAgent, 1, 'start agent')
+    t.is(system.attemptVerifyNewAgent, 1, 'verify agent')
+  }
+)
+
