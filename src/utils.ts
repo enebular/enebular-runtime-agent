@@ -234,6 +234,25 @@ export class Utils {
         : {}
     )
   }
+
+  public static mv(
+    from: string,
+    to: string,
+    log?: Log,
+    userInfo?: UserInfo
+  ): Promise<void> {
+    return Utils.spawn(
+      'mv',
+      [from, to],
+      log,
+      userInfo
+        ? {
+            uid: userInfo.uid,
+            gid: userInfo.gid
+          }
+        : {}
+    )
+  }
 }
 
 export default Utils

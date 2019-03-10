@@ -255,13 +255,13 @@ export class System implements SystemIf {
     backup: string
   ): Promise<boolean> {
     try {
-      await Utils.spawn('mv', [to, backup], this._log)
+      await Utils.mv(to, backup, this._log)
     } catch (err) {
       throw new Error(`Failed to move ${to} to ${backup}:\n${err.message}`)
     }
 
     try {
-      await Utils.spawn('mv', [from, to], this._log)
+      await Utils.mv(from, to, this._log)
     } catch (err) {
       throw new Error(`Failed to move ${from} to ${to}:\n${err.message}`)
     }

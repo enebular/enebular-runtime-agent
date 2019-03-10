@@ -98,7 +98,7 @@ export default class AgentInfo {
     )
   }
 
-  public static createFromSystemd(system: SystemIf, user: string): AgentInfo {
+  public static async createFromSystemd(system: SystemIf, user: string, cachedAgent: string): Promise<AgentInfo> {
     const serviceName = `enebular-agent-${user}`
     if (!system.isServiceRegistered(serviceName)) {
       throw new Error(
@@ -114,6 +114,15 @@ export default class AgentInfo {
     const { agentPath, agentPort } = system.getAgentPathAndPortFromSystemd(
       serviceName
     )
+    if (!fs.existsSync(agentPath) && fs.existsSync(cachedAgent)) {
+      // Found a previous cached agent, restore it.
+      try {
+        await Utils.mv(cachedAgent, agentPath)
+      } catch (err) {
+        throw new Error(`Failed to restore agent from ${cachedAgent} to ${agentPath}:\n${err.message}`)
+      }
+    }
+
     if (!fs.existsSync(agentPath)) {
       throw new Error(`enebular-agent path absents: ${agentPath}`)
     }
