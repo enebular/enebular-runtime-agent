@@ -46,7 +46,7 @@ export interface SystemIf {
     version: string,
     newVersion: string,
     file?: string
-  ): void
+  ): Promise<void>
 }
 
 export class System implements SystemIf {
@@ -113,25 +113,27 @@ export class System implements SystemIf {
     return failed || !active ? true : false
   }
 
-  public updateNodeJSVersionInSystemd(
+  public async updateNodeJSVersionInSystemd(
     user: string,
     version: string,
     newVersion: string,
     file?: string
-  ): void {
+  ): Promise<void> {
     const serviceFile = file
       ? file
       : `/etc/systemd/system/enebular-agent-${user}.service`
     const envToReplace = `Environment=PATH=/home/${user}/nodejs-${version}/bin`
     const newEnv = `Environment=PATH=/home/${user}/nodejs-${newVersion}/bin`
+    const tmpFile = '/tmp/enebular-agent-systemd-config-' + Utils.randomString()
 
     try {
       let content = fs.readFileSync(serviceFile, 'utf8')
       fs.writeFileSync(
-        serviceFile,
+        tmpFile,
         content.replace(envToReplace, newEnv),
         'utf8'
       )
+      await Utils.mv(tmpFile, serviceFile)
     } catch (err) {
       throw new Error(
         `Failed to update nodejs version in systemd: ${err.message}`

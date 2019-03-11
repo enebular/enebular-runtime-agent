@@ -247,7 +247,7 @@ test.serial(
     let updater = new AgentUpdater(system, installer, migrator)
     let error = await t.throwsAsync(updater.update())
     t.true(
-      error.message.startsWith('Downgrading enebular-agent is not support yet')
+      error.message.startsWith('Downgrading enebular-agent is not supported yet')
     )
   }
 )

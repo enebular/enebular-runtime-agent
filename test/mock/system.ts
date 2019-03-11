@@ -194,10 +194,10 @@ export default class MockSystem implements SystemIf {
 
   public async installDebianPackages(packages: string[]): Promise<void> {}
 
-  public updateNodeJSVersionInSystemd(
+  public async updateNodeJSVersionInSystemd(
     user: string,
     version: string,
     newVersion: string,
     file?: string
-  ): void {}
+  ): Promise<void> {}
 }

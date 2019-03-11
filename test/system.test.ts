@@ -31,7 +31,7 @@ test('System.1: update nodejs version in systemd config file', async t => {
 
   await writeFile(tmp, await readFile(systemConfigSimple, 'utf8'), 'utf8')
 
-  system.updateNodeJSVersionInSystemd('enebular', 'v9.2.1', 'v9.2.0', tmp)
+  await system.updateNodeJSVersionInSystemd('enebular', 'v9.2.1', 'v9.2.0', tmp)
 
   const data = await readFile(tmp, 'utf8')
   t.true(data.indexOf('v9.2.0') > -1)

@@ -233,6 +233,7 @@ export default class AgentUpdater {
       if (agentInfo.systemd && agentInfo.systemd.active) return
       // we will only try to start agent if it is not started, since the current version may have
       // a rare chance was a updated version without being started.
+      // TODO: should we follow another restore here.
       return this._startAgent(agentInfo.version, agentInfo.path)
     }
 

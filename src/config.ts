@@ -31,59 +31,59 @@ export default class Config {
       },
       ENEBULAR_AGENT_INSTALL_DIR: {
         value: '/home/enebular/enebular-runtime-agent',
-        description: 'Install location of enebular-agent',
+        description: 'install location of enebular-agent',
         userExpose: true
       },
       ENEBULAR_AGENT_VERSION: {
         value: 'latest',
-        description: 'The URL where to download enebular-agent',
+        description: 'the version to upgrade, default to \'latest\'',
         userExpose: true
       },
       ENEBULAR_AGENT_DOWNLOAD_PATH: {
         value:
           'http://enebular-agent-update-youxin-test.s3-website-ap-southeast-2.amazonaws.com',
-        description: 'The URL PATH to download enebular-agent',
+        description: 'the URL PATH to download enebular-agent',
         userExpose: true
       },
       ENEBULAR_AGENT_USER: {
         value: 'enebular',
-        description: 'Install location of enebular-agent',
+        description: 'user to run as after being installed',
         userExpose: true
       },
       MINIMUM_CHECKING_TIME: {
         value: 30,
-        description: 'Minimum wait seconds that agent has to stablely running',
+        description: 'minimum wait seconds that agent has to stablely running',
         userExpose: false
       },
       ENEBULAR_AGENT_UPDATER_ENABLE_LOG: {
         value: true,
-        description: 'Install location of enebular-agent',
+        description: 'install location of enebular-agent',
         userExpose: true
       },
       MIGRATION_FILE_PATH: {
         value: path.resolve(__dirname, './migrations'),
-        description: 'Path to find migrations files',
+        description: 'path to find migrations files',
         userExpose: true
       },
       PELION_MODE: {
         value: 'factory',
-        description: 'Pelion mode (developer or factory)',
+        description: 'pelion mode (developer or factory)',
         userExpose: true
       },
       FORCE_UPDATE: {
         value: false,
         description:
-          'Force update to latest version without checking exiting agent version',
+          'force update to latest version',
         userExpose: true
       },
       DEBUG: {
         value: 'info',
-        description: 'Debug level, used to control logging',
+        description: 'debug level, used to control logging',
         userExpose: true
       },
       ROOT_REQUIRED: {
         value: true,
-        description: 'Updater has to be run by privileged user or not',
+        description: 'updater has to be run by privileged user or not',
         userExpose: false
       },
       NODE_JS_DOWNLOAD_BASE_URL: {
