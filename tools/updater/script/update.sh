@@ -236,6 +236,7 @@ ensure_nodejs_version() {
 UPDATER_DOWNLOAD_URL="http://enebular-agent-update-youxin-test.s3-website-ap-southeast-2.amazonaws.com/enebular-agent-updater-latest.tar.gz"
 USER=enebular
 
+declare -a UPDATER_PARAMETER
 for i in "$@"
 do
 case $i in
@@ -247,14 +248,8 @@ case $i in
   UPDATER_DOWNLOAD_URL="${i#*=}"
   shift
   ;;
-  --agent-download-url=*)
-  AGENT_DOWNLOAD_URL="${i#*=}"
-  shift
-  ;;
   *)
-  # unknown option
-  _echo "Unknown option: ${i}"
-  _exit 1
+  UPDATER_PARAMETER+=(${i})
   ;;
 esac
 done
@@ -291,12 +286,7 @@ if (
   _echo_g "OK"
 fi 
 
-if [ ! -z ${USER} ]; then
-  UPDATER_PARAMETER="--user=${USER}"
-fi
-if [ ! -z ${AGENT_DOWNLOAD_URL} ]; then
-  UPDATER_PARAMETER="--agent-download-url=${AGENT_DOWNLOAD_URL} ${UPDATER_PARAMETER}"
-fi
+UPDATER_PARAMETER+=("--user=${USER}")
 
 NODE_STR=`grep \"node\": ${TEMP_UPDATER_DST}/package.json`
 NODE_STR=${NODE_STR#*:}
@@ -306,12 +296,14 @@ SUPPORTED_NODE_VERSION=v${NODE_STR}
 ensure_nodejs_version NODE_PATH
 EXIT_CODE=$?
 if [ "$EXIT_CODE" -ne 0 ]; then
-  _err "No suitable Node.js has been installed"
+  _err "No suitable Node.js can be installed"
   _exit 1
 fi
 
 export PATH=${NODE_PATH}:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
 ${TEMP_UPDATER_DST}/bin/enebular-agent-update ${UPDATER_PARAMETER}
+
+rm -rf "${TEMP_UPDATER_DST}"
 
 
 
