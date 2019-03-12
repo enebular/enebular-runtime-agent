@@ -1,5 +1,4 @@
 import AgentInfo from '../../src/agent-info'
-import AgentVersion from '../../src/agent-version'
 import { AgentInstallerIf } from '../../src/agent-installer'
 import MockSystem from './system'
 import { UserInfo } from '../../src/utils'

@@ -74,8 +74,7 @@ export default class MockSystem implements SystemIf {
       if (this.failStopNewAgent) {
         throw new Error(`stop new agent failed`)
       }
-    }
-    else {
+    } else {
       this.attemptStopAgent++
       if (this.failStopAgent) {
         throw new Error(`stop agent failed`)
@@ -84,14 +83,16 @@ export default class MockSystem implements SystemIf {
     return true
   }
 
-  public async startAgent(service: string, newAgent: boolean): Promise<boolean> {
+  public async startAgent(
+    service: string,
+    newAgent: boolean
+  ): Promise<boolean> {
     if (newAgent) {
       this.attemptStartNewAgent++
       if (this.failStartNewAgent) {
         throw new Error(`start new agent failed`)
       }
-    }
-    else {
+    } else {
       this.attemptStartAgent++
       if (this.failStartAgent) {
         throw new Error(`start agent failed`)
@@ -131,8 +132,7 @@ export default class MockSystem implements SystemIf {
         throw new Error(`expection: new agent is dead`)
       }
       return this.newAgentIsDead
-    }
-    else {
+    } else {
       this.attemptVerifyAgent++
       return this.agentIsDead
     }

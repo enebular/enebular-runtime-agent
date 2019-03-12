@@ -14,7 +14,7 @@ module.exports = {
     migrations['.node-red-config'] = new CopyMigration(
       '.node-red-config',
       config['nodeRedPath'],
-      config['newNodeRedPath'],
+      config['newNodeRedPath']
     )
 
     migrations['.enebular-assets.json'] = new CopyMigration(
@@ -35,7 +35,7 @@ module.exports = {
       migrations['config.json'] = new AwsiotConfigMigration(
         'config.json',
         config['portBasePath'],
-        config['newPortBasePath'],
+        config['newPortBasePath']
       )
     }
   },
