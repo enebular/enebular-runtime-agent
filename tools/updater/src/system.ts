@@ -261,7 +261,6 @@ export class System implements SystemIf {
     } catch (err) {
       throw new Error(`Failed to move ${to} to ${backup}: ${err.message}`)
     }
-
     try {
       await Utils.mv(from, to, this._log)
     } catch (err) {

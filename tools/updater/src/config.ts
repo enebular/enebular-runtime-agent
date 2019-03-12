@@ -52,7 +52,7 @@ export default class Config {
       },
       ENEBULAR_AGENT_UPDATER_CACHE_DIR: {
         value: '/tmp/enebular-agent-updater-cache',
-        description: "location to store temporary update data",
+        description: 'location to store temporary update data',
         userExpose: true
       },
       MINIMUM_CHECKING_TIME: {

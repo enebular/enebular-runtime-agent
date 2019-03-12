@@ -1,7 +1,7 @@
 import CommandLine from './command-line'
 import Config from './config'
 import Log from './log'
-import { AgentInfo, EnebularAgentMissingError } from './agent-info'
+import AgentInfo from './agent-info'
 import AgentVersion from './agent-version'
 import { AgentInstaller, AgentInstallerIf } from './agent-installer'
 import { Migrator, MigratorIf } from './migrator'
@@ -46,8 +46,11 @@ export default class AgentUpdater {
     this._userInfo = Utils.getUserInfo(
       this._config.getString('ENEBULAR_AGENT_USER')
     )
-    const cachePath = this._config.isOverridden('ENEBULAR_AGENT_UPDATER_CACHE_DIR') ? 
-      this._config.getString('ENEBULAR_AGENT_UPDATER_CACHE_DIR') : `/home/${this._userInfo.user}`
+    const cachePath = this._config.isOverridden(
+      'ENEBULAR_AGENT_UPDATER_CACHE_DIR'
+    )
+      ? this._config.getString('ENEBULAR_AGENT_UPDATER_CACHE_DIR')
+      : `/home/${this._userInfo.user}`
     this._oldAgentBackupPath = path.resolve(
       cachePath,
       `./enebular-runtime-agent.old`
@@ -220,7 +223,10 @@ export default class AgentUpdater {
     }
   }
 
-  private async _postInstall(agentInfo: AgentInfo, newAgentInstallPath: string): Promise<void> {
+  private async _postInstall(
+    agentInfo: AgentInfo,
+    newAgentInstallPath: string
+  ): Promise<void> {
     const newAgentInfo = AgentInfo.createFromSource(
       this._system,
       newAgentInstallPath
@@ -338,29 +344,27 @@ export default class AgentUpdater {
       async (): Promise<void> => {
         try {
           agentInfo = await AgentInfo.createFromSystemd(this._system, user)
-        }
-        catch (err) {
-          this._log.debug(`Failed to get info from systemd: ${err.message}`)
-          if (err instanceof EnebularAgentMissingError && fs.existsSync(this._oldAgentBackupPath)) {
+        } catch (err) {
+          if (err.agentPath && fs.existsSync(this._oldAgentBackupPath)) {
             // Found a previous cached agent, restore it.
             try {
               await Utils.mv(this._oldAgentBackupPath, err.agentPath)
             } catch (err) {
               throw new Error(
-                `Failed to restore agent from ${this._oldAgentBackupPath} to ${err.agentPath}: ${
-                  err.message
-                }`
+                `Failed to restore agent from ${this._oldAgentBackupPath} to ${
+                  err.agentPath
+                }: ${err.message}`
               )
             }
             // retry it
             agentInfo = await AgentInfo.createFromSystemd(this._system, user)
-          }
-          else {
+          } else {
             throw err
           }
         }
       },
-      true
+      // If user specified install path, the systemd failure can be ignored.
+      this._config.isOverridden('ENEBULAR_AGENT_INSTALL_DIR')
     )
 
     if (

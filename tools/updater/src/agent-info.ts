@@ -6,7 +6,7 @@ import { SystemIf } from './system'
 
 export class EnebularAgentMissingError extends Error {
   public agentPath: string
-  constructor(message: string, path: string) {
+  public constructor(message: string, path: string) {
     super(message)
     this.agentPath = path
   }
@@ -79,7 +79,7 @@ export class AgentInfo {
   }
 
   public isServiceActive(): boolean {
-    return (this.systemd && this.systemd.active) ? true : false
+    return this.systemd && this.systemd.active ? true : false
   }
 
   public static createFromSource(
@@ -116,7 +116,7 @@ export class AgentInfo {
 
   public static async createFromSystemd(
     system: SystemIf,
-    user: string,
+    user: string
   ): Promise<AgentInfo> {
     const serviceName = `enebular-agent-${user}`
     if (!system.isServiceRegistered(serviceName)) {
@@ -135,7 +135,10 @@ export class AgentInfo {
     )
 
     if (!fs.existsSync(agentPath)) {
-      throw new EnebularAgentMissingError(`enebular-agent path absents: ${agentPath}`, agentPath)
+      throw new EnebularAgentMissingError(
+        `enebular-agent path absents: ${agentPath}`,
+        agentPath
+      )
     }
 
     const systemd = {

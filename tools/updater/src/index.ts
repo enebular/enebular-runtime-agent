@@ -3,15 +3,15 @@ import AgentUpdater from './agent-updater'
 let updater: AgentUpdater
 
 function printLogInfo(): void {
-  console.log(`See details in full update log file: ${updater.getLogFilePath()}`)
+  console.log(
+    `See details in full update log file: ${updater.getLogFilePath()}`
+  )
 }
 
 function update(): Promise<boolean> {
   updater = new AgentUpdater()
   return updater.update().catch((err: Error) => {
-    throw new Error(
-      `ERROR: Update failed, reason: ${err.message}`
-    )
+    throw new Error(`ERROR: Update failed, reason: ${err.message}`)
   })
 }
 
