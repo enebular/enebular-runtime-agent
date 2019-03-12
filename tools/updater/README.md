@@ -9,7 +9,23 @@ The updater itself is a Node.js application, but a bash script is also provided 
 
 ## Simple Updates using the Bash Script
 
-TODO: Use the bash script for simple remote updates
+To use the updater script directly on a target device, you can download it with wget and then run it as shown below.
+
+```sh
+wget -qO- https://enebular.com/agent-update | sudo -E bash -s
+```
+
+The updater script can also be run on a remote target device via SSH with the following command pattern.
+
+```sh
+ssh -t <user>@<device-ip-address> "wget -qO- https://enebular.com/agent-update | sudo -E bash -s"
+```
+
+For example, to run the script on a remote Raspberry Pi with the default `pi` user and an IP address of `192.168.1.125,` the command would be as follows.
+
+```sh
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-update | sudo -E bash -s"
+```
 
 ## Manual Updates using the Updater App Directly
 
