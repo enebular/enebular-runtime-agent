@@ -381,7 +381,7 @@ export class AgentInstaller implements AgentInstallerIf {
     userInfo: UserInfo
   ): Promise<void> {
     await Utils.taskAsync(
-      `Fetching ${url}`,
+      `Fetching enebular-agent`,
       this._log,
       async (): Promise<void> => {
         if (!(await this._fetchWithRetry(url, tallballPath, userInfo))) {
@@ -391,7 +391,7 @@ export class AgentInstaller implements AgentInstallerIf {
     )
 
     await Utils.taskAsync(
-      `Extracting ${tallballPath}`,
+      `Extracting enebular-agent`,
       this._log,
       async (): Promise<void> => {
         await this._extract(tallballPath, installPath, userInfo)

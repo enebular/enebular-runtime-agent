@@ -239,7 +239,7 @@ export default class AgentUpdater {
       !this._config.getBoolean('FORCE_UPDATE')
     ) {
       this._log.info(
-        `enebular-agent is already the latest (${agentInfo.version}) version`
+        `enebular-agent is already the latest version (${agentInfo.version})`
       )
       // No need to start the agent if it is not registered
       if (!agentInfo.isServiceRegistered()) return
@@ -251,8 +251,8 @@ export default class AgentUpdater {
       return this._startAgent(agentInfo.version, agentInfo.path)
     }
 
-    this._log.info(
-      'Updating ' +
+    this._log.debug(
+      'Start to Update enebular-agent from ' +
         Utils.echoGreen(`${agentInfo.version}`) +
         ' to ' +
         Utils.echoGreen(`${newAgentInfo.version}`)
@@ -397,7 +397,7 @@ export default class AgentUpdater {
     if (fs.existsSync(this._oldAgentBackupPath)) {
       rimraf.sync(this._oldAgentBackupPath)
     }
-    this._log.info(Utils.echoGreen('Update succeed ✔'))
+    this._log.info(Utils.echoGreen('Update succeeded ✔'))
     return true
   }
 

@@ -153,13 +153,10 @@ install_nodejs() {
     return 2
   fi
 
-  _task "Checking existing node.js ${VERSION} installation"
   if [ -d "${DST}" ]; then
     _echo "Node.js ${VERSION} is already installed"
-    _echo_g "OK"
     return 0
   fi
-  _echo_g "OK"
 
   local TEMP_NODE_GZ
   TEMP_NODE_GZ=`mktemp --dry-run /tmp/nodejs.XXXXXXXXX`
@@ -264,7 +261,8 @@ if ! has "tar"; then
 fi
 
 TEMP_UPDATER_TARBALL=`mktemp --dry-run /tmp/enebular-agent-updater.XXXXXXXXX.tar.gz`
-_task "Downloading enebular-agent-updater from ${UPDATER_DOWNLOAD_URL}"
+_task "Downloading enebular-agent-updater"
+_echo "Downloading from ${UPDATER_DOWNLOAD_URL}"
 if ! download ${UPDATER_DOWNLOAD_URL} ${TEMP_UPDATER_TARBALL}; then 
   _err "Download ${UPDATER_DOWNLOAD_URL} failed"
   _exit 1

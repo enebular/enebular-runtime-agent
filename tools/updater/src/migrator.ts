@@ -157,7 +157,7 @@ export class Migrator implements MigratorIf {
     newAgentInfo: AgentInfo
   ): Promise<void> {
     await Utils.taskAsync(
-      `Pre-migrating check`,
+      `Pre-migration check`,
       this._log,
       async (): Promise<void> => {
         if (!agentInfo.version || !newAgentInfo.version) {

@@ -137,7 +137,7 @@ export class Utils {
       log.info(Utils.echoGreen('OK'))
     } catch (err) {
       if (ignore) {
-        log.info(Utils.echoYellow('Failed (Ignore)'))
+        log.info(Utils.echoYellow('N/A'))
       } else {
         log.info(Utils.echoRed('Failed'))
         throw err
@@ -157,7 +157,7 @@ export class Utils {
       log.info(Utils.echoGreen('OK'))
     } catch (err) {
       if (ignore) {
-        log.info(Utils.echoYellow('Failed (Ignore)'))
+        log.info(Utils.echoYellow('N/A'))
       } else {
         log.info(Utils.echoRed('Failed'))
         throw err

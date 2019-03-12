@@ -154,16 +154,16 @@ export class AgentInfo {
 
   public prettyStatus(log: Log): void {
     log.info('================================================================')
-    log.info(` ${Utils.echoGreen('enebular-agent information:')}`)
+    log.info(` ${Utils.echoGreen('Existing enebular-agent install information:')}`)
     log.info('   - Version: ' + this.version)
     log.info('   - NodeJS version: ' + this.nodejsVersion)
     log.info('   - Install destination: ' + this.path)
     log.info('   - Install port: ' + this.detectPortType())
     if (this.systemd) {
       log.info('   - Install user: ' + this.systemd.user)
-      log.info(` ${Utils.echoGreen('systemd information:')}`)
-      log.info('   - enabled: ' + this.systemd.enabled)
-      log.info('   - active: ' + this.systemd.active)
+      log.info('   - Systemd config:')
+      log.info('     - enabled: ' + this.systemd.enabled)
+      log.info('     - active: ' + this.systemd.active)
     }
     log.info('================================================================')
   }
