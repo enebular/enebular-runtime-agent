@@ -8,7 +8,8 @@ export default class Mockhelper {
     installer: MockAgentInstaller
     migrator: MockMigrator
   } {
-    const system = new MockSystem()
+    const cache = process.env.ENEBULAR_AGENT_UPDATER_CACHE_DIR ? process.env.ENEBULAR_AGENT_UPDATER_CACHE_DIR : '/tmp'
+    const system = new MockSystem(cache)
     return {
       system,
       installer: new MockAgentInstaller(system),

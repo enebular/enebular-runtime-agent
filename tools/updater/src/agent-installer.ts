@@ -9,12 +9,13 @@ import progress from 'request-progress'
 
 import Config from './config'
 import AgentInfo from './agent-info'
+import AgentVersion from './agent-version'
 import { UserInfo, Utils } from './utils'
 import { SystemIf } from './system'
 import Log from './log'
 
 export interface AgentInstallerIf {
-  install(installPath: string, userInfo: UserInfo): Promise<AgentInfo>
+  download(installPath: string, userInfo: UserInfo): Promise<void>
   build(
     agentInfo: AgentInfo,
     newAgentInfo: AgentInfo,
@@ -108,14 +109,14 @@ export class AgentInstaller implements AgentInstallerIf {
         fs.unlinkSync(path)
       }
     } catch (err) {
-      throw new Error(`Failed to remove old agent file:\n${err.message}`)
+      throw new Error(`Failed to remove old agent file: ${err.message}`)
     }
 
     try {
       await this._download(url, path)
     } catch (err) {
       throw new Error(
-        `Failed to download agent from url: ${url}\n${err.message}`
+        `Failed to download agent from url: ${url} ${err.message}`
       )
     }
 
@@ -125,7 +126,7 @@ export class AgentInstaller implements AgentInstallerIf {
         gid: userInfo.gid
       })
     } catch (err) {
-      throw new Error(`Tarball integrity check failed: ${path}\n${err.message}`)
+      throw new Error(`Tarball integrity check failed: ${path} ${err.message}`)
     }
     return true
   }
@@ -144,7 +145,7 @@ export class AgentInstaller implements AgentInstallerIf {
         this._fetchRetryCount++
         if (this._fetchRetryCount <= this._maxFetchRetryCount) {
           this._log.debug(
-            `Failed to fetch agent, retry in 1 second ...\n${err.message}`
+            `Failed to fetch agent, retry in 1 second ... ${err.message}`
           )
           setTimeout(async () => {
             resolve(await this._fetchWithRetry(url, path, userInfo))
@@ -154,7 +155,7 @@ export class AgentInstaller implements AgentInstallerIf {
           this._log.error(
             `Failed to to fetch agent, retry count(${
               this._maxFetchRetryCount
-            }) reaches max\n${err.message}`
+            }) reaches max ${err.message}`
           )
           resolve(false)
         }
@@ -174,7 +175,7 @@ export class AgentInstaller implements AgentInstallerIf {
       fs.mkdirSync(dst)
       fs.chownSync(dst, userInfo.uid, userInfo.gid)
     } catch (err) {
-      throw new Error(`Failed to create agent directory:\n${err.message}`)
+      throw new Error(`Failed to create agent directory: ${err.message}`)
     }
 
     this._log.debug(`Extracting ${tarball} to ${dst} ...`)
@@ -212,7 +213,7 @@ export class AgentInstaller implements AgentInstallerIf {
     })
   }
 
-  private async _buildAWSIot(
+  private async _buildAWSIoT(
     installPath: string,
     userInfo: UserInfo
   ): Promise<void> {
@@ -220,7 +221,7 @@ export class AgentInstaller implements AgentInstallerIf {
       'Building awsiot port',
       this._log,
       async (): Promise<void> => {
-        return this._buildNpmPackage(`${installPath}//ports/awsiot`, userInfo)
+        return this._buildNpmPackage(`${installPath}/ports/awsiot`, userInfo)
       }
     )
     await Utils.taskAsync(
@@ -236,7 +237,6 @@ export class AgentInstaller implements AgentInstallerIf {
   }
 
   private async _buildMbedCloudConnectorFCC(
-    agentPath: string,
     installPath: string,
     userInfo: UserInfo
   ): Promise<void> {
@@ -374,7 +374,7 @@ export class AgentInstaller implements AgentInstallerIf {
     )
   }
 
-  private async _installFromURL(
+  private async _downloadAndExtract(
     url: string,
     tallballPath: string,
     installPath: string,
@@ -421,7 +421,7 @@ export class AgentInstaller implements AgentInstallerIf {
       this._log.info(
         `Installing nodejs-${newAgentInfo.nodejsVersion} to ${nodejsPath} ...`
       )
-      await this._installFromURL(
+      await this._downloadAndExtract(
         this._getNodeJSDownloadURL(newAgentInfo.nodejsVersion),
         '/tmp/nodejs-' + Utils.randomString(),
         nodejsPath,
@@ -448,11 +448,9 @@ export class AgentInstaller implements AgentInstallerIf {
       }
     )
 
-    if (agentInfo.installed.awsiot) {
-      await this._buildAWSIot(installPath, userInfo)
-    }
-
-    if (agentInfo.installed.pelion) {
+    if (agentInfo.detectPortType() == 'awsiot') {
+      await this._buildAWSIoT(installPath, userInfo)
+    } else {
       await this._system.installDebianPackages(['git', 'cmake', 'python-pip'])
       await Utils.taskAsync(
         'Building pelion port ',
@@ -465,40 +463,33 @@ export class AgentInstaller implements AgentInstallerIf {
         process.env['PATH']
       }`
 
-      if (agentInfo.installed.mbedCloudConnector) {
+      if (newAgentInfo.version.greaterThan(new AgentVersion(2, 3, 0))) {
         await this._buildMbedCloudConnector(
           agentInfo.path,
           installPath,
           userInfo
         )
-      }
 
-      if (agentInfo.installed.mbedCloudConnectorFCC) {
-        await this._buildMbedCloudConnectorFCC(
-          agentInfo.path,
-          installPath,
-          userInfo
-        )
+        await this._buildMbedCloudConnectorFCC(installPath, userInfo)
       }
     }
   }
 
-  public async install(
+  public async download(
     installPath: string,
     userInfo: UserInfo
-  ): Promise<AgentInfo> {
+  ): Promise<void> {
     const url = `${this._config.getString(
       'ENEBULAR_AGENT_DOWNLOAD_PATH'
     )}/enebular-agent-${this._config.getString(
       'ENEBULAR_AGENT_VERSION'
     )}-prebuilt.tar.gz`
-    await this._installFromURL(
+    await this._downloadAndExtract(
       url,
       '/tmp/enebular-runtime-agent-' + Utils.randomString(),
       installPath,
       userInfo
     )
-    return AgentInfo.createFromSrc(this._system, installPath)
   }
 }
 

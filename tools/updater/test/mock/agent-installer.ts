@@ -15,42 +15,13 @@ export default class MockAgentInstaller implements AgentInstallerIf {
     this._system = system
   }
 
-  private fakeNewAgentInfo(): AgentInfo {
-    const path = this._system.newPath
-    const {
-      version,
-      awsiot,
-      pelion,
-      awsiotThingCreator,
-      mbedCloudConnector,
-      mbedCloudConnectorFCC
-    } = this._system.scanAgentSource(path)
-
-    const agentVersion = AgentVersion.parse(version)
-    if (!agentVersion) {
-      throw new Error(`enebular-agent version is invalid: ${version}`)
-    }
-
-    return new AgentInfo(
-      path,
-      agentVersion,
-      awsiot,
-      pelion,
-      awsiotThingCreator,
-      mbedCloudConnector,
-      mbedCloudConnectorFCC,
-      this._system.getSupportedNodeJSVersion(agentVersion)
-    )
-  }
-
-  public async install(
+  public async download(
     installPath: string,
     userInfo: UserInfo
-  ): Promise<AgentInfo> {
+  ): Promise<void> {
     if (this.failInstall) {
       throw new Error('Agent Install failed.')
     }
-    return this.fakeNewAgentInfo()
   }
   public async build(
     agentInfo: AgentInfo,

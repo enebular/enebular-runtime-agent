@@ -47,7 +47,12 @@ export default class MockSystem implements SystemIf {
     nodejsVersion: 'v9.2.1'
   }
 
-  public constructor() {
+  public constructor(cachePath: string) {
+    this.path = `${cachePath}/enebular-runtime-agent`
+    this.newPath = `${cachePath}/enebular-runtime-agent.new`
+    if (!fs.existsSync(cachePath)) {
+      fs.mkdirSync(cachePath)
+    }
     if (!fs.existsSync(this.path)) {
       fs.mkdirSync(this.path)
     }

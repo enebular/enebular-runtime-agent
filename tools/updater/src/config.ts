@@ -36,7 +36,7 @@ export default class Config {
       },
       ENEBULAR_AGENT_VERSION: {
         value: 'latest',
-        description: 'the version to upgrade, default to \'latest\'',
+        description: "the version to upgrade, default to 'latest'",
         userExpose: true
       },
       ENEBULAR_AGENT_DOWNLOAD_PATH: {
@@ -48,6 +48,11 @@ export default class Config {
       ENEBULAR_AGENT_USER: {
         value: 'enebular',
         description: 'user to run as after being installed',
+        userExpose: true
+      },
+      ENEBULAR_AGENT_UPDATER_CACHE_DIR: {
+        value: '/tmp/enebular-agent-updater-cache',
+        description: "location to store temporary update data",
         userExpose: true
       },
       MINIMUM_CHECKING_TIME: {
@@ -72,8 +77,7 @@ export default class Config {
       },
       FORCE_UPDATE: {
         value: false,
-        description:
-          'force update to latest version',
+        description: 'force update to latest version',
         userExpose: true
       },
       DEBUG: {

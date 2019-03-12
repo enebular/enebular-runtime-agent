@@ -1,5 +1,6 @@
 import * as path from 'path'
 import * as fs from 'fs'
+import * as rimraf from 'rimraf'
 
 import AgentVersion from './agent-version'
 import Utils from './utils'
@@ -79,14 +80,14 @@ export class System implements SystemIf {
       try {
         await Utils.spawn('systemctl', ['daemon-reload'], this._log)
       } catch (err) {
-        throw new Error(`Failed to reload service config:\n${err.message}`)
+        throw new Error(`Failed to reload service config: ${err.message}`)
       }
     }
 
     try {
       await Utils.spawn('service', [name, action], this._log)
     } catch (err) {
-      throw new Error(`Failed to ${action} ${name}:\n${err.message}`)
+      throw new Error(`Failed to ${action} ${name}: ${err.message}`)
     }
     return true
   }
@@ -128,11 +129,7 @@ export class System implements SystemIf {
 
     try {
       let content = fs.readFileSync(serviceFile, 'utf8')
-      fs.writeFileSync(
-        tmpFile,
-        content.replace(envToReplace, newEnv),
-        'utf8'
-      )
+      fs.writeFileSync(tmpFile, content.replace(envToReplace, newEnv), 'utf8')
       await Utils.mv(tmpFile, serviceFile)
     } catch (err) {
       throw new Error(
@@ -240,6 +237,9 @@ export class System implements SystemIf {
     agent: string,
     agentBackup: string
   ): Promise<boolean> {
+    if (fs.existsSync(agentBackup)) {
+      rimraf.sync(agentBackup)
+    }
     return this._replaceDirWithBackup(newAgent, agent, agentBackup)
   }
 
@@ -259,13 +259,13 @@ export class System implements SystemIf {
     try {
       await Utils.mv(to, backup, this._log)
     } catch (err) {
-      throw new Error(`Failed to move ${to} to ${backup}:\n${err.message}`)
+      throw new Error(`Failed to move ${to} to ${backup}: ${err.message}`)
     }
 
     try {
       await Utils.mv(from, to, this._log)
     } catch (err) {
-      throw new Error(`Failed to move ${from} to ${to}:\n${err.message}`)
+      throw new Error(`Failed to move ${from} to ${to}: ${err.message}`)
     }
     return true
   }
@@ -287,7 +287,7 @@ export class System implements SystemIf {
       try {
         await Utils.spawn('apt-get', ['-y', 'install', packages[i]], this._log)
       } catch (err) {
-        throw new Error(`Failed to install ${packages[i]}:\n${err.message}`)
+        throw new Error(`Failed to install ${packages[i]}: ${err.message}`)
       }
     }
   }

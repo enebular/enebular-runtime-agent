@@ -4,6 +4,14 @@ import Log from './log'
 import AgentVersion from './agent-version'
 import { SystemIf } from './system'
 
+export class EnebularAgentMissingError extends Error {
+  public agentPath: string
+  constructor(message: string, path: string) {
+    super(message)
+    this.agentPath = path
+  }
+}
+
 export interface SystemdAgentInfo {
   user: string
   port: string
@@ -21,7 +29,7 @@ export interface ComponentsInstalled {
   mbedCloudConnectorFCC: boolean
 }
 
-export default class AgentInfo {
+export class AgentInfo {
   public path: string
   public version: AgentVersion
   public nodejsVersion: string
@@ -66,7 +74,15 @@ export default class AgentInfo {
     }
   }
 
-  public static createFromSrc(
+  public isServiceRegistered(): boolean {
+    return this.systemd ? true : false
+  }
+
+  public isServiceActive(): boolean {
+    return (this.systemd && this.systemd.active) ? true : false
+  }
+
+  public static createFromSource(
     system: SystemIf,
     path: string,
     systemd?: SystemdAgentInfo
@@ -98,7 +114,10 @@ export default class AgentInfo {
     )
   }
 
-  public static async createFromSystemd(system: SystemIf, user: string, cachedAgent: string): Promise<AgentInfo> {
+  public static async createFromSystemd(
+    system: SystemIf,
+    user: string,
+  ): Promise<AgentInfo> {
     const serviceName = `enebular-agent-${user}`
     if (!system.isServiceRegistered(serviceName)) {
       throw new Error(
@@ -114,17 +133,9 @@ export default class AgentInfo {
     const { agentPath, agentPort } = system.getAgentPathAndPortFromSystemd(
       serviceName
     )
-    if (!fs.existsSync(agentPath) && fs.existsSync(cachedAgent)) {
-      // Found a previous cached agent, restore it.
-      try {
-        await Utils.mv(cachedAgent, agentPath)
-      } catch (err) {
-        throw new Error(`Failed to restore agent from ${cachedAgent} to ${agentPath}:\n${err.message}`)
-      }
-    }
 
     if (!fs.existsSync(agentPath)) {
-      throw new Error(`enebular-agent path absents: ${agentPath}`)
+      throw new EnebularAgentMissingError(`enebular-agent path absents: ${agentPath}`, agentPath)
     }
 
     const systemd = {
@@ -135,7 +146,7 @@ export default class AgentInfo {
       active: system.isServiceActive(serviceName),
       failed: system.isServiceFailed(serviceName)
     }
-    return AgentInfo.createFromSrc(system, agentPath, systemd)
+    return AgentInfo.createFromSource(system, agentPath, systemd)
   }
 
   public prettyStatus(log: Log): void {
@@ -154,3 +165,5 @@ export default class AgentInfo {
     log.info('================================================================')
   }
 }
+
+export default AgentInfo
