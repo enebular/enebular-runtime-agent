@@ -9,6 +9,8 @@ The updater itself is a Node.js application, but a bash script is also provided 
 
 ## Update Options
 
+The following options can be specified when updating.
+
 ### User
 
 If enebular-agent was installed under a non-default user, then that user must be specified with the `--user` option when updating too.
@@ -17,7 +19,7 @@ If enebular-agent was installed under a non-default user, then that user must be
 
 When updating the Pelion port of enebular-agent, the Pelion mode used must be specified with the `--pelion-mode` option (either `developer` or `factory`).
 
-## Simple Updates using the Bash Script
+## Simple Updates Using Bash Script
 
 To use the updater script directly on a target device, you can download it with wget and then run it as shown below.
 
@@ -43,7 +45,7 @@ For example, to run the script on a remote Raspberry Pi with the default `pi` us
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-update | sudo -E bash -s -- --pelion-mode=factory"
 ```
 
-## Manual Updates using the Updater App Directly
+## Manual Updates Using Updater App Directly
 
 Using the updater script is recommended as it makes the update a quick one-step process, however the updater app can also be set up manually from source and run directly on a target device as described below.
 
@@ -80,7 +82,7 @@ Update succeeded ✔
 
 ## Options
 
-The most commonly used options are shown below.
+The most commonly used options are shown below. These options can be used both with the bash script and directly with the updater app itself.
 
 ```sh
 OPTION                       DESCRIPTION	
@@ -93,7 +95,7 @@ To show a full list of the supported options, specify the `-h` option when runni
 
 ## Update Process
 
-TODO
+The following describes the update process followed by the bash script and updater app.
 
 ### Bash Script
 
