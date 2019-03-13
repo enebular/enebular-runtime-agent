@@ -111,14 +111,31 @@ export class Migrator implements MigratorIf {
     return migrations
   }
 
-  private async _createCurrentMigrations(
-    currentAgentVersion: AgentVersion,
-    newAgentVersion: AgentVersion,
+  /*
+    The migration file will be added in under `migrations` folder for each version (if apply) incrementally.
+    Thus, we don not keep a snapshot migrations for each version. The migration file name always starts 
+    with agent version numbers while being added in, followed by description of this migration. This 
+    naming rule is assumed and the version number will be picked up by migrator to decide if it should 
+    apply this migration in certian scenario. The migrations between two versions will be generated using
+    these files.
+
+    An example:
+    * Say we have migration files for version 2.3.0, 2.4.0 and 2.4.1.
+    * We are trying to update agent from 2.4.0 to 2.5.0
+
+    As a result of the generation, migration files for 2.3.0 and 2.4.0 will be used to generate migrations that
+    have been done in 2.4.0, this will give us a `current` state of the migrations that should be done. Then
+    2.3.0, 2.4.0, 2.4.1 will be used to generate intermediate migrations. The desired state in the intermediate
+    migrations is the final expected state after migration, but the current state will be replace to the desired 
+    state of migrations that have been done (which we have generated eailer).
+  */
+  private async _createMigrationsBetweenTwoVersions(
+    olderAgentVersion: AgentVersion,
+    newerAgentVersion: AgentVersion,
     config: MigrateConfig
   ): Promise<Migrations> {
-    const migrationFilePath = this._config.getString('MIGRATION_FILE_PATH')
-
     try {
+      const migrationFilePath = this._config.getString('MIGRATION_FILE_PATH')
       let migrationFiles = fs.readdirSync(migrationFilePath).sort()
       migrationFiles = migrationFiles.map(file => {
         return path.resolve(migrationFilePath, file)
@@ -135,11 +152,11 @@ export class Migrator implements MigratorIf {
       }
       const migrationsHavebeenDoneInCurrentVersion = await this._createMigrations(
         configWithSamePorjectPath,
-        this._getMigrationFilesUpTo(migrationFiles, currentAgentVersion)
+        this._getMigrationFilesUpTo(migrationFiles, olderAgentVersion)
       )
       const migrations = await this._createMigrations(
         config,
-        this._getMigrationFilesUpTo(migrationFiles, newAgentVersion)
+        this._getMigrationFilesUpTo(migrationFiles, newerAgentVersion)
       )
       for (const migrationObject of Object.entries(migrations)) {
         const key = migrationObject[0]
@@ -182,7 +199,7 @@ export class Migrator implements MigratorIf {
           newPortBasePath: `${newAgentInfo.path}/ports/${port}`
         }
 
-        this._migrations = await this._createCurrentMigrations(
+        this._migrations = await this._createMigrationsBetweenTwoVersions(
           agentInfo.version,
           newAgentInfo.version,
           migrateConfig
@@ -198,8 +215,6 @@ export class Migrator implements MigratorIf {
         }
       }
     )
-
-    console.log(this._migrations)
 
     for (const migrationObject of Object.entries(this._migrations)) {
       const migration = migrationObject[1]
