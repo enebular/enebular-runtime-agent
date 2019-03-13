@@ -113,8 +113,8 @@ export class Migrator implements MigratorIf {
 
   /*
     The migration file will be added in under `migrations` folder for each version (if apply) incrementally.
-    Thus, we don not keep a snapshot migrations for each version. The migration file name always starts 
-    with agent version numbers while being added in, followed by description of this migration. This 
+    Thus, we do not keep a snapshot migrations for each version. The migration file name always starts 
+    with agent version number while being added in, followed by description of this migration. This 
     naming rule is assumed and the version number will be picked up by migrator to decide if it should 
     apply this migration in certian scenario. The migrations between two versions will be generated using
     these files.
@@ -143,14 +143,14 @@ export class Migrator implements MigratorIf {
 
       /* we set the 'new project' path same as 'project' path, thus the absolute path generated  */
       /* in desired state in migrations that have been done will be under 'project' path which */
-      /* would be easier for using as currentState of current migrations */
+      /* would be easier for using as currentState of migrations */
       const configWithSamePorjectPath = {
         ...config,
         newProjectPath: config.projectPath,
         newNodeRedPath: config.nodeRedPath,
         newPortBasePath: config.portBasePath
       }
-      const migrationsHavebeenDoneInCurrentVersion = await this._createMigrations(
+      const migrationsHavebeenDoneInOlderVersion = await this._createMigrations(
         configWithSamePorjectPath,
         this._getMigrationFilesUpTo(migrationFiles, olderAgentVersion)
       )
@@ -162,9 +162,9 @@ export class Migrator implements MigratorIf {
         const key = migrationObject[0]
         /* set the `currentState` state of the migrations to be done to the `desiredState` state of */
         /* the ‘newest’ migrations that have been done */
-        if (migrationsHavebeenDoneInCurrentVersion[key]) {
+        if (migrationsHavebeenDoneInOlderVersion[key]) {
           migrations[key].currentState =
-            migrationsHavebeenDoneInCurrentVersion[key].desiredState
+            migrationsHavebeenDoneInOlderVersion[key].desiredState
         }
       }
       return migrations
