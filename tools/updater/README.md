@@ -9,15 +9,13 @@ The updater itself is a Node.js application, but a bash script is also provided 
 
 ## Update Options
 
-TODO
-
 ### User
 
-TODO
+If enebular-agent was installed under a non-default user, then that user must be specified with the `--user` option when updating too.
 
 ### Pelion Port Mode
 
-TODO
+When updating the Pelion port of enebular-agent, the Pelion mode used must be specified with the `--pelion-mode` option (either `developer` or `factory`).
 
 ## Simple Updates using the Bash Script
 
@@ -27,16 +25,22 @@ To use the updater script directly on a target device, you can download it with 
 wget -qO- https://enebular.com/agent-update | sudo -E bash -s
 ```
 
+Update options can be added by first appending `--` at the end of the command, as in the command pattern below.
+
+```sh
+wget -qO- https://enebular.com/agent-update | sudo -E bash -s -- <option>
+```
+
 The updater script can also be run on a remote target device via SSH with the following command pattern.
 
 ```sh
 ssh -t <user>@<device-ip-address> "wget -qO- https://enebular.com/agent-update | sudo -E bash -s"
 ```
 
-For example, to run the script on a remote Raspberry Pi with the default `pi` user and an IP address of `192.168.1.125,` the command would be as follows.
+For example, to run the script on a remote Raspberry Pi with the default `pi` user, an IP address of `192.168.1.125,` and specifying `factory` for the Pelion port mode, the command would be as follows.
 
 ```sh
-ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-update | sudo -E bash -s"
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-update | sudo -E bash -s -- --pelion-mode=factory"
 ```
 
 ## Manual Updates using the Updater App Directly
@@ -80,8 +84,8 @@ The most commonly used options are shown below.
 
 ```sh
 OPTION                       DESCRIPTION	
---user <user>                User under which enebular-agent has been installed
---pelion-mode <mode>         Pelion mode (developer or factory) selected when enebular-agent was installed
+--user                       User under which enebular-agent has been installed
+--pelion-mode                Pelion mode (developer or factory) selected when enebular-agent was installed
 -h, --help                   Output usage information
 ```
 
