@@ -5,7 +5,7 @@
 
 This utility can be used to easily update a version of eneblar-agent previously installed on Debian based systems with enebular-agent's install script to the latest version available.
 
-The updater itself is a Node.js application, but a bash script is also provided which allows the updater to be run quickly in just one step.
+The updater itself is a Node.js application, but a bash script (update script) is also provided which allows the updater to be run quickly in just one step.
 
 ## Update Options
 
@@ -19,9 +19,9 @@ If enebular-agent was installed under a non-default user, then that user must be
 
 When updating the Pelion port of enebular-agent, the Pelion mode in use must be specified with the `--pelion-mode` option (either `developer` or `factory`).
 
-## Simple Updates Using Bash Script
+## Simple Updates Using Update Script
 
-To run the updater script on a target device, you can download it with wget and then run it as shown below.
+To run the update script on a target device, you can download it with wget and then run it as shown below.
 
 ```sh
 wget -qO- https://enebular.com/agent-update | sudo -E bash -s
@@ -33,7 +33,7 @@ Update options can be specified by first appending `--` at the end of the comman
 wget -qO- https://enebular.com/agent-update | sudo -E bash -s -- <option>
 ```
 
-The updater script can also be run on a remote target device via SSH with the following command pattern.
+The update script can also be run on a remote target device via SSH with the following command pattern.
 
 ```sh
 ssh -t <user>@<device-ip-address> "wget -qO- https://enebular.com/agent-update | sudo -E bash -s"
@@ -45,9 +45,9 @@ For example, to run the script on a remote Raspberry Pi with the default `pi` us
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-update | sudo -E bash -s -- --pelion-mode=factory"
 ```
 
-## Manual Updates Using Updater App Directly
+## Manual Updates Using Updater Directly
 
-Using the updater script is recommended as it makes the update a quick one-step process, however the updater app can also be set up manually from source and run directly on a target device as described below.
+Using the update script is recommended as it makes the update a quick one-step process, however the updater can also be set up manually from source and run directly on a target device as described below.
 
 Go to the updater directory in the enebular-agent project.
 
@@ -82,7 +82,7 @@ Update succeeded ✔
 
 ## Option Details
 
-The most commonly used options are shown below. These options can be used both with the bash script and directly with the updater app itself.
+The most commonly used options are shown below. These options can be used both with the update script and directly with the updater itself.
 
 ```sh
 OPTION                       DESCRIPTION	
@@ -91,21 +91,21 @@ OPTION                       DESCRIPTION
 -h, --help                   Output usage information
 ```
 
-To show a full list of the supported options, specify the `-h` option when running the bash script or updater app.
+To show a full list of the supported options, specify the `-h` option when running the update script or the updater.
 
 ## Update Process
 
-The following describes the update process followed by the bash script and updater app.
+The following describes the update process followed by the update script and updater itself.
 
-### Bash Script
+### Update Script
 
-1. The latest version of the updater app is downloaded and extracted to a temporary location.
-1. The version of Node.js required by the updater app is read from its package definition file.
+1. The latest version of the updater is downloaded and extracted to a temporary location.
+1. The version of Node.js required by the updater is read from its package definition file.
 1. If the required version isn't available already, it is downloaded and installed.
-1. The updater app is run.
-1. Once the updater app finishes it is deleted from its temporary location.
+1. The updater is run.
+1. Once the updater finishes it is deleted from its temporary location.
 
-### Updater App
+### Updater
 
 1. The existing enebular-agent is found and interrogated.
 1. Details of the existing enebular-agent are logged.

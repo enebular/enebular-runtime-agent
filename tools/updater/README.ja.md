@@ -3,37 +3,37 @@
 
 *Read this in other languages: [English](README.md), [日本語](README.ja.md)*
 
-このユーティリティを利用して以前にインストールスクリプトによってDebianベースのシステムにインストールされたenebular-agentを簡単に最新のバージョンにアップテートすることが出来ます。
+このユーティリティを利用して以前にインストールスクリプトによってDebianベースのシステムにインストールされたenebular-agentを簡単に最新のバージョンにアップデートすることが出来ます。
 
-アップデータ自体はNode.jsのアプリケーションになりますが、アップデータをワンステップで速く実行できるためのbashスクリプトもあります。
+アップデータ自体はNode.jsのアプリケーションになりますが、アップデータをワンステップで速く実行できるためのbashスクリプト（アップデートスクリプト）もあります。
 
-## アップテートオプション
+## アップデートオプション
 
-アップテートの実行時に以下のオプションを設定することが出来ます。
+アップデートの実行時に以下のオプションを設定することが出来ます。
 
 ### ユーザ
 
-enebular-agentが標準ではないユーザの下でインストールされている場合、アップテート時にもそのユーザを`--user`オプションで指定する必要があります。
+enebular-agentが標準ではないユーザの下でインストールされている場合、アップデート時にもそのユーザを`--user`オプションで指定する必要があります。
 
 ### Pelionポートのモード
 
 enebular-agentのPelionポートをアップデートする場合、`--pelion-mode`オプションで利用中のPelionモードを`developer` または`factory`に設定する必要があります。
 
-## Bashスクリプトによる簡単アップテート実行
+## アップデートスクリプトによる簡単アップデート実行
 
-bashスクリプトをターゲットのデバイスで実行するには、次に示すように wget を使用してダウンロードして実行します。
+アップデートスクリプトをターゲットのデバイスで実行するには、次に示すように wget を使用してダウンロードして実行します。
 
 ```sh
 wget -qO- https://enebular.com/agent-update | sudo -E bash -s
 ```
 
-アップテートのオプションは、以下のコマンドパターンのようにコマンドの末尾に`--`を追加してから指定します。
+アップデートのオプションは、以下のコマンドパターンのようにコマンドの末尾に`--`を追加してから指定します。
 
 ```sh
 wget -qO- https://enebular.com/agent-update | sudo -E bash -s -- <option>
 ```
 
-bashスクリプトは、次のコマンドパターンのように SSH 経由でリモートのデバイスで実行することもできます。
+アップデートスクリプトは、次のコマンドパターンのように SSH 経由でリモートのデバイスで実行することもできます。
 
 ```sh
 ssh -t <user>@<device-ip-address> "wget -qO- https://enebular.com/agent-update | sudo -E bash -s"
@@ -45,23 +45,23 @@ ssh -t <user>@<device-ip-address> "wget -qO- https://enebular.com/agent-update |
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-update | sudo -E bash -s -- --pelion-mode=factory"
 ```
 
-## アップデータの直接利用による手動アップテート実行
+## アップデータの直接利用による手動アップデート実行
 
-Using the updater script is recommended as it makes the update a quick one-step process, however the updater app can also be set up manually from source and run directly on a target device as described below.
+アップデートをワンステップで速く実行できるためアップデートスクリプトの利用をお勧めしますが、以下のようにアップデータを手動でターゲットのデバイスでソースからセットアップして直接に実行することも出来ます。
 
-Go to the updater directory in the enebular-agent project.
+enebular-agentプロジェクトの中でアップデータのディレクトリに移動します。
 
 ```sh
 cd tools/updater
 ```
 
-Install updater's npm packages.
+アップデータのnpmパッケージをインストールします。
 
 ```sh
 npm install
 ```
 
-Run the updater.
+アップデータを実行します。
 
 ```sh
 sudo ./bin/enebular-agent-update
@@ -69,7 +69,7 @@ sudo ./bin/enebular-agent-update
 
 ## 確認方法
 
-Once the updater has completed successfully, it will display a message similar to the following.
+アップデータが正常に完了すると、次のように処理結果のメッセージが表示されます。
 
 ```sh
 ==== Starting enebular-agent <version> ====
@@ -93,11 +93,11 @@ OPTION                       DESCRIPTION
 
 To show a full list of the supported options, specify the `-h` option when running the bash script or updater app.
 
-## アップテートの流れ
+## アップデートの流れ
 
 The following describes the update process followed by the bash script and updater app.
 
-### Bashスクリプト
+### アップデートスクリプト
 
 1. The latest version of the updater app is downloaded and extracted to a temporary location.
 1. The version of Node.js required by the updater app is read from its package definition file.
@@ -105,7 +105,7 @@ The following describes the update process followed by the bash script and updat
 1. The updater app is run.
 1. Once the updater app finishes it is deleted from its temporary location.
 
-### アップデータアプリ
+### アップデータ
 
 1. The existing enebular-agent is found and interrogated.
 1. Details of the existing enebular-agent are logged.
