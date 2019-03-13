@@ -23,8 +23,7 @@ export default class AgentUpdater {
   private _oldAgentBackupPath: string
   private _newAgentInstallPath: string
 
-  private _restoreAgentOnFailure = false
-  private _switchAgentOnFailure = false
+  private _agentSwitched = false
 
   public constructor(
     system?: SystemIf,
@@ -183,14 +182,11 @@ export default class AgentUpdater {
     }
   }
 
-  private async _setupAndStartNewAgent(
+  private async _configAndStartNewAgent(
     agentInfo: AgentInfo,
     newAgentInfo: AgentInfo,
     oldAgentBackupPath: string
   ): Promise<void> {
-    await this._installer.build(agentInfo, newAgentInfo, this._userInfo)
-    this._restoreAgentOnFailure = true
-    // shutdown current agent
     if (agentInfo.isServiceActive()) {
       await Utils.taskAsync(
         `Stopping enebular-agent ${agentInfo.version}`,
@@ -217,7 +213,7 @@ export default class AgentUpdater {
       }
     )
 
-    this._switchAgentOnFailure = true
+    this._agentSwitched = true
     if (agentInfo.isServiceRegistered()) {
       await this._startAgent(newAgentInfo.version, agentInfo.path)
     }
@@ -258,66 +254,66 @@ export default class AgentUpdater {
         Utils.echoGreen(`${newAgentInfo.version}`)
     )
 
+    await this._installer.build(agentInfo, newAgentInfo, this._userInfo)
+
     try {
-      await this._setupAndStartNewAgent(
+      await this._configAndStartNewAgent(
         agentInfo,
         newAgentInfo,
         this._oldAgentBackupPath
       )
     } catch (err) {
-      if (this._restoreAgentOnFailure) {
-        const version = agentInfo.version
-        const newVersion = newAgentInfo.version
-        // restore
-        try {
-          if (this._switchAgentOnFailure) {
-            try {
-              this._log.debug(
-                `Start enebular-agent failed, status from journal:\n` +
-                  this._system.getServiceLogIgnoreError(
-                    this._getServiceName(),
-                    100
-                  )
-              )
-            } catch (err) {
-              // ignore error if we have
-            }
-
-            await Utils.taskAsync(
-              `[RESTORE] Stopping enebular-agent ${newVersion}`,
-              this._log,
-              (): Promise<boolean> => {
-                return this._stopAgent(true)
-              },
-              true
-            )
-
-            await Utils.taskAsync(
-              `[RESTORE] Flipping back to enebular-agent ${version}`,
-              this._log,
-              (): Promise<boolean> => {
-                return this._system.flipToOriginalAgent(
-                  this._oldAgentBackupPath,
-                  agentInfo.path,
-                  newAgentInfo.path
+      const version = agentInfo.version
+      const newVersion = newAgentInfo.version
+      // restore
+      try {
+        if (this._agentSwitched) {
+          try {
+            this._log.debug(
+              `Start enebular-agent failed, status from journal:\n` +
+                this._system.getServiceLogIgnoreError(
+                  this._getServiceName(),
+                  100
                 )
-              }
             )
+          } catch (err) {
+            // ignore error if we have
           }
 
-          await this._migrator.reverse()
+          await Utils.taskAsync(
+            `[RESTORE] Stopping enebular-agent ${newVersion}`,
+            this._log,
+            (): Promise<boolean> => {
+              return this._stopAgent(true)
+            },
+            true
+          )
 
-          if (agentInfo.isServiceRegistered()) {
-            await this._startAgent(version, agentInfo.path, false)
-          }
-        } catch (err1) {
-          throw new Error(
-            err.message +
-              ` [Faulty] restore to ${version} failed! error message:\n${
-                err1.message
-              }`
+          await Utils.taskAsync(
+            `[RESTORE] Flipping back to enebular-agent ${version}`,
+            this._log,
+            (): Promise<boolean> => {
+              return this._system.flipToOriginalAgent(
+                this._oldAgentBackupPath,
+                agentInfo.path,
+                newAgentInfo.path
+              )
+            }
           )
         }
+
+        await this._migrator.reverse()
+
+        if (agentInfo.isServiceRegistered()) {
+          await this._startAgent(version, agentInfo.path, false)
+        }
+      } catch (err1) {
+        throw new Error(
+          err.message +
+            ` [Faulty] restore to ${version} failed! error message: ${
+              err1.message
+            }`
+        )
       }
       throw err
     }
