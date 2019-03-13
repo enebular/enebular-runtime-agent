@@ -100,7 +100,10 @@ The following describes the update process followed by the bash script and updat
 ### Bash Script
 
 1. The latest version of the updater app is downloaded and extracted to a temporary location.
-1. TODO
+1. The version of Node.js required by the updater app is read from its package definition file.
+1. If the required version isn't available already, it is downloaded and installed under the enebular-agent user's home directory.
+1. The updater app is run.
+1. Once the updater app is finished, it is deleted from its temporary location.
 
 ### Updater App
 
