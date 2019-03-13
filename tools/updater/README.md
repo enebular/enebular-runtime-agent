@@ -5,7 +5,7 @@
 
 This utility can be used to easily update a version of eneblar-agent previously installed on Debian based systems with enebular-agent's install script to the latest version available.
 
-The updater itself is a Node.js application, but a bash script is also provided which allows updates to be run quickly with just one step.
+The updater itself is a Node.js application, but a bash script is also provided which allows updates to be run quickly in just one step.
 
 ## Update Options
 
@@ -17,11 +17,11 @@ If enebular-agent was installed under a non-default user, then that user must be
 
 ### Pelion Port Mode
 
-When updating the Pelion port of enebular-agent, the Pelion mode used must be specified with the `--pelion-mode` option (either `developer` or `factory`).
+When updating the Pelion port of enebular-agent, the Pelion mode in use must be specified with the `--pelion-mode` option (either `developer` or `factory`).
 
 ## Simple Updates Using Bash Script
 
-To use the updater script directly on a target device, you can download it with wget and then run it as shown below.
+To run the updater script on a target device, you can download it with wget and then run it as shown below.
 
 ```sh
 wget -qO- https://enebular.com/agent-update | sudo -E bash -s
@@ -91,7 +91,7 @@ OPTION                       DESCRIPTION
 -h, --help                   Output usage information
 ```
 
-To show a full list of the supported options, specify the `-h` option when running the bash script or updater app directly.
+To show a full list of the supported options, specify the `-h` option when running the bash script or updater app.
 
 ## Update Process
 
@@ -99,7 +99,8 @@ The following describes the update process followed by the bash script and updat
 
 ### Bash Script
 
-TODO
+1. The latest version of the updater app is downloaded and extracted to a temporary location.
+1. TODO
 
 ### Updater App
 
