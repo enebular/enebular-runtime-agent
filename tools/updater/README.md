@@ -101,18 +101,17 @@ The following describes the update process followed by the bash script and updat
 
 1. The latest version of the updater app is downloaded and extracted to a temporary location.
 1. The version of Node.js required by the updater app is read from its package definition file.
-1. If the required version isn't available already, it is downloaded and installed under the enebular-agent user's home directory.
+1. If the required version isn't available already, it is downloaded and installed.
 1. The updater app is run.
 1. Once the updater app finishes it is deleted from its temporary location.
 
 ### Updater App
 
-1. The existing install of enebular-agent is found and interrogated
-1. Details of the existing enebular-agent are logged
+1. The existing enebular-agent is found and interrogated.
+1. Details of the existing enebular-agent are logged.
 1. The new version of enebular-agent is downloaded and extracted to a temporary location.
-1. The new version if enebular-agent is set up. This includes installing any system package dependencies and installing a new version of Node.js if required.
+1. The new enebular-agent is set up. This includes installing any new system package dependencies and installing a new version of Node.js if required.
 1. The existing enebular-agent is halted.
 1. All existing enebular-agent configuration and data files are migrated to the new version.
 1. The existing enebular-agent and new enebular-agent are swapped.
 1. The new enebular-agent is started.
-
