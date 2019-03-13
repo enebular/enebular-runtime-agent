@@ -101,7 +101,7 @@ The following describes the update process followed by the update script and upd
 
 1. The latest version of the updater is downloaded and extracted to a temporary location.
 1. The version of Node.js required by the updater is read from its package definition file.
-1. If the required version isn't available already, it is downloaded and installed.
+1. If the required Node.js version isn't available already, it is downloaded and installed.
 1. The updater is run.
 1. Once the updater finishes it is deleted from its temporary location.
 

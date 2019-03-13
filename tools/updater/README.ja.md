@@ -95,15 +95,15 @@ OPTION                       DESCRIPTION
 
 ## アップデートの流れ
 
-The following describes the update process followed by the update script and updater itself.
+以下にアップデートスクリプトとアップデータを実行する時のアップデート処理を説明します。
 
 ### アップデートスクリプト
 
-1. The latest version of the updater is downloaded and extracted to a temporary location.
-1. The version of Node.js required by the updater is read from its package definition file.
-1. If the required version isn't available already, it is downloaded and installed.
-1. The updater is run.
-1. Once the updater finishes it is deleted from its temporary location.
+1. 最新版のアップデータがダウンロードされ、一時的な場所に解凍されます。
+1. アップデータが必要としているNode.jsのバージョン情報がアップデータのパッケージ定義ファイルから読み込まれます。
+1. 必要としているNode.jsのバージョンが利用できる状態になっていない場合、ダウンロードされてインストールされます。
+1. アップデータが実行されます。
+1. アップデータが終了すると、一時的な場所から削除されます。
 
 ### アップデータ
 
