@@ -3,13 +3,13 @@
 
 *Read this in other languages: [English](README.md), [日本語](README.ja.md)*
 
-This utility can be used to easily update a version of eneblar-agent previously installed on Debian based systems with enebular-agent's install script to the latest version available.
+This utility can be used to easily update a version of eneblar-agent that was previously installed on Debian based systems with enebular-agent's install script to the latest version available.
 
 The updater itself is a Node.js application, but a bash script (update script) is also provided which allows the updater to be run quickly in just one step.
 
-## Update Options
+## Key Update Options
 
-The following options can be specified when updating.
+The following options should be specified as required when updating.
 
 ### User
 
@@ -39,7 +39,7 @@ The update script can also be run on a remote target device via SSH with the fol
 ssh -t <user>@<device-ip-address> "wget -qO- https://enebular.com/agent-update | sudo -E bash -s"
 ```
 
-For example, to run the script on a remote Raspberry Pi with the default `pi` user, an IP address of `192.168.1.125,` and specifying `factory` for the Pelion port mode, the command would be as follows.
+For example, to run the script on a remote Raspberry Pi with the default `pi` user, an IP address of `192.168.1.125` and specifying `factory` for the Pelion port mode, the command would be as follows.
 
 ```sh
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-update | sudo -E bash -s -- --pelion-mode=factory"
