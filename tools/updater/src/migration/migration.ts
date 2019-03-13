@@ -9,20 +9,20 @@ export abstract class Migration {
   protected _optional: boolean
   protected _done: boolean
   protected _currentState: MigrationState
-  protected _deserveState: MigrationState
+  protected _desiredState: MigrationState
 
   public reverse?: (migrator: Migrator) => Promise<void> | void
 
   protected constructor(
     name: string,
     currentState: MigrationState,
-    deserveState: MigrationState,
+    desiredState: MigrationState,
     optional: boolean
   ) {
     this._done = false
     this._name = name
     this._currentState = currentState
-    this._deserveState = deserveState
+    this._desiredState = desiredState
     this._optional = optional
   }
 
@@ -42,8 +42,8 @@ export abstract class Migration {
     this._done = done
   }
 
-  public get deserveState(): MigrationState {
-    return this._deserveState
+  public get desiredState(): MigrationState {
+    return this._desiredState
   }
 
   public set currentState(state: MigrationState) {

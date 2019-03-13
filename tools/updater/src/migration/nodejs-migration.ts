@@ -13,13 +13,13 @@ export default class NodeJSMigration extends Migration {
     optional = false
   ) {
     const current: NodeJSState = { type: 'nodejs', version: currentVersion }
-    const deserve: NodeJSState = { type: 'nodejs', version: newVersion }
-    super(name, current, deserve, optional)
+    const desired: NodeJSState = { type: 'nodejs', version: newVersion }
+    super(name, current, desired, optional)
 
     this.reverse = (migrator: Migrator): void => {
       migrator.system.updateNodeJSVersionInSystemd(
         migrator.userInfo.user,
-        (this._deserveState as NodeJSState).version,
+        (this._desiredState as NodeJSState).version,
         (this._currentState as NodeJSState).version
       )
     }
@@ -29,7 +29,7 @@ export default class NodeJSMigration extends Migration {
     migrator.system.updateNodeJSVersionInSystemd(
       migrator.userInfo.user,
       (this._currentState as NodeJSState).version,
-      (this._deserveState as NodeJSState).version
+      (this._desiredState as NodeJSState).version
     )
   }
 }

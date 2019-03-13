@@ -31,7 +31,7 @@ export default class AwsiotConfigMigration extends CopyMigration {
         Utils.copy(
           migrator.log,
           path.resolve((this._currentState as CopyState).path, file),
-          path.resolve((this._deserveState as CopyState).path, file),
+          path.resolve((this._desiredState as CopyState).path, file),
           migrator.userInfo
         )
       )

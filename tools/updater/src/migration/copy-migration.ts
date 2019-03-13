@@ -14,15 +14,15 @@ export class CopyMigration extends Migration {
     optional = false
   ) {
     const current: CopyState = { type: 'copy', path: copyFrom }
-    const deserve: CopyState = { type: 'copy', path: copyTo }
-    super(name, current, deserve, optional)
+    const desired: CopyState = { type: 'copy', path: copyTo }
+    super(name, current, desired, optional)
   }
 
   public async do(migrator: Migrator): Promise<void> {
     return Utils.copy(
       migrator.log,
       `${(this._currentState as CopyState).path}/${this._name}`,
-      `${(this._deserveState as CopyState).path}/${this._name}`,
+      `${(this._desiredState as CopyState).path}/${this._name}`,
       migrator.userInfo
     )
   }

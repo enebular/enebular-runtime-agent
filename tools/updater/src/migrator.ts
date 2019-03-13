@@ -111,7 +111,6 @@ export class Migrator implements MigratorIf {
     const migrationFilePath = this._config.getString('MIGRATION_FILE_PATH')
 
     try {
-      // TODO: read from enebular-runtime-agent not updater ?
       migrationFiles = fs.readdirSync(migrationFilePath).sort()
       const calcCurrentStateConfig = {
         ...config,
@@ -144,7 +143,7 @@ export class Migrator implements MigratorIf {
       for (const migrationObject of Object.entries(this._migrations)) {
         const key = migrationObject[0]
         if (currentStates[key]) {
-          this._migrations[key].currentState = currentStates[key].deserveState
+          this._migrations[key].currentState = currentStates[key].desiredState
         }
       }
     } catch (err) {
