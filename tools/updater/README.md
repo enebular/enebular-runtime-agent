@@ -82,7 +82,7 @@ Update succeeded ✔
 
 ## Option Details
 
-The most commonly used options are shown below. These options can be used both with the update script and directly with the updater itself.
+The most commonly used options are shown below. These options can be specified both when running the update script and when running with the updater directly.
 
 ```sh
 OPTION                       DESCRIPTION	

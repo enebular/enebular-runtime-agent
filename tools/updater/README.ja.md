@@ -82,7 +82,7 @@ Update succeeded ✔
 
 ## オプションの詳細
 
-The most commonly used options are shown below. These options can be used both with the bash script and directly with the updater app itself.
+一般的によく利用されるオプションを下に示します。このオプションはアップデートスクリプトを実行する場合も、アップデータを直接に実行する場合も利用出来ます。
 
 ```sh
 OPTION                       DESCRIPTION	
@@ -91,19 +91,19 @@ OPTION                       DESCRIPTION
 -h, --help                   Output usage information
 ```
 
-To show a full list of the supported options, specify the `-h` option when running the bash script or updater app.
+サポートされている全てのオプションの一覧を表示するには、`-h`オプションを指定してアップデートスクリプトまたはアップデータを実行します。
 
 ## アップデートの流れ
 
-The following describes the update process followed by the bash script and updater app.
+The following describes the update process followed by the update script and updater itself.
 
 ### アップデートスクリプト
 
-1. The latest version of the updater app is downloaded and extracted to a temporary location.
-1. The version of Node.js required by the updater app is read from its package definition file.
+1. The latest version of the updater is downloaded and extracted to a temporary location.
+1. The version of Node.js required by the updater is read from its package definition file.
 1. If the required version isn't available already, it is downloaded and installed.
-1. The updater app is run.
-1. Once the updater app finishes it is deleted from its temporary location.
+1. The updater is run.
+1. Once the updater finishes it is deleted from its temporary location.
 
 ### アップデータ
 
