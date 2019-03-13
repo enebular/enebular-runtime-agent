@@ -5,7 +5,7 @@
 
 This utility can be used to easily update a version of eneblar-agent previously installed on Debian based systems with enebular-agent's install script to the latest version available.
 
-The updater itself is a Node.js application, but a bash script is also provided which allows updates to be run quickly in just one step.
+The updater itself is a Node.js application, but a bash script is also provided which allows the updater to be run quickly in just one step.
 
 ## Update Options
 
@@ -80,7 +80,7 @@ Update succeeded ✔
 
 ```
 
-## Options
+## Option Details
 
 The most commonly used options are shown below. These options can be used both with the bash script and directly with the updater app itself.
 

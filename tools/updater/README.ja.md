@@ -9,15 +9,15 @@
 
 ## アップテートオプション
 
-The following options can be specified when updating.
+アップテートの実行時に以下のオプションを設定することが出来ます。
 
 ### ユーザ
 
-If enebular-agent was installed under a non-default user, then that user must be specified with the `--user` option when updating too.
+enebular-agentが標準ではないユーザの下でインストールされている場合、アップテート時にもそのユーザを`--user`オプションで指定する必要があります。
 
 ### Pelionポートのモード
 
-When updating the Pelion port of enebular-agent, the Pelion mode in use must be specified with the `--pelion-mode` option (either `developer` or `factory`).
+enebular-agentのPelionポートをアップデートする場合、`--pelion-mode`オプションで利用中のPelionモードを`developer` または`factory`に設定する必要があります。
 
 ## Bashスクリプトによる簡単アップテート実行
 
@@ -45,7 +45,7 @@ For example, to run the script on a remote Raspberry Pi with the default `pi` us
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-update | sudo -E bash -s -- --pelion-mode=factory"
 ```
 
-## アップテートの直接利用による手動アップテート実行
+## アップデータの直接利用による手動アップテート実行
 
 Using the updater script is recommended as it makes the update a quick one-step process, however the updater app can also be set up manually from source and run directly on a target device as described below.
 
