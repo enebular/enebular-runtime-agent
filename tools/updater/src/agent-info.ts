@@ -109,6 +109,7 @@ export class AgentInfo {
       awsiotThingCreator,
       mbedCloudConnector,
       mbedCloudConnectorFCC,
+      // TODO: this should be read from agent source package.json
       system.getSupportedNodeJSVersion(agentVersion),
       systemd
     )
@@ -154,7 +155,9 @@ export class AgentInfo {
 
   public prettyStatus(log: Log): void {
     log.info('================================================================')
-    log.info(` ${Utils.echoGreen('Existing enebular-agent install information:')}`)
+    log.info(
+      ` ${Utils.echoGreen('Existing enebular-agent install information:')}`
+    )
     log.info('   - Version: ' + this.version)
     log.info('   - NodeJS version: ' + this.nodejsVersion)
     log.info('   - Install destination: ' + this.path)

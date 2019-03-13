@@ -177,6 +177,7 @@ export default class AgentUpdater {
           `Updating enebular-agent pelion port is only supported from version 2.4.0`
         )
       }
+      // TODO: this won't be needed once we've added `show mode`command line option to mbed-cloud-counnector
       if (
         !agentInfo.version.greaterThan(new AgentVersion(2, 4, 0)) &&
         !this._config.isOverridden('PELION_MODE')

@@ -22,7 +22,7 @@ export default class CommandLine {
     )
     this.addConfigOption(
       'ENEBULAR_AGENT_DOWNLOAD_PATH',
-      '--agent-download-PATH <url>'
+      '--agent-download-path <url>'
     )
     this.addConfigOption('ENEBULAR_AGENT_USER', '--user <user>')
     this.addConfigOption('ENEBULAR_AGENT_UPDATER_ENABLE_LOG', '--enable-log')

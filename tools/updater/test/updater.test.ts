@@ -90,9 +90,8 @@ test('Updater.6: Throws if new agent start fail', async t => {
     'Tried to flip back to original new agent'
   )
   t.is(system.attemptStartAgent, 1, 'Tried to restart original agent')
-  t.is(
-    system.attemptVerifyAgent,
-    1,
+  t.true(
+    system.attemptVerifyAgent > 0,
     'Tried to make sure original agent restarted'
   )
 })
@@ -113,9 +112,8 @@ test('Updater.7: Throws if new agent verify fail', async t => {
     'Tried to flip back to original new agent'
   )
   t.is(system.attemptStartAgent, 1, 'Tried to restart original agent')
-  t.is(
-    system.attemptVerifyAgent,
-    1,
+  t.true(
+    system.attemptVerifyAgent > 0,
     'Tried to make sure original agent restarted'
   )
 })
@@ -136,9 +134,8 @@ test('Updater.8: Throws if new agent verification throws error', async t => {
     'Tried to flip back to original new agent'
   )
   t.is(system.attemptStartAgent, 1, 'Tried to restart original agent')
-  t.is(
-    system.attemptVerifyAgent,
-    1,
+  t.true(
+    system.attemptVerifyAgent > 0,
     'Tried to make sure original agent restarted'
   )
 })
@@ -160,9 +157,8 @@ test('Updater.9: Ignore new agent stop failure in restore', async t => {
     'Tried to flip back to original new agent'
   )
   t.is(system.attemptStartAgent, 1, 'Tried to restart original agent')
-  t.is(
-    system.attemptVerifyAgent,
-    1,
+  t.true(
+    system.attemptVerifyAgent > 0,
     'Tried to make sure original agent restarted'
   )
 })
@@ -206,9 +202,8 @@ test('Updater.11: If both new and original agent fail to start', async t => {
     'Tried to flip back to original new agent'
   )
   t.is(system.attemptStartAgent, 1, 'Tried to restart original agent')
-  t.is(
-    system.attemptVerifyAgent,
-    1,
+  t.true(
+    system.attemptVerifyAgent > 0,
     'Tried to make sure original agent restarted'
   )
 })
@@ -287,7 +282,10 @@ test('Updater.16: If the version is same as the version to be updated, skip buil
   t.is(installer.attemptBuild, false, 'Skip build')
   t.is(system.attemptFlipNewAgent, 0, 'Skip flip to new agent')
   t.is(system.attemptStartNewAgent, 1, 'start agent')
-  t.is(system.attemptVerifyNewAgent, 1, 'verify agent')
+  t.true(
+    system.attemptVerifyNewAgent > 0,
+    'Tried to make sure new agent restarted'
+  )
 })
 
 test('Updater.17: Tries to restore legacy agent if path found in systemd does not exist', async t => {

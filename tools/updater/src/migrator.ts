@@ -61,7 +61,7 @@ export class Migrator implements MigratorIf {
     return this._system
   }
 
-  /* example:  */
+  /* examples:  */
   /* file list: [2.3.0, 2.4.0, 2.4.1] */
   /* if start = 2.3.0 end = 2.4.0, return list = [2.4.0] */
   /* if start = 2.4.0 end = 2.4.1, return list = [2.4.1] */
@@ -72,8 +72,9 @@ export class Migrator implements MigratorIf {
     end: AgentVersion
   ): string[] {
     return migrationFiles.filter(file => {
-      if (path.extname(file).toLowerCase() === '.js') {
-        let version = file.slice(0, -3)
+      const fileName = path.basename(file)
+      if (path.extname(fileName).toLowerCase() === '.js') {
+        let version = fileName.slice(0, -3)
         const migrationVersion = AgentVersion.parse(version.split('-')[0])
         if (
           migrationVersion &&
@@ -87,65 +88,69 @@ export class Migrator implements MigratorIf {
     })
   }
 
-  private async _importMigrations(
-    migrations: Migrations,
-    config: MigrateConfig,
-    migrationFilePath: string,
-    migrationFiles: string[]
-  ): Promise<void> {
-    for (let index = 0; index < migrationFiles.length; index++) {
-      const migration = await import(path.resolve(
-        migrationFilePath,
-        migrationFiles[index]
-      ))
-      migration.up(config, migrations)
-    }
+  private _getMigrationFilesUpTo(
+    migrationFiles: string[],
+    version: AgentVersion
+  ): string[] {
+    return this._filterMigrationFiles(
+      migrationFiles,
+      new AgentVersion(0, 0, 0),
+      version
+    )
   }
 
-  private async _applyMigrationFiles(
-    agentInfo: AgentInfo,
-    newAgentInfo: AgentInfo,
+  private async _createMigrations(
+    config: MigrateConfig,
+    migrationFiles: string[]
+  ): Promise<Migrations> {
+    const migrations: Migrations = {}
+    for (let index = 0; index < migrationFiles.length; index++) {
+      const migration = await import(migrationFiles[index])
+      migration.up(config, migrations)
+    }
+    return migrations
+  }
+
+  private async _createCurrentMigrations(
+    currentAgentVersion: AgentVersion,
+    newAgentVersion: AgentVersion,
     config: MigrateConfig
-  ): Promise<void> {
-    let migrationFiles
+  ): Promise<Migrations> {
     const migrationFilePath = this._config.getString('MIGRATION_FILE_PATH')
 
     try {
-      migrationFiles = fs.readdirSync(migrationFilePath).sort()
-      const calcCurrentStateConfig = {
+      let migrationFiles = fs.readdirSync(migrationFilePath).sort()
+      migrationFiles = migrationFiles.map(file => {
+        return path.resolve(migrationFilePath, file)
+      })
+
+      /* we set the 'new project' path same as 'project' path, thus the absolute path generated  */
+      /* in desired state in migrations that have been done will be under 'project' path which */
+      /* would be easier for using as currentState of current migrations */
+      const configWithSamePorjectPath = {
         ...config,
         newProjectPath: config.projectPath,
         newNodeRedPath: config.nodeRedPath,
         newPortBasePath: config.portBasePath
       }
-
-      let currentStates: Migrations = {}
-      await this._importMigrations(
-        currentStates,
-        calcCurrentStateConfig,
-        migrationFilePath,
-        this._filterMigrationFiles(
-          migrationFiles,
-          new AgentVersion(0, 0, 0),
-          agentInfo.version
-        )
+      const migrationsHavebeenDoneInCurrentVersion = await this._createMigrations(
+        configWithSamePorjectPath,
+        this._getMigrationFilesUpTo(migrationFiles, currentAgentVersion)
       )
-      await this._importMigrations(
-        this._migrations,
+      const migrations = await this._createMigrations(
         config,
-        migrationFilePath,
-        this._filterMigrationFiles(
-          migrationFiles,
-          new AgentVersion(0, 0, 0),
-          newAgentInfo.version
-        )
+        this._getMigrationFilesUpTo(migrationFiles, newAgentVersion)
       )
-      for (const migrationObject of Object.entries(this._migrations)) {
+      for (const migrationObject of Object.entries(migrations)) {
         const key = migrationObject[0]
-        if (currentStates[key]) {
-          this._migrations[key].currentState = currentStates[key].desiredState
+        /* set the `currentState` state of the migrations to be done to the `desiredState` state of */
+        /* the ‘newest’ migrations that have been done */
+        if (migrationsHavebeenDoneInCurrentVersion[key]) {
+          migrations[key].currentState =
+            migrationsHavebeenDoneInCurrentVersion[key].desiredState
         }
       }
+      return migrations
     } catch (err) {
       throw new Error(`Apply migration files failed: ${err.message}`)
     }
@@ -177,6 +182,11 @@ export class Migrator implements MigratorIf {
           newPortBasePath: `${newAgentInfo.path}/ports/${port}`
         }
 
+        this._migrations = await this._createCurrentMigrations(
+          agentInfo.version,
+          newAgentInfo.version,
+          migrateConfig
+        )
         if (agentInfo.nodejsVersion !== newAgentInfo.nodejsVersion) {
           this._migrations['nodejs'] = new NodeJSMigration(
             `nodejs ${agentInfo.nodejsVersion} => ${
@@ -186,7 +196,6 @@ export class Migrator implements MigratorIf {
             newAgentInfo.nodejsVersion
           )
         }
-        return this._applyMigrationFiles(agentInfo, newAgentInfo, migrateConfig)
       }
     )
 
