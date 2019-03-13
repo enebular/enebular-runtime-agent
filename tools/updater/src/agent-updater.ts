@@ -114,6 +114,12 @@ export default class AgentUpdater {
     return `enebular-agent-${this._userInfo.user}`
   }
 
+  private _removeNewAgent(): void {
+    if (fs.existsSync(this._newAgentInstallPath)) {
+      rimraf.sync(this._newAgentInstallPath)
+    }
+  }
+
   private _stopAgent(newAgent = false): Promise<boolean> {
     return this._system.stopAgent(this._getServiceName(), newAgent)
   }
@@ -221,39 +227,8 @@ export default class AgentUpdater {
 
   private async _postInstall(
     agentInfo: AgentInfo,
-    newAgentInstallPath: string
+    newAgentInfo: AgentInfo
   ): Promise<void> {
-    const newAgentInfo = AgentInfo.createFromSource(
-      this._system,
-      newAgentInstallPath
-    )
-
-    this._preUpdateCheck(newAgentInfo, agentInfo)
-
-    if (
-      newAgentInfo.version.equals(agentInfo.version) &&
-      !this._config.getBoolean('FORCE_UPDATE')
-    ) {
-      this._log.info(
-        `enebular-agent is already the latest version (${agentInfo.version})`
-      )
-      // No need to start the agent if it is not registered
-      if (!agentInfo.isServiceRegistered()) return
-      // No need to start the agent if it is active
-      if (agentInfo.isServiceActive()) return
-      // we will only try to start agent if it is not started, since the current version may have
-      // a rare chance was a updated version without being started.
-      // TODO: should we follow another restore here.
-      return this._startAgent(agentInfo.version, agentInfo.path)
-    }
-
-    this._log.debug(
-      'Start to Update enebular-agent from ' +
-        Utils.echoGreen(`${agentInfo.version}`) +
-        ' to ' +
-        Utils.echoGreen(`${newAgentInfo.version}`)
-    )
-
     await this._installer.build(agentInfo, newAgentInfo, this._userInfo)
 
     try {
@@ -387,8 +362,32 @@ export default class AgentUpdater {
     agentInfo.prettyStatus(this._log)
 
     await this._installer.download(this._newAgentInstallPath, this._userInfo)
+    const newAgentInfo = AgentInfo.createFromSource(
+      this._system,
+      this._newAgentInstallPath
+    )
+    this._preUpdateCheck(newAgentInfo, agentInfo)
 
-    await this._postInstall(agentInfo, this._newAgentInstallPath)
+    if (
+      newAgentInfo.version.equals(agentInfo.version) &&
+      !this._config.getBoolean('FORCE_UPDATE')
+    ) {
+      this._log.info(
+        `enebular-agent is already the latest version (${agentInfo.version})`
+      )
+      this._removeNewAgent()
+      // No need to start the agent if it is not registered
+      // No need to start the agent if it is active
+      if (agentInfo.isServiceRegistered() && !agentInfo.isServiceActive()) {
+        // we will only try to start agent if it is not started, since the current version may have
+        // a rare chance was a updated version without being started.
+        // TODO: should we follow another restore here.
+        await this._startAgent(agentInfo.version, agentInfo.path)
+      }
+      return true
+    }
+
+    await this._postInstall(agentInfo, newAgentInfo)
 
     if (fs.existsSync(this._oldAgentBackupPath)) {
       rimraf.sync(this._oldAgentBackupPath)
@@ -399,9 +398,7 @@ export default class AgentUpdater {
 
   public async cancel(): Promise<boolean> {
     this._log.info(Utils.echoYellow('Update canceled ✔'))
-    if (fs.existsSync(this._newAgentInstallPath)) {
-      rimraf.sync(this._newAgentInstallPath)
-    }
+    this._removeNewAgent()
     return true
   }
 }
