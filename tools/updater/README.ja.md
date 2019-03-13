@@ -86,9 +86,9 @@ Update succeeded ✔
 
 ```sh
 OPTION                       DESCRIPTION	
---user                       User under which enebular-agent has been installed
---pelion-mode                Pelion mode (developer or factory) selected when enebular-agent was installed
--h, --help                   Output usage information
+--user                       enebular-agentがインストールされているユーザ
+--pelion-mode                enebular-agentがインストールされた時のPelionモード (developerまたはfactory)
+-h, --help                   利用情報を出力する
 ```
 
 サポートされている全てのオプションの一覧を表示するには、`-h`オプションを指定してアップデートスクリプトまたはアップデータを実行します。
@@ -99,7 +99,7 @@ OPTION                       DESCRIPTION
 
 ### アップデートスクリプト
 
-1. 最新版のアップデータがダウンロードされ、一時的な場所に解凍されます。
+1. 最新版のアップデータがダウンロードされて、一時的な場所に解凍されます。
 1. アップデータが必要としているNode.jsのバージョン情報がアップデータのパッケージ定義ファイルから読み込まれます。
 1. 必要としているNode.jsのバージョンが利用できる状態になっていない場合、ダウンロードされてインストールされます。
 1. アップデータが実行されます。
@@ -107,11 +107,11 @@ OPTION                       DESCRIPTION
 
 ### アップデータ
 
-1. The existing enebular-agent is found and interrogated.
-1. Details of the existing enebular-agent are logged.
-1. The new version of enebular-agent is downloaded and extracted to a temporary location.
-1. The new enebular-agent is set up. This includes installing any new system package dependencies and installing a new version of Node.js if required.
-1. The existing enebular-agent is halted.
-1. All existing enebular-agent configuration and data files are migrated to the new version.
-1. The existing enebular-agent and new enebular-agent are swapped.
-1. The new enebular-agent is started.
+1. 既存のenebular-agentが検知されて、インストール関連の詳細がチェックされます。
+1. 既存のenebular-agentの詳細がログされます。
+1. 新しいバージョンのenebular-agentがダウンロードされ、一時的な場所に解凍されます。
+1. 新しいenebular-agentがセットアップされます。このセットアップ処理では新規の依存システムパッケージのインストールや、必要に応じてNode.jsの新しいバージョンのインストール処理が含まれます。
+1. 既存のenebular-agentが停止されます。
+1. 既存のenebular-agentの設定やデータファイルが新しいenebular-agentにマイグレーションされます。
+1. 既存のenebular-agentと新しいenebular-agentが交換されます。
+1. 新しいenebular-agentが起動されます。

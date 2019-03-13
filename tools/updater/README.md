@@ -107,7 +107,7 @@ The following describes the update process followed by the update script and upd
 
 ### Updater
 
-1. The existing enebular-agent is found and interrogated.
+1. The existing enebular-agent is found and its install details checked.
 1. Details of the existing enebular-agent are logged.
 1. The new version of enebular-agent is downloaded and extracted to a temporary location.
 1. The new enebular-agent is set up. This includes installing any new system package dependencies and installing a new version of Node.js if required.
