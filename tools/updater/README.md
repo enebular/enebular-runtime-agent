@@ -27,7 +27,7 @@ To run the updater script on a target device, you can download it with wget and 
 wget -qO- https://enebular.com/agent-update | sudo -E bash -s
 ```
 
-Update options can be added by first appending `--` at the end of the command, as in the command pattern below.
+Update options can be specified by first appending `--` at the end of the command, as in the command pattern below.
 
 ```sh
 wget -qO- https://enebular.com/agent-update | sudo -E bash -s -- <option>

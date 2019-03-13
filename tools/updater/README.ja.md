@@ -21,25 +21,25 @@ enebular-agentのPelionポートをアップデートする場合、`--pelion-mo
 
 ## Bashスクリプトによる簡単アップテート実行
 
-To run the updater script on a target device, you can download it with wget and then run it as shown below.
+bashスクリプトをターゲットのデバイスで実行するには、次に示すように wget を使用してダウンロードして実行します。
 
 ```sh
 wget -qO- https://enebular.com/agent-update | sudo -E bash -s
 ```
 
-Update options can be added by first appending `--` at the end of the command, as in the command pattern below.
+アップテートのオプションは、以下のコマンドパターンのようにコマンドの末尾に`--`を追加してから指定します。
 
 ```sh
 wget -qO- https://enebular.com/agent-update | sudo -E bash -s -- <option>
 ```
 
-The updater script can also be run on a remote target device via SSH with the following command pattern.
+bashスクリプトは、次のコマンドパターンのように SSH 経由でリモートのデバイスで実行することもできます。
 
 ```sh
 ssh -t <user>@<device-ip-address> "wget -qO- https://enebular.com/agent-update | sudo -E bash -s"
 ```
 
-For example, to run the script on a remote Raspberry Pi with the default `pi` user, an IP address of `192.168.1.125,` and specifying `factory` for the Pelion port mode, the command would be as follows.
+例えば、デフォルトの `pi` ユーザと `192.168.1.125` の IP アドレスを持つリモートの Raspberry Pi で Pelion ポートのモードに`factory`を指定してスクリプトを実行するコマンドは次のようになります。
 
 ```sh
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-update | sudo -E bash -s -- --pelion-mode=factory"
