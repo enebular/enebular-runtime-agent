@@ -350,8 +350,10 @@ export default class AiModel extends Asset {
             //   AttachStdout: true,
             //   AttachStderr: true
             // })
+            const language =
+              this._language() === 'Python3' ? 'python3' : 'python2'
             await this._dockerMan().exec(container, {
-              Cmd: ['python', '-u', `/model/${this._mainFileDir()}/wrapper.py`],
+              Cmd: [language, '-u', `/model/${this._mainFileDir()}/wrapper.py`],
               AttachStdout: true,
               AttachStderr: true
             })

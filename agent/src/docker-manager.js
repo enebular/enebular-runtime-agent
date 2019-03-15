@@ -94,7 +94,8 @@ export default class DockerManager {
     const { mounts, cmd, ports } = options
     const config = {
       HostConfig: {
-        Binds: mounts
+        Binds: mounts,
+        Privileged: true
       },
       Image: imageName,
       Cmd: cmd,
@@ -115,6 +116,7 @@ export default class DockerManager {
         this._log.info('===========RUN?=============')
         // this._log.info(container)
         return container.start().then(() => {
+          this._log.info('~~~~~~STARTED CONTAINER~~~~~~~')
           this._attachLogsToContainer(container)
           return container
         })
