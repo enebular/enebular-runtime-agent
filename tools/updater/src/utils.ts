@@ -213,6 +213,7 @@ export class Utils {
     if (!fs.existsSync(src)) {
       throw new Error(`Failed to find: ${src}`)
     }
+    if (src == dst) return
 
     const parentDir = path.resolve(dst, '../')
     if (!fs.existsSync(parentDir)) {

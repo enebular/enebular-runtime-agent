@@ -32,6 +32,14 @@ export default class AgentVerion {
     return new AgentVerion(major, minor, patch)
   }
 
+  public greaterThanOrEquals(version: AgentVerion): boolean {
+    return !this.lessThan(version)
+  }
+
+  public lessThanOrEquals(version: AgentVerion): boolean {
+    return !this.greaterThan(version)
+  }
+
   public greaterThan(version: AgentVerion): boolean {
     if (this._major < version.major) return false
     else if (this._major == version.major && this._minor < version.minor)
