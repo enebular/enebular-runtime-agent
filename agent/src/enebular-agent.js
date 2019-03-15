@@ -1,19 +1,20 @@
 /* @flow */
-import fs from 'fs'
 import EventEmitter from 'events'
-import ConnectorService from './connector-service'
-import EnebularActivator from './enebular-activator'
-import DeviceAuthMediator from './device-auth-mediator'
-import AgentManagerMediator from './agent-manager-mediator'
-import DeviceStateManager from './device-state-manager'
-import AgentInfoManager from './agent-info-manager'
-import AssetManager from './asset-manager'
-import NodeREDController from './node-red-controller'
-import LogManager from './log-manager'
-import CommandLine from './command-line'
-import Config from './config'
+import fs from 'fs'
 import type { Logger } from 'winston'
 import { version as agentVer } from '../package.json'
+import AgentInfoManager from './agent-info-manager'
+import AgentManagerMediator from './agent-manager-mediator'
+import AssetManager from './asset-manager'
+import CommandLine from './command-line'
+import Config from './config'
+import ConnectorService from './connector-service'
+import DeviceAuthMediator from './device-auth-mediator'
+import DeviceStateManager from './device-state-manager'
+import DockerManager from './docker-manager'
+import EnebularActivator from './enebular-activator'
+import LogManager from './log-manager'
+import NodeREDController from './node-red-controller'
 
 export type EnebularAgentConfig = {
   NODE_RED_DIR: string,
@@ -136,6 +137,7 @@ export default class EnebularAgent extends EventEmitter {
     }
 
     const devMode = this._config.get('ENEBULAR_DEV_MODE')
+    const dockerMode = this._config.get('ENEBULAR_DOCKER_MODE')
     const nodeRedDir = this._config.get('NODE_RED_DIR')
     const nodeRedDataDir = this._config.get('NODE_RED_DATA_DIR')
     const defaultNodeRedCommand =
@@ -159,6 +161,12 @@ export default class EnebularAgent extends EventEmitter {
     this._log.info('enebular-agent version: ' + agentVer)
     if (devMode) {
       this._log.info('Running in Developer Mode')
+    }
+    if (dockerMode) {
+      this._log.info('Running in Docker Mode')
+      this._dockerMan = new DockerManager(this._log)
+      // this._dockerMan.stopContainers()
+      // this._dockerMan.listContainers()
     }
     this._log.info('Node-RED dir: ' + nodeRedDir)
     this._log.info('Node-RED data dir: ' + nodeRedDataDir)
@@ -191,6 +199,7 @@ export default class EnebularAgent extends EventEmitter {
 
     this._assetManager = new AssetManager(
       this._deviceStateManager,
+      this._dockerMan,
       this._agentMan,
       this._config,
       this._log
@@ -331,6 +340,10 @@ export default class EnebularAgent extends EventEmitter {
     if (this._monitoringActive) {
       await this._agentMan.notifyStatus('disconnected')
     }
+    if (this._config.get('ENEBULAR_DOCKER_MODE')) {
+      this._dockerMan.stopContainers()
+    }
+
     await this._nodeRed.shutdownService()
     this._assetManager.activate(false)
     this._deviceStateManager.activate(false)

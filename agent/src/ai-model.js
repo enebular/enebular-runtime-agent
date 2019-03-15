@@ -1,14 +1,15 @@
 /* @flow */
 
+import crypto from 'crypto'
+import diskusage from 'diskusage'
 import fs from 'fs'
 import path from 'path'
-import util from 'util'
-import crypto from 'crypto'
-import { spawn } from 'child_process'
 import request from 'request'
 import progress from 'request-progress'
-import diskusage from 'diskusage'
+import util from 'util'
+import extract from 'extract-zip'
 import Asset from './asset'
+import type DockerManager from './docker-manager'
 
 export default class AiModel extends Asset {
   _fileName(): string {
@@ -38,23 +39,27 @@ export default class AiModel extends Asset {
     return path.join(this._destDirPath(), this.config.fileTypeConfig.filename)
   }
 
+  _mountPath(): string {
+    return path.join(this._destDirPath(), 'mount')
+  }
+
   _key(): string {
     return this.config.fileTypeConfig.internalSrcConfig.key
   }
 
-  _handlers() {
+  _handlers(): Array<Object> {
     return this.config.handlers
   }
 
-  _existingContainer() {
+  _existingContainer(): boolean {
     return this.config.existingContainer
   }
 
-  _cores() {
+  _cores(): number {
     return this.config.cores
   }
 
-  _cacheSize() {
+  _cacheSize(): number {
     return this.config.cacheSize
   }
 
@@ -62,12 +67,41 @@ export default class AiModel extends Asset {
     return this.config.dockerImageUrl
   }
 
-  _language() {
+  _mainFilePath(): string {
+    return this.config.mainFilePath
+  }
+
+  _language(): string {
     return this.config.language
   }
 
-  _inputType() {
+  _inputType(): boolean {
     return this.config.inputType
+  }
+
+  _wrapperUrl(): string {
+    return this.config.wrapperUrl
+  }
+
+  _mainFileDir(): string {
+    let mainFileDir = this._mainFilePath().split('.')
+    if (mainFileDir.length > 1) {
+      mainFileDir = mainFileDir.slice(0, -1)
+    }
+    return path.join(...mainFileDir)
+  }
+
+  _wrapperPath(): string {
+    return path.join(
+      this._destDirPath(),
+      'mount',
+      this._mainFileDir(),
+      'wrapper.py'
+    )
+  }
+
+  _dockerMan(): DockerManager {
+    return this._assetMan._dockerMan
   }
 
   async _getIntegrity(path: string) {
@@ -123,7 +157,7 @@ export default class AiModel extends Asset {
         )
       )
     }
-    this._debug(`Downloading ${url} to ${path} ...`)
+    this._debug(`Downloading model ${url} to ${path} ...`)
     const that = this
     await new Promise(function(resolve, reject) {
       const fileStream = fs.createWriteStream(path)
@@ -176,6 +210,68 @@ export default class AiModel extends Asset {
   async _install() {
     fs.chmodSync(this._filePath(), 0o740)
     this._info('File installed to: ' + this._fileSubPath())
+    // Extract archived model
+    const that = this
+    const path = this._filePath()
+    const dest = this._mountPath()
+    const onProgress = state => {
+      this._info(
+        util.format(
+          'Download progress: %f%% @ %fKB/s, %fsec',
+          state.percent ? Math.round(state.percent * 100) : 0,
+          state.speed ? Math.round(state.speed / 1024) : 0,
+          state.time.elapsed ? Math.round(state.time.elapsed) : 0
+        )
+      )
+    }
+    await new Promise((resolve, reject) => {
+      this._info(`extracting archive ${this._fileName()} to ${dest}`)
+      extract(path, { dir: dest }, err => {
+        if (err) {
+          this._error('extraction failed')
+          reject(err)
+        }
+        this._info('extraction complete')
+        resolve()
+      })
+    })
+
+    // Downloading wrapper
+    const wrapperUrl = this._wrapperUrl()
+    const wrapperPath = this._wrapperPath()
+    this._debug(`Downloading wrapper ${wrapperUrl} to ${wrapperPath} ...`)
+    await new Promise(function(resolve, reject) {
+      const fileStream = fs.createWriteStream(wrapperPath)
+      fileStream.on('error', err => {
+        reject(err)
+      })
+      progress(request(wrapperUrl), {
+        delay: 5000,
+        throttle: 5000
+      })
+        .on('response', response => {
+          that._debug(
+            `Response: ${response.statusCode}: ${response.statusMessage}`
+          )
+          if (response.statusCode >= 400) {
+            reject(
+              new Error(
+                `Error response: ${response.statusCode}: ${
+                  response.statusMessage
+                }`
+              )
+            )
+          }
+        })
+        .on('progress', onProgress)
+        .on('error', err => {
+          reject(err)
+        })
+        .on('end', () => {
+          resolve()
+        })
+        .pipe(fileStream)
+    })
   }
 
   // async _execFile() {
@@ -233,6 +329,39 @@ export default class AiModel extends Asset {
   // }
 
   async _runPostInstallOps() {
+    this._info('==============DOCKER STUFF==================')
+    // this._dockerMan().listContainers()
+    this._info('==============DOCKER IMAGE============', this._dockerImage())
+    await this._dockerMan()
+      .pullImage(this._dockerImage())
+      .then(res =>
+        this._dockerMan()
+          .createContainer(this._dockerImage(), {
+            cmd: ['/bin/bash'],
+            mounts: [`${this._mountPath()}:/model`],
+            ports: {
+              '1234/tcp': '1234'
+            }
+          })
+          .then(async container => {
+            // await container.start()
+            // const exec = await container.exec({
+            //   Cmd: ['bash', '-c', 'echo Hello Container && ls'],
+            //   AttachStdout: true,
+            //   AttachStderr: true
+            // })
+            await this._dockerMan().exec(container, {
+              Cmd: ['python', '-u', `/model/${this._mainFileDir()}/wrapper.py`],
+              AttachStdout: true,
+              AttachStderr: true
+            })
+            // this._info('EXEC', exec)
+            setTimeout(() => this._dockerMan().listContainers(), 5000)
+            // exec.inspect()
+            // const smh = await exec.inspect()
+            // this._info('INSPECT', smh)
+          })
+      )
     // INSTALLING OF DOCKER SHOULD BE HERE
   }
 

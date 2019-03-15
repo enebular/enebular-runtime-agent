@@ -1,8 +1,8 @@
 /* @flow */
-import fs from 'fs'
 import FormData from 'form-data'
-import { fetchJSON, postJSON } from './utils'
+import fs from 'fs'
 import type { Logger } from 'winston'
+import { fetchJSON, postJSON } from './utils'
 
 const moduleName = 'agent-man'
 
@@ -87,7 +87,9 @@ export default class AgentManagerMediator {
       })
       this.debug('Log sent')
     } catch (err) {
-      throw new Error('Failed to send log: ' + err.message)
+      // throw new Error(
+      //   'FILENAME: ' + filename + ' Failed to send log: ' + err.message
+      // )
     }
   }
 

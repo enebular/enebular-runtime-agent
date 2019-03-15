@@ -1,15 +1,16 @@
 /* @flow */
 
 import fs from 'fs'
-import path from 'path'
 import mkdirp from 'mkdirp'
 import objectHash from 'object-hash'
+import path from 'path'
 import type { Logger } from 'winston'
+import AiModel from './ai-model'
 import Asset from './asset'
 import FileAsset from './file-asset'
-import AiModel from './ai-model'
 import { delay } from './utils'
 import type DeviceStateManager from './device-state-manager'
+import type DockerManager from './docker-manager'
 import type AgentManagerMediator from './agent-manager-mediator'
 import type Config from './config'
 
@@ -92,6 +93,7 @@ const moduleName = 'asset-man'
 
 export default class AssetManager {
   _deviceStateMan: DeviceStateManager
+  _dockerMan: DockerManager
   _log: Logger
   _assets: Array<Asset> = []
   _processingChanges: boolean = false
@@ -104,6 +106,7 @@ export default class AssetManager {
 
   constructor(
     deviceStateMan: DeviceStateManager,
+    dockerMan: DockerManager,
     agentMan: AgentManagerMediator,
     config: Config,
     log: Logger
@@ -116,6 +119,7 @@ export default class AssetManager {
     }
 
     this._deviceStateMan = deviceStateMan
+    this._dockerMan = dockerMan
     this.agentMan = agentMan
     this._log = log
 

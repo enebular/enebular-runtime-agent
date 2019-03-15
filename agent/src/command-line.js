@@ -17,6 +17,7 @@ export default class CommandLine {
     commander.version(pkg.version, '-v, --version')
 
     this.addConfigOption('ENEBULAR_DEV_MODE', '--dev-mode')
+    this.addConfigOption('ENEBULAR_DOCKER_MODE', '--docker-mode')
 
     this.addConfigOption(
       'ENEBULAR_CONFIG_PATH',
@@ -100,8 +101,9 @@ export default class CommandLine {
         let flags = ''
         if (this._configOptionMap[key]) {
           commander.options.forEach(option => {
-            if (option.attributeName() === this._configOptionMap[key])
+            if (option.attributeName() === this._configOptionMap[key]) {
               flags = option.flags
+            }
           })
         }
         console.log(
