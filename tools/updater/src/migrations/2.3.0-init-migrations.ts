@@ -1,43 +1,39 @@
 import { Migration, MigrateContext } from '../migrator'
 import Copy from '../migration-ops/copy'
-import AwsiotConfigMigration from '../migration-ops/awsiot-config-migration'
+import AwsiotConfigCopy from '../migration-ops/awsiot-config-copy'
 
 module.exports = {
   up: (config: MigrateContext, migration: Migration) => {
     migration['.enebular-config.json'] = new Copy(
-      '.enebular-config.json',
-      config['portBasePath'],
-      config['newPortBasePath'],
+      'enebular-agent config file',
+      `${context['portBasePath']}/.enebular-config.json`,
+      `${context['newPortBasePath']}/.enebular-config.json`,
       true // might not be created yet
     )
-
     migration['.node-red-config'] = new Copy(
-      '.node-red-config',
-      config['nodeRedPath'],
-      config['newNodeRedPath']
+      'Node-RED data directory',
+      `${context['nodeRedPath']}/.node-red-config`,
+      `${context['newNodeRedPath']}/.node-red-config`
     )
-
     migration['.enebular-assets.json'] = new Copy(
-      '.enebular-assets.json',
-      config['portBasePath'],
-      config['newPortBasePath'],
+      'Assets config file',
+      `${context['portBasePath']}/.enebular-assets.json`,
+      `${context['newPortBasePath']}/.enebular-assets.json`,
       true // might not be created yet
     )
-
     migration['assets'] = new Copy(
-      'assets',
-      config['portBasePath'],
-      config['newPortBasePath'],
+      'Assets data directory',
+      `${context['portBasePath']}/assets`,
+      `${context['newPortBasePath']}/assets`,
       true // might not be created yet
     )
-
-    /* if (config.port == 'awsiot') { */
-    /* migration['config.json'] = new AwsiotConfigMigration( */
-    /* 'config.json', */
-    /* config['portBasePath'], */
-    /* config['newPortBasePath'] */
-    /* ) */
-    /* } */
+    if (context.port == 'awsiot') {
+      migration['config.json'] = new AwsiotConfigCopy(
+        'AWSIoT config files',
+        `${context['portBasePath']}/config.json`,
+        `${context['newPortBasePath']}/config.json`
+      )
+    }
   },
   down: () => {}
 }

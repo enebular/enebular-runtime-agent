@@ -1,22 +1,16 @@
 import * as path from 'path'
 import * as fs from 'fs'
 
-import { ContextDependCopy } from './context-depend-copy'
-import { CopyState } from './copy'
+import { CopyState, Copy } from './copy'
 import { MigrateContext } from '../migrator'
 import Utils from '../utils'
 
-export default class AwsiotConfigMigration extends ContextDependCopy {
-  public constructor(
-    name: string,
-    pathFunc: (context: MigrateContext, copyOps: ContextDependCopy) => void,
-    optional = false
-  ) {
-    super(name, pathFunc, optional)
+export default class AwsiotConfigCopy extends Copy {
+  public constructor(name: string, copyFrom: string, copyTo: string) {
+    super(name, copyFrom, copyTo, false)
   }
 
   public async do(context: MigrateContext): Promise<void> {
-    this._updatePathCallback(context, this)
     const awsiotConfigPath = (this.currentState as CopyState).path
     const awsiotConfig = JSON.parse(fs.readFileSync(awsiotConfigPath, 'utf8'))
 

@@ -1,28 +1,45 @@
 import { Migration, MigrateContext } from '../../../src/migrator'
-import ContextDependCopy from '../../../src/migration-ops/context-depend-copy'
+import Copy from '../../../src/migration-ops/copy'
+import AwsiotConfigCopy from '../../../src/migration-ops/awsiot-config-copy'
 
 module.exports = {
-  up: (config: MigrateContext, migration: Migration) => {
-    migration['.enebular-config.json'] = new ContextDependCopy(
-      '.enebular-config.json',
-      (context: MigrateContext, copyOps: ContextDependCopy) => {
-        copyOps.updatePath(
-          `${context['portBasePath']}/.enebular-config.json`,
-          `/home/${config.userInfo.user}/.enebular-agent/.enebular-config.json`
-        )
-      },
+  up: (context: MigrateContext, migration: Migration) => {
+    migration['.enebular-config.json'] = new Copy(
+      'enebular-agent config file',
+      `${context['portBasePath']}/.enebular-config.json`,
+      `/home/${context.userInfo.user}/.enebular-agent/.enebular-config.json`,
+      true // might not be created yet
+    )
+    migration['.node-red-config'] = new Copy(
+      'Node-RED data directory',
+      `${context['nodeRedPath']}/.node-red-config`,
+      `${context['newNodeRedPath']}/.node-red-config`
+    )
+    migration['.enebular-assets.json'] = new Copy(
+      '.enebular-assets.json',
+      `${context['projectPath']}/.enebular-assets.json`,
+      `${context['newProjectPath']}/.enebular-assets.json`,
+      true // might not be created yet
+    )
+    migration['assets'] = new Copy(
+      'assets',
+      `${context['projectPath']}/assets`,
+      `${context['newProjectPath']}/assets`,
       true // might not be created yet
     )
 
-    if (config.port == 'pelion') {
-      migration['.pelion-connector'] = new ContextDependCopy(
+    if (context.port == 'awsiot') {
+      migration['config.json'] = new AwsiotConfigCopy(
+        'config.json',
+        `${context['portBasePath']}/config.json`,
+        `${context['newPortBasePath']}/config.json`
+      )
+    }
+    if (context.port == 'pelion') {
+      migration['.pelion-connector'] = new Copy(
         '.pelion-connector',
-        (context: MigrateContext, copyOps: ContextDependCopy) => {
-          copyOps.updatePath(
-            `${context['portBasePath']}/.pelion-connector`,
-            `${context['newPortBasePath']}/.pelion-connector`
-          )
-        }
+        `${context['portBasePath']}/.pelion-connector`,
+        `${context['newPortBasePath']}/.pelion-connector`
       )
     }
   },

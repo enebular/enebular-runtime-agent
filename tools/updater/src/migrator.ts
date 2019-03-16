@@ -62,54 +62,12 @@ export class Migrator implements MigratorIf {
     return this._system
   }
 
-  /* examples:  */
-  /* file list: [2.3.0, 2.4.0, 2.4.1] */
-  /* if start = 2.3.0 end = 2.4.0, return list = [2.4.0] */
-  /* if start = 2.4.0 end = 2.4.1, return list = [2.4.1] */
-  /* if start = 0.0.0 end = 2.4.0, return list = [2.3.0, 2.4.0] */
-  private _filterMigrationFiles(
+  private _getMigrationFiles(
     migrationFiles: string[],
     start: AgentVersion,
     end: AgentVersion
   ): string[] {
     return migrationFiles.filter(file => {
-      const fileName = path.basename(file)
-      if (path.extname(fileName).toLowerCase() === '.js') {
-        let version = fileName.slice(0, -3)
-        const migrationVersion = AgentVersion.parse(version.split('-')[0])
-        if (
-          migrationVersion &&
-          !migrationVersion.greaterThan(end) &&
-          migrationVersion.greaterThan(start)
-        ) {
-          return true
-        }
-      }
-      return false
-    })
-  }
-
-  private _hasVersion(
-    versions: AgentVersion[],
-    version: AgentVersion
-  ): boolean {
-    let found = false
-    for (let i = 0; i < versions.length; i++) {
-      if (versions[i].equals(version)) {
-        found = true
-        break
-      }
-    }
-    return found
-  }
-
-  private _getVersionsHaveMigration(
-    migrationFiles: string[],
-    start: AgentVersion,
-    end: AgentVersion
-  ): AgentVersion[] {
-    let versions: AgentVersion[] = []
-    migrationFiles.map(file => {
       const fileName = path.basename(file)
       if (path.extname(fileName).toLowerCase() === '.js') {
         const version = fileName.slice(0, -3)
@@ -119,131 +77,19 @@ export class Migrator implements MigratorIf {
           migrationVersion.greaterThan(start) &&
           !migrationVersion.greaterThan(end)
         ) {
-          if (!this._hasVersion(versions, migrationVersion)) {
-            versions.push(migrationVersion)
-          }
+          return true
         }
       }
+      return false
     })
-    return versions
   }
 
-  private _getMigrationFilesUpTo(
-    migrationFiles: string[],
-    version: AgentVersion
-  ): string[] {
-    return this._filterMigrationFiles(
-      migrationFiles,
-      new AgentVersion(0, 0, 0),
-      version
-    )
-  }
-
-  private async _createMigrations(
-    context: MigrateContext,
-    migrationFiles: string[]
-  ): Promise<Migration> {
-    const migrations: Migration = {}
-    for (let index = 0; index < migrationFiles.length; index++) {
-      const migration = await import(migrationFiles[index])
-      migration.up(context, migrations)
-    }
-    return migrations
-  }
-
-  /*
-    The migration file will be added in under `migrations` folder for each version (if apply) incrementally.
-    Thus, we do not keep a snapshot migrations for each version. The migration file name always starts 
-    with agent version number while being added in, followed by description of this migration. This 
-    naming rule is assumed and the version number will be picked up by migrator to decide if it should 
-    apply this migration in certian scenario. The migrations between two versions will be generated using
-    these files.
-
-    An example:
-    * Say we have migration files for version 2.3.0, 2.4.0 and 2.4.1.
-    * We are trying to update agent from 2.4.0 to 2.5.0
-
-    As a result of the generation, migration files for 2.3.0 and 2.4.0 will be used to generate migrations that
-    have been done in 2.4.0, this will give us a `current` state of the migrations that should be done. Then
-    2.3.0, 2.4.0, 2.4.1 will be used to generate intermediate migrations. The desired state in the intermediate
-    migrations is the final expected state after migration, but the current state will be replace to the desired 
-    state of migrations that have been done (which we have generated eailer).
-  */
-  private async _createMigrationsBetweenTwoVersions(
-    olderAgentVersion: AgentVersion,
-    newerAgentVersion: AgentVersion,
-    context: MigrateContext
-  ): Promise<Migration> {
-    try {
-      const migrationFilePath = this._config.getString('MIGRATION_FILE_PATH')
-      let migrationFiles = fs.readdirSync(migrationFilePath).sort()
-      migrationFiles = migrationFiles.map(file => {
-        return path.resolve(migrationFilePath, file)
-      })
-
-      /* we set the 'new project' path same as 'project' path, thus the absolute path generated  */
-      /* in desired state in migrations that have been done will be under 'project' path which */
-      /* would be easier for using as currentState of migrations */
-      const configWithSamePorjectPath = {
-        ...context,
-        newProjectPath: context.projectPath,
-        newNodeRedPath: context.nodeRedPath,
-        newPortBasePath: context.portBasePath
-      }
-      const migrationsHavebeenDoneInOlderVersion = await this._createMigrations(
-        configWithSamePorjectPath,
-        this._getMigrationFilesUpTo(migrationFiles, olderAgentVersion)
-      )
-      const migrations = await this._createMigrations(
-        context,
-        this._getMigrationFilesUpTo(migrationFiles, newerAgentVersion)
-      )
-      for (const migrationObject of Object.entries(migrations)) {
-        const key = migrationObject[0]
-        /* set the `currentState` state of the migrations to be done to the `desiredState` state of */
-        /* the ‘newest’ migrations that have been done */
-        if (migrationsHavebeenDoneInOlderVersion[key]) {
-          migrations[key].currentState =
-            migrationsHavebeenDoneInOlderVersion[key].desiredState
-        }
-      }
-      console.log(migrations)
-      return migrations
-    } catch (err) {
-      throw new Error(`Apply migration files failed: ${err.message}`)
-    }
-  }
-
-  private async _createFileChangeMigrationOps(
-    config: MigrateContext,
-    migrationFiles: string[]
-  ): Promise<Migration> {
-    const fileChangeMigrationOps: Migration = {}
-    for (let index = 0; index < migrationFiles.length; index++) {
-      const migration = await import(migrationFiles[index])
-      migration.up(config, fileChangeMigrationOps)
-    }
-    for (const ops of Object.entries(fileChangeMigrationOps)) {
-      const key = ops[0]
-      if (ops[1].desiredState.type != 'copy') {
-        delete fileChangeMigrationOps[key]
-      }
-    }
-    return fileChangeMigrationOps
-  }
-
-  private async _createMigrationForVersion(
-    version: AgentVersion,
+  private async _createMigrationFromFile(
+    file: string,
     context: MigrateContext,
     sameProjectPathInConfig: boolean
   ): Promise<Migration> {
     try {
-      const migrationFilePath = this._config.getString('MIGRATION_FILE_PATH')
-      let migrationFiles = fs.readdirSync(migrationFilePath).sort()
-      migrationFiles = migrationFiles.map(file => {
-        return path.resolve(migrationFilePath, file)
-      })
-
       /* we set the 'new project' path same as 'project' path, thus the absolute path generated  */
       /* in desired state in migrations that have been done will be under 'project' path which */
       /* would be easier for using as currentState of migrations */
@@ -256,14 +102,11 @@ export class Migrator implements MigratorIf {
       const migrateContext = sameProjectPathInConfig
         ? contextWithSamePorjectPath
         : context
-      const migrationsOps = await this._createFileChangeMigrationOps(
-        migrateContext,
-        this._getMigrationFilesUpTo(migrationFiles, version)
-      )
 
-      // TODO apply
-
-      return migrationsOps
+      const migration: Migration = {}
+      const migrationFile = await import(file)
+      migrationFile.up(migrateContext, migration)
+      return migration
     } catch (err) {
       throw new Error(`Apply migration files failed: ${err.message}`)
     }
@@ -282,7 +125,6 @@ export class Migrator implements MigratorIf {
         },
         ops.optional
       )
-      console.log(ops)
       ops.done = true
     }
   }
@@ -336,25 +178,21 @@ export class Migrator implements MigratorIf {
           return path.resolve(migrationFilePath, file)
         })
 
-        console.log(migrationFiles)
-        const versions = this._getVersionsHaveMigration(
+        const files = this._getMigrationFiles(
           migrationFiles,
           agentInfo.version,
           newAgentInfo.version
         )
-        if (versions.length < 1) {
+        if (files.length < 1) {
           // no migration.
           return
         }
-        versions.unshift(agentInfo.version)
-        for (let index = 0; index < versions.length - 1; index++) {
-          this._log.debug(
-            `Run migration ${versions[index]} => ${versions[index + 1]}`
-          )
-          const migration = await this._createMigrationsBetweenTwoVersions(
-            versions[index],
-            versions[index + 1],
-            migrateContext
+        for (let index = 0; index < files.length; index++) {
+          this._log.debug(`Run migration ${path.basename(files[index])}`)
+          const migration = await this._createMigrationFromFile(
+            files[index],
+            migrateContext,
+            index != 0
           )
           await this._runMigration(migration, migrateContext)
           this._migrations.push(migration)
