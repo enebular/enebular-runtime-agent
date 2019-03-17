@@ -10,34 +10,43 @@ export default class AwsiotConfigCopy extends Copy {
     super(name, copyFrom, copyTo, false)
   }
 
+  private _ensureAbsolutePath(pathToCheck: string, configFilePath: string): string {
+    return path.isAbsolute(pathToCheck)
+      ? pathToCheck
+      : path.resolve(path.dirname(configFilePath), pathToCheck)
+  }
+
   public async do(context: MigrateContext): Promise<void> {
     const awsiotConfigPath = (this.currentState as CopyState).path
     const awsiotConfig = JSON.parse(fs.readFileSync(awsiotConfigPath, 'utf8'))
-
-    // TODO: check isAbsolute path
     const filesToCopy = [
-      this._name,
-      awsiotConfig.caCert,
-      awsiotConfig.clientCert,
-      awsiotConfig.privateKey
+      awsiotConfigPath,
+      this._ensureAbsolutePath(awsiotConfig.caCert, awsiotConfigPath),
+      this._ensureAbsolutePath(awsiotConfig.clientCert, awsiotConfigPath),
+      this._ensureAbsolutePath(awsiotConfig.privateKey, awsiotConfigPath)
     ]
 
     let promises: Promise<void>[] = []
     filesToCopy.forEach(file => {
-      promises.push(
-        Utils.copy(
-          context.log,
-          path.resolve(
-            path.dirname((this._currentState as CopyState).path),
-            file
-          ),
-          path.resolve(
-            path.dirname((this._desiredState as CopyState).path),
-            file
-          ),
-          context.userInfo
+      if (file.indexOf(context.projectPath) > -1) {
+        // inside project source directory, we will copy it to an equivalent in new project source directly.
+        const relativePath = path.relative(context.projectPath, file)
+        const newFile = path.resolve(
+          context.newProjectPath,
+          relativePath
         )
-      )
+        promises.push(
+          Utils.copy(
+            context.log,
+            file,
+            newFile,
+            context.userInfo
+          )
+        )
+      }
+      else {
+        // Leave it if it's not inside project source directory.
+      }
     })
     await Promise.all(promises)
   }

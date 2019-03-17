@@ -136,6 +136,7 @@ export class Utils {
       await cb()
       log.info(Utils.echoGreen('OK'))
     } catch (err) {
+      log.debug(`task ${name} failed, reason: ${err.message}`)
       if (ignore) {
         log.info(Utils.echoYellow('N/A'))
       } else {
@@ -156,6 +157,7 @@ export class Utils {
       cb()
       log.info(Utils.echoGreen('OK'))
     } catch (err) {
+      log.debug(`task ${name} failed, reason: ${err.message}`)
       if (ignore) {
         log.info(Utils.echoYellow('N/A'))
       } else {

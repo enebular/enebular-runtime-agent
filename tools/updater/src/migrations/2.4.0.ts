@@ -3,7 +3,7 @@ import Copy from '../migration-ops/copy'
 import AwsiotConfigCopy from '../migration-ops/awsiot-config-copy'
 
 module.exports = {
-  up: (config: MigrateContext, migration: Migration) => {
+  up: (context: MigrateContext, migration: Migration) => {
     migration['.enebular-config.json'] = new Copy(
       'enebular-agent config file',
       `${context['portBasePath']}/.enebular-config.json`,

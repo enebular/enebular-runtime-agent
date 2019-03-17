@@ -62,7 +62,7 @@ export class Migrator implements MigratorIf {
     return this._system
   }
 
-  private _getMigrationFiles(
+  private _getMigrationFilesBetweenTwoVersions(
     migrationFiles: string[],
     start: AgentVersion,
     end: AgentVersion
@@ -72,12 +72,13 @@ export class Migrator implements MigratorIf {
       if (path.extname(fileName).toLowerCase() === '.js') {
         const version = fileName.slice(0, -3)
         const migrationVersion = AgentVersion.parse(version.split('-')[0])
-        if (
-          migrationVersion &&
-          migrationVersion.greaterThan(start) &&
-          !migrationVersion.greaterThan(end)
-        ) {
-          return true
+        if (migrationVersion) {
+          if (start.equals(end) && migrationVersion.equals(start)) {
+            return true
+          }
+          if (migrationVersion.greaterThan(start) && !migrationVersion.greaterThan(end)) {
+            return true
+          }
         }
       }
       return false
@@ -148,6 +149,7 @@ export class Migrator implements MigratorIf {
     agentInfo: AgentInfo,
     newAgentInfo: AgentInfo
   ): Promise<void> {
+    let migrationFilesToRun
     await Utils.taskAsync(
       `Pre-migration check`,
       this._log,
@@ -158,47 +160,47 @@ export class Migrator implements MigratorIf {
         if (newAgentInfo.version.lessThan(agentInfo.version)) {
           throw new Error(`Migration only supports upgrade.`)
         }
-        const port = agentInfo.detectPortType()
-        const migrateContext = {
-          userInfo: this._userInfo,
-          system: this._system,
-          log: this._log,
-          port: port,
-          projectPath: agentInfo.path,
-          nodeRedPath: `${agentInfo.path}/node-red`,
-          portBasePath: `${agentInfo.path}/ports/${port}`,
-          newProjectPath: newAgentInfo.path,
-          newNodeRedPath: `${newAgentInfo.path}/node-red`,
-          newPortBasePath: `${newAgentInfo.path}/ports/${port}`
-        }
-
         const migrationFilePath = this._config.getString('MIGRATION_FILE_PATH')
         let migrationFiles = fs.readdirSync(migrationFilePath).sort()
         migrationFiles = migrationFiles.map(file => {
           return path.resolve(migrationFilePath, file)
         })
 
-        const files = this._getMigrationFiles(
+        migrationFilesToRun = this._getMigrationFilesBetweenTwoVersions(
           migrationFiles,
           agentInfo.version,
           newAgentInfo.version
         )
-        if (files.length < 1) {
-          // no migration.
-          return
-        }
-        for (let index = 0; index < files.length; index++) {
-          this._log.debug(`Run migration ${path.basename(files[index])}`)
-          const migration = await this._createMigrationFromFile(
-            files[index],
-            migrateContext,
-            index != 0
-          )
-          await this._runMigration(migration, migrateContext)
-          this._migrations.push(migration)
-        }
       }
     )
+    if (migrationFilesToRun.length < 1) {
+      // no migration.
+      return
+    }
+    const port = agentInfo.detectPortType()
+    const migrateContext = {
+      userInfo: this._userInfo,
+      system: this._system,
+      log: this._log,
+      port: port,
+      projectPath: agentInfo.path,
+      nodeRedPath: `${agentInfo.path}/node-red`,
+      portBasePath: `${agentInfo.path}/ports/${port}`,
+      newProjectPath: newAgentInfo.path,
+      newNodeRedPath: `${newAgentInfo.path}/node-red`,
+      newPortBasePath: `${newAgentInfo.path}/ports/${port}`
+    }
+
+    for (let index = 0; index < migrationFilesToRun.length; index++) {
+      this._log.debug(`Run migration ${path.basename(migrationFilesToRun[index])}`)
+      const migration = await this._createMigrationFromFile(
+        migrationFilesToRun[index],
+        migrateContext,
+        index != 0
+      )
+      await this._runMigration(migration, migrateContext)
+      this._migrations.push(migration)
+    }
   }
 
   public async reverse(): Promise<void> {

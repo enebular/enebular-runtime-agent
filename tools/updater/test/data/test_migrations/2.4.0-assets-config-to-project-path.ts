@@ -1,7 +1,7 @@
 import { Migration, MigrateContext } from '../../../src/migrator'
 import Copy from '../../../src/migration-ops/copy'
 import AwsiotConfigCopy from '../../../src/migration-ops/awsiot-config-copy'
-import NodeJSMigration from '../../../src/migration-ops/nodejs-migration'
+import NodeJSChange from '../../../src/migration-ops/nodejs-change'
 
 module.exports = {
   up: (context: MigrateContext, migration: Migration) => {
@@ -17,13 +17,13 @@ module.exports = {
       `${context['newNodeRedPath']}/.node-red-config`
     )
     migration['.enebular-assets.json'] = new Copy(
-      '.enebular-assets.json',
+      'Assets config file',
       `${context['portBasePath']}/.enebular-assets.json`,
       `${context['newProjectPath']}/.enebular-assets.json`,
       true // might not be created yet
     )
     migration['assets'] = new Copy(
-      'assets',
+      'Assets data directory',
       `${context['portBasePath']}/assets`,
       `${context['newProjectPath']}/assets`,
       true // might not be created yet
@@ -31,13 +31,13 @@ module.exports = {
 
     if (context.port == 'awsiot') {
       migration['config.json'] = new AwsiotConfigCopy(
-        'config.json',
+        'AWSIoT config files',
         `${context['portBasePath']}/config.json`,
         `${context['newPortBasePath']}/config.json`
       )
     }
 
-    migration['nodejs'] = new NodeJSMigration(
+    migration['nodejs'] = new NodeJSChange(
       `nodejs 9.2.1 => 10.2.0`,
       '9.2.1',
       '10.2.0'

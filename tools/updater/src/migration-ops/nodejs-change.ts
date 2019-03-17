@@ -5,7 +5,7 @@ export interface NodeJSState extends MigrationOpsState {
   version: string
 }
 
-export default class NodeJSMigration extends MigrationOps {
+export default class NodeJSChange extends MigrationOps {
   private _context?: MigrateContext
 
   public constructor(

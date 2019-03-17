@@ -29,6 +29,7 @@ test('Migrator.1: migrate awsiot port', async t => {
   const updater = new AgentUpdater(system, installer, undefined)
   await t.notThrowsAsync(updater.update())
 
+  console.log(`${system.newPath}/node-red/.node-red-config`)
   t.true(fs.existsSync(`${system.newPath}/node-red/.node-red-config`))
   t.true(fs.existsSync(`${system.newPath}/.enebular-assets.json`))
   t.true(fs.existsSync(`${system.newPath}/assets`))
@@ -200,20 +201,6 @@ test('Migrator.9: Migration fails if migration file parsing fail', async t => {
   system.agent.version = '2.4.0'
   system.newAgent.version = '8.0.0'
   system.path = path.resolve('./test/data/fake_agent_awsiot_2.4.0')
-
-  const updater = new AgentUpdater(system, installer, undefined)
-  const error = await t.throwsAsync(updater.update())
-  t.true(error.message.startsWith('Apply migration files failed'))
-  rimraf.sync(cache)
-})
-
-test('Migrator22.10: Migration fails if migration file parsing fail', async t => {
-  const cache = '/tmp/enebular-agent-updater-test-' + Utils.randomString()
-  process.env['ENEBULAR_AGENT_UPDATER_CACHE_DIR'] = cache
-  const { system, installer } = Mockhelper.createDefaultMocks()
-  system.agent.version = '2.3.1'
-  system.newAgent.version = '2.4.0'
-  system.path = path.resolve('./test/data/fake_agent_awsiot')
 
   const updater = new AgentUpdater(system, installer, undefined)
   const error = await t.throwsAsync(updater.update())

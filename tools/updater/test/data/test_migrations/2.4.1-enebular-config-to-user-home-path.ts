@@ -16,13 +16,13 @@ module.exports = {
       `${context['newNodeRedPath']}/.node-red-config`
     )
     migration['.enebular-assets.json'] = new Copy(
-      '.enebular-assets.json',
+      'Assets config file',
       `${context['projectPath']}/.enebular-assets.json`,
       `${context['newProjectPath']}/.enebular-assets.json`,
       true // might not be created yet
     )
     migration['assets'] = new Copy(
-      'assets',
+      'Assets data directory',
       `${context['projectPath']}/assets`,
       `${context['newProjectPath']}/assets`,
       true // might not be created yet
@@ -30,7 +30,7 @@ module.exports = {
 
     if (context.port == 'awsiot') {
       migration['config.json'] = new AwsiotConfigCopy(
-        'config.json',
+        'AWSIoT config files',
         `${context['portBasePath']}/config.json`,
         `${context['newPortBasePath']}/config.json`
       )
