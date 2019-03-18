@@ -23,7 +23,9 @@ export interface MigratorIf {
 }
 
 export interface Migration {
-  [key: string]: MigrationOp
+  [position: number]: MigrationOp
+  length: number
+  push(item: MigrationOp): number
 }
 
 export interface MigrateContext {
@@ -113,7 +115,7 @@ export class Migrator implements MigratorIf {
         ? contextWithSamePorjectPath
         : context
 
-      const migration: Migration = {}
+      const migration: Migration = []
       const migrationFile = await import(file)
       migrationFile.up(migrateContext, migration)
       return migration
@@ -126,7 +128,8 @@ export class Migrator implements MigratorIf {
     migration: Migration,
     context: MigrateContext
   ): Promise<void> {
-    for (const op of Object.values(migration)) {
+    for (let i = 0; i < migration.length; i++) {
+      const op = migration[i]
       await Utils.taskAsync(
         `Migrating ${op.name}`,
         this._log,
@@ -140,7 +143,8 @@ export class Migrator implements MigratorIf {
   }
 
   private async _reverseMigration(migration: Migration): Promise<void> {
-    for (const op of Object.values(migration)) {
+    for (let i = 0; i < migration.length; i++) {
+      const op = migration[i]
       if (op.reverse) {
         await Utils.taskAsync(
           `[RESTORE] Migration ${op.name}`,

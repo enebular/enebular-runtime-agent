@@ -1,12 +1,10 @@
 import { Migration, MigrateContext } from '../../../src/migrator'
 import Helper from '../../../src/migration-ops/helper'
-import NodeJSChange from '../../../src/migration-ops/nodejs-change'
 
 module.exports = {
   up: (context: MigrateContext, migration: Migration) => {
     Helper.addFileCopy(
       migration,
-      Helper.KEY_ENEBULAR_CONFIG,  
       'enebular-agent config file',
       `${context['portBasePath']}/.enebular-config.json`,
       `${context['newPortBasePath']}/.enebular-config.json`,
@@ -14,14 +12,12 @@ module.exports = {
     )
     Helper.addFileCopy(
       migration,
-      Helper.KEY_NODE_RED_DATA,  
       'Node-RED data directory',
       `${context['nodeRedPath']}/.node-red-config`,
       `${context['newNodeRedPath']}/.node-red-config`
     )
     Helper.addFileCopy(
       migration,
-      Helper.KEY_ASSETS_CONFIG,  
       'Assets config file',
       `${context['portBasePath']}/.enebular-assets.json`,
       `${context['newProjectPath']}/.enebular-assets.json`,
@@ -29,7 +25,6 @@ module.exports = {
     )
     Helper.addFileCopy(
       migration,
-      Helper.KEY_ASSETS_DATA,  
       'Assets data directory',
       `${context['portBasePath']}/assets`,
       `${context['newProjectPath']}/assets`,
