@@ -1,12 +1,12 @@
-import { MigrationOps, MigrationOpsState } from './migration-ops'
+import { MigrationOp, MigrationOpState } from './migration-op'
 import { MigrateContext } from '../migrator'
 import Utils from '../utils'
 
-export interface CopyState extends MigrationOpsState {
+export interface CopyState extends MigrationOpState {
   path: string
 }
 
-export class Copy extends MigrationOps {
+export class Copy extends MigrationOp {
   public constructor(
     name: string,
     copyFrom: string,

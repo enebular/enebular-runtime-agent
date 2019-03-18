@@ -1,11 +1,11 @@
-import { MigrationOps, MigrationOpsState } from './migration-ops'
+import { MigrationOp, MigrationOpState } from './migration-op'
 import { MigrateContext } from '../migrator'
 
-export interface NodeJSState extends MigrationOpsState {
+export interface NodeJSState extends MigrationOpState {
   version: string
 }
 
-export default class NodeJSChange extends MigrationOps {
+export default class NodeJSChange extends MigrationOp {
   private _context?: MigrateContext
 
   public constructor(

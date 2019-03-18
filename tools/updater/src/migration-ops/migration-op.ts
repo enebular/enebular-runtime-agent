@@ -1,22 +1,22 @@
 import { MigrateContext } from '../migrator'
 
-export interface MigrationOpsState {
+export interface MigrationOpState {
   type: string
 }
 
-export abstract class MigrationOps {
+export abstract class MigrationOp {
   protected _name: string
   protected _optional: boolean
   protected _done: boolean
-  protected _currentState: MigrationOpsState
-  protected _desiredState: MigrationOpsState
+  protected _currentState: MigrationOpState
+  protected _desiredState: MigrationOpState
 
   public reverse?: () => Promise<void> | void
 
   protected constructor(
     name: string,
-    currentState: MigrationOpsState,
-    desiredState: MigrationOpsState,
+    currentState: MigrationOpState,
+    desiredState: MigrationOpState,
     optional: boolean
   ) {
     this._done = false
@@ -42,23 +42,23 @@ export abstract class MigrationOps {
     this._done = done
   }
 
-  public get desiredState(): MigrationOpsState {
+  public get desiredState(): MigrationOpState {
     return this._desiredState
   }
 
-  public set desiredState(state: MigrationOpsState) {
+  public set desiredState(state: MigrationOpState) {
     this._desiredState = state
   }
 
-  public get currentState(): MigrationOpsState {
+  public get currentState(): MigrationOpState {
     return this._currentState
   }
 
-  public set currentState(state: MigrationOpsState) {
+  public set currentState(state: MigrationOpState) {
     this._currentState = state
   }
 
   public abstract do(context: MigrateContext): Promise<void> | void
 }
 
-export default MigrationOps
+export default MigrationOp

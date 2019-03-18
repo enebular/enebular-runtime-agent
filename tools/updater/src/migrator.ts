@@ -6,11 +6,11 @@ import AgentVersion from './agent-version'
 import { UserInfo, Utils } from './utils'
 import Config from './config'
 import Log from './log'
-import MigrationOps from './migration-ops/migration-ops'
+import MigrationOp from './migration-ops/migration-op'
 import { SystemIf } from './system'
 
 /*
- * For each release, the migration files under '[SRC]/migrations' is expected to be added.
+ * For each release, a migration file under '[SRC]/migrations' is expected to be added.
  * The file name has to follow the rule that it will always start with the version number,
  * then the description can be added following with a '-' separator (If apply). For example:
  * 2.3.0.ts
@@ -23,7 +23,7 @@ export interface MigratorIf {
 }
 
 export interface Migration {
-  [key: string]: MigrationOps
+  [key: string]: MigrationOp
 }
 
 export interface MigrateContext {
@@ -126,29 +126,29 @@ export class Migrator implements MigratorIf {
     migration: Migration,
     context: MigrateContext
   ): Promise<void> {
-    for (const ops of Object.values(migration)) {
+    for (const op of Object.values(migration)) {
       await Utils.taskAsync(
-        `Migrating ${ops.name}`,
+        `Migrating ${op.name}`,
         this._log,
         async (): Promise<void> => {
-          return ops.do(context)
+          return op.do(context)
         },
-        ops.optional
+        op.optional
       )
-      ops.done = true
+      op.done = true
     }
   }
 
   private async _reverseMigration(migration: Migration): Promise<void> {
-    for (const ops of Object.values(migration)) {
-      if (ops.reverse) {
+    for (const op of Object.values(migration)) {
+      if (op.reverse) {
         await Utils.taskAsync(
-          `[RESTORE] Migration ${ops.name}`,
+          `[RESTORE] Migration ${op.name}`,
           this._log,
           async (): Promise<void> => {
-            if (ops.reverse && ops.done) ops.reverse()
+            if (op.reverse && op.done) op.reverse()
           },
-          ops.optional
+          op.optional
         )
       }
     }
