@@ -7,6 +7,10 @@ This utility can be used to easily update a version of eneblar-agent that was pr
 
 The updater itself is a Node.js application, but a bash script (update script) is also provided which allows the updater to be run quickly in just one step.
 
+## Supported Versions
+
+The updater can be used to update enebular-agent version 2.4.0 and later.
+
 ## Key Update Options
 
 The following options should be specified as required when updating.
