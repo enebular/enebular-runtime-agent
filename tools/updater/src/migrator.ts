@@ -9,6 +9,14 @@ import Log from './log'
 import MigrationOps from './migration-ops/migration-ops'
 import { SystemIf } from './system'
 
+/*
+ * For each release, the migration files under '[SRC]/migrations' is expected to be added.
+ * The file name has to follow the rule that it will always start with the version number,
+ * then the description can be added following with a '-' separator (If apply). For example:
+ * 2.3.0.ts
+ * 2.3.1-change-assets-data-config.ts
+ * 2.4.0.ts
+ */
 export interface MigratorIf {
   migrate(agentInfo: AgentInfo, newAgentInfo: AgentInfo): Promise<void>
   reverse(): Promise<void>
@@ -79,7 +87,7 @@ export class Migrator implements MigratorIf {
           }
           if (
             migrationVersion.greaterThan(start) &&
-            !migrationVersion.greaterThan(end)
+            migrationVersion.lessThanOrEquals(end)
           ) {
             return true
           }
@@ -200,8 +208,8 @@ export class Migrator implements MigratorIf {
         migrationFilesToRun[index],
         migrateContext,
         /*
-         * We set the project base path to be the same path (new project path) in all the subsequent migration. This is because
-         * excepting the first migration, all the other migration will be execute from the new project base path to new prokect
+         * We set the project base path to be the same path (new project path) in all the subsequent migration. This is because of
+         * excepting the first migration, all the other migrations will be executed from the new project base path to new prokect
          * base path. The copy operation itself will handle the copying with the same source and destination.
          */
         index != 0
