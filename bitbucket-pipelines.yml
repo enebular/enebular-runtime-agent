@@ -19,6 +19,7 @@ pipelines:
           && npm run test && rm ./config.json)
         - (cd ports/pelion && npm i && npm run test)
         - (cd tools/awsiot-thing-creator && npm i)
+        - (cd tools/updater && npm i && npm run test)
   tags:
     '*':
       - step:
@@ -35,16 +36,21 @@ pipelines:
             && npm run test && rm ./config.json)
           - (cd ports/pelion && npm i && npm run test)
           - (cd tools/awsiot-thing-creator && npm i)
+          - (cd tools/updater && npm i && npm run test)
           # package
           - (cd node-red && rm -rf node_modules)
           - (cd agent && rm -rf node_modules)
           - (cd ports/awsiot && rm -rf node_modules)
           - (cd ports/pelion && rm -rf node_modules)
           - (cd tools/awsiot-thing-creator && rm -rf node_modules)
+          - (cd tools/updater && rm -rf node_modules)
           - rm -rf .git
           - tar --transform "s,^\.,${BITBUCKET_TAG}," -czf /tmp/${BITBUCKET_TAG}-prebuilt.tar.gz .
-          - mkdir -p dist 
-            && mv /tmp/${BITBUCKET_TAG}-prebuilt.tar.gz dist/ 
+          - mkdir -p dist
+          - mv /tmp/${BITBUCKET_TAG}-prebuilt.tar.gz dist/
+          - UPDATER_NAME=enebular-agent-updater-${BITBUCKET_TAG}
+          - (cd tools/updater && npm i --production && tar --transform "s,^\.,${UPDATER_NAME}," -czf /tmp/${UPDATER_NAME}.tar.gz .)
+          - mv /tmp/${UPDATER_NAME}.tar.gz dist/
           artifacts:
           - dist/**
 #      - step:
