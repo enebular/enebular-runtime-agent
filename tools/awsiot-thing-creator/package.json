@@ -13,6 +13,9 @@
     "flow": "flow",
     "lint": "eslint src"
   },
+  "engines": {
+    "node": "9.2.1"
+  },
   "devDependencies": {
     "@babel/core": "^7.2.2",
     "@babel/cli": "^7.2.3",
