@@ -53,6 +53,16 @@ export default class Config {
         description: 'Node-RED data path',
         userExpose: true
       },
+      NODE_RED_AI_NODES_DIR: {
+        value: p.resolve(
+          portBasePath,
+          '../../node-red/',
+          '.node-red-config',
+          'node-red-enebular-ai-nodes'
+        ),
+        description: 'Node-RED Ai Nodes path',
+        userExpose: true
+      },
       NODE_RED_COMMAND: {
         description: 'Node-RED startup command',
         userExpose: true

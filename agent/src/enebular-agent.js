@@ -140,6 +140,7 @@ export default class EnebularAgent extends EventEmitter {
     const dockerMode = this._config.get('ENEBULAR_DOCKER_MODE')
     const nodeRedDir = this._config.get('NODE_RED_DIR')
     const nodeRedDataDir = this._config.get('NODE_RED_DATA_DIR')
+    const nodeRedAiNodesDir = this._config.get('NODE_RED_AI_NODES_DIR')
     const defaultNodeRedCommand =
       './node_modules/.bin/node-red -s .node-red-config/settings.js'
     const nodeRedCommand =
@@ -212,6 +213,7 @@ export default class EnebularAgent extends EventEmitter {
       {
         dir: nodeRedDir,
         dataDir: nodeRedDataDir,
+        aiNodesDir: nodeRedAiNodesDir,
         command: nodeRedCommand,
         killSignal: this._config.get('NODE_RED_KILL_SIGNAL'),
         pidFile: this._config.get('ENEBULAR_NODE_RED_PID_FILE'),

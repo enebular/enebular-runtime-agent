@@ -5,9 +5,20 @@ import path from 'path'
 import { spawn, type ChildProcess } from 'child_process'
 import fetch from 'isomorphic-fetch'
 import type { Logger } from 'winston'
+import rimraf from 'rimraf'
 import ProcessUtil, { type RetryInfo } from './process-util'
 import type LogManager from './log-manager'
-import { encryptCredential } from './utils'
+import {
+  encryptCredential,
+  fsWriteFileAsync,
+  fsReadFileAsync,
+  fsCopyFileAsync,
+  mkdirAsync,
+  unlinkAsync,
+  symlinkAsync,
+  mkdirpAsync,
+  createNodeDefinition
+} from './utils'
 
 export type NodeREDConfig = {
   dir: string,
@@ -35,6 +46,7 @@ type NodeRedFlowPackage = {
 export default class NodeREDController {
   _dir: string
   _dataDir: string
+  _aiNodesDir: string
   _command: string
   _killSignal: string
   _pidFile: string
@@ -56,6 +68,7 @@ export default class NodeREDController {
   ) {
     this._dir = config.dir
     this._dataDir = config.dataDir
+    this._aiNodesDir = config.aiNodesDir
     this._command = config.command
     this._killSignal = config.killSignal
     this._pidFile = config.pidFile
@@ -101,6 +114,10 @@ export default class NodeREDController {
 
   _getDataDir() {
     return this._dataDir
+  }
+
+  _getAiNodesDir() {
+    return this._aiNodesDir
   }
 
   _registerHandler(emitter: EventEmitter) {
@@ -187,10 +204,8 @@ export default class NodeREDController {
       updates.push(
         new Promise((resolve, reject) => {
           const flowFilePath = path.join(this._getDataDir(), 'flows.json')
-          fs.writeFile(
-            flowFilePath,
-            JSON.stringify(flows),
-            err => (err ? reject(err) : resolve())
+          fs.writeFile(flowFilePath, JSON.stringify(flows), err =>
+            err ? reject(err) : resolve()
           )
         })
       )
@@ -225,7 +240,7 @@ export default class NodeREDController {
               )
 
               // enebular-node-red dont see credentialSecret in settings.js
-              //const defaultKey =
+              // const defaultKey =
               //  settings.credentialSecret ||
               //  JSON.parse(dotconfig)._credentialSecret
               const defaultKey = JSON.parse(dotconfig)._credentialSecret
@@ -239,11 +254,28 @@ export default class NodeREDController {
             }
           }
 
-          fs.writeFile(
-            credFilePath,
-            JSON.stringify(creds),
-            err => (err ? reject(err) : resolve())
+          fs.writeFile(credFilePath, JSON.stringify(creds), err =>
+            err ? reject(err) : resolve()
           )
+        })
+      )
+    }
+    if (flowPackage.handlers) {
+      updates.push(
+        new Promise(async (resolve, reject) => {
+          const aiNodesDir = this._getAiNodesDir()
+          const exist = fs.existsSync(aiNodesDir)
+          if (exist) {
+            rimraf.sync(aiNodesDir)
+          }
+          fs.mkdir(aiNodesDir, err => {
+            if (err) {
+              reject(err)
+            }
+            this._createAiNodes(flowPackage.handlers, aiNodesDir)
+              .then(() => resolve())
+              .catch(err => reject(err))
+          })
         })
       )
     }
@@ -263,6 +295,13 @@ export default class NodeREDController {
             flowPackage.packages['node-red-contrib-enebular'] =
               'file:../../node-red-contrib-enebular'
           }
+          if (flowPackage.handlers) {
+            Object.keys(flowPackage.handlers).forEach(handler => {
+              flowPackage.packages[
+                `enebular-ai-contrib-${handler}`
+              ] = `file:../node-red-enebular-ai-nodes/${handler}`
+            })
+          }
           const packageJSON = JSON.stringify(
             {
               name: 'enebular-agent-dynamic-deps',
@@ -272,10 +311,8 @@ export default class NodeREDController {
             null,
             2
           )
-          fs.writeFile(
-            packageJSONFilePath,
-            packageJSON,
-            err => (err ? reject(err) : resolve())
+          fs.writeFile(packageJSONFilePath, packageJSON, err =>
+            err ? reject(err) : resolve()
           )
         })
       )
@@ -293,6 +330,91 @@ export default class NodeREDController {
       cproc.on('error', reject)
       cproc.once('exit', resolve)
     })
+  }
+
+  // async _installAiNodes(aiNodes, projectId) {
+  //   const { nodes, ts } = aiNodes
+  //   const aiNodesDir = path.resolve(this._getAiNodesDir(), projectId)
+  //   const exist = fs.existsSync(path.resolve(aiNodesDir, '.config'))
+  //   let keys
+  //   if (!exist) {
+  //     await mkdirpAsync(aiNodesDir)
+  //     keys = await this._createAiNodes(nodes, aiNodesDir)
+  //   } else {
+  //     const oldConfig = await fsReadFileAsync(
+  //       path.resolve(aiNodesDir, '.config'),
+  //       'utf-8'
+  //     )
+  //     const jsonConfig = JSON.parse(oldConfig)
+  //     if (Number(ts) === Number(jsonConfig.ts)) {
+  //       keys = jsonConfig.keys
+  //     } else {
+  //       keys = await this._createAiNodes(nodes, aiNodesDir)
+  //     }
+  //   }
+  //   const pkgJSON = await fsReadFileAsync(
+  //     path.resolve(installDir, 'package.json'),
+  //     'utf-8'
+  //   )
+  //   const pkg = JSON.parse(pkgJSON)
+  //   const toInstall = {}
+  //   keys.map(key => {
+  //     toInstall[
+  //       `enebular-ai-contrib-${key}`
+  //     ] = `file:../../../node-red/node-red-enebular-ai-nodes/${projectId}/${key}`
+  //     return symlinkAsync(
+  //       path.resolve(this._getAiNodesDir(), projectId, key),
+  //       path.resolve(installDir, 'node_modules', `enebular-ai-contrib-${key}`),
+  //       'dir'
+  //     )
+  //   })
+  //   pkg.dependencies = { ...pkg.dependencies, ...toInstall }
+  //   await fsWriteFileAsync(
+  //     path.resolve(installDir, 'package.json'),
+  //     JSON.stringify(pkg, null, 2)
+  //   )
+  //   await fsWriteFileAsync(
+  //     path.resolve(aiNodesDir, '.config'),
+  //     JSON.stringify({ keys, ts })
+  //   )
+  // }
+
+  async _createAiNodes(nodes, aiNodesDir) {
+    const packageIds = Object.keys(nodes)
+    await Promise.all(
+      packageIds.map(async key => {
+        const aiNodeDir = path.resolve(aiNodesDir, key)
+        await mkdirAsync(aiNodeDir)
+        await mkdirAsync(path.resolve(aiNodeDir, 'nodes'))
+        return Promise.all(
+          nodes[key].map(node =>
+            createNodeDefinition(node, aiNodeDir).then(() => node.id)
+          )
+        )
+      })
+    )
+    await Promise.all(
+      packageIds.map(async pkgId => {
+        const aiNodeDir = path.resolve(aiNodesDir, pkgId)
+        await mkdirAsync(path.resolve(aiNodeDir, 'icons'))
+        await fsCopyFileAsync(
+          path.resolve(this._getDataDir(), 'img', 'enebular_logo.svg'),
+          path.resolve(aiNodeDir, 'icons', 'icon.svg')
+        )
+        const pkgNodes = nodes[pkgId].reduce((accum, node) => {
+          accum[node.id] = `./nodes/${node.id}.js`
+          return accum
+        }, {})
+        const packageJSON = `{"name":"enebular-ai-contrib-${pkgId}","version":"0.0.1","description":"A sample node for node-red","dependencies":{"request":"^2.88.0"},"keywords":["node-red"],"node-red":{"nodes":${JSON.stringify(
+          pkgNodes
+        )}}}`
+        await fsWriteFileAsync(
+          path.resolve(aiNodeDir, 'package.json'),
+          packageJSON
+        )
+      })
+    )
+    return packageIds
   }
 
   _createPIDFile(pid: string) {
