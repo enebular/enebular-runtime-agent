@@ -10,7 +10,10 @@ export default class AwsiotConfigCopy extends Copy {
     super(name, copyFrom, copyTo, false)
   }
 
-  private _ensureAbsolutePath(pathToCheck: string, configFilePath: string): string {
+  private _ensureAbsolutePath(
+    pathToCheck: string,
+    configFilePath: string
+  ): string {
     return path.isAbsolute(pathToCheck)
       ? pathToCheck
       : path.resolve(path.dirname(configFilePath), pathToCheck)
@@ -31,20 +34,9 @@ export default class AwsiotConfigCopy extends Copy {
       if (file.indexOf(context.projectPath) > -1) {
         // inside project source directory, we will copy it to an equivalent in new project source directly.
         const relativePath = path.relative(context.projectPath, file)
-        const newFile = path.resolve(
-          context.newProjectPath,
-          relativePath
-        )
-        promises.push(
-          Utils.copy(
-            context.log,
-            file,
-            newFile,
-            context.userInfo
-          )
-        )
-      }
-      else {
+        const newFile = path.resolve(context.newProjectPath, relativePath)
+        promises.push(Utils.copy(context.log, file, newFile, context.userInfo))
+      } else {
         // Leave it if it's not inside project source directory.
       }
     })

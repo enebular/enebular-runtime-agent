@@ -20,6 +20,7 @@ export default class NodeJSChange extends MigrationOps {
 
     this.reverse = (): void => {
       if (this._context) {
+        // TODO: make it generic
         this._context.system.updateNodeJSVersionInSystemd(
           this._context.userInfo.user,
           (this._desiredState as NodeJSState).version,

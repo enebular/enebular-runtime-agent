@@ -73,10 +73,14 @@ export class Migrator implements MigratorIf {
         const version = fileName.slice(0, -3)
         const migrationVersion = AgentVersion.parse(version.split('-')[0])
         if (migrationVersion) {
+          // We allow same version force update.
           if (start.equals(end) && migrationVersion.equals(start)) {
             return true
           }
-          if (migrationVersion.greaterThan(start) && !migrationVersion.greaterThan(end)) {
+          if (
+            migrationVersion.greaterThan(start) &&
+            !migrationVersion.greaterThan(end)
+          ) {
             return true
           }
         }
@@ -91,9 +95,6 @@ export class Migrator implements MigratorIf {
     sameProjectPathInConfig: boolean
   ): Promise<Migration> {
     try {
-      /* we set the 'new project' path same as 'project' path, thus the absolute path generated  */
-      /* in desired state in migrations that have been done will be under 'project' path which */
-      /* would be easier for using as currentState of migrations */
       const contextWithSamePorjectPath = {
         ...context,
         projectPath: context.newProjectPath,
@@ -174,7 +175,7 @@ export class Migrator implements MigratorIf {
       }
     )
     if (migrationFilesToRun.length < 1) {
-      // no migration.
+      // No migration is needed.
       return
     }
     const port = agentInfo.detectPortType()
@@ -192,10 +193,17 @@ export class Migrator implements MigratorIf {
     }
 
     for (let index = 0; index < migrationFilesToRun.length; index++) {
-      this._log.debug(`Run migration ${path.basename(migrationFilesToRun[index])}`)
+      this._log.debug(
+        `Run migration ${path.basename(migrationFilesToRun[index])}`
+      )
       const migration = await this._createMigrationFromFile(
         migrationFilesToRun[index],
         migrateContext,
+        /*
+         * We set the project base path to be the same path (new project path) in all the subsequent migration. This is because
+         * excepting the first migration, all the other migration will be execute from the new project base path to new prokect
+         * base path. The copy operation itself will handle the copying with the same source and destination.
+         */
         index != 0
       )
       await this._runMigration(migration, migrateContext)
