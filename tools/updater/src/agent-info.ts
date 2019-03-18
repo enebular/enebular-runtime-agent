@@ -93,14 +93,14 @@ export class AgentInfo {
       pelion,
       awsiotThingCreator,
       mbedCloudConnector,
-      mbedCloudConnectorFCC
+      mbedCloudConnectorFCC,
+      nodejsVersion
     } = system.scanAgentSource(path)
 
     const agentVersion = AgentVersion.parse(version)
     if (!agentVersion) {
       throw new Error(`enebular-agent version is invalid: ${version}`)
     }
-
     return new AgentInfo(
       path,
       agentVersion,
@@ -109,8 +109,7 @@ export class AgentInfo {
       awsiotThingCreator,
       mbedCloudConnector,
       mbedCloudConnectorFCC,
-      // TODO: this should be read from agent source package.json
-      system.getSupportedNodeJSVersion(agentVersion),
+      nodejsVersion,
       systemd
     )
   }

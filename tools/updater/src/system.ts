@@ -2,7 +2,6 @@ import * as path from 'path'
 import * as fs from 'fs'
 import * as rimraf from 'rimraf'
 
-import AgentVersion from './agent-version'
 import Utils from './utils'
 import Log from './log'
 
@@ -39,8 +38,8 @@ export interface SystemIf {
     awsiotThingCreator: boolean
     mbedCloudConnector: boolean
     mbedCloudConnectorFCC: boolean
+    nodejsVersion: string
   }
-  getSupportedNodeJSVersion(agentVersion: AgentVersion): string
   installDebianPackages(packages: string[]): Promise<void>
   updateNodeJSVersionInSystemd(
     user: string,
@@ -204,6 +203,7 @@ export class System implements SystemIf {
     awsiotThingCreator: boolean
     mbedCloudConnector: boolean
     mbedCloudConnectorFCC: boolean
+    nodejsVersion: string
   } {
     if (!fs.existsSync(path)) {
       throw new Error(`The enebular-agent directory was not found: ${path}`)
@@ -214,6 +214,10 @@ export class System implements SystemIf {
       throw new Error(`Cannot found package.json, path is ${packageFile}`)
     }
     const pkg = JSON.parse(fs.readFileSync(packageFile, 'utf8'))
+    const nodejsVersion =
+      pkg.engines && pkg.engines.node
+        ? `v${pkg.engines.node}`
+        : this._getSupportedNodeJSVersion(pkg.version)
     return {
       version: pkg.version,
       awsiot: fs.existsSync(`${path}/ports/awsiot/node_modules`),
@@ -228,7 +232,8 @@ export class System implements SystemIf {
       ),
       mbedCloudConnectorFCC: fs.existsSync(
         `${path}tools/mbed-cloud-connector-fcc/__x86_x64_NativeLinux_mbedtls/Release/factory-configurator-client-enebular.elf`
-      )
+      ),
+      nodejsVersion: nodejsVersion
     }
   }
 
@@ -269,8 +274,8 @@ export class System implements SystemIf {
     return true
   }
 
-  public getSupportedNodeJSVersion(agentVersion: AgentVersion): string {
-    switch (agentVersion.toString()) {
+  private _getSupportedNodeJSVersion(agentVersion: string): string {
+    switch (agentVersion) {
       default:
         return 'v9.2.1'
     }

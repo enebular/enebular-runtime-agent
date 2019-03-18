@@ -58,12 +58,6 @@ export default class MockSystem implements SystemIf {
     }
   }
 
-  public getSupportedNodeJSVersion(agentVersion: AgentVersion): string {
-    return agentVersion.toString() == this.agent.version
-      ? this.agent.nodejsVersion
-      : this.newAgent.nodejsVersion
-  }
-
   public getServiceLogIgnoreError(serviceName: string, lines: number): string {
     return ''
   }
@@ -176,16 +170,19 @@ export default class MockSystem implements SystemIf {
     awsiotThingCreator: boolean
     mbedCloudConnector: boolean
     mbedCloudConnectorFCC: boolean
+    nodejsVersion: string
   } {
-    let agentVersion
+    let agentVersion, nodejsVersion
     if (path == this.newPath || path.indexOf('.new') > -1) {
       if (this.throwsWhenScanNewAgent)
         throw new Error('Scan new agent source return error')
       agentVersion = this.newAgent.version
+      nodejsVersion = this.newAgent.nodejsVersion
     } else {
       if (this.throwsWhenScanOriginalAgent)
         throw new Error('Scan agent source return error')
       agentVersion = this.agent.version
+      nodejsVersion = this.agent.nodejsVersion
     }
     return {
       version: agentVersion,
@@ -193,7 +190,8 @@ export default class MockSystem implements SystemIf {
       pelion: this.port == 'pelion',
       awsiotThingCreator: this.port == 'awsiot',
       mbedCloudConnector: this.port == 'pelion',
-      mbedCloudConnectorFCC: this.port == 'pelion'
+      mbedCloudConnectorFCC: this.port == 'pelion',
+      nodejsVersion: nodejsVersion
     }
   }
 
