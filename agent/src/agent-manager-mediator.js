@@ -161,4 +161,25 @@ export default class AgentManagerMediator {
       throw new Error('Internal file data url request failed: ' + err.message)
     }
   }
+
+  async getAiModelWrapperUrl(params: Object) {
+    if (!this._accessRequirementsConfigured()) {
+      throw new Error('Access requirements not configured')
+    }
+    this.debug('Getting ai model wrapper url...')
+    try {
+      const res = await postJSON(
+        `${this._baseUrl}/device/assets/get-ai-model-wrapper-url`,
+        JSON.stringify({ params: params }),
+        {
+          headers: {
+            Authorization: `Bearer ${this._accessToken}`
+          }
+        }
+      )
+      return res.url
+    } catch (err) {
+      throw new Error('Ai model wrapper url request failed: ' + err.message)
+    }
+  }
 }

@@ -20,6 +20,10 @@ export default class AiModel extends Asset {
     return this.config.fileTypeConfig.size
   }
 
+  _config(): Object {
+    return this.config
+  }
+
   /** @override */
   _destDirPath(): string {
     if (!this.config.destPath) {
@@ -237,7 +241,9 @@ export default class AiModel extends Asset {
     })
 
     // Downloading wrapper
-    const wrapperUrl = this._wrapperUrl()
+    const wrapperUrl = await this._assetMan.agentMan.getAiModelWrapperUrl(
+      this._config()
+    )
     const wrapperPath = this._wrapperPath()
     this._debug(`Downloading wrapper ${wrapperUrl} to ${wrapperPath} ...`)
     await new Promise(function(resolve, reject) {
@@ -353,12 +359,16 @@ export default class AiModel extends Asset {
             const language =
               this._language() === 'Python3' ? 'python3' : 'python2'
             await this._dockerMan().exec(container, {
-              Cmd: [language, '-u', `/model/${this._mainFileDir()}/wrapper.py`],
+              Cmd: [
+                '/bin/bash',
+                '-c',
+                `cd /model/${this._mainFileDir()} && ${language} wrapper.py`
+              ],
               AttachStdout: true,
               AttachStderr: true
             })
             // this._info('EXEC', exec)
-            setTimeout(() => this._dockerMan().listContainers(), 5000)
+            // setTimeout(() => this._dockerMan().listContainers(), 5000)
             // exec.inspect()
             // const smh = await exec.inspect()
             // this._info('INSPECT', smh)
