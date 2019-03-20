@@ -115,7 +115,7 @@ export default class Config {
       },
       ENEBULAR_DOCKER_STATE_PATH: {
         value: p.resolve(portBasePath, '.enebular-docker.json'),
-        description: 'Docker containers state file path',
+        description: 'Docker state file path',
         userExpose: true
       },
       // logging

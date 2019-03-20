@@ -26,3 +26,5 @@ node_modules
 .enebular-config.json
 .enebular-assets.json
 .enebular-activation-config.json
+.enebular-docker.json
+

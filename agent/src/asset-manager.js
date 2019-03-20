@@ -164,6 +164,7 @@ export default class AssetManager {
     }
 
     await this._initAssets()
+    await this._dockerMan.setup()
 
     this._inited = true
   }

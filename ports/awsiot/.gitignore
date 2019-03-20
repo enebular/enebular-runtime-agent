@@ -27,4 +27,5 @@ node_modules
 .DS_Store
 .enebular-config.json
 .enebular-assets.json
+.enebular-docker.json
 

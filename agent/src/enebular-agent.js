@@ -165,7 +165,7 @@ export default class EnebularAgent extends EventEmitter {
     }
     if (dockerMode) {
       this._log.info('Running in Docker Mode')
-      this._dockerMan = new DockerManager(this._log)
+      this._dockerMan = new DockerManager(this._config, this._log)
       // this._dockerMan.stopContainers()
       // this._dockerMan.listContainers()
     }

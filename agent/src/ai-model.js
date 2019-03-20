@@ -8,6 +8,8 @@ import request from 'request'
 import progress from 'request-progress'
 import util from 'util'
 import extract from 'extract-zip'
+import portfinder from 'portfinder'
+import rimraf from 'rimraf'
 import Asset from './asset'
 import type DockerManager from './docker-manager'
 
@@ -43,8 +45,36 @@ export default class AiModel extends Asset {
     return path.join(this._destDirPath(), this.config.fileTypeConfig.filename)
   }
 
+  _baseMountDir(): string {
+    return this._mountDir || this.config.destPath
+  }
+
+  _baseMountPath(): string {
+    return path.join(
+      this._assetMan.aiModelDir(),
+      '.mount',
+      this._baseMountDir()
+    )
+  }
+
   _mountPath(): string {
-    return path.join(this._destDirPath(), 'mount')
+    return path.join(this._baseMountPath(), this.config.destPath)
+  }
+
+  _mainFileDir(): string {
+    let mainFileDir = this._mainFilePath().split('.')
+    if (mainFileDir.length > 1) {
+      mainFileDir = mainFileDir.slice(0, -1)
+    }
+    return path.join(...mainFileDir)
+  }
+
+  _mountFileDir(): string {
+    return path.join('/mount', this.config.destPath, this._mainFileDir())
+  }
+
+  _wrapperPath(): string {
+    return path.join(this._mountPath(), this._mainFileDir(), 'wrapper.py')
   }
 
   _key(): string {
@@ -85,23 +115,6 @@ export default class AiModel extends Asset {
 
   _wrapperUrl(): string {
     return this.config.wrapperUrl
-  }
-
-  _mainFileDir(): string {
-    let mainFileDir = this._mainFilePath().split('.')
-    if (mainFileDir.length > 1) {
-      mainFileDir = mainFileDir.slice(0, -1)
-    }
-    return path.join(...mainFileDir)
-  }
-
-  _wrapperPath(): string {
-    return path.join(
-      this._destDirPath(),
-      'mount',
-      this._mainFileDir(),
-      'wrapper.py'
-    )
   }
 
   _dockerMan(): DockerManager {
@@ -214,6 +227,26 @@ export default class AiModel extends Asset {
   async _install() {
     fs.chmodSync(this._filePath(), 0o740)
     this._info('File installed to: ' + this._fileSubPath())
+
+    if (this._existingContainer()) {
+      const container = await this._dockerMan().checkExistingContainer(
+        this._dockerImage(),
+        this.id()
+      )
+      if (container) {
+        this._mountDir = container.mountDir
+        this._port = container.port
+        this._info('Using existing container with port ', container.port)
+      } else {
+        this._info('Cannot find an existing container')
+        await this._findFreePort()
+      }
+    } else {
+      this._info('Using new container')
+      // Searching for open port
+      await this._findFreePort()
+    }
+
     // Extract archived model
     const that = this
     const path = this._filePath()
@@ -241,9 +274,10 @@ export default class AiModel extends Asset {
     })
 
     // Downloading wrapper
-    const wrapperUrl = await this._assetMan.agentMan.getAiModelWrapperUrl(
-      this._config()
-    )
+    const wrapperUrl = await this._assetMan.agentMan.getAiModelWrapperUrl({
+      ...this._config(),
+      Port: this._port
+    })
     const wrapperPath = this._wrapperPath()
     this._debug(`Downloading wrapper ${wrapperUrl} to ${wrapperPath} ...`)
     await new Promise(function(resolve, reject) {
@@ -280,108 +314,77 @@ export default class AiModel extends Asset {
     })
   }
 
-  // async _execFile() {
-  //   this._info('Executing file...')
-  //   this._info(
-  //     'File command: ' +
-  //       this._execInCmdForm(
-  //         this._fileSubPath(),
-  //         this._execArgs(),
-  //         this._execEnvs()
-  //       )
-  //   )
-
-  //   const args = this._execArgsArray(this._execArgs())
-  //   const env = this._execEnvObj(this._execEnvs())
-  //   const cwd = this._destDirPath()
-  //   const that = this
-  //   await new Promise((resolve, reject) => {
-  //     const cproc = spawn(that._filePath(), args, {
-  //       stdio: 'pipe',
-  //       env: env,
-  //       cwd: cwd
-  //     })
-  //     const timeoutID = setTimeout(() => {
-  //       that._info('Execution went over time limit')
-  //       cproc.kill()
-  //     }, that._execMaxTime() * 1000)
-  //     cproc.stdout.on('data', data => {
-  //       let str = data.toString().replace(/(\n|\r)+$/, '')
-  //       that._info('Asset: ' + str)
-  //     })
-  //     cproc.stderr.on('data', data => {
-  //       let str = data.toString().replace(/(\n|\r)+$/, '')
-  //       that._info('Asset: ' + str)
-  //     })
-  //     cproc.on('error', err => {
-  //       clearTimeout(timeoutID)
-  //       reject(err)
-  //     })
-  //     cproc.once('exit', (code, signal) => {
-  //       clearTimeout(timeoutID)
-  //       if (code !== null) {
-  //         if (code === 0) {
-  //           resolve()
-  //         } else {
-  //           reject(new Error('Execution ended with failure exit code: ' + code))
-  //         }
-  //       } else {
-  //         reject(new Error('Execution ended with signal: ' + signal))
-  //       }
-  //     })
-  //   })
-
-  //   this._debug('Executed file')
-  // }
+  async _findFreePort() {
+    return portfinder
+      .getPortPromise()
+      .then(port => {
+        this._info('Using port: ', port)
+        this._port = port
+      })
+      .catch(err => {
+        this._error(err.message)
+      })
+  }
 
   async _runPostInstallOps() {
     this._info('==============DOCKER STUFF==================')
     // this._dockerMan().listContainers()
     this._info('==============DOCKER IMAGE============', this._dockerImage())
-    await this._dockerMan()
-      .pullImage(this._dockerImage())
-      .then(res =>
-        this._dockerMan()
-          .createContainer(this._dockerImage(), {
-            cmd: ['/bin/bash'],
-            mounts: [`${this._mountPath()}:/model`],
-            ports: {
-              '1234/tcp': '1234'
-            }
-          })
-          .then(async container => {
-            // await container.start()
-            // const exec = await container.exec({
-            //   Cmd: ['bash', '-c', 'echo Hello Container && ls'],
-            //   AttachStdout: true,
-            //   AttachStderr: true
-            // })
-            const language =
-              this._language() === 'Python3' ? 'python3' : 'python2'
-            await this._dockerMan().exec(container, {
-              Cmd: [
-                '/bin/bash',
-                '-c',
-                `cd /model/${this._mainFileDir()} && ${language} wrapper.py`
-              ],
-              AttachStdout: true,
-              AttachStderr: true
-            })
-            // this._info('EXEC', exec)
-            // setTimeout(() => this._dockerMan().listContainers(), 5000)
-            // exec.inspect()
-            // const smh = await exec.inspect()
-            // this._info('INSPECT', smh)
-          })
-      )
+
+    // creating container
+    const container = await this._dockerMan().createContainer(
+      this._dockerImage(),
+      {
+        cmd: ['/bin/bash'],
+        mounts: [`${this._baseMountPath()}:/mount`],
+        ports: {
+          [`${this._port}/tcp`]: `${this._port}`
+        }
+      },
+      {
+        modelId: this.id(),
+        existingContainer: this._existingContainer(),
+        cacheSize: this._cacheSize(),
+        mountDir: this._baseMountDir(),
+        port: this._port
+      }
+    )
+
+    // await container.start()
+    // const exec = await container.exec({
+    //   Cmd: ['bash', '-c', 'echo Hello Container && ls'],
+    //   AttachStdout: true,
+    //   AttachStderr: true
+    // })
+    const language = this._language() === 'Python3' ? 'python3' : 'python2'
+    await this._dockerMan().exec(container, {
+      Cmd: [
+        '/bin/bash',
+        '-c',
+        `cd ${this._mountFileDir()} && ${language} wrapper.py`
+      ],
+      AttachStdout: true,
+      AttachStderr: true
+    })
+    // this._info('EXEC', exec)
+    // setTimeout(() => this._dockerMan().listContainers(), 5000)
+    // exec.inspect()
+    // const smh = await exec.inspect()
+    // this._info('INSPECT', smh)
+
     // INSTALLING OF DOCKER SHOULD BE HERE
   }
 
   async _delete() {
-    const path = this._filePath()
-    if (fs.existsSync(path)) {
-      this._debug(`Deleting ${path}...`)
-      fs.unlinkSync(path)
+    const filePath = this._filePath()
+    const mountPath = this._mountPath()
+    if (fs.existsSync(filePath)) {
+      this._debug(`Deleting ${filePath}...`)
+      fs.unlinkSync(filePath)
+    }
+    if (fs.existsSync(mountPath)) {
+      this._debug(`Deleting ${mountPath}...`)
+      rimraf.sync(mountPath)
     }
   }
 }
