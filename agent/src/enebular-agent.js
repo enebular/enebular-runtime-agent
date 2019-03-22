@@ -325,7 +325,7 @@ export default class EnebularAgent extends EventEmitter {
     this._loadAgentConfig()
 
     await this._agentInfoManager.setup()
-    await this._assetManager.setup()
+    await this._assetManager.setup(this._config.get('ENEBULAR_DOCKER_MODE'))
 
     this._updateMonitoringFromDesiredState()
 

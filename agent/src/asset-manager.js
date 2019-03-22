@@ -151,7 +151,7 @@ export default class AssetManager {
     this._log.error(msg, ...args)
   }
 
-  async setup() {
+  async setup(dockerMode) {
     if (this._inited) {
       return
     }
@@ -164,7 +164,10 @@ export default class AssetManager {
     }
 
     await this._initAssets()
-    await this._dockerMan.setup()
+
+    if (dockerMode) {
+      await this._dockerMan.setup()
+    }
 
     this._inited = true
   }
