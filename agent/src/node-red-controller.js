@@ -4,10 +4,13 @@ import EventEmitter from 'events'
 import path from 'path'
 import { spawn, type ChildProcess } from 'child_process'
 import fetch from 'isomorphic-fetch'
-import type { Logger } from 'winston'
+import objectHash from 'object-hash'
 import ProcessUtil, { type RetryInfo } from './process-util'
-import type LogManager from './log-manager'
 import { encryptCredential } from './utils'
+import type { Logger } from 'winston'
+import type LogManager from './log-manager'
+import type DeviceStateManager from './device-state-manager'
+import type Config from './config'
 
 export type NodeREDConfig = {
   dir: string,
@@ -33,6 +36,10 @@ type NodeRedFlowPackage = {
 }
 
 export default class NodeREDController {
+  _deviceStateMan: DeviceStateManager
+  _flowStateFilePath: string
+  _flowState: Object
+  _processingFlowStateChanges: boolean = false
   _dir: string
   _dataDir: string
   _command: string
@@ -47,20 +54,29 @@ export default class NodeREDController {
   _nodeRedLog: Logger
   _retryInfo: RetryInfo
   _allowEditSessions: boolean = false
+  _inited: boolean = false
 
   constructor(
+    deviceStateMan: DeviceStateManager,
     emitter: EventEmitter,
+    config: Config,
     log: Logger,
     logManager: LogManager,
-    config: NodeREDConfig
+    nodeRedConfig: NodeREDConfig
   ) {
-    this._dir = config.dir
-    this._dataDir = config.dataDir
-    this._command = config.command
-    this._killSignal = config.killSignal
-    this._pidFile = config.pidFile
-    this._assetsDataPath = config.assetsDataPath
-    this._allowEditSessions = config.allowEditSessions
+    this._flowStateFilePath = config.get('ENEBULAR_FLOW_STATE_PATH')
+    if (!this._flowStateFilePath) {
+      throw new Error('Missing node-red controller configuration')
+    }
+
+    this._deviceStateMan = deviceStateMan
+    this._dir = nodeRedConfig.dir
+    this._dataDir = nodeRedConfig.dataDir
+    this._command = nodeRedConfig.command
+    this._killSignal = nodeRedConfig.killSignal
+    this._pidFile = nodeRedConfig.pidFile
+    this._assetsDataPath = nodeRedConfig.assetsDataPath
+    this._allowEditSessions = nodeRedConfig.allowEditSessions
     this._retryInfo = { retryCount: 0, lastRetryTimestamp: Date.now() }
 
     if (!fs.existsSync(this._dir)) {
@@ -71,6 +87,10 @@ export default class NodeREDController {
         `The Node-RED data directory was not found: ${this._getDataDir()}`
       )
     }
+
+    this._deviceStateMan.on('stateChange', params =>
+      this._handleDeviceStateChange(params)
+    )
 
     this._registerHandler(emitter)
 
@@ -97,6 +117,193 @@ export default class NodeREDController {
   error(msg: string, ...args: Array<mixed>) {
     args.push({ module: moduleName })
     this._log.error(msg, ...args)
+  }
+
+  async setup() {
+    if (this._inited) {
+      return
+    }
+
+    this.debug('Flow state file path: ' + this._flowStateFilePath)
+
+    await this._initDeviceState()
+
+    this._inited = true
+  }
+
+  async _initDeviceState() {
+    this._loadFlowState()
+    this._updateFlowFromDesiredState()
+    this._updateFlowReportedState()
+  }
+
+  _loadFlowState() {
+    if (!fs.existsSync(this._flowStateFilePath)) {
+      this._flowState = {}
+      return
+    }
+
+    this.info('Loading flow state: ' + this._flowStateFilePath)
+
+    const data = fs.readFileSync(this._flowStateFilePath, 'utf8')
+    this._flowState = JSON.parse(data)
+  }
+
+  _saveFlowState() {
+    this.debug('Saving flow state...')
+
+    if (!this._flowState) {
+      return
+    }
+
+    let flowState = Object.assign({}, this._flowState)
+
+    // For in-progress type states, save their pre in-progress states
+    switch (flowState.state) {
+      case 'deploying':
+        flowState.state = 'notDeployed'
+        break
+      case 'removing':
+        flowState.state = 'deployed'
+        break
+      default:
+        break
+    }
+
+    this.debug('Flow state: ' + JSON.stringify(flowState, null, 2))
+    try {
+      fs.writeFileSync(
+        this._flowStateFilePath,
+        JSON.stringify(flowState),
+        'utf8'
+      )
+    } catch (err) {
+      this.error('Failed to save flow state: ' + err.message)
+    }
+  }
+
+  async _handleDeviceStateChange(params: { type: string, path: ?string }) {
+    if (!this._inited) {
+      return
+    }
+
+    if (params.path && !params.path.startsWith('flow')) {
+      return
+    }
+
+    switch (params.type) {
+      case 'desired':
+        this._updateFlowFromDesiredState()
+        break
+      case 'reported':
+        this._updateFlowReportedState()
+        break
+      default:
+        break
+    }
+  }
+
+  async _updateFlowFromDesiredState() {
+    const desiredState = this._deviceStateMan.getState('desired', 'flow')
+    if (!desiredState) {
+      return
+    }
+
+    if (desiredState.flow) {
+      this._flowState.controlSrc = 'deviceState'
+    }
+
+    this.debug('Assets state change: ' + JSON.stringify(desiredState, null, 2))
+
+    const desiredFlow = desiredState.flow || {}
+
+    let change = false
+    if (!desiredFlow.hasOwnProperty('assetId') && this._flowState.assetId) {
+      this._flowState.pendingChange = 'remove'
+      this._flowState.changeTs = Date.now()
+      change = true
+    } else if (
+      desiredFlow.assetId !== this._flowState.assetId ||
+      desiredFlow.updateId !== this._flowState.updateId
+    ) {
+      this._flowState.pendingChange = 'deploy'
+      this._flowState.pendingAssetId = desiredFlow.assetId
+      this._flowState.pendingUpdateId = desiredFlow.updateId
+      this._flowState.changeTs = Date.now()
+      change = true
+    }
+
+    this.debug('Flow state: ' + JSON.stringify(this._flowState, null, 2))
+
+    if (change) {
+      this._updateFlowReportedState()
+      this._processPendingFlowChanges()
+    }
+  }
+
+  // Only updates the reported state if required (if there is a difference)
+  _updateFlowReportedState() {
+    if (!this._deviceStateMan.canUpdateState('reported')) {
+      return
+    }
+
+    let reportedState = this._deviceStateMan.getState('reported', 'flow')
+    if (!reportedState) {
+      reportedState = {}
+    }
+
+    // Handle flow.flow
+    if (!this._flowState.assetId && reportedState.flow) {
+      this.debug('Removing reported flow state...')
+      this._deviceStateMan.updateState('reported', 'remove', 'flow.flow')
+    } else {
+      let state = {
+        assetId: this._flowState.assetId,
+        updateId: this._flowState.updateId,
+        state: this._flowState.state,
+        ts: this._flowState.changeTs
+      }
+      if (this._flowState.changeErrMsg) {
+        state.message = this._flowState.changeErrMsg
+      }
+      if (this._flowState.pendingChange) {
+        switch (this._flowState.pendingChange) {
+          case 'deploy':
+            state.state = 'deployPending'
+            state.assetId = this._flowState.pendingAssetId
+            state.updateId = this._flowState.pendingUpdateId
+            break
+          case 'remove':
+            state.state = 'removePending'
+            break
+          default:
+            state.state = 'unknown'
+            break
+        }
+      }
+      if (
+        !reportedState.flow ||
+        objectHash(state) !== objectHash(reportedState.flow)
+      ) {
+        this.debug('Updating reported flow state...')
+        this.debug(
+          'Current state: ' + JSON.stringify(reportedState.flow, null, 2)
+        )
+        this.debug('New state: ' + JSON.stringify(state, null, 2))
+        this._deviceStateMan.updateState('reported', 'set', 'flow.flow', state)
+      }
+    }
+  }
+
+  async _processPendingFlowChanges() {
+    if (this._processingChanges) {
+      return
+    }
+    this._processingChanges = true
+
+    //
+
+    this._processingChanges = false
   }
 
   _getDataDir() {
@@ -136,6 +343,7 @@ export default class NodeREDController {
   }
 
   async fetchAndUpdateFlow(params: { downloadUrl: string }) {
+    this.flowState.controlSrc = 'cmd'
     return this._queueAction(() => this._fetchAndUpdateFlow(params))
   }
 

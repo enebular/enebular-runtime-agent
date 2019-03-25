@@ -197,7 +197,9 @@ export default class EnebularAgent extends EventEmitter {
     )
 
     this._nodeRed = new NodeREDController(
+      this._deviceStateManager,
       this._messageEmitter,
+      this._config,
       this._log,
       this._logManager,
       {
@@ -315,6 +317,7 @@ export default class EnebularAgent extends EventEmitter {
 
     await this._agentInfoManager.setup()
     await this._assetManager.setup()
+    await this._nodeRed.setup()
 
     this._updateMonitoringFromDesiredState()
 
