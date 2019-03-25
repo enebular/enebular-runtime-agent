@@ -316,7 +316,9 @@ export default class AiModel extends Asset {
 
   async _findFreePort() {
     return portfinder
-      .getPortPromise()
+      .getPortPromise({
+        port: 49152
+      })
       .then(port => {
         this._info('Using port: ', port)
         this._port = port
@@ -331,6 +333,8 @@ export default class AiModel extends Asset {
     // this._dockerMan().listContainers()
     this._info('==============DOCKER IMAGE============', this._dockerImage())
 
+    const language = this._language() === 'Python3' ? 'python3' : 'python2'
+    const command = `cd ${this._mountFileDir()} && ${language} wrapper.py`
     // creating container
     const container = await this._dockerMan().createContainer(
       this._dockerImage(),
@@ -346,7 +350,8 @@ export default class AiModel extends Asset {
         existingContainer: this._existingContainer(),
         cacheSize: this._cacheSize(),
         mountDir: this._baseMountDir(),
-        port: this._port
+        port: this._port,
+        cmd: command
       }
     )
 
@@ -356,13 +361,8 @@ export default class AiModel extends Asset {
     //   AttachStdout: true,
     //   AttachStderr: true
     // })
-    const language = this._language() === 'Python3' ? 'python3' : 'python2'
     await this._dockerMan().exec(container, {
-      Cmd: [
-        '/bin/bash',
-        '-c',
-        `cd ${this._mountFileDir()} && ${language} wrapper.py`
-      ],
+      Cmd: ['/bin/bash', '-c', command],
       AttachStdout: true,
       AttachStderr: true
     })

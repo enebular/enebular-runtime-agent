@@ -115,7 +115,12 @@ export default class DockerManager {
       image,
       options,
       config,
-      models: [config.modelId],
+      models: [
+        {
+          modelId: config.modelId,
+          cmd: config.cmd
+        }
+      ],
       mountDir: config.mountDir,
       accept: config.cacheSize - 1,
       port: config.port
@@ -124,12 +129,15 @@ export default class DockerManager {
     await this._saveDockerState()
   }
 
-  async _addModelToContainer(containerId, modelId) {
+  async _addModelToContainer(containerId, config) {
     this._containers = this._containers.map(container => {
       if (container.id === containerId) {
         return {
           ...container,
-          models: container.models.concat(modelId),
+          models: container.models.concat({
+            modelId: config.modelId,
+            cmd: config.cmd
+          }),
           accept: container.accept - 1
         }
       } else {
@@ -154,8 +162,21 @@ export default class DockerManager {
     this.info('Starting containers')
     await Promise.all(
       this._containers.map(async (container, idx) => {
-        const started = await this.startContainer({ id: container.id })
-        this._containers[idx].status = started ? 'running' : 'startFailed'
+        const started = await this.startContainer(
+          container.id,
+          container.image,
+          container.options
+        )
+        this._containers[idx].status = started ? 'running' : 'error'
+        await Promise.all(
+          container.models.map(model =>
+            this.exec(started, {
+              Cmd: ['/bin/bash', '-c', model.cmd],
+              AttachStdout: true,
+              AttachStderr: true
+            })
+          )
+        )
       })
     )
   }
@@ -164,19 +185,36 @@ export default class DockerManager {
     return this._docker.getContainer(key)
   }
 
-  async startContainer(options) {
-    this.debug('Starting container : ', options.id)
+  async startContainer(containerId, image, options) {
+    this.debug('Starting container : ', containerId)
+    let container
     try {
-      const container = this.getContainer(options.id)
+      container = this.getContainer(containerId)
+    } catch (err) {
+      throw new Error('Container does not exist')
+    }
+    try {
       await container.start()
       this._attachLogsToContainer(container)
-      return true
+      return container
     } catch (err) {
       if (err.statusCode === 304) {
-        return true
+        return container
+      }
+      if (err.statusCode === 404) {
+        return this._recreateContainer(image, options)
+          .then(container => {
+            this._transferContainer(containerId, container.id)
+            return container
+          })
+          .catch(err => {
+            this.error('Failed to recreate a container')
+            this.error(err.message)
+            this._cleanContainer(containerId)
+          })
       }
       this.error(err.message)
-      return false
+      throw new Error('Cannot start a container')
     }
   }
 
@@ -190,6 +228,22 @@ export default class DockerManager {
       this.error(err.message)
       return false
     }
+  }
+
+  _cleanContainer(containerId) {
+    this.debug('Cleaning container ', containerId)
+    this._containers = this._containers.filter(
+      container => container.id !== containerId
+    )
+  }
+
+  _transferContainer(oldId, newId) {
+    this._containers = this._containers.map(container => {
+      if (container.id === oldId) {
+        container.id = newId
+      }
+      return container
+    })
   }
 
   async removeContainer(options) {
@@ -330,6 +384,44 @@ export default class DockerManager {
     }
   }
 
+  async _recreateContainer(imageName, dockerOptions) {
+    this.info('Recreating a container')
+    const { mounts, cmd, ports } = dockerOptions
+    const config = {
+      HostConfig: {
+        Binds: mounts,
+        Privileged: true
+      },
+      Image: imageName,
+      Cmd: cmd,
+      Tty: true
+    }
+    if (ports) {
+      config.HostConfig.PortBindings = {}
+      config.ExposedPorts = {}
+      Object.keys(ports).forEach(port => {
+        config.HostConfig.PortBindings[port] = [{ HostPort: ports[port] }]
+        config.ExposedPorts[port] = {}
+      })
+    }
+    const container = await this._docker
+      // .run(imageName, options, process.stdout, { cmd: '/bin/bash' })
+      .createContainer(config)
+      .then(container => {
+        this.info('===========RUN?=============')
+        this._log.info(container)
+        return container.start().then(() => {
+          this.info('~~~~~~STARTED CONTAINER~~~~~~~')
+          this._attachLogsToContainer(container)
+          return container
+        })
+      })
+      .catch(err => {
+        this.info('================RUN ERROR=========', err)
+      })
+    return container
+  }
+
   async createContainer(imageName, dockerOptions, modelConfig) {
     // checking if model is already running
     await this._checkRunningModel(modelConfig)
@@ -342,7 +434,7 @@ export default class DockerManager {
       if (existing) {
         this.info('Using existing container')
         if (!existing.alreadyRunning) {
-          await this._addModelToContainer(existing.id, modelConfig.modelId)
+          await this._addModelToContainer(existing.id, modelConfig)
         }
         return this.getContainer(existing.id)
       }

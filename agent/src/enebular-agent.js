@@ -89,6 +89,7 @@ export default class EnebularAgent extends EventEmitter {
   _deviceStateManager: DeviceStateManager
   _agentInfoManager: AgentInfoManager
   _assetManager: AssetManager
+  _dockerMan: DockerManager
 
   _connectionId: ?string
   _deviceId: ?string
@@ -111,6 +112,7 @@ export default class EnebularAgent extends EventEmitter {
   _notifyStatusActivated: boolean = false
   _notifyStatusInterval: number
   _notifyStatusIntervalID: ?number
+  _ipAddress: ?string
 
   constructor(options: EnebularAgentOptions) {
     super()
