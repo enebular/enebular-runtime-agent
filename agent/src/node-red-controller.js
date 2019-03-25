@@ -55,6 +55,7 @@ export default class NodeREDController {
   _retryInfo: RetryInfo
   _allowEditSessions: boolean = false
   _inited: boolean = false
+  _active: boolean = false
 
   constructor(
     deviceStateMan: DeviceStateManager,
@@ -117,6 +118,19 @@ export default class NodeREDController {
   error(msg: string, ...args: Array<mixed>) {
     args.push({ module: moduleName })
     this._log.error(msg, ...args)
+  }
+
+  activate(active: boolean) {
+    if (active === this._active) {
+      return
+    }
+    if (active && !this._inited) {
+      throw new Error('Attempted to activate node-red-con when not initialized')
+    }
+    this._active = active
+    if (this._active) {
+      this._processPendingFlowChanges()
+    }
   }
 
   async setup() {
@@ -253,7 +267,11 @@ export default class NodeREDController {
     }
 
     // Handle flow.flow
-    if (!this._flowState.assetId && reportedState.flow) {
+    if (
+      !this._flowState.assetId &&
+      !this._flowState.pendingAssetId &&
+      reportedState.flow
+    ) {
       this.debug('Removing reported flow state...')
       this._deviceStateMan.updateState('reported', 'remove', 'flow.flow')
     } else {
@@ -301,6 +319,10 @@ export default class NodeREDController {
     }
     this._processingChanges = true
 
+    while (this._active) {
+
+      break
+    }
     //
 
     this._processingChanges = false
