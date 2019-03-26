@@ -231,7 +231,7 @@ export default class NodeREDController {
 
     const desiredFlow = desiredState.flow || {}
 
-    this.debug('Assets state change: ' + JSON.stringify(desiredState, null, 2))
+    this.debug('Desired state change: ' + JSON.stringify(desiredState, null, 2))
 
     let change = false
 
@@ -242,6 +242,7 @@ export default class NodeREDController {
         this._flowState.state !== 'removing' &&
         this._flowState.state !== 'removeFail'
       ) {
+        this.info(`Flow '${this._flowState.assetId}' now pending 'remove'`)
         this._flowState.pendingChange = 'remove'
         this._flowState.changeErrMsg = null
         this._flowState.changeTs = Date.now()
@@ -265,6 +266,7 @@ export default class NodeREDController {
         }
       }
       if (deploy) {
+        this.info(`Flow '${desiredFlow.assetId}' now pending 'deploy'`)
         this._flowState.pendingChange = 'deploy'
         this._flowState.pendingAssetId = desiredFlow.assetId
         this._flowState.pendingUpdateId = desiredFlow.updateId
@@ -393,7 +395,10 @@ export default class NodeREDController {
           this._flowState.updateId = pendingUpdateId
 
           // Handle too many attempts
-          if (this._flowState.updateAttemptCount++ > 3) {
+          if (this._flowState.updateAttemptCount > 3) {
+            this.info(
+              `Deploy failed maximum number of times (3)`
+            )
             this._flowState.updateAttemptCount = 0
             // TODO: better actual error message capture and reporting
             this._setFlowState('deployFail', 'Too many update attempts')
@@ -405,31 +410,44 @@ export default class NodeREDController {
 
           // todo: remove current flow (if required)
 
-          await delay(5 * 1000) // tmp
-
           // deploy
+          this.info(`Deploying flow '${pendingAssetId}'...`)
+          this.info('Faking deloy with 10sec wait...')
+          await delay(10 * 1000) // tmp
           success = true // todo: actually do deploy
           if (!success) {
             if (this._flowState.pendingChange === null) {
-              // Re-queue change to retry
+              // TODO: handle too many attempts here too, not just above
+              this.info(
+                `Deploy failed, but will retry (${
+                  this._flowState.updateAttemptCount
+                }/3).`
+              )
               this._flowState.assetId = null
               this._flowState.updateId = null
               this._flowState.pendingChange = 'deploy'
               this._flowState.pendingAssetId = pendingAssetId
               this._flowState.pendingUpdateId = pendingUpdateId
               this._setFlowState(null, null)
+            } else {
+              this.info('Deploy failed, but new change already pending.')
             }
           } else {
+            this.info(`Deployed flow '${pendingAssetId}'`)
+            this._flowState.updateAttemptCount = 0
             this._setFlowState('deployed', null)
           }
           break
 
         case 'remove':
+          this.info(`Removing flow '${this._flowState.assetId}'...`)
           this._setFlowState('removing')
           success = true // todo: actually do remove
           if (!success) {
+            this.info('Remove failed')
             this._setFlowState('removeFail', 'TODO: error message')
           } else {
+            this.info(`Removed flow '${this._flowState.assetId}'`)
             this._flowState.assetId = null
             this._flowState.updateId = null
             this._setFlowState(null, null)
