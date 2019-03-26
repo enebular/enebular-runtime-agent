@@ -12,6 +12,10 @@ import type LogManager from './log-manager'
 import type DeviceStateManager from './device-state-manager'
 import type Config from './config'
 
+// TODO:
+//   - proper this._flowState.changeErrMsg
+//   - info logging
+
 export type NodeREDConfig = {
   dir: string,
   dataDir: string,
@@ -39,7 +43,7 @@ export default class NodeREDController {
   _deviceStateMan: DeviceStateManager
   _flowStateFilePath: string
   _flowState: Object
-  _processingFlowStateChanges: boolean = false
+  _flowStateProcessingChanges: boolean = false
   _dir: string
   _dataDir: string
   _command: string
@@ -140,12 +144,12 @@ export default class NodeREDController {
 
     this.debug('Flow state file path: ' + this._flowStateFilePath)
 
-    await this._initDeviceState()
+    this._initDeviceState()
 
     this._inited = true
   }
 
-  async _initDeviceState() {
+  _initDeviceState() {
     this._loadFlowState()
     this._updateFlowFromDesiredState()
     this._updateFlowReportedState()
@@ -164,8 +168,6 @@ export default class NodeREDController {
   }
 
   _saveFlowState() {
-    this.debug('Saving flow state...')
-
     if (!this._flowState) {
       return
     }
@@ -175,16 +177,20 @@ export default class NodeREDController {
     // For in-progress type states, save their pre in-progress states
     switch (flowState.state) {
       case 'deploying':
+        this.error('Attempted to save flow state while deploying')
+        // TODO: do we really need notDeployed?
         flowState.state = 'notDeployed'
         break
       case 'removing':
+        this.error('Attempted to save flow state while removing')
         flowState.state = 'deployed'
         break
       default:
         break
     }
 
-    this.debug('Flow state: ' + JSON.stringify(flowState, null, 2))
+    this.debug('Saving flow state: ' + JSON.stringify(flowState, null, 2))
+
     try {
       fs.writeFileSync(
         this._flowStateFilePath,
@@ -217,45 +223,66 @@ export default class NodeREDController {
     }
   }
 
-  async _updateFlowFromDesiredState() {
+  _updateFlowFromDesiredState() {
     const desiredState = this._deviceStateMan.getState('desired', 'flow')
     if (!desiredState) {
       return
     }
 
-    if (desiredState.flow) {
-      this._flowState.controlSrc = 'deviceState'
-    }
+    const desiredFlow = desiredState.flow || {}
 
     this.debug('Assets state change: ' + JSON.stringify(desiredState, null, 2))
 
-    const desiredFlow = desiredState.flow || {}
-
     let change = false
-    if (
-      !desiredFlow.hasOwnProperty('assetId') &&
-      this._flowState.assetId &&
-      this._flowState.state !== 'removing' &&
-      this._flowState.state !== 'removeFail'
-    ) {
-      this._flowState.pendingChange = 'remove'
-      this._flowState.changeTs = Date.now()
-      change = true
-    } else if (
-      desiredFlow.hasOwnProperty('assetId') &&
-      (desiredFlow.assetId !== this._flowState.assetId ||
-        desiredFlow.updateId !== this._flowState.updateId)
-    ) {
-      this._flowState.pendingChange = 'deploy'
-      this._flowState.pendingAssetId = desiredFlow.assetId
-      this._flowState.pendingUpdateId = desiredFlow.updateId
-      this._flowState.changeTs = Date.now()
-      change = true
+
+    if (!desiredFlow.hasOwnProperty('assetId')) {
+      if (
+        this._flowState.assetId &&
+        this._flowState.pendingChange !== 'remove' &&
+        this._flowState.state !== 'removing' &&
+        this._flowState.state !== 'removeFail'
+      ) {
+        this._flowState.pendingChange = 'remove'
+        this._flowState.changeErrMsg = null
+        this._flowState.changeTs = Date.now()
+        change = true
+      }
+    } else {
+      let deploy = false
+      if (!this._flowState.pendingChange) {
+        if (
+          desiredFlow.assetId !== this._flowState.assetId ||
+          desiredFlow.updateId !== this._flowState.updateId
+        ) {
+          deploy = true
+        }
+      } else {
+        if (
+          desiredFlow.assetId !== this._flowState.pendingAssetId ||
+          desiredFlow.updateId !== this._flowState.pendingUpdateId
+        ) {
+          deploy = true
+        }
+      }
+      if (deploy) {
+        this._flowState.pendingChange = 'deploy'
+        this._flowState.pendingAssetId = desiredFlow.assetId
+        this._flowState.pendingUpdateId = desiredFlow.updateId
+        this._flowState.changeErrMsg = null
+        this._flowState.changeTs = Date.now()
+        change = true
+      } else if (this._flowState.pendingChange === 'remove') {
+        this._flowState.pendingChange = null
+        this._flowState.changeErrMsg = null
+        this._flowState.changeTs = Date.now()
+        change = true
+      }
     }
 
     this.debug('Flow state: ' + JSON.stringify(this._flowState, null, 2))
 
     if (change) {
+      this._flowState.controlSrc = 'deviceState'
       this._updateFlowReportedState()
       this._processPendingFlowChanges()
     }
@@ -275,12 +302,12 @@ export default class NodeREDController {
     // Handle flow.flow
     if (
       !this._flowState.assetId &&
-      !this._flowState.pendingAssetId &&
+      !this._flowState.pendingChange &&
       reportedState.flow
     ) {
       this.debug('Removing reported flow state...')
       this._deviceStateMan.updateState('reported', 'remove', 'flow.flow')
-    } else if (this._flowState.assetId || this._flowState.pendingAssetId) {
+    } else if (this._flowState.assetId || this._flowState.pendingChange) {
       let state = {
         assetId: this._flowState.assetId,
         updateId: this._flowState.updateId,
@@ -319,35 +346,23 @@ export default class NodeREDController {
     }
   }
 
-  _setFlowState(state: string) {
+  _setFlowState(state: string, msg: string) {
     this._flowState.state = state
+    this._flowState.changeErrMsg = msg
     this._flowState.changeTs = Date.now()
     this._updateFlowReportedState()
   }
 
   async _processPendingFlowChanges() {
-    if (this._processingChanges) {
+    if (this._flowStateProcessingChanges) {
       return
     }
-    this._processingChanges = true
+    this._flowStateProcessingChanges = true
 
     while (this._active) {
       if (!this._flowState.pendingChange) {
         break
       }
-
-      // Reset update attempt count if this is a different update
-      if (
-        this._flowState.pendingUpdateId !==
-        this._flowState.lastAttemptedUpdateId
-      ) {
-        this._flowState.lastAttemptedUpdateId = this._flowState.pendingUpdateId
-        this._flowState.updateAttemptCount = 0
-      }
-
-      // Update and save attempt count
-      //this._flowState.updateAttemptCount++
-      //this._saveFlowState()
 
       // Dequeue the pending change
       let pendingChange = this._flowState.pendingChange
@@ -361,28 +376,51 @@ export default class NodeREDController {
       let success
       switch (pendingChange) {
         case 'deploy':
-          // todo: remove current flow if required
+          // Update attempt count handling
+          if (
+            pendingAssetId !== this._flowState.lastAttemptedAssetId ||
+            pendingUpdateId !== this._flowState.lastAttemptedUpdateId
+          ) {
+            this._flowState.lastAttemptedAssetId = pendingAssetId
+            this._flowState.lastAttemptedUpdateId = pendingUpdateId
+            this._flowState.updateAttemptCount = 0
+          }
+          this._flowState.updateAttemptCount++
+          this._saveFlowState()
 
-          // report deploying
+          // Make the pending update the current one
           this._flowState.assetId = pendingAssetId
           this._flowState.updateId = pendingUpdateId
-          this._flowState.changeTs = Date.now()
-          this._flowState.state = 'deploying'
-          this._updateFlowReportedState()
 
-          await delay(1 * 5000) // tmp
+          // Handle too many attempts
+          if (this._flowState.updateAttemptCount++ > 3) {
+            this._flowState.updateAttemptCount = 0
+            // TODO: better actual error message capture and reporting
+            this._setFlowState('deployFail', 'Too many update attempts')
+            break
+          }
+
+          // report deploying
+          this._setFlowState('deploying', null)
+
+          // todo: remove current flow (if required)
+
+          await delay(5 * 1000) // tmp
 
           // deploy
           success = true // todo: actually do deploy
           if (!success) {
-            this._flowState.changeTs = Date.now()
-            this._flowState.state = 'deployFail'
-            // todo: this._flowState.changeErrMsg
-            this._updateFlowReportedState()
+            if (this._flowState.pendingChange === null) {
+              // Re-queue change to retry
+              this._flowState.assetId = null
+              this._flowState.updateId = null
+              this._flowState.pendingChange = 'deploy'
+              this._flowState.pendingAssetId = pendingAssetId
+              this._flowState.pendingUpdateId = pendingUpdateId
+              this._setFlowState(null, null)
+            }
           } else {
-            this._flowState.changeTs = Date.now()
-            this._flowState.state = 'deployed'
-            this._updateFlowReportedState()
+            this._setFlowState('deployed', null)
           }
           break
 
@@ -390,13 +428,11 @@ export default class NodeREDController {
           this._setFlowState('removing')
           success = true // todo: actually do remove
           if (!success) {
-            // todo: this._flowState.changeErrMsg
-            this._setFlowState('removeFail')
+            this._setFlowState('removeFail', 'TODO: error message')
           } else {
             this._flowState.assetId = null
             this._flowState.updateId = null
-            this._flowState.changeTs = Date.now()
-            this._updateFlowReportedState()
+            this._setFlowState(null, null)
           }
           break
 
@@ -411,9 +447,8 @@ export default class NodeREDController {
       // A small delay to guard against becoming a heavy duty busy loop
       await delay(1 * 1000)
     }
-    //
 
-    this._processingChanges = false
+    this._flowStateProcessingChanges = false
   }
 
   _getDataDir() {
