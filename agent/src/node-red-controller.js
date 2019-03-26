@@ -6,7 +6,7 @@ import { spawn, type ChildProcess } from 'child_process'
 import fetch from 'isomorphic-fetch'
 import objectHash from 'object-hash'
 import ProcessUtil, { type RetryInfo } from './process-util'
-import { encryptCredential } from './utils'
+import { encryptCredential, delay } from './utils'
 import type { Logger } from 'winston'
 import type LogManager from './log-manager'
 import type DeviceStateManager from './device-state-manager'
@@ -232,13 +232,19 @@ export default class NodeREDController {
     const desiredFlow = desiredState.flow || {}
 
     let change = false
-    if (!desiredFlow.hasOwnProperty('assetId') && this._flowState.assetId) {
+    if (
+      !desiredFlow.hasOwnProperty('assetId') &&
+      this._flowState.assetId &&
+      this._flowState.state !== 'removing' &&
+      this._flowState.state !== 'removeFail'
+    ) {
       this._flowState.pendingChange = 'remove'
       this._flowState.changeTs = Date.now()
       change = true
     } else if (
-      desiredFlow.assetId !== this._flowState.assetId ||
-      desiredFlow.updateId !== this._flowState.updateId
+      desiredFlow.hasOwnProperty('assetId') &&
+      (desiredFlow.assetId !== this._flowState.assetId ||
+        desiredFlow.updateId !== this._flowState.updateId)
     ) {
       this._flowState.pendingChange = 'deploy'
       this._flowState.pendingAssetId = desiredFlow.assetId
@@ -274,15 +280,12 @@ export default class NodeREDController {
     ) {
       this.debug('Removing reported flow state...')
       this._deviceStateMan.updateState('reported', 'remove', 'flow.flow')
-    } else {
+    } else if (this._flowState.assetId || this._flowState.pendingAssetId) {
       let state = {
         assetId: this._flowState.assetId,
         updateId: this._flowState.updateId,
         state: this._flowState.state,
         ts: this._flowState.changeTs
-      }
-      if (this._flowState.changeErrMsg) {
-        state.message = this._flowState.changeErrMsg
       }
       if (this._flowState.pendingChange) {
         switch (this._flowState.pendingChange) {
@@ -299,6 +302,9 @@ export default class NodeREDController {
             break
         }
       }
+      if (this._flowState.changeErrMsg) {
+        state.message = this._flowState.changeErrMsg
+      }
       if (
         !reportedState.flow ||
         objectHash(state) !== objectHash(reportedState.flow)
@@ -313,6 +319,12 @@ export default class NodeREDController {
     }
   }
 
+  _setFlowState(state: string) {
+    this._flowState.state = state
+    this._flowState.changeTs = Date.now()
+    this._updateFlowReportedState()
+  }
+
   async _processPendingFlowChanges() {
     if (this._processingChanges) {
       return
@@ -320,8 +332,84 @@ export default class NodeREDController {
     this._processingChanges = true
 
     while (this._active) {
+      if (!this._flowState.pendingChange) {
+        break
+      }
 
-      break
+      // Reset update attempt count if this is a different update
+      if (
+        this._flowState.pendingUpdateId !==
+        this._flowState.lastAttemptedUpdateId
+      ) {
+        this._flowState.lastAttemptedUpdateId = this._flowState.pendingUpdateId
+        this._flowState.updateAttemptCount = 0
+      }
+
+      // Update and save attempt count
+      //this._flowState.updateAttemptCount++
+      //this._saveFlowState()
+
+      // Dequeue the pending change
+      let pendingChange = this._flowState.pendingChange
+      let pendingAssetId = this._flowState.pendingAssetId
+      let pendingUpdateId = this._flowState.pendingUpdateId
+      this._flowState.pendingChange = null
+      this._flowState.pendingAssetId = null
+      this._flowState.pendingUpdateId = null
+
+      // Process the change
+      let success
+      switch (pendingChange) {
+        case 'deploy':
+          // todo: remove current flow if required
+
+          // report deploying
+          this._flowState.assetId = pendingAssetId
+          this._flowState.updateId = pendingUpdateId
+          this._flowState.changeTs = Date.now()
+          this._flowState.state = 'deploying'
+          this._updateFlowReportedState()
+
+          await delay(1 * 5000) // tmp
+
+          // deploy
+          success = true // todo: actually do deploy
+          if (!success) {
+            this._flowState.changeTs = Date.now()
+            this._flowState.state = 'deployFail'
+            // todo: this._flowState.changeErrMsg
+            this._updateFlowReportedState()
+          } else {
+            this._flowState.changeTs = Date.now()
+            this._flowState.state = 'deployed'
+            this._updateFlowReportedState()
+          }
+          break
+
+        case 'remove':
+          this._setFlowState('removing')
+          success = true // todo: actually do remove
+          if (!success) {
+            // todo: this._flowState.changeErrMsg
+            this._setFlowState('removeFail')
+          } else {
+            this._flowState.assetId = null
+            this._flowState.updateId = null
+            this._flowState.changeTs = Date.now()
+            this._updateFlowReportedState()
+          }
+          break
+
+        default:
+          this.error('Unsupported pending change: ' + pendingChange)
+          break
+      }
+
+      // Save the changed state
+      this._saveFlowState()
+
+      // A small delay to guard against becoming a heavy duty busy loop
+      await delay(1 * 1000)
     }
     //
 
