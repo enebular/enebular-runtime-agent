@@ -223,7 +223,7 @@ export class Utils {
     }
     let args = [src, dst]
     if (fs.lstatSync(src).isDirectory()) {
-      args.unshift('-r')
+      args.unshift('-rT')
     }
     return Utils.spawn(
       'cp',
