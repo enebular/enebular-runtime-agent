@@ -62,7 +62,7 @@ export default class Config {
       },
       ENEBULAR_AGENT_UPDATER_ENABLE_LOG: {
         value: true,
-        description: 'install location of enebular-agent',
+        description: 'enable console log',
         userExpose: true
       },
       MIGRATION_FILE_PATH: {
