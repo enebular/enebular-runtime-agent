@@ -429,7 +429,7 @@ export class AgentInstaller implements AgentInstallerIf {
       )
     }
 
-    await this._system.installDebianPackages(['build-essential', 'tree'])
+    await this._system.installDebianPackages(['build-essential', 'python'])
 
     this._npmBuildEnv['PATH'] = `${nodejsPath}/bin:${process.env['PATH']}`
     await Utils.taskAsync(
