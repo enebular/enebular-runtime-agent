@@ -49,6 +49,10 @@ export default class DockerManager {
     return path.join(this._aiModelDir, '.mount')
   }
 
+  docker(): Docker {
+    return this._docker
+  }
+
   debug(msg: string, ...args: Array<mixed>) {
     args.push({ module: moduleName })
     this._log.debug(msg, ...args)
@@ -281,7 +285,7 @@ export default class DockerManager {
 
     // Update all current assets (if required)
     for (let container of this._containers) {
-      this._updateContainerReportedState(container)
+      this.updateContainerReportedState(container)
     }
   }
 
@@ -299,7 +303,7 @@ export default class DockerManager {
   }
 
   // Only updates the reported state if required (if there is a difference)
-  _updateContainerReportedState(container: Container) {
+  updateContainerReportedState(container: Container) {
     if (!this._deviceStateMan.canUpdateState('reported')) {
       this.info('NOT UPDATING DESIRED STATE')
       return
@@ -351,14 +355,14 @@ export default class DockerManager {
       objectHash(currentStateObj) === objectHash(newStateObj)
     ) {
       this.info(
-        `Update of container '${container.id()}' reported state not required`
+        `Update of container '${container.name()}' reported state not required`
       )
       return
     }
     // this.info('CURRENT STATE OBJECT ', newStateObj)
 
     // Update if required
-    this.debug(`Updating container '${container.id()}' reported state...`)
+    this.debug(`Updating container '${container.name()}' reported state...`)
     // this.debug('Current state: ' + util.inspect(currentStateObj))
     // this.debug('New state: ' + util.inspect(newStateObj))
     this._deviceStateMan.updateState(
@@ -392,7 +396,7 @@ export default class DockerManager {
 
   _setContainerState(container: Container, state: string) {
     container.setState(state)
-    this._updateContainerReportedState(container)
+    this.updateContainerReportedState(container)
   }
 
   async _processPendingChanges() {
@@ -564,7 +568,7 @@ export default class DockerManager {
     if (this._active) {
       this._processPendingChanges()
     } else {
-      this.stopContainers()
+      this.shutDown()
     }
   }
 
@@ -577,12 +581,7 @@ export default class DockerManager {
     const config = {
       containerId: containerId,
       imageName: image,
-      models: [
-        {
-          modelId: modelConfig.modelId,
-          cmd: modelConfig.cmd
-        }
-      ],
+      models: [modelConfig.modelId],
       mountDir: modelConfig.mountDir,
       accept: modelConfig.cacheSize - 1,
       port: modelConfig.port,
@@ -610,7 +609,7 @@ export default class DockerManager {
     this.info('Starting containers')
     await Promise.all(
       this._containers.map(async (container, idx) => {
-        const started = await this.startContainer(container)
+        const success = await this._wakeContainer(container)
         // await Promise.all(
         //   container.models.map(model =>
         //     this.exec(started, {
@@ -628,6 +627,22 @@ export default class DockerManager {
     return this._docker.getContainer(key)
   }
 
+  async _wakeContainer(container) {
+    if (!container.canStart()) {
+      return
+    }
+    this.debug('Waking up container : ', container.containerId())
+    let success
+    try {
+      const existingContainer = this.getContainer(container.containerId())
+      container.activate(existingContainer)
+      success = await container.start()
+    } catch (err) {
+      success = await container.repair()
+    }
+    return success
+  }
+
   async startContainer(container) {
     if (!container.canStart()) {
       return
@@ -642,6 +657,7 @@ export default class DockerManager {
     }
     try {
       container.activate(existingContainer)
+      await container.start()
       await existingContainer.start()
       this._attachLogsToContainer(existingContainer, container)
       this._setContainerState(container, 'running')
@@ -711,6 +727,15 @@ export default class DockerManager {
     }
   }
 
+  async shutDown() {
+    this.info('Shuting down all running containers')
+    try {
+      await Promise.all(this._containers.map(container => container.stop()))
+    } catch (err) {
+      this.error('Shuting down containers error', err.message)
+    }
+  }
+
   async stopContainers() {
     this.info('Stopping all running containers')
     try {
@@ -727,6 +752,7 @@ export default class DockerManager {
               })
           })
       )
+      await this._saveDockerState()
     } catch (err) {
       this.error('Stopping containers error', err.message)
     }
@@ -879,6 +905,14 @@ export default class DockerManager {
     return container
   }
 
+  async createContainer(config) {
+    return this._docker.createContainer(config)
+  }
+
+  async _checkExistingModels(modelId, useExistingContainer) {
+    // checking if model is already running
+  }
+
   async findOrCreateContainer(imageName, dockerOptions, modelConfig) {
     // checking if model is already running
     await this._checkRunningModel(modelConfig)
@@ -924,6 +958,7 @@ export default class DockerManager {
         this.debug(container)
         return container.start().then(() => {
           this.info('~~~~~~STARTED CONTAINER~~~~~~~')
+
           this._addContainer(
             container.id,
             imageName,

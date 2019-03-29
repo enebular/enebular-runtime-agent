@@ -537,7 +537,7 @@ export default class AssetManager {
             this._setAssetState(asset, 'removing')
             let success = await asset.remove()
             if (!success) {
-              this.info('Remove failed, but contining with deploy...')
+              this.info('Remove failed, but continuing with deploy...')
               this._setAssetState(asset, 'removeFail')
             }
           }

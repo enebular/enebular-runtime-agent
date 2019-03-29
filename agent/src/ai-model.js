@@ -48,23 +48,23 @@ export default class AiModel extends Asset {
     return path.join(this._destDirPath(), this.config.fileTypeConfig.filename)
   }
 
-  _baseMountDir(): string {
+  _mountModelDir(): string {
     return this._mountDir || this.config.destPath
   }
 
-  _baseMountPath(): string {
+  _mountContainerDirPath(): string {
     return path.join(
       this._assetMan.aiModelDir(),
       '.mount',
-      this._baseMountDir()
+      this._mountModelDir()
     )
   }
 
-  _mountPath(): string {
-    return path.join(this._baseMountPath(), this.config.destPath)
+  _mountModelDirPath(): string {
+    return path.join(this._mountContainerDirPath(), this.config.destPath)
   }
 
-  _mainFileDir(): string {
+  _wrapperSubPath(): string {
     let mainFileDir = this._mainFilePath().split('.')
     if (mainFileDir.length > 1) {
       mainFileDir = mainFileDir.slice(0, -1)
@@ -72,12 +72,16 @@ export default class AiModel extends Asset {
     return path.join(...mainFileDir)
   }
 
-  _mountFileDir(): string {
-    return path.join('/mount', this.config.destPath, this._mainFileDir())
+  _containerWrapperDirPath(): string {
+    return path.join('/mount', this.config.destPath, this._wrapperSubPath())
   }
 
-  _wrapperPath(): string {
-    return path.join(this._mountPath(), this._mainFileDir(), 'wrapper.py')
+  _mountWrapperPath(): string {
+    return path.join(
+      this._mountModelDirPath(),
+      this._wrapperSubPath(),
+      'wrapper.py'
+    )
   }
 
   _key(): string {
@@ -88,7 +92,7 @@ export default class AiModel extends Asset {
     return this.config.handlers
   }
 
-  _existingContainer(): boolean {
+  _isExistingContainerFlag(): boolean {
     return this.config.existingContainer
   }
 
@@ -231,7 +235,7 @@ export default class AiModel extends Asset {
     fs.chmodSync(this._filePath(), 0o740)
     this._info('File installed to: ' + this._fileSubPath())
 
-    if (this._existingContainer()) {
+    if (this._isExistingContainerFlag()) {
       const existing = await this._dockerMan().checkExistingContainer(
         this._dockerImage(),
         this.id()
@@ -253,7 +257,7 @@ export default class AiModel extends Asset {
     // Extract archived model
     const that = this
     const path = this._filePath()
-    const dest = this._mountPath()
+    const dest = this._mountModelDirPath()
     const onProgress = state => {
       this._info(
         util.format(
@@ -282,7 +286,7 @@ export default class AiModel extends Asset {
       ...this._config(),
       Port: this._port
     })
-    const wrapperPath = this._wrapperPath()
+    const wrapperPath = this._mountWrapperPath()
     this._debug(`Downloading wrapper ${wrapperUrl} to ${wrapperPath} ...`)
     await new Promise(function(resolve, reject) {
       const fileStream = fs.createWriteStream(wrapperPath)
@@ -338,22 +342,22 @@ export default class AiModel extends Asset {
     this._info('==============DOCKER IMAGE============', this._dockerImage())
 
     const language = this._language() === 'Python3' ? 'python3' : 'python2'
-    const command = `cd ${this._mountFileDir()} && ${language} wrapper.py`
+    const command = `cd ${this._containerWrapperDirPath()} && ${language} wrapper.py`
     // creating container
     const container = await this._dockerMan().findOrCreateContainer(
       this._dockerImage(),
       {
         cmd: ['/bin/bash'],
-        mounts: [`${this._baseMountPath()}:/mount`],
+        mounts: [`${this._mountContainerDirPath()}:/mount`],
         ports: {
           [`${this._port}/tcp`]: `${this._port}`
         }
       },
       {
         modelId: this.id(),
-        existingContainer: this._existingContainer(),
+        existingContainer: this._isExistingContainerFlag(),
         cacheSize: this._cacheSize(),
-        mountDir: this._baseMountDir(),
+        mountDir: this._mountModelDir(),
         port: this._port,
         cmd: command
       }
@@ -368,7 +372,7 @@ export default class AiModel extends Asset {
 
   async _delete() {
     const filePath = this._filePath()
-    const mountPath = this._mountPath()
+    const mountPath = this._mountModelDirPath()
     if (fs.existsSync(filePath)) {
       this._debug(`Deleting ${filePath}...`)
       fs.unlinkSync(filePath)
