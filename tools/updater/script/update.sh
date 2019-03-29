@@ -260,6 +260,11 @@ if ! has "tar"; then
   _exit 1
 fi
 
+if ! id -u ${USER} > /dev/null 2>&1; then
+  _err "User ${USER}: no such user"
+  _exit 1
+fi
+
 TEMP_UPDATER_TARBALL=`mktemp --dry-run /tmp/enebular-agent-updater.XXXXXXXXX.tar.gz`
 _task "Downloading enebular-agent-updater"
 _echo "Downloading from ${UPDATER_DOWNLOAD_URL}"
@@ -299,7 +304,7 @@ if [ "$EXIT_CODE" -ne 0 ]; then
 fi
 
 export PATH=${NODE_PATH}:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
-${TEMP_UPDATER_DST}/bin/enebular-agent-update ${UPDATER_PARAMETER}
+${TEMP_UPDATER_DST}/bin/enebular-agent-update ${UPDATER_PARAMETER[*]}
 
 rm -rf "${TEMP_UPDATER_DST}"
 
