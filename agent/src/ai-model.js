@@ -14,6 +14,9 @@ import Asset from './asset'
 import type DockerManager from './docker-manager'
 
 export default class AiModel extends Asset {
+  _port: string
+  _mountDir: string
+
   _fileName(): string {
     return this.config.fileTypeConfig.filename
   }
@@ -229,14 +232,14 @@ export default class AiModel extends Asset {
     this._info('File installed to: ' + this._fileSubPath())
 
     if (this._existingContainer()) {
-      const container = await this._dockerMan().checkExistingContainer(
+      const existing = await this._dockerMan().checkExistingContainer(
         this._dockerImage(),
         this.id()
       )
-      if (container) {
-        this._mountDir = container.mountDir
-        this._port = container.port
-        this._info('Using existing container with port ', container.port)
+      if (existing) {
+        this._mountDir = existing.container.mountDir()
+        this._port = existing.container.port()
+        this._info('Using existing container with port ', this._port)
       } else {
         this._info('Cannot find an existing container')
         await this._findFreePort()
@@ -274,6 +277,7 @@ export default class AiModel extends Asset {
     })
 
     // Downloading wrapper
+    // this._info('Model config ', JSON.stringify(this._config()))
     const wrapperUrl = await this._assetMan.agentMan.getAiModelWrapperUrl({
       ...this._config(),
       Port: this._port
@@ -336,7 +340,7 @@ export default class AiModel extends Asset {
     const language = this._language() === 'Python3' ? 'python3' : 'python2'
     const command = `cd ${this._mountFileDir()} && ${language} wrapper.py`
     // creating container
-    const container = await this._dockerMan().createContainer(
+    const container = await this._dockerMan().findOrCreateContainer(
       this._dockerImage(),
       {
         cmd: ['/bin/bash'],
@@ -355,24 +359,11 @@ export default class AiModel extends Asset {
       }
     )
 
-    // await container.start()
-    // const exec = await container.exec({
-    //   Cmd: ['bash', '-c', 'echo Hello Container && ls'],
+    // await this._dockerMan().exec(container, {
+    //   Cmd: ['/bin/bash', '-c', command],
     //   AttachStdout: true,
     //   AttachStderr: true
     // })
-    await this._dockerMan().exec(container, {
-      Cmd: ['/bin/bash', '-c', command],
-      AttachStdout: true,
-      AttachStderr: true
-    })
-    // this._info('EXEC', exec)
-    // setTimeout(() => this._dockerMan().listContainers(), 5000)
-    // exec.inspect()
-    // const smh = await exec.inspect()
-    // this._info('INSPECT', smh)
-
-    // INSTALLING OF DOCKER SHOULD BE HERE
   }
 
   async _delete() {

@@ -169,7 +169,7 @@ export default class AgentManagerMediator {
     this.debug('Getting ai model wrapper url...')
     try {
       const res = await postJSON(
-        `${this._baseUrl}/device/assets/get-ai-model-wrapper-url`,
+        `${this._baseUrl}/device/assets/get-ai-model-wrapper-url-test`,
         JSON.stringify({ params: params }),
         {
           headers: {

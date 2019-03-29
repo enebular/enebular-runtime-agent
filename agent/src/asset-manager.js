@@ -100,6 +100,7 @@ export default class AssetManager {
   _inited: boolean = false
   _active: boolean = false
   _dataDir: string
+  _aiModelDir: string
   _stateFilePath: string
   _updateAttemptsMax: number = 3
   agentMan: AgentManagerMediator
@@ -114,7 +115,7 @@ export default class AssetManager {
     this._dataDir = path.resolve(config.get('ENEBULAR_ASSETS_DATA_PATH'))
     this._aiModelDir = path.resolve(config.get('ENEBULAR_AI_MODELS_DATA_PATH'))
     this._stateFilePath = config.get('ENEBULAR_ASSETS_STATE_PATH')
-    if (!this._dataDir || !this._stateFilePath) {
+    if (!this._dataDir || !this._aiModelDir || !this._stateFilePath) {
       throw new Error('Missing asset-man configuration')
     }
 
@@ -151,7 +152,7 @@ export default class AssetManager {
     this._log.error(msg, ...args)
   }
 
-  async setup(dockerMode) {
+  async setup() {
     if (this._inited) {
       return
     }
@@ -164,10 +165,6 @@ export default class AssetManager {
     }
 
     await this._initAssets()
-
-    if (dockerMode) {
-      await this._dockerMan.setup()
-    }
 
     this._inited = true
   }

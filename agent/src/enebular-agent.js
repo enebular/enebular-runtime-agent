@@ -89,7 +89,7 @@ export default class EnebularAgent extends EventEmitter {
   _deviceStateManager: DeviceStateManager
   _agentInfoManager: AgentInfoManager
   _assetManager: AssetManager
-  _dockerMan: DockerManager
+  _dockerManager: DockerManager
 
   _connectionId: ?string
   _deviceId: ?string
@@ -139,7 +139,6 @@ export default class EnebularAgent extends EventEmitter {
     }
 
     const devMode = this._config.get('ENEBULAR_DEV_MODE')
-    const dockerMode = this._config.get('ENEBULAR_DOCKER_MODE')
     const nodeRedDir = this._config.get('NODE_RED_DIR')
     const nodeRedDataDir = this._config.get('NODE_RED_DATA_DIR')
     const nodeRedAiNodesDir = this._config.get('NODE_RED_AI_NODES_DIR')
@@ -164,12 +163,6 @@ export default class EnebularAgent extends EventEmitter {
     this._log.info('enebular-agent version: ' + agentVer)
     if (devMode) {
       this._log.info('Running in Developer Mode')
-    }
-    if (dockerMode) {
-      this._log.info('Running in Docker Mode')
-      this._dockerMan = new DockerManager(this._config, this._log)
-      // this._dockerMan.stopContainers()
-      // this._dockerMan.listContainers()
     }
     this._log.info('Node-RED dir: ' + nodeRedDir)
     this._log.info('Node-RED data dir: ' + nodeRedDataDir)
@@ -200,9 +193,17 @@ export default class EnebularAgent extends EventEmitter {
       this._log
     )
 
+    this._dockerManager = new DockerManager(
+      this._deviceStateManager,
+      this._config,
+      this._log
+    )
+    // this._dockerManager.stopContainers()
+    // this._dockerManager.listContainers()
+
     this._assetManager = new AssetManager(
       this._deviceStateManager,
-      this._dockerMan,
+      this._dockerManager,
       this._agentMan,
       this._config,
       this._log
@@ -327,7 +328,8 @@ export default class EnebularAgent extends EventEmitter {
     this._loadAgentConfig()
 
     await this._agentInfoManager.setup()
-    await this._assetManager.setup(this._config.get('ENEBULAR_DOCKER_MODE'))
+    await this._assetManager.setup()
+    await this._dockerManager.setup()
 
     this._updateMonitoringFromDesiredState()
 
@@ -344,13 +346,11 @@ export default class EnebularAgent extends EventEmitter {
     if (this._monitoringActive) {
       await this._agentMan.notifyStatus('disconnected')
     }
-    if (this._config.get('ENEBULAR_DOCKER_MODE')) {
-      this._dockerMan.stopContainers()
-    }
 
     await this._nodeRed.shutdownService()
     this._assetManager.activate(false)
     this._deviceStateManager.activate(false)
+    this._dockerManager.activate(false)
     await this._logManager.shutdown()
     this._monitoringShutdown = true
     this._updateMonitoringActiveState()
@@ -600,6 +600,7 @@ export default class EnebularAgent extends EventEmitter {
       case 'authenticated':
         this._deviceStateManager.activate(true)
         this._assetManager.activate(true)
+        this._dockerManager.activate(true)
         setTimeout(() => {
           this._updateMonitoringActiveState()
         }, 10 * 1000)
