@@ -25,13 +25,11 @@ export default class CommandLine {
       '--agent-download-path <url>'
     )
     this.addConfigOption('ENEBULAR_AGENT_USER', '--user <user>')
-    this.addConfigOption('ENEBULAR_AGENT_UPDATER_ENABLE_LOG', '--enable-log')
     this.addConfigOption(
       'PELION_MODE',
       '--pelion-mode <mode>',
       /^(factory|developer)$/i
     )
-    this.addConfigOption('DEBUG', '--debug-level <level>')
     this.addConfigOption('FORCE_UPDATE', '--force')
   }
 
