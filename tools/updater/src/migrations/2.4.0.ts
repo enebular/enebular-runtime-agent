@@ -12,6 +12,13 @@ module.exports = {
     )
     Helper.addFileCopy(
       migration,
+      'enebular-agent activation config file',
+      `${context['portBasePath']}/.enebular-activation-config.json`,
+      `${context['newPortBasePath']}/.enebular-activation-config.json`,
+      true // might not be created yet
+    )
+    Helper.addFileCopy(
+      migration,
       'Node-RED data directory',
       `${context['nodeRedPath']}/.node-red-config`,
       `${context['newNodeRedPath']}/.node-red-config`
