@@ -4,12 +4,14 @@ import path from 'path'
 import rimraf from 'rimraf'
 import mkdirp from 'mkdirp'
 import type DockerManager from './docker-manager'
+import Exec from './exec'
 
 export default class Container {
   _active: boolean = false
   _dockerMan: DockerManager
   _container: Object
   _id: string
+  _execs: Array<Exec> = []
   config: Object
   state: string
   changeTs: number
@@ -47,7 +49,7 @@ export default class Container {
   }
 
   name(): string {
-    return this.config.containerId.slice(0, 12)
+    return this.config.name
   }
 
   models(): Array<Object> {
@@ -66,10 +68,19 @@ export default class Container {
     return this.config.accept > 0
   }
 
+  imageName(): string {
+    return this.config.imageName
+  }
+
+  isActive(): boolean {
+    return this._active
+  }
+
   canStart(): boolean {
     return (
+      !this.state ||
       this.state === 'running' ||
-      this.state === 'sleep' ||
+      this.state === 'down' ||
       this.state === 'error'
     )
   }
@@ -82,6 +93,7 @@ export default class Container {
     this._active = true
     this._container = container
     this.config.containerId = container.id
+    this.config.name = container.id.slice(0, 12)
   }
 
   deactivate() {
@@ -94,7 +106,7 @@ export default class Container {
     return this.state === 'running' && this.config.models.includes
   }
 
-  _mountDirPath(): string {
+  mountDirPath(): string {
     return path.join(this._dockerMan.mountDir(), this.config.mountDir)
   }
 
@@ -117,13 +129,14 @@ export default class Container {
   setState(state: string) {
     this.state = state
     this.changeTs = Date.now()
+    this.changeTs = Date.now()
     if (this._active) {
       this.sync()
     }
   }
 
   setPendingChange(change: string, updateId: ?string, config: ?Object) {
-    this._info(`Container '${this.id()}' now pending '${change}'`)
+    this._info(`Container '${this.name()}' now pending '${change}'`)
 
     this.pendingChange = change
     this.pendingUpdateId = updateId
@@ -136,7 +149,7 @@ export default class Container {
     if (!this.config.mountDir) {
       return
     }
-    const mountDir = this._mountDirPath()
+    const mountDir = this.mountDirPath()
     if (fs.existsSync(mountDir)) {
       this._debug(
         `Removing container ${this.name()} mount directory: ${mountDir}`
@@ -149,13 +162,29 @@ export default class Container {
     this.config.containerId = newId
   }
 
-  addModel(config) {
-    this.config.models.push(config.modelId)
+  addModel(key) {
+    this.config.models.push(key)
     this.config.accept--
   }
 
+  removeModel(key) {
+    this.config.models = this.config.models.filter(modelId => modelId !== key)
+    this.config.accept++
+  }
+
   sync() {
-    this._dockerMan.updateContainerReportedState(this)
+    this._dockerMan.sync('container', this)
+  }
+
+  async _inspect() {
+    return new Promise((resolve, reject) => {
+      this._container.inspect((err, data) => {
+        if (err) {
+          reject(err)
+        }
+        resolve(data)
+      })
+    })
   }
 
   async start() {
@@ -169,7 +198,12 @@ export default class Container {
       this.setState('running')
       return true
     } catch (err) {
-      this._error('Cannot start a container ', this.name())
+      if (err.statusCode === 404) {
+        this.deactivate()
+      }
+      this._error('Cannot start container', this.name())
+      this._info(err)
+      this.setState('error')
     }
     return false
   }
@@ -181,11 +215,34 @@ export default class Container {
     this._info(`Stopping container '${this.name()}'...`)
     try {
       this.setState('stopping')
+      await this._stopExec()
+      await this._container.stop()
+      this.setState('stopped')
+      return true
+    } catch (err) {
+      if (err.statusCode !== 304) {
+        this._error('Cannot stop container', this.name())
+        this._debug(err)
+        this.setState('error')
+      }
+    }
+    return false
+  }
+
+  async shutDown() {
+    if (!this._container || this.state !== 'running') {
+      return
+    }
+    this._info(`Stopping container '${this.name()}'...`)
+    try {
+      this._active = false
       await this._container.stop()
       return true
     } catch (err) {
       if (err.statusCode !== 304) {
-        this._error('Cannot stop a container ', this.name())
+        this._error('Cannot shut down container', this.name())
+        this._debug(err)
+        this.setState('error')
       }
     }
     return false
@@ -193,8 +250,19 @@ export default class Container {
 
   async repair() {
     this._info(`Repairing container '${this.name()}'...`)
-    this.setState('starting')
-    const { mounts, cmd, ports, imageName } = this._config
+    // Searching if container is already running and removing it if it is
+    if (this._container) {
+      this._info('Removing old container')
+      try {
+        await this._remove()
+      } catch (err) {
+        this._info('Could not remove old container')
+      }
+    }
+    const {
+      imageName,
+      dockerOptions: { mounts, cmd, ports }
+    } = this.config
     const config = {
       HostConfig: {
         Binds: mounts,
@@ -215,25 +283,33 @@ export default class Container {
     try {
       const container = await this._dockerMan.createContainer(config)
       this.activate(container)
-      return this.start()
+      return true
     } catch (err) {
-      this._info(`Could not repair container '${this.name()}'`)
+      this._error(`Could not repair container '${this.name()}'`)
       this._debug(err)
       this.setState('error')
     }
     return false
   }
 
-  async remove(): Promise<boolean> {
+  async _remove() {
+    return this._container.remove({ force: true })
+  }
+
+  async remove(hard): Promise<boolean> {
     this._info(`Removing container '${this.name()}'...`)
     try {
-      await this._container.remove({ force: true })
-      this._container = null
+      this.setState('removing')
+      await this._remove()
       this.deactivate()
-      this._removeMountDir()
+      if (hard) {
+        this._removeMountDir()
+        this._dockerMan.removeContainer(this.id())
+      }
       return true
     } catch (err) {
-      this.error(err.message)
+      this._error(err.message)
+      this.setState('removeFail')
       return false
     }
   }
@@ -251,18 +327,84 @@ export default class Container {
       },
       (err, stream) => {
         if (err) {
-          return this.error(err.message)
+          return this._error(err.message)
         }
         this._container.modem.demuxStream(stream, logStream, logStream)
         stream.on('end', () => {
-          if (this.state !== 'stopping') {
-            this._error(`Unexpected stopping of container ${this.name()}`)
-            this.setState('error')
+          if (this.active) {
+            if (this.state !== 'stopping') {
+              this._error(`Unexpected stopping of container ${this.name()}`)
+              this.setState('error')
+              // this.sync()
+            }
+          } else {
+            this.setState('down')
           }
-          this.sync()
-          logStream.end('!stop container!')
+          logStream.end(`!stop container!`)
         })
       }
     )
+  }
+
+  async newExec(modelConfig, execOptions) {
+    this._info(`Creating new exec to container '${this.name()}'...`)
+    try {
+      const newExec = new Exec(modelConfig.id, this._dockerMan)
+      const config = {
+        name: modelConfig.name,
+        language: modelConfig.language,
+        mountDir: modelConfig.mountDir,
+        port: modelConfig.port,
+        options: execOptions
+      }
+      newExec.config = config
+      const dockerExec = await this._container.exec(execOptions)
+      newExec.activate(dockerExec, this)
+      this.addModel(modelConfig.id)
+      this._dockerMan.addExec(newExec)
+      this._execs.push(newExec)
+      await newExec.start()
+      // setTimeout(
+      //   () =>
+      //     this._container.top({ ps_args: 'aux' }, (err, data) => {
+      //       if (err) {
+      //         this._error('TOP ERROR', err)
+      //       }
+      //       this._info('TOP   ', data)
+      //     }),
+      //   10000
+      // )
+      // setTimeout(() => newExec.stop(), 5000)
+      return true
+    } catch (err) {
+      this._error(err.message)
+      return false
+    }
+  }
+
+  async wakeExec(existingExec) {
+    try {
+      this._info(`Creating exec to container '${this.name()}'...`)
+      const dockerExec = await this._container.exec(existingExec.options())
+      existingExec.activate(dockerExec, this)
+      this._execs.push(existingExec)
+      await existingExec.start()
+      return true
+    } catch (err) {
+      this._error(err.message)
+      return false
+    }
+  }
+
+  async removeExec(execId, hard) {
+    this._execs = this._execs.filter(exec => exec.id() !== execId)
+    this.removeModel(execId)
+    if (hard && this._execs.length < 1) {
+      await this.remove(hard)
+    }
+  }
+
+  async _stopExecs() {
+    return Promise.all(this._execs.map(exec => exec.stop()))
   }
 }

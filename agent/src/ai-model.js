@@ -12,10 +12,12 @@ import portfinder from 'portfinder'
 import rimraf from 'rimraf'
 import Asset from './asset'
 import type DockerManager from './docker-manager'
+import type Container from './container'
 
 export default class AiModel extends Asset {
   _port: string
   _mountDir: string
+  _container: Container
 
   _fileName(): string {
     return this.config.fileTypeConfig.filename
@@ -25,8 +27,8 @@ export default class AiModel extends Asset {
     return this.config.fileTypeConfig.size
   }
 
-  _config(): Object {
-    return this.config
+  _destDir(): string {
+    return this.config.destPath
   }
 
   /** @override */
@@ -235,29 +237,39 @@ export default class AiModel extends Asset {
     fs.chmodSync(this._filePath(), 0o740)
     this._info('File installed to: ' + this._fileSubPath())
 
-    if (this._isExistingContainerFlag()) {
-      const existing = await this._dockerMan().checkExistingContainer(
-        this._dockerImage(),
-        this.id()
-      )
-      if (existing) {
-        this._mountDir = existing.container.mountDir()
-        this._port = existing.container.port()
-        this._info('Using existing container with port ', this._port)
-      } else {
-        this._info('Cannot find an existing container')
-        await this._findFreePort()
-      }
+    this._info('Preparing container...')
+    const preparation = await this._dockerMan().prepare({
+      imageName: this._dockerImage(),
+      modelId: this.id(),
+      useExistingContainer: this._isExistingContainerFlag()
+    })
+
+    if (preparation.exist) {
+      this._container = preparation.container
+      this._mountDir = preparation.mountDir
+      this._port = preparation.port
     } else {
-      this._info('Using new container')
-      // Searching for open port
       await this._findFreePort()
     }
+    this._info('Using port', this._port)
 
     // Extract archived model
-    const that = this
     const path = this._filePath()
     const dest = this._mountModelDirPath()
+    await new Promise((resolve, reject) => {
+      this._info(`Extracting model ${this._fileName()} to ${dest}...`)
+      extract(path, { dir: dest }, err => {
+        if (err) {
+          this._error('Extraction failed')
+          reject(err)
+        }
+        this._info('Extraction complete')
+        resolve()
+      })
+    })
+
+    // Downloading wrapper
+    const that = this
     const onProgress = state => {
       this._info(
         util.format(
@@ -268,22 +280,8 @@ export default class AiModel extends Asset {
         )
       )
     }
-    await new Promise((resolve, reject) => {
-      this._info(`extracting archive ${this._fileName()} to ${dest}`)
-      extract(path, { dir: dest }, err => {
-        if (err) {
-          this._error('extraction failed')
-          reject(err)
-        }
-        this._info('extraction complete')
-        resolve()
-      })
-    })
-
-    // Downloading wrapper
-    // this._info('Model config ', JSON.stringify(this._config()))
     const wrapperUrl = await this._assetMan.agentMan.getAiModelWrapperUrl({
-      ...this._config(),
+      ...this.config,
       Port: this._port
     })
     const wrapperPath = this._mountWrapperPath()
@@ -328,7 +326,6 @@ export default class AiModel extends Asset {
         port: 49152
       })
       .then(port => {
-        this._info('Using port: ', port)
         this._port = port
       })
       .catch(err => {
@@ -344,25 +341,46 @@ export default class AiModel extends Asset {
     const language = this._language() === 'Python3' ? 'python3' : 'python2'
     const command = `cd ${this._containerWrapperDirPath()} && ${language} wrapper.py`
     // creating container
-    const container = await this._dockerMan().findOrCreateContainer(
-      this._dockerImage(),
-      {
-        cmd: ['/bin/bash'],
-        mounts: [`${this._mountContainerDirPath()}:/mount`],
-        ports: {
-          [`${this._port}/tcp`]: `${this._port}`
+    let container
+    if (this._container) {
+      container = this._container
+    } else {
+      container = await this._dockerMan().createNewContainer(
+        this._dockerImage(),
+        {
+          cmd: ['/bin/bash'],
+          mounts: [`${this._mountContainerDirPath()}:/mount`],
+          ports: {
+            [`${this._port}/tcp`]: `${this._port}`
+          }
+        },
+        {
+          modelId: this.id(),
+          existingContainer: this._isExistingContainerFlag(),
+          cacheSize: this._cacheSize(),
+          mountDir: this._mountModelDir(),
+          port: this._port,
+          cmd: command
         }
+      )
+      await container.start()
+    }
+    this._info('EXEC STUFF')
+    await container.newExec(
+      {
+        id: this.id(),
+        name: this.name(),
+        mountDir: this._destDir(),
+        port: this._port,
+        language: language
       },
       {
-        modelId: this.id(),
-        existingContainer: this._isExistingContainerFlag(),
-        cacheSize: this._cacheSize(),
-        mountDir: this._mountModelDir(),
-        port: this._port,
-        cmd: command
+        Cmd: ['/bin/bash', '-c', command],
+        AttachStdout: true,
+        AttachStderr: true,
+        Privileged: true
       }
     )
-
     // await this._dockerMan().exec(container, {
     //   Cmd: ['/bin/bash', '-c', command],
     //   AttachStdout: true,
