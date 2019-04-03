@@ -2,6 +2,7 @@
 import fs from 'fs'
 import EventEmitter from 'events'
 import ConnectorService from './connector-service'
+import ConnectorMessenger from './connector-messenger'
 import EnebularActivator from './enebular-activator'
 import DeviceAuthMediator from './device-auth-mediator'
 import AgentManagerMediator from './agent-manager-mediator'
@@ -75,6 +76,7 @@ function isPossibleStateTransition(state: AgentState, nextState: AgentState) {
 
 export default class EnebularAgent extends EventEmitter {
   _connector: ConnectorService
+  _connectorMessenger: ConnectorMessenger
   _activator: EnebularActivator
   _configFile: string
   _config: Config
@@ -116,6 +118,8 @@ export default class EnebularAgent extends EventEmitter {
     this._connector = options.connector
     this._enebularAgentConfig = options.config
 
+    this._connectorMessenger = new ConnectorMessenger()
+
     this._config = new Config(options.portBasePath)
     this._commandLine = new CommandLine(this._config)
 
@@ -125,6 +129,10 @@ export default class EnebularAgent extends EventEmitter {
       this._onConnectorConnectionChange()
     )
     this._connector.on('message', params => this._onConnectorMessage(params))
+
+    this._connectorMessenger.on('requestConnectorCtrlMessageSend', msg =>
+      this._onRequestConnectorCtrlMessageSend(msg)
+    )
   }
 
   _init() {
@@ -693,6 +701,9 @@ export default class EnebularAgent extends EventEmitter {
       `Connector: ${this._connector.connected ? 'connected' : 'disconnected'}`
     )
     if (this._connector.connected) {
+      setInterval(() => {
+        this._connectorMessenger.sendMessage('todo-topic', { content: 'todo' })
+      }, 10 * 1000)
       if (
         this._agentState === 'registered' ||
         this._agentState === 'unauthenticated'
@@ -742,5 +753,9 @@ export default class EnebularAgent extends EventEmitter {
         break
     }
     this._messageEmitter.emit(params.messageType, params.message)
+  }
+
+  _onRequestConnectorCtrlMessageSend(msg) {
+    this.emit('connectorCtrlMessageSend', msg)
   }
 }

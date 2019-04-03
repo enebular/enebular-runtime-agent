@@ -309,6 +309,17 @@ function onConnectorInit() {
     updateThingShadowRegisterState()
   })
 
+  agent.on('connectorCtrlMessageSend', msg => {
+    console.log('msg', msg)
+    thingShadow.publish(
+      `enebular/things/${thingName}/msg/from_device`,
+      JSON.stringify(msg),
+      {
+        qos: 1
+      }
+    )
+  })
+
   connector.updateActiveState(true)
   connector.updateRegistrationState(true, thingName)
 
