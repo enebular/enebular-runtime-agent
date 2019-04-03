@@ -118,8 +118,6 @@ export default class EnebularAgent extends EventEmitter {
     this._connector = options.connector
     this._enebularAgentConfig = options.config
 
-    this._connectorMessenger = new ConnectorMessenger()
-
     this._config = new Config(options.portBasePath)
     this._commandLine = new CommandLine(this._config)
 
@@ -129,10 +127,6 @@ export default class EnebularAgent extends EventEmitter {
       this._onConnectorConnectionChange()
     )
     this._connector.on('message', params => this._onConnectorMessage(params))
-
-    this._connectorMessenger.on('requestConnectorCtrlMessageSend', msg =>
-      this._onRequestConnectorCtrlMessageSend(msg)
-    )
   }
 
   _init() {
@@ -172,6 +166,11 @@ export default class EnebularAgent extends EventEmitter {
     this._log.info('Node-RED data dir: ' + nodeRedDataDir)
     this._log.info('Node-RED command: ' + nodeRedCommand)
     this._log.info('Enebular config file: ' + configFile)
+
+    this._connectorMessenger = new ConnectorMessenger(this._log)
+    this._connectorMessenger.on('requestConnectorCtrlMessageSend', msg =>
+      this._onRequestConnectorCtrlMessageSend(msg)
+    )
 
     this._activator = new EnebularActivator(
       this._config.get('ACTIVATOR_CONFIG_PATH')
@@ -701,8 +700,14 @@ export default class EnebularAgent extends EventEmitter {
       `Connector: ${this._connector.connected ? 'connected' : 'disconnected'}`
     )
     if (this._connector.connected) {
-      setInterval(() => {
-        this._connectorMessenger.sendMessage('todo-topic', { content: 'todo' })
+      setInterval(async () => {
+        try {
+          await this._connectorMessenger.sendMessage('todo-topic', {
+            content: 'todo'
+          })
+        } catch (err) {
+          this._log.error('Failed to send message: ' + err)
+        }
       }, 10 * 1000)
       if (
         this._agentState === 'registered' ||
