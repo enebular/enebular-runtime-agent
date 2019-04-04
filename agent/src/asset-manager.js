@@ -11,6 +11,7 @@ import FileAsset from './file-asset'
 import { delay } from './utils'
 import type DeviceStateManager from './device-state-manager'
 import type DockerManager from './docker-manager'
+import type PortManager from './port-manager'
 import type AgentManagerMediator from './agent-manager-mediator'
 import type Config from './config'
 
@@ -94,6 +95,7 @@ const moduleName = 'asset-man'
 export default class AssetManager {
   _deviceStateMan: DeviceStateManager
   _dockerMan: DockerManager
+  _portMan: PortManager
   _log: Logger
   _assets: Array<Asset> = []
   _processingChanges: boolean = false
@@ -109,6 +111,7 @@ export default class AssetManager {
     deviceStateMan: DeviceStateManager,
     dockerMan: DockerManager,
     agentMan: AgentManagerMediator,
+    portMan: PortManager,
     config: Config,
     log: Logger
   ) {
@@ -121,6 +124,7 @@ export default class AssetManager {
 
     this._deviceStateMan = deviceStateMan
     this._dockerMan = dockerMan
+    this._portMan = portMan
     this.agentMan = agentMan
     this._log = log
 

@@ -15,6 +15,7 @@ import DockerManager from './docker-manager'
 import EnebularActivator from './enebular-activator'
 import LogManager from './log-manager'
 import NodeREDController from './node-red-controller'
+import PortManager from './port-manager.js'
 
 export type EnebularAgentConfig = {
   NODE_RED_DIR: string,
@@ -198,6 +199,8 @@ export default class EnebularAgent extends EventEmitter {
       this._config,
       this._log
     )
+
+    this._portManager = new PortManager(this._config, this._log)
     // this._dockerManager.stopContainers()
     // this._dockerManager.listContainers()
 
@@ -205,6 +208,7 @@ export default class EnebularAgent extends EventEmitter {
       this._deviceStateManager,
       this._dockerManager,
       this._agentMan,
+      this._portManager,
       this._config,
       this._log
     )
@@ -330,6 +334,7 @@ export default class EnebularAgent extends EventEmitter {
     await this._agentInfoManager.setup()
     await this._assetManager.setup()
     await this._dockerManager.setup()
+    await this._portManager.setup()
 
     this._updateMonitoringFromDesiredState()
 

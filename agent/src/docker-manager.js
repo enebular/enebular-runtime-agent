@@ -26,7 +26,7 @@ export default class DockerManager {
     this._aiModelDir = path.resolve(config.get('ENEBULAR_AI_MODELS_DATA_PATH'))
 
     if (!this._stateDockerPath || !this._aiModelDir) {
-      throw new Error('Missing dockers-man configuration')
+      throw new Error('Missing docker-man configuration')
     }
 
     this._deviceStateMan = deviceStateMan
@@ -190,7 +190,7 @@ export default class DockerManager {
       containers: serializedContainers,
       execs: serializedExecs
     }
-    this.info('Docker state: ' + JSON.stringify(dockerState, null, 2))
+    this.debug('Docker state: ' + JSON.stringify(dockerState, null, 2))
     try {
       fs.writeFileSync(
         this._stateDockerPath,
@@ -1100,10 +1100,11 @@ export default class DockerManager {
       const container = this._checkExistingContainer(imageName)
       if (container) {
         this.info(`Found existing container ${container.name()}`)
+
         return {
           exist: true,
           mountDir: container.mountDir(),
-          port: container.port(),
+          port: container.freePort(),
           container: container
         }
       } else {
@@ -1130,11 +1131,14 @@ export default class DockerManager {
     if (ports) {
       config.HostConfig.PortBindings = {}
       config.ExposedPorts = {}
-      Object.keys(ports).forEach(port => {
-        config.HostConfig.PortBindings[port] = [{ HostPort: ports[port] }]
-        config.ExposedPorts[port] = {}
+      ports.forEach(port => {
+        config.HostConfig.PortBindings[`${port}/tcp`] = [
+          { HostPort: `${port}` }
+        ]
+        config.ExposedPorts[`${port}/tcp`] = {}
       })
     }
+    this.debug(JSON.stringify(config, null, 2))
     const dockerContainer = await this._docker.createContainer(config)
 
     this.info('~~~~~~STARTED CONTAINER~~~~~~~')
@@ -1146,7 +1150,7 @@ export default class DockerManager {
       models: [],
       mountDir: modelConfig.mountDir,
       accept: modelConfig.cacheSize,
-      port: modelConfig.port,
+      ports: modelConfig.ports,
       cacheSize: modelConfig.cacheSize,
       dockerOptions
     }

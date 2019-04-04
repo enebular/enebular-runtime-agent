@@ -8,14 +8,15 @@ import request from 'request'
 import progress from 'request-progress'
 import util from 'util'
 import extract from 'extract-zip'
-import portfinder from 'portfinder'
 import rimraf from 'rimraf'
 import Asset from './asset'
 import type DockerManager from './docker-manager'
+import type PortManager from './port-manager'
 import type Container from './container'
 
 export default class AiModel extends Asset {
   _port: string
+  _ports: Array<string>
   _mountDir: string
   _container: Container
 
@@ -128,6 +129,10 @@ export default class AiModel extends Asset {
 
   _dockerMan(): DockerManager {
     return this._assetMan._dockerMan
+  }
+
+  _portMan(): PortManager {
+    return this._assetMan._portMan
   }
 
   async _getIntegrity(path: string) {
@@ -249,7 +254,8 @@ export default class AiModel extends Asset {
       this._mountDir = preparation.mountDir
       this._port = preparation.port
     } else {
-      await this._findFreePort()
+      this._ports = await this._portMan().findFreePorts(this._cacheSize())
+      this._port = this._ports[0]
     }
     this._info('Using port', this._port)
 
@@ -320,19 +326,6 @@ export default class AiModel extends Asset {
     })
   }
 
-  async _findFreePort() {
-    return portfinder
-      .getPortPromise({
-        port: 49152
-      })
-      .then(port => {
-        this._port = port
-      })
-      .catch(err => {
-        this._error(err.message)
-      })
-  }
-
   async _runPostInstallOps() {
     this._info('==============DOCKER STUFF==================')
     // this._dockerMan().listContainers()
@@ -350,16 +343,14 @@ export default class AiModel extends Asset {
         {
           cmd: ['/bin/bash'],
           mounts: [`${this._mountContainerDirPath()}:/mount`],
-          ports: {
-            [`${this._port}/tcp`]: `${this._port}`
-          }
+          ports: this._ports
         },
         {
           modelId: this.id(),
           existingContainer: this._isExistingContainerFlag(),
           cacheSize: this._cacheSize(),
           mountDir: this._mountModelDir(),
-          port: this._port,
+          ports: this._ports,
           cmd: command
         }
       )

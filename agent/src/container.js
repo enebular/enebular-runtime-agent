@@ -56,8 +56,8 @@ export default class Container {
     return this.config.models
   }
 
-  port(): Number {
-    return this.config.port
+  freePort(): Number {
+    return this.config.ports[this.config.models.length]
   }
 
   mountDir(): Number {
