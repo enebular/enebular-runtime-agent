@@ -170,7 +170,10 @@ export default class EnebularAgent extends EventEmitter {
     this._log.info('Node-RED command: ' + nodeRedCommand)
     this._log.info('Enebular config file: ' + configFile)
 
-    this._connectorMessenger = new ConnectorMessenger(this._log)
+    this._connectorMessenger = new ConnectorMessenger(
+      this._connector,
+      this._log
+    )
     this._connectorMessenger.on('requestConnectorCtrlMessageSend', msg =>
       this._onRequestConnectorCtrlMessageSend(msg)
     )
@@ -705,12 +708,12 @@ export default class EnebularAgent extends EventEmitter {
     if (this._connector.connected) {
       setInterval(async () => {
         try {
-          let res = await this._connectorMessenger.sendMessage('todo-topic', {
+          let res = await this._connectorMessenger.sendRequest('todo-topic', {
             content: 'todo'
           })
-          this._log.error('Got response: ' + JSON.stringify(res, null, 2))
+          this._log.debug('Got response: ' + JSON.stringify(res, null, 2))
         } catch (err) {
-          this._log.error('Failed to send message: ' + err)
+          this._log.error('Request failed: ' + err)
         }
       }, 10 * 1000)
       if (

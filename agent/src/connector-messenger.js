@@ -1,16 +1,19 @@
 /* @flow */
 import EventEmitter from 'events'
 import type { Logger } from 'winston'
+import ConnectorService from './connector-service'
 
 const moduleName = 'connector-messenger'
 
 export default class ConnectorMessenger extends EventEmitter {
-  _nextId: number = 0
-  _requests: Object = {}
+  _connector: Logger
   _log: Logger
+  _requests: Object = {}
+  _nextId: number = 0
 
-  constructor(log: Logger) {
+  constructor(connector: ConnectorService, log: Logger) {
     super()
+    this._connector = connector
     this._log = log
   }
 
@@ -29,7 +32,12 @@ export default class ConnectorMessenger extends EventEmitter {
     this._log.error(msg, ...args)
   }
 
-  async sendMessage(topic: string, body: Object) {
+  async sendRequest(topic: string, body: Object) {
+    if (!this._connector.connected) {
+      this._debug('Attempted to send request when connector not connected')
+      return
+    }
+
     const startId = this._nextId
     while (true) {
       this._nextId++
@@ -57,11 +65,11 @@ export default class ConnectorMessenger extends EventEmitter {
 
       // Request send
       this._debug(`Sending request '${this._nextId}'`)
-      this._sendRequest(request, this._nextId)
+      this._sendRequestMessage(request, this._nextId)
     })
   }
 
-  _sendRequest(request: Object, id: string) {
+  _sendRequestMessage(request: Object, id: string) {
     let msg = {
       type: 'req',
       id: id,
@@ -93,11 +101,13 @@ export default class ConnectorMessenger extends EventEmitter {
       delete this._requests[id]
     } else {
       this._debug(`Retrying request '${id}' (${request.try}/3)`)
-      this._sendRequest(request, id)
+      this._sendRequestMessage(request, id)
     }
   }
 
-  _handleResponse(message: any) {
+  _handleResponseMessage(message: any) {
+    this._debug(`Received response '${message.id}'`)
+
     if (!this._requests.hasOwnProperty(message.id)) {
       this._info(`Received unexpected response message '${message.id}'`)
       return
@@ -127,6 +137,6 @@ export default class ConnectorMessenger extends EventEmitter {
       this._info(`Received unsupported message type '${message.type}'`)
       return
     }
-    this._handleResponse(message)
+    this._handleResponseMessage(message)
   }
 }
