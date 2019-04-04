@@ -59,4 +59,8 @@ export default class ConnectorService extends EventEmitter {
   sendMessage(messageType: string, message: any) {
     this.emit('message', { messageType: messageType, message: message })
   }
+
+  sendCtrlMessage(message: any) {
+    this.emit('ctrlMessage', message)
+  }
 }

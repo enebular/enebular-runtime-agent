@@ -127,6 +127,9 @@ export default class EnebularAgent extends EventEmitter {
       this._onConnectorConnectionChange()
     )
     this._connector.on('message', params => this._onConnectorMessage(params))
+    this._connector.on('ctrlMessage', params =>
+      this._onConnectorCtrlMessage(params)
+    )
   }
 
   _init() {
@@ -702,9 +705,10 @@ export default class EnebularAgent extends EventEmitter {
     if (this._connector.connected) {
       setInterval(async () => {
         try {
-          await this._connectorMessenger.sendMessage('todo-topic', {
+          let res = await this._connectorMessenger.sendMessage('todo-topic', {
             content: 'todo'
           })
+          this._log.error('Got response: ' + JSON.stringify(res, null, 2))
         } catch (err) {
           this._log.error('Failed to send message: ' + err)
         }
@@ -758,6 +762,10 @@ export default class EnebularAgent extends EventEmitter {
         break
     }
     this._messageEmitter.emit(params.messageType, params.message)
+  }
+
+  async _onConnectorCtrlMessage(message: any) {
+    this._connectorMessenger.handleReceivedMessage(message)
   }
 
   _onRequestConnectorCtrlMessageSend(msg) {

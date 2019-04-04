@@ -63,8 +63,9 @@ export default class ConnectorMessenger extends EventEmitter {
 
   _sendRequest(request: Object, id: string) {
     let msg = {
-      topic: request.topic,
+      type: 'req',
       id: id,
+      topic: request.topic,
       body: request.body
     }
     if (request.try !== 1) {
@@ -75,12 +76,12 @@ export default class ConnectorMessenger extends EventEmitter {
       this._handleRequestTimeout(id)
     }, 5 * 1000)
 
-    this.emit('requestConnectorCtrlMessageSend', JSON.stringify(msg))
+    this.emit('requestConnectorCtrlMessageSend', JSON.stringify(msg, null, 2))
   }
 
   _handleRequestTimeout(id: number) {
     if (!this._requests.hasOwnProperty(id)) {
-      this._error('Unexpected mesage timeout ID: ' + id)
+      this._error('Unexpected message timeout ID: ' + id)
       return
     }
 
@@ -88,11 +89,44 @@ export default class ConnectorMessenger extends EventEmitter {
     request.try++
     if (request.try > 3) {
       this._debug(`Too many retries for request '${id}'`)
-      this._requests[id].reject(new Error('Timed out waiting for response'))
+      request.reject(new Error('Timed out waiting for response'))
       delete this._requests[id]
     } else {
       this._debug(`Retrying request '${id}' (${request.try}/3)`)
       this._sendRequest(request, id)
     }
+  }
+
+  _handleResponse(message: any) {
+    if (!this._requests.hasOwnProperty(message.id)) {
+      this._info(`Received unexpected response message '${message.id}'`)
+      return
+    }
+
+    if (message.try) {
+      this._info(`Received response message on try ${message.try}`)
+    }
+
+    let request = this._requests[message.id]
+    clearTimeout(request.timeoutId)
+    if (message.res === 'ok') {
+      request.resolve(message.body)
+    } else {
+      let errMsg = 'Error response'
+      if (message.body && message.body.message) {
+        errMsg += `: ${message.body.message}`
+      }
+      request.reject(new Error(errMsg))
+    }
+    delete this._requests[message.id]
+  }
+
+  handleReceivedMessage(message: any) {
+    // this._debug('Received message: ' + JSON.stringify(message, null, 2))
+    if (message.type !== 'res') {
+      this._info(`Received unsupported message type '${message.type}'`)
+      return
+    }
+    this._handleResponse(message)
   }
 }
