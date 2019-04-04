@@ -188,7 +188,7 @@ export default class EnebularAgent extends EventEmitter {
     this._messageEmitter = new EventEmitter()
 
     this._deviceStateManager = new DeviceStateManager(
-      this._agentMan,
+      this._connectorMessenger,
       this._messageEmitter,
       this._config,
       this._log
@@ -706,16 +706,6 @@ export default class EnebularAgent extends EventEmitter {
       `Connector: ${this._connector.connected ? 'connected' : 'disconnected'}`
     )
     if (this._connector.connected) {
-      setInterval(async () => {
-        try {
-          let res = await this._connectorMessenger.sendRequest('todo-topic', {
-            content: 'todo'
-          })
-          this._log.debug('Got response: ' + JSON.stringify(res, null, 2))
-        } catch (err) {
-          this._log.error('Request failed: ' + err)
-        }
-      }, 10 * 1000)
       if (
         this._agentState === 'registered' ||
         this._agentState === 'unauthenticated'

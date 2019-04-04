@@ -5,14 +5,14 @@ import objectPath from 'object-path'
 import objectHash from 'object-hash'
 import { delay } from './utils'
 
-import type AgentManagerMediator from './agent-manager-mediator'
+import type ConnectorMessenger from './connector-messenger'
 import type { Logger } from 'winston'
 import type Config from './config'
 
 const moduleName = 'device-state-man'
 
 export default class DeviceStateManager extends EventEmitter {
-  _agentMan: AgentManagerMediator
+  _connectorMessenger: ConnectorMessenger
   _fqDeviceId: string
   _log: Logger
   _desiredState: ?Object = null
@@ -25,7 +25,7 @@ export default class DeviceStateManager extends EventEmitter {
   _refreshIntervalID: number
 
   constructor(
-    agentMan: AgentManagerMediator,
+    connectorMessenger: ConnectorMessenger,
     messageEmitter: EventEmitter,
     config: Config,
     log: Logger
@@ -37,7 +37,7 @@ export default class DeviceStateManager extends EventEmitter {
     if (isNaN(this._refreshInterval) || this._refreshInterval < 1) {
       throw new Error('Invalid device state refresh interval')
     }
-    this._agentMan = agentMan
+    this._connectorMessenger = connectorMessenger
     this._log = log
     messageEmitter.on('deviceStateChange', params =>
       this._handleDeviceStateChange(params)
@@ -171,8 +171,11 @@ export default class DeviceStateManager extends EventEmitter {
       })
 
       // Get and apply states
-      const states = await this._agentMan.getDeviceState(getStates)
-      for (let state of states) {
+      const states = await this._connectorMessenger.sendRequest(
+        'deviceState/device/get',
+        { states: getStates }
+      )
+      for (let state of states.states) {
         /**
          * Agent-manager will only return state if it's required (i.e the
          * current uId is greater than the baseUpdateId in the request)
@@ -290,9 +293,11 @@ export default class DeviceStateManager extends EventEmitter {
           path: update.path,
           state: update.state
         }))
-        const updateResults = await this._agentMan.updateDeviceState(
-          requestedUpdates
+        let updateResults = await this._connectorMessenger.sendRequest(
+          'deviceState/device/update',
+          { updates: requestedUpdates }
         )
+        updateResults = updateResults.updates
         const len = updateResults.length
         for (let i = 0; i < len; i++) {
           const updateResult = updateResults[i]
