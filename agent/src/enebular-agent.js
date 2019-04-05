@@ -594,7 +594,6 @@ export default class EnebularAgent extends EventEmitter {
       case 'unregistered':
         break
       case 'authenticated':
-        this._deviceStateManager.activate(true)
         this._assetManager.activate(true)
         setTimeout(() => {
           this._updateMonitoringActiveState()
@@ -706,6 +705,7 @@ export default class EnebularAgent extends EventEmitter {
       `Connector: ${this._connector.connected ? 'connected' : 'disconnected'}`
     )
     if (this._connector.connected) {
+      this._deviceStateManager.activate(true)
       if (
         this._agentState === 'registered' ||
         this._agentState === 'unauthenticated'
