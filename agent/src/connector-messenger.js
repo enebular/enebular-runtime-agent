@@ -49,7 +49,7 @@ export default class ConnectorMessenger extends EventEmitter {
       if (this._nextId === startId) {
         throw new Error('Failed to find free message ID')
       }
-      if (!this._requests.hasOwnProperty(this._nextId)) {
+      if (!this._requests.hasOwnProperty(this._nextId.toString())) {
         break
       }
     }
