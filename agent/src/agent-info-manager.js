@@ -24,6 +24,10 @@ export default class AgentInfoManager {
     this._log.debug(msg, ...args)
   }
 
+  ip() {
+    return this._ip
+  }
+
   async setup() {
     this._ip = ip.address()
     //

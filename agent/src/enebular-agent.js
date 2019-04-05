@@ -196,6 +196,7 @@ export default class EnebularAgent extends EventEmitter {
 
     this._dockerManager = new DockerManager(
       this._deviceStateManager,
+      this._agentInfoManager,
       this._config,
       this._log
     )

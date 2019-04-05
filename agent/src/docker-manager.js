@@ -7,11 +7,13 @@ import type { Logger } from 'winston'
 import { delay } from './utils'
 import Container from './container'
 import Exec from './exec'
+import type AgentInfoManager from './agent-info-manager'
 
 const moduleName = 'docker-man'
 
 export default class DockerManager {
   _deviceStateMan: DeviceStateManager
+  _agentInfoMan: AgentInfoManager
   _log: Logger
   _docker: Docker
   _aiModelDir: string
@@ -21,7 +23,12 @@ export default class DockerManager {
   _active: boolean = false
   _updateAttemptsMax: number = 3
 
-  constructor(deviceStateMan: DeviceStateManager, config: Config, log: Logger) {
+  constructor(
+    deviceStateMan: DeviceStateManager,
+    agentInfoMan: AgentInfoManager,
+    config: Config,
+    log: Logger
+  ) {
     this._stateDockerPath = config.get('ENEBULAR_DOCKER_STATE_PATH')
     this._aiModelDir = path.resolve(config.get('ENEBULAR_AI_MODELS_DATA_PATH'))
 
@@ -30,6 +37,7 @@ export default class DockerManager {
     }
 
     this._deviceStateMan = deviceStateMan
+    this._agentInfoMan = agentInfoMan
     this._log = log
     // var socket = process.env.DOCKER_SOCKET || '/var/run/docker.sock'
     // var stats = fs.statSync(socket)
@@ -52,6 +60,10 @@ export default class DockerManager {
 
   docker(): Docker {
     return this._docker
+  }
+
+  ipAddress() {
+    return this._agentInfoMan.ip()
   }
 
   debug(msg: string, ...args: Array<mixed>) {
