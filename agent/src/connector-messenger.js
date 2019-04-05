@@ -8,6 +8,8 @@ const moduleName = 'connector-messenger'
 export default class ConnectorMessenger extends EventEmitter {
   _connector: Logger
   _log: Logger
+  _requestTryMax = 3
+  _requestTryTimeout = 5 * 1000
   _requests: Object = {}
   _nextId: number = 0
 
@@ -82,7 +84,7 @@ export default class ConnectorMessenger extends EventEmitter {
 
     request.timeoutId = setTimeout(() => {
       this._handleRequestTimeout(id)
-    }, 5 * 1000)
+    }, this._requestTryTimeout)
 
     this.emit('requestConnectorCtrlMessageSend', JSON.stringify(msg, null, 2))
   }
@@ -95,12 +97,14 @@ export default class ConnectorMessenger extends EventEmitter {
 
     let request = this._requests[id]
     request.try++
-    if (request.try > 3) {
+    if (request.try > this._requestTryMax) {
       this._debug(`Too many retries for request '${id}'`)
       request.reject(new Error('Timed out waiting for response'))
       delete this._requests[id]
     } else {
-      this._debug(`Retrying request '${id}' (${request.try}/3)`)
+      this._debug(
+        `Retrying request '${id}' (${request.try}/${this._requestTryMax})`
+      )
       this._sendRequestMessage(request, id)
     }
   }
