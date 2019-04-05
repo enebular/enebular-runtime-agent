@@ -9,7 +9,7 @@ export default class ConnectorMessenger extends EventEmitter {
   _connector: Logger
   _log: Logger
   _requestTryMax = 3
-  _requestTryTimeout = 5 * 1000
+  _requestTryTimeout = 30 * 1000
   _requests: Object = {}
   _nextId: number = 0
 
