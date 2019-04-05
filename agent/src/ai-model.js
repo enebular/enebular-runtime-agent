@@ -286,12 +286,15 @@ export default class AiModel extends Asset {
         )
       )
     }
-    const wrapperUrl = await this._assetMan.agentMan.getAiModelWrapperUrl({
-      ...this.config,
-      Port: this._port
-    })
+    const wrapperUrl = await this._assetMan.agentMan.getAiModelWrapperUrl(
+      {
+        ...this.config,
+        Port: this._port
+      },
+      this._dockerMan().isTestMode()
+    )
     const wrapperPath = this._mountWrapperPath()
-    this._debug(`Downloading wrapper ${wrapperUrl} to ${wrapperPath} ...`)
+    this._info(`Downloading wrapper ${wrapperUrl} to ${wrapperPath} ...`)
     await new Promise(function(resolve, reject) {
       const fileStream = fs.createWriteStream(wrapperPath)
       fileStream.on('error', err => {

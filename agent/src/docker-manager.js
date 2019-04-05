@@ -12,6 +12,7 @@ import type AgentInfoManager from './agent-info-manager'
 const moduleName = 'docker-man'
 
 export default class DockerManager {
+  _test: boolean = false
   _deviceStateMan: DeviceStateManager
   _agentInfoMan: AgentInfoManager
   _log: Logger
@@ -39,6 +40,10 @@ export default class DockerManager {
     this._deviceStateMan = deviceStateMan
     this._agentInfoMan = agentInfoMan
     this._log = log
+
+    if (config.get('ENEBULAR_DOCKER_MODE')) {
+      this._test = true
+    }
     // var socket = process.env.DOCKER_SOCKET || '/var/run/docker.sock'
     // var stats = fs.statSync(socket)
     // var stats2 = fs.statSync(dockerHost)
@@ -64,6 +69,10 @@ export default class DockerManager {
 
   ipAddress() {
     return this._agentInfoMan.ip()
+  }
+
+  isTestMode() {
+    return this._test
   }
 
   debug(msg: string, ...args: Array<mixed>) {

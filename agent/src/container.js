@@ -72,8 +72,8 @@ export default class Container {
     return this.config.imageName
   }
 
-  endpoint() {
-    return `${this._dockerMan.ipAddress()}:${this.config.port}`
+  endpoint(port) {
+    return `${this._dockerMan.ipAddress()}:${port}`
   }
 
   isActive(): boolean {
@@ -359,7 +359,7 @@ export default class Container {
         language: modelConfig.language,
         mountDir: modelConfig.mountDir,
         port: modelConfig.port,
-        endpoint: this.endpoint(),
+        endpoint: this.endpoint(modelConfig.port),
         options: execOptions
       }
       newExec.config = config
