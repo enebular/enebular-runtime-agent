@@ -795,12 +795,14 @@ export default class DockerManager {
 
   removeExec(key) {
     this._execs = this._execs.filter(exec => exec.id() !== key)
+    this._removeExecReportedState(key)
   }
 
   removeContainer(key) {
     this._containers = this._containers.filter(
       container => container.id() !== key
     )
+    this._removeContainerReportedState(key)
   }
 
   getContainer(key) {
@@ -1104,7 +1106,7 @@ export default class DockerManager {
       container =>
         container.state === 'running' &&
         container.imageName() === imageName &&
-        container.isAccepting()
+        container.isOpen()
     )
   }
 
@@ -1121,6 +1123,11 @@ export default class DockerManager {
       const container = this._checkExistingContainer(imageName)
       if (container) {
         this.info(`Found existing container ${container.name()}`)
+
+        if (!container.isAccepting()) {
+          this.info('Removing first model from container')
+          await container.removeFirstExec()
+        }
 
         return {
           exist: true,

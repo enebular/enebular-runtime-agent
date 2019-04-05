@@ -80,6 +80,10 @@ export default class Container {
     return this._active
   }
 
+  isOpen(): Boolean {
+    return this.config.cacheSize > 1
+  }
+
   canStart(): boolean {
     return (
       !this.state ||
@@ -132,8 +136,6 @@ export default class Container {
 
   setState(state: string) {
     this.state = state
-    this.changeTs = Date.now()
-    this.changeTs = Date.now()
     if (this._active) {
       this.sync()
     }
@@ -177,6 +179,7 @@ export default class Container {
   }
 
   sync() {
+    this.changeTs = Date.now()
     this._dockerMan.sync('container', this)
   }
 
@@ -368,6 +371,7 @@ export default class Container {
       this.addModel(modelConfig.id)
       this._dockerMan.addExec(newExec)
       this._execs.push(newExec)
+      this.sync()
       await newExec.start()
       // setTimeout(
       //   () =>
@@ -407,9 +411,22 @@ export default class Container {
     if (hard && this._execs.length < 1) {
       await this.remove(hard)
     }
+    this.sync()
   }
 
   async _stopExecs() {
     return Promise.all(this._execs.map(exec => exec.stop()))
+  }
+
+  _reshufflePorts() {
+    this.config.ports.push(this.config.ports.shift())
+  }
+
+  async removeFirstExec() {
+    const exec = this._execs.shift()
+    this.removeModel(exec.id)
+    this._reshufflePorts()
+    this.sync()
+    await exec.remove(true)
   }
 }
