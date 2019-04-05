@@ -53,6 +53,7 @@ export default class ConnectorMessenger extends EventEmitter {
         break
       }
     }
+    const id = this._nextId.toString()
 
     return new Promise((resolve, reject) => {
       // Set up request tracking
@@ -63,11 +64,11 @@ export default class ConnectorMessenger extends EventEmitter {
         resolve,
         reject
       }
-      this._requests[this._nextId] = request
+      this._requests[id] = request
 
       // Request send
-      this._debug(`Sending request '${this._nextId}'`)
-      this._sendRequestMessage(request, this._nextId)
+      this._debug(`Sending request '${id}'`)
+      this._sendRequestMessage(request, id)
     })
   }
 
@@ -89,7 +90,7 @@ export default class ConnectorMessenger extends EventEmitter {
     this.emit('requestConnectorCtrlMessageSend', JSON.stringify(msg, null, 2))
   }
 
-  _handleRequestTimeout(id: number) {
+  _handleRequestTimeout(id: string) {
     if (!this._requests.hasOwnProperty(id)) {
       this._error('Unexpected message timeout ID: ' + id)
       return
@@ -109,7 +110,7 @@ export default class ConnectorMessenger extends EventEmitter {
     }
   }
 
-  _handleResponseMessage(message: any) {
+  _handleResponseMessage(message: Object) {
     this._debug(`Received response '${message.id}'`)
 
     if (!this._requests.hasOwnProperty(message.id)) {
@@ -135,7 +136,7 @@ export default class ConnectorMessenger extends EventEmitter {
     delete this._requests[message.id]
   }
 
-  handleReceivedMessage(message: any) {
+  handleReceivedMessage(message: Object) {
     // this._debug('Received message: ' + JSON.stringify(message, null, 2))
     if (message.type !== 'res') {
       this._info(`Received unsupported message type '${message.type}'`)
