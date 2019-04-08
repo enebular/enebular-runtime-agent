@@ -3,7 +3,7 @@ import * as os from 'os'
 
 import { SystemIf } from '../../src/system'
 import AgentVersion from '../../src/agent-version'
-import Utils from '../../src/utils'
+import { UserInfo, Utils } from '../../src/utils'
 
 export default class MockSystem implements SystemIf {
   public failStartAgent = false
@@ -196,6 +196,8 @@ export default class MockSystem implements SystemIf {
   }
 
   public async installDebianPackages(packages: string[]): Promise<void> {}
+
+  public async installPythonPackages(packages: string[], userInfo: UserInfo): Promise<void> {}
 
   public async updateNodeJSVersionInSystemd(
     user: string,

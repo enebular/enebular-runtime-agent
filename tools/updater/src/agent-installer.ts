@@ -456,7 +456,6 @@ export class AgentInstaller implements AgentInstallerIf {
     if (agentInfo.detectPortType() == 'awsiot') {
       await this._buildAWSIoT(installPath, userInfo)
     } else {
-      await this._system.installDebianPackages(['git', 'cmake', 'python-pip'])
       await Utils.taskAsync(
         'Building pelion port ',
         this._log,
@@ -469,6 +468,15 @@ export class AgentInstaller implements AgentInstallerIf {
       }`
 
       if (newAgentInfo.version.greaterThan(new AgentVersion(2, 3, 0))) {
+        await Utils.taskAsync(
+          'Checking dependencies for mbed-cloud-connector',
+          this._log,
+          async (): Promise<void> => {
+            await this._system.installDebianPackages(['git', 'cmake', 'python-pip'])
+            return this._system.installPythonPackages(['mbed-cli', 'click', 'requests'], userInfo)
+          }
+        )
+
         await this._buildMbedCloudConnector(
           agentInfo.path,
           installPath,
