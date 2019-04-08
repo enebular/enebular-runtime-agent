@@ -201,6 +201,18 @@ export class Utils {
     )
   }
 
+  public static chown(
+    log: Log,
+    path: string,
+    userInfo: UserInfo
+  ): Promise<void> {
+    return Utils.spawn(
+      'chown',
+      ['-R', `${userInfo.uid}:${userInfo.gid}`, path],
+      log
+    )
+  }
+
   public static async copy(
     log: Log,
     src?: string,

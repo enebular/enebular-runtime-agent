@@ -203,14 +203,17 @@ export class AgentInstaller implements AgentInstallerIf {
     path: string,
     cmd: string,
     args: string[],
-    userInfo: UserInfo
+    userInfo?: UserInfo
   ): Promise<void> {
-    return Utils.spawn(cmd, args, this._log, {
+    let options = {
       cwd: path,
-      env: this._binBuildEnv,
-      uid: userInfo.uid,
-      gid: userInfo.gid
-    })
+      env: this._binBuildEnv
+    }
+    if (userInfo) {
+      options['uid'] = userInfo.uid
+      options['gid'] = userInfo.gid
+    }
+    return Utils.spawn(cmd, args, this._log, options)
   }
 
   private async _buildAWSIoT(
@@ -258,7 +261,9 @@ export class AgentInstaller implements AgentInstallerIf {
       'Deploying mbed-cloud-connector-fcc (mbed)',
       this._log,
       async (): Promise<void> => {
-        return this._buildConnector(fccPath, 'mbed', ['deploy'], userInfo)
+        // Require root access as it will install dependencies by itself if missing
+        await this._buildConnector(fccPath, 'mbed', ['deploy'])
+        return Utils.chown(this._log, fccPath, userInfo)
       }
     )
 
@@ -451,7 +456,6 @@ export class AgentInstaller implements AgentInstallerIf {
     if (agentInfo.detectPortType() == 'awsiot') {
       await this._buildAWSIoT(installPath, userInfo)
     } else {
-      await this._system.installDebianPackages(['git', 'cmake', 'python-pip'])
       await Utils.taskAsync(
         'Building pelion port ',
         this._log,
@@ -464,6 +468,15 @@ export class AgentInstaller implements AgentInstallerIf {
       }`
 
       if (newAgentInfo.version.greaterThan(new AgentVersion(2, 3, 0))) {
+        await Utils.taskAsync(
+          'Checking dependencies for mbed-cloud-connector',
+          this._log,
+          async (): Promise<void> => {
+            await this._system.installDebianPackages(['git', 'cmake', 'python-pip'])
+            return this._system.installPythonPackages(['mbed-cli', 'click', 'requests'])
+          }
+        )
+
         await this._buildMbedCloudConnector(
           agentInfo.path,
           installPath,

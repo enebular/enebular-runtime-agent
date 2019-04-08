@@ -2,7 +2,7 @@ import * as path from 'path'
 import * as fs from 'fs'
 import * as rimraf from 'rimraf'
 
-import Utils from './utils'
+import { UserInfo, Utils } from './utils'
 import Log from './log'
 
 export interface SystemIf {
@@ -41,6 +41,7 @@ export interface SystemIf {
     nodejsVersion: string
   }
   installDebianPackages(packages: string[]): Promise<void>
+  installPythonPackages(packages: string[]): Promise<void>
   updateNodeJSVersionInSystemd(
     user: string,
     version: string,
@@ -293,6 +294,16 @@ export class System implements SystemIf {
       } catch (err) {
         throw new Error(`Failed to install ${packages[i]}: ${err.message}`)
       }
+    }
+  }
+
+  public async installPythonPackages(packages: string[]): Promise<void> {
+    let options = ['install']
+    options = options.concat(packages)
+    try {
+      await Utils.spawn('pip', options, this._log)
+    } catch (err) {
+      throw new Error(`Failed to install python ${packages.join(' ')}: ${err.message}`)
     }
   }
 }
