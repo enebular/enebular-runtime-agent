@@ -41,7 +41,7 @@ export interface SystemIf {
     nodejsVersion: string
   }
   installDebianPackages(packages: string[]): Promise<void>
-  installPythonPackages(packages: string[], userInfo: UserInfo): Promise<void>
+  installPythonPackages(packages: string[]): Promise<void>
   updateNodeJSVersionInSystemd(
     user: string,
     version: string,
@@ -297,20 +297,11 @@ export class System implements SystemIf {
     }
   }
 
-  public async installPythonPackages(packages: string[], userInfo: UserInfo): Promise<void> {
+  public async installPythonPackages(packages: string[]): Promise<void> {
     let options = ['install']
     options = options.concat(packages)
-    options.push('--user')
-    /* This is needed as the pip uses env to find cache */
-    let env: NodeJS.ProcessEnv = {}
-    env['HOME'] = `/home/${userInfo.user}`
-    env['USER'] = `${userInfo.user}`
     try {
-      await Utils.spawn('pip', options, this._log, {
-        env: env,
-        uid: userInfo.uid,
-        gid: userInfo.gid
-      })
+      await Utils.spawn('pip', options, this._log)
     } catch (err) {
       throw new Error(`Failed to install python ${packages.join(' ')}: ${err.message}`)
     }

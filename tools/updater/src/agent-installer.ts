@@ -473,7 +473,7 @@ export class AgentInstaller implements AgentInstallerIf {
           this._log,
           async (): Promise<void> => {
             await this._system.installDebianPackages(['git', 'cmake', 'python-pip'])
-            return this._system.installPythonPackages(['mbed-cli', 'click', 'requests'], userInfo)
+            return this._system.installPythonPackages(['mbed-cli', 'click', 'requests'])
           }
         )
 
