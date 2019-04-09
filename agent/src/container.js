@@ -266,6 +266,7 @@ export default class Container {
         this._info('Could not remove old container')
       }
     }
+    this._info('Restoring config...')
     const {
       imageName,
       dockerOptions: { mounts, cmd, ports }
@@ -282,9 +283,11 @@ export default class Container {
     if (ports) {
       config.HostConfig.PortBindings = {}
       config.ExposedPorts = {}
-      Object.keys(ports).forEach(port => {
-        config.HostConfig.PortBindings[port] = [{ HostPort: ports[port] }]
-        config.ExposedPorts[port] = {}
+      ports.forEach(port => {
+        config.HostConfig.PortBindings[`${port}/tcp`] = [
+          { HostPort: `${port}` }
+        ]
+        config.ExposedPorts[`${port}/tcp`] = {}
       })
     }
     try {
@@ -293,7 +296,7 @@ export default class Container {
       return true
     } catch (err) {
       this._error(`Could not repair container '${this.name()}'`)
-      this._debug(err)
+      this._error(err)
       this.setState('error')
     }
     return false
