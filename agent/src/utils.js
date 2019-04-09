@@ -161,7 +161,7 @@ export async function createNodeDefinition(node, aiNodeDir, endpoint) {
     node.handlerFunc
   }'},enebularAi:{value:true},modelId:{value:'${
     node.assetId
-  }'},url:{value:'http://${endpoint}/${node.nodeTitle}/${
+  }'},url:{value:'http://${endpoint}/${
     node.id
   }'}},inputs:1,outputs:1,icon:'icon.svg',label:function(){return this.name||'${
     node.nodeTitle
@@ -183,9 +183,7 @@ module.exports = function(RED) {
   function main(config) {
     RED.nodes.createNode(this, config)
     var node = this
-    var nodeUrl = config.url || 'http://${endpoint}/${node.nodeTitle}/${
-    node.id
-  }'
+    var nodeUrl = config.url || 'http://${endpoint}/${node.id}'
     this.on('input', function(msg) {
       var preRequestTimestamp = process.hrtime()
       node.status({
