@@ -100,6 +100,13 @@ public:
     void set_agent_info(const char *info);
 
     /**
+     * Sets the ctrl message.
+     * 
+     * @param message Control message
+     */
+    void set_ctrl_message(const char *message);
+
+    /**
      * Adds a client connection state change callback.
      *
      * Multiple callbackes can be added.

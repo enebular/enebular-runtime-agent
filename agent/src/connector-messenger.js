@@ -87,7 +87,7 @@ export default class ConnectorMessenger extends EventEmitter {
       this._handleRequestTimeout(id)
     }, this._requestTryTimeout)
 
-    this.emit('requestConnectorCtrlMessageSend', JSON.stringify(msg))
+    this.emit('requestConnectorCtrlMessageSend', msg)
   }
 
   _handleRequestTimeout(id: string) {

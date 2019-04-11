@@ -179,6 +179,10 @@ export default class LocalConnector {
       this._clientSendMessage('disconnect')
     })
 
+    this._agent.on('connectorCtrlMessageSend', msg => {
+      this._clientSendMessage('ctrlMessage: ' + JSON.stringify(msg))
+    })
+
     this._localServer = await this._startLocalServer(this._connector)
   }
 

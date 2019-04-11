@@ -124,6 +124,7 @@ private:
     void client_connection_change_cb();
     void agent_manager_message_cb(const char *type, const char *content);
     void agent_info_cb(const char *type);
+    void ctrl_message_cb(const char *message);
 
 };
 

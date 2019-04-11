@@ -472,6 +472,11 @@ void EnebularAgentMbedCloudClient::set_agent_info(const char *info)
     pthread_mutex_unlock(&_lock);
 }
 
+void EnebularAgentMbedCloudClient::set_ctrl_message(const char *message)
+{
+    _enebular_msg_from_device_res->set_value((uint8_t *)message, strlen(message));
+}
+
 void EnebularAgentMbedCloudClient::on_connection_change(ClientConnectionStateCB cb)
 {
     _connection_state_callbacks.push_back(cb);

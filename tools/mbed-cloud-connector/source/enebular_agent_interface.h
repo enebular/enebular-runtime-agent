@@ -13,6 +13,7 @@ typedef FP0<void> AgentConnectionChangeCB;
 typedef FP0<void> ConnectorRegistrationRequestCB;
 typedef FP1<void, bool> ConnectorConnectionRequestCB;
 typedef FP1<void, const char *> AgentInfoCB;
+typedef FP1<void, const char *> CtrlMessageCB;
 
 /**
  * The enebular agent interface.
@@ -93,6 +94,15 @@ public:
     void on_agent_info(AgentInfoCB cb);
 
     /**
+     * Sets the ctrl message callback.
+     *
+     * Only one callback can be set.
+     *
+     * @param cb Callback
+     */
+    void on_ctrl_message(CtrlMessageCB cb);
+
+    /**
      * Send an agent-manager message to the agent.
      *
      * @param type      Message type
@@ -145,6 +155,7 @@ private:
     ConnectorRegistrationRequestCB _registration_request_cb;
     ConnectorConnectionRequestCB _connection_request_cb;
     AgentInfoCB _agent_info_cb;
+    CtrlMessageCB _ctrl_message_cb;
 
     bool connect_agent();
     void disconnect_agent();
@@ -156,6 +167,7 @@ private:
     void notify_registration_request();
     void notify_connection_request(bool connect);
     void notify_agent_info(const char *info);
+    void notify_ctrl_message(const char *info);
     void update_connected_state(bool connected);
 
 };

@@ -52,6 +52,9 @@ bool EnebularAgentMbedCloudConnector::startup(void *iface)
     _agent->on_agent_info(
         AgentInfoCB(this, &EnebularAgentMbedCloudConnector::agent_info_cb)
     );
+    _agent->on_ctrl_message(
+        CtrlMessageCB(this, &EnebularAgentMbedCloudConnector::ctrl_message_cb)
+    );
 
     /* connect to agent */
     if (!_agent->connect()) {
@@ -288,6 +291,11 @@ void EnebularAgentMbedCloudConnector::connection_request_cb(bool connect)
 void EnebularAgentMbedCloudConnector::agent_info_cb(const char *info)
 {
     _mbed_cloud_client->set_agent_info(info);
+}
+
+void EnebularAgentMbedCloudConnector::ctrl_message_cb(const char *message)
+{
+    _mbed_cloud_client->set_ctrl_message(message);
 }
 
 void EnebularAgentMbedCloudConnector::client_connection_change_cb()
