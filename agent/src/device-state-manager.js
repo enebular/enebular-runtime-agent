@@ -371,6 +371,10 @@ export default class DeviceStateManager extends EventEmitter {
     if (active === this._active) {
       return
     }
+    if (active && !this._fqDeviceId) {
+      return
+    }
+
     this._active = active
 
     clearInterval(this._refreshIntervalID)

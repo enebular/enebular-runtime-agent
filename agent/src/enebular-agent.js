@@ -579,6 +579,9 @@ export default class EnebularAgent extends EventEmitter {
     this._deviceStateManager.setFqDeviceId(
       `${this._connectionId}::${this._deviceId}`
     )
+    if (this._connector.connected) {
+      this._deviceStateManager.activate(true)
+    }
   }
 
   async _onChangeState() {
