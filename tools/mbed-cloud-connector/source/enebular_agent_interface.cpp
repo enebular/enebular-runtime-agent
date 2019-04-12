@@ -358,6 +358,19 @@ void EnebularAgentInterface::send_message(const char *type, const char *content)
     send_msg(_send_buf);
 }
 
+void EnebularAgentInterface::send_ctrl_message(const char *message)
+{
+    snprintf(_send_buf, SEND_BUF_SIZE-1,
+        "{"
+            "\"type\": \"ctrlMessage\","
+            "\"message\": %s"
+        "}",
+        message
+    );
+
+    send_msg(_send_buf);
+}
+
 /**
  * Todo:
  *  - JSON string escaping for message content

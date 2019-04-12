@@ -74,6 +74,9 @@ export default class LocalConnector {
               message.message.message
             )
             break
+          case 'ctrlMessage':
+            connector.sendCtrlMessage(message.message)
+            break
           case 'log':
             localPort._log(
               message.log.level,

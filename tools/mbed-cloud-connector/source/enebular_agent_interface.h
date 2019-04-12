@@ -111,6 +111,13 @@ public:
     void send_message(const char *type, const char *content);
 
     /**
+     * Send an agent-manager ctrl message to the agent.
+     *
+     * @param message   Message
+     */
+    void send_ctrl_message(const char *message);
+
+    /**
      * Send a log message to the agent.
      *
      * Note that the message is sent to the agent packaged in JSON, but the

@@ -104,7 +104,7 @@ public:
      * 
      * @param message Control message
      */
-    void set_ctrl_message(const char *message);
+    void set_from_device_ctrl_message(const char *message);
 
     /**
      * Adds a client connection state change callback.

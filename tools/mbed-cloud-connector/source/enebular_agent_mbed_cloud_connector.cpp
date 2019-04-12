@@ -295,7 +295,7 @@ void EnebularAgentMbedCloudConnector::agent_info_cb(const char *info)
 
 void EnebularAgentMbedCloudConnector::ctrl_message_cb(const char *message)
 {
-    _mbed_cloud_client->set_ctrl_message(message);
+    _mbed_cloud_client->set_from_device_ctrl_message(message);
 }
 
 void EnebularAgentMbedCloudConnector::client_connection_change_cb()
@@ -340,6 +340,10 @@ void EnebularAgentMbedCloudConnector::agent_manager_message_cb(const char *type,
     _logger->log_console(DEBUG, "Agent-man message: type:%s, content:%s", type, content);
 
     if (_agent->is_connected()) {
-        _agent->send_message(type, content);
+        if (strcmp(type, "ctrlMessage") == 0) {
+            _agent->send_ctrl_message(content);
+        } else {
+            _agent->send_message(type, content);
+        }
     }
 }

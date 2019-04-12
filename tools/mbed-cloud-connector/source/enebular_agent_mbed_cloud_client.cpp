@@ -348,7 +348,8 @@ void EnebularAgentMbedCloudClient::enebular_msg_to_device_cb(const char *name)
     _logger->log_console(DEBUG, "Client: enebular_msg_to_device: %s",
         _enebular_msg_to_device_res->get_value_string().c_str());
 
-    //
+    queue_agent_man_msg("ctrlMessage",
+        _enebular_msg_to_device_res->get_value_string().c_str());
 }
 
 /* Note: called from separate thread */
@@ -472,7 +473,7 @@ void EnebularAgentMbedCloudClient::set_agent_info(const char *info)
     pthread_mutex_unlock(&_lock);
 }
 
-void EnebularAgentMbedCloudClient::set_ctrl_message(const char *message)
+void EnebularAgentMbedCloudClient::set_from_device_ctrl_message(const char *message)
 {
     _enebular_msg_from_device_res->set_value((uint8_t *)message, strlen(message));
 }
