@@ -93,6 +93,11 @@ export default class Config {
         description: 'Assets state file path',
         userExpose: true
       },
+      ENEBULAR_FLOW_STATE_PATH: {
+        value: p.resolve(portBasePath, '.enebular-flow.json'),
+        description: 'Flow state file path',
+        userExpose: true
+      },
 
       // logging
       ENEBULAR_LOG_LEVEL: {

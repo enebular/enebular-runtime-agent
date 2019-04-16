@@ -210,7 +210,9 @@ export default class EnebularAgent extends EventEmitter {
     )
 
     this._nodeRed = new NodeREDController(
+      this._deviceStateManager,
       this._messageEmitter,
+      this._config,
       this._log,
       this._logManager,
       {
@@ -328,6 +330,7 @@ export default class EnebularAgent extends EventEmitter {
 
     await this._agentInfoManager.setup()
     await this._assetManager.setup()
+    await this._nodeRed.setup()
 
     this._updateMonitoringFromDesiredState()
 
@@ -345,6 +348,7 @@ export default class EnebularAgent extends EventEmitter {
       await this._agentMan.notifyStatus('disconnected')
     }
     await this._nodeRed.shutdownService()
+    this._nodeRed.activate(false)
     this._assetManager.activate(false)
     this._deviceStateManager.activate(false)
     await this._logManager.shutdown()
@@ -598,6 +602,7 @@ export default class EnebularAgent extends EventEmitter {
         break
       case 'authenticated':
         this._assetManager.activate(true)
+        this._nodeRed.activate(true)
         setTimeout(() => {
           this._updateMonitoringActiveState()
         }, 10 * 1000)
