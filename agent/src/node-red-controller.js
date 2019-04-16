@@ -410,7 +410,11 @@ export default class NodeREDController {
           // report deploying
           this._setFlowState('deploying', null)
 
-          // TODO: remove current flow (if required)
+          try {
+            await this.removeFlow()
+          } catch (err) {
+            this.info('Existing flow remove failed: ' + err.message)
+          }
 
           // deploy
           this.info(`Deploying flow '${pendingAssetId}'...`)
@@ -447,16 +451,16 @@ export default class NodeREDController {
         case 'remove':
           this.info(`Removing flow '${this._flowState.assetId}'...`)
           this._setFlowState('removing')
-          // TODO: implement remove support
-          success = false
-          if (!success) {
-            this.info('Remove failed')
-            this._setFlowState('removeFail', 'Remove not yet supported')
-          } else {
+          try {
+            await this.removeFlow()
+            await this.restartService()
             this.info(`Removed flow '${this._flowState.assetId}'`)
             this._flowState.assetId = null
             this._flowState.updateId = null
             this._setFlowState(null, null)
+          } catch (err) {
+            this.info('Remove failed: ' + err.message)
+            this._setFlowState('removeFail', 'Remove failed: ' + err.message)
           }
           break
 
@@ -711,6 +715,24 @@ export default class NodeREDController {
       fs.unlinkSync(this._pidFile)
     } catch (err) {
       this._log.error(err)
+    }
+  }
+
+  async removeFlow() {
+    return this._queueAction(() => this._removeFlow())
+  }
+
+  async _removeFlow() {
+    this.info('Removing flow...')
+    const flowFilePath = path.join(this._getDataDir(), 'flows.json')
+    const credFilePath = path.join(this._getDataDir(), 'flows_cred.json')
+    if (fs.existsSync(flowFilePath)) {
+      this.debug(`Deleting ${flowFilePath}...`)
+      fs.unlinkSync(flowFilePath)
+    }
+    if (fs.existsSync(credFilePath)) {
+      this.debug(`Deleting ${credFilePath}...`)
+      fs.unlinkSync(credFilePath)
     }
   }
 
