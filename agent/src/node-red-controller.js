@@ -10,6 +10,7 @@ import { encryptCredential, delay } from './utils'
 import type { Logger } from 'winston'
 import type LogManager from './log-manager'
 import type DeviceStateManager from './device-state-manager'
+import type ConnectorMessenger from './connector-messenger'
 import type Config from './config'
 
 // TODO:
@@ -41,6 +42,7 @@ type NodeRedFlowPackage = {
 
 export default class NodeREDController {
   _deviceStateMan: DeviceStateManager
+  _connectorMessenger: ConnectorMessenger
   _flowStateFilePath: string
   _flowState: Object
   _flowStateProcessingChanges: boolean = false
@@ -63,6 +65,7 @@ export default class NodeREDController {
 
   constructor(
     deviceStateMan: DeviceStateManager,
+    connectorMessenger: ConnectorMessenger,
     emitter: EventEmitter,
     config: Config,
     log: Logger,
@@ -75,6 +78,7 @@ export default class NodeREDController {
     }
 
     this._deviceStateMan = deviceStateMan
+    this._connectorMessenger = connectorMessenger
     this._dir = nodeRedConfig.dir
     this._dataDir = nodeRedConfig.dataDir
     this._command = nodeRedConfig.command
@@ -396,9 +400,7 @@ export default class NodeREDController {
 
           // Handle too many attempts
           if (this._flowState.updateAttemptCount > 3) {
-            this.info(
-              `Deploy failed maximum number of times (3)`
-            )
+            this.info(`Deploy failed maximum number of times (3)`)
             this._flowState.updateAttemptCount = 0
             // TODO: better actual error message capture and reporting
             this._setFlowState('deployFail', 'Too many update attempts')
@@ -408,14 +410,21 @@ export default class NodeREDController {
           // report deploying
           this._setFlowState('deploying', null)
 
-          // todo: remove current flow (if required)
+          // TODO: remove current flow (if required)
 
           // deploy
           this.info(`Deploying flow '${pendingAssetId}'...`)
-          this.info('Faking deloy with 10sec wait...')
-          await delay(10 * 1000) // tmp
-          success = true // todo: actually do deploy
-          if (!success) {
+          try {
+            const downloadUrl = await this._getFlowDataUrl(
+              this._flowState.assetId,
+              this._flowState.updateId
+            )
+            await this.fetchAndUpdateFlow(downloadUrl)
+            this.info(`Deployed flow '${pendingAssetId}'`)
+            this._flowState.updateAttemptCount = 0
+            this._setFlowState('deployed', null)
+          } catch (err) {
+            this.error('Error occured during deploy: ' + err.message)
             if (this._flowState.pendingChange === null) {
               // TODO: handle too many attempts here too, not just above
               this.info(
@@ -432,20 +441,17 @@ export default class NodeREDController {
             } else {
               this.info('Deploy failed, but new change already pending.')
             }
-          } else {
-            this.info(`Deployed flow '${pendingAssetId}'`)
-            this._flowState.updateAttemptCount = 0
-            this._setFlowState('deployed', null)
           }
           break
 
         case 'remove':
           this.info(`Removing flow '${this._flowState.assetId}'...`)
           this._setFlowState('removing')
-          success = true // todo: actually do remove
+          // TODO: implement remove support
+          success = false
           if (!success) {
             this.info('Remove failed')
-            this._setFlowState('removeFail', 'TODO: error message')
+            this._setFlowState('removeFail', 'Remove not yet supported')
           } else {
             this.info(`Removed flow '${this._flowState.assetId}'`)
             this._flowState.assetId = null
@@ -469,13 +475,25 @@ export default class NodeREDController {
     this._flowStateProcessingChanges = false
   }
 
+  async _getFlowDataUrl(assetId: string, updateId: string) {
+    this.info('Obtaining flow download URL...')
+    const res = await this._connectorMessenger.sendRequest(
+      'flow/device/getFlowDataUrl',
+      {
+        assetId,
+        updateId
+      }
+    )
+    return res.url
+  }
+
   _getDataDir() {
     return this._dataDir
   }
 
   _registerHandler(emitter: EventEmitter) {
-    emitter.on('update-flow', params => this.fetchAndUpdateFlow(params))
-    emitter.on('deploy', params => this.fetchAndUpdateFlow(params))
+    emitter.on('update-flow', params => this.cmdFetchAndUpdateFlow(params))
+    emitter.on('deploy', params => this.cmdFetchAndUpdateFlow(params))
     emitter.on('start', () => this.startService())
     emitter.on('restart', () => this.restartService())
     emitter.on('shutdown', () => {
@@ -501,19 +519,30 @@ export default class NodeREDController {
         await action()
       }
     })()
-    await this._isProcessing
-    this._isProcessing = null
+    try {
+      await this._isProcessing
+      this._isProcessing = null
+    } catch (err) {
+      if (this._actions.length < 1) {
+        this._isProcessing = null
+      }
+      throw err
+    }
   }
 
-  async fetchAndUpdateFlow(params: { downloadUrl: string }) {
+  async cmdFetchAndUpdateFlow(params: { downloadUrl: string }) {
     this.flowState.controlSrc = 'cmd'
-    return this._queueAction(() => this._fetchAndUpdateFlow(params))
+    return this.fetchAndUpdateFlow(params.downloadUrl)
   }
 
-  async _fetchAndUpdateFlow(params: { downloadUrl: string }) {
+  async fetchAndUpdateFlow(downloadUrl: string) {
+    return this._queueAction(() => this._fetchAndUpdateFlow(downloadUrl))
+  }
+
+  async _fetchAndUpdateFlow(downloadUrl: string) {
     this.info('Updating flow')
 
-    const flowPackage = await this._downloadPackage(params.downloadUrl)
+    const flowPackage = await this._downloadPackage(downloadUrl)
     let editSessionRequested = this._flowPackageContainsEditSession(flowPackage)
     if (editSessionRequested && !this._allowEditSessions) {
       this.info('Edit session flow deploy requested but not allowed')
