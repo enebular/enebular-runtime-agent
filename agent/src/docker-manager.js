@@ -302,10 +302,10 @@ export default class DockerManager {
   _updateDockerReportedState() {
     const reportedState = this._deviceStateMan.getState('reported', 'docker')
     if (!reportedState) {
-      this.info('NOT UPDATING REPORTED STATE')
+      // this.info('NOT UPDATING REPORTED STATE')
       return
     }
-    this.info('UPDATING REPORTED STATE')
+    // this.info('UPDATING REPORTED STATE')
 
     this.debug(
       'Docker reported state: ' + JSON.stringify(reportedState, null, 2)
@@ -755,7 +755,8 @@ export default class DockerManager {
       return
     }
     if (active && !this._inited) {
-      throw new Error('Attempted to activate docker-man when not initialized')
+      this.error('Attempted to activate docker-man when not initialized')
+      return
     }
     this._active = active
     if (this._active) {
@@ -1168,8 +1169,6 @@ export default class DockerManager {
     }
     this.debug(JSON.stringify(config, null, 2))
     const dockerContainer = await this._docker.createContainer(config)
-
-    this.info('~~~~~~STARTED CONTAINER~~~~~~~')
 
     const newContainer = new Container(dockerContainer.id, this)
     const containerConfig = {

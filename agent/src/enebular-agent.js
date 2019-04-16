@@ -202,8 +202,6 @@ export default class EnebularAgent extends EventEmitter {
     )
 
     this._portManager = new PortManager(this._config, this._log)
-    // this._dockerManager.stopContainers()
-    // this._dockerManager.listContainers()
 
     this._assetManager = new AssetManager(
       this._deviceStateManager,

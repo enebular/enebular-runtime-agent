@@ -61,6 +61,10 @@ export default class Exec {
     return this.config.mountDir
   }
 
+  handlers(): Array<object> {
+    return this.config.handlers || []
+  }
+
   mountDirPath(): string {
     return path.join(this._parent.mountDirPath(), this.config.mountDir)
   }
@@ -88,6 +92,7 @@ export default class Exec {
     this._parent = container
     this._container = container.container()
     this.config.parentId = container.id()
+    this.config.endpoint = `${this._dockerMan.ipAddress()}:${this.config.port}`
   }
 
   deactivate() {
@@ -164,6 +169,14 @@ export default class Exec {
     })
   }
 
+  async _showEndpoints() {
+    let message = `Model's ${this.name()} endpoint(s):\n`
+    this.handlers().forEach(handler => {
+      message += handler + '\n'
+    })
+    this._info(message)
+  }
+
   async start() {
     if (!this.canStart() || !this._container || !this._exec) {
       return
@@ -198,6 +211,8 @@ export default class Exec {
       return false
     }
     this._info('PID GOT ', this._pid)
+
+    this._showEndpoints()
     return true
   }
 

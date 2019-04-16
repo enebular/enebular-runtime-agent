@@ -267,6 +267,13 @@ export default class NodeREDController {
           const exist = fs.existsSync(aiNodesDir)
           if (exist) {
             rimraf.sync(aiNodesDir)
+            rimraf.sync(
+              path.join(
+                this._getDataDir(),
+                'node_modules',
+                'enebular-ai-contrib*'
+              )
+            )
           }
           fs.mkdir(aiNodesDir, err => {
             if (err) {
@@ -296,7 +303,6 @@ export default class NodeREDController {
               'file:../../node-red-contrib-enebular'
           }
           if (flowPackage.handlers) {
-            this.info('UPDATING PACKAGESSSSSSSSS')
             Object.keys(flowPackage.handlers).forEach(handler => {
               flowPackage.packages[
                 `enebular-ai-contrib-${handler}`

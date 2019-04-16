@@ -294,7 +294,7 @@ export default class AiModel extends Asset {
       this._dockerMan().isTestMode()
     )
     const wrapperPath = this._mountWrapperPath()
-    this._info(`Downloading wrapper ${wrapperUrl} to ${wrapperPath} ...`)
+    this._info(`Downloading wrapper to ${wrapperPath} ...`)
     await new Promise(function(resolve, reject) {
       const fileStream = fs.createWriteStream(wrapperPath)
       fileStream.on('error', err => {
@@ -330,9 +330,9 @@ export default class AiModel extends Asset {
   }
 
   async _runPostInstallOps() {
-    this._info('==============DOCKER STUFF==================')
+    this._info('Setting docker...')
     // this._dockerMan().listContainers()
-    this._info('==============DOCKER IMAGE============', this._dockerImage())
+    this._info(`Using image ${this._dockerImage()}...`)
 
     const language = this._language() === 'Python3' ? 'python3' : 'python2'
     const command = `cd ${this._containerWrapperDirPath()} && ${language} wrapper.py`
@@ -359,14 +359,14 @@ export default class AiModel extends Asset {
       )
       await container.start()
     }
-    this._info('EXEC STUFF')
     await container.newExec(
       {
         id: this.id(),
         name: this.name(),
         mountDir: this._destDir(),
         port: this._port,
-        language: language
+        language: language,
+        handlers: this._handlers()
       },
       {
         Cmd: ['/bin/bash', '-c', command],

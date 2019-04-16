@@ -360,12 +360,17 @@ export default class Container {
     this._info(`Creating new exec to container '${this.name()}'...`)
     try {
       const newExec = new Exec(modelConfig.id, this._dockerMan)
+      const baseEndpoint = this.endpoint(modelConfig.port)
+      const endpoints = modelConfig.handlers.map(
+        handler => `${handler.nodeTitle} at ${baseEndpoint}/${handler.id}`
+      )
       const config = {
         name: modelConfig.name,
         language: modelConfig.language,
         mountDir: modelConfig.mountDir,
         port: modelConfig.port,
-        endpoint: this.endpoint(modelConfig.port),
+        endpoint: baseEndpoint,
+        handlers: endpoints,
         options: execOptions
       }
       newExec.config = config
