@@ -14,8 +14,7 @@ import type ConnectorMessenger from './connector-messenger'
 import type Config from './config'
 
 // TODO:
-//   - proper this._flowState.changeErrMsg
-//   - info logging
+//   - Improved this._flowState.changeErrMsg
 
 export type NodeREDConfig = {
   dir: string,
