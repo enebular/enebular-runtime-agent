@@ -523,9 +523,10 @@ export default class NodeREDController {
       await this._isProcessing
       this._isProcessing = null
     } catch (err) {
-      if (this._actions.length < 1) {
-        this._isProcessing = null
+      while (this._actions.length > 0) {
+        this._actions.pop()
       }
+      this._isProcessing = null
       throw err
     }
   }
@@ -724,7 +725,7 @@ export default class NodeREDController {
       this.info('Starting service...')
     }
 
-    let executedLoadURL = false
+    let signaledSuccess = false
     return new Promise((resolve, reject) => {
       if (fs.existsSync(this._pidFile)) {
         ProcessUtil.killProcessByPIDFile(this._pidFile)
@@ -743,13 +744,20 @@ export default class NodeREDController {
         cwd: this._dir,
         env: env
       })
+      const startTimeout = setTimeout(() => {
+        reject(new Error('Flow start timed out'))
+      }, 30 * 1000)
       cproc.stdout.on('data', data => {
         let str = data.toString().replace(/(\n|\r)+$/, '')
         this._nodeRedLog.info(str)
-        if (editSession && !executedLoadURL && str.includes('Started flows')) {
-          this._nodeRedLog.info('Pinging enebular editor...')
-          this._sendEditorAgentIPAddress(editSession)
-          executedLoadURL = true
+        if (!signaledSuccess && str.includes('Started flows')) {
+          signaledSuccess = true
+          clearTimeout(startTimeout)
+          if (editSession) {
+            this._nodeRedLog.info('Pinging enebular editor...')
+            this._sendEditorAgentIPAddress(editSession)
+          }
+          resolve()
         }
       })
       cproc.stderr.on('data', data => {
@@ -787,7 +795,6 @@ export default class NodeREDController {
       })
       this._cproc = cproc
       if (this._cproc.pid) this._createPIDFile(this._cproc.pid.toString())
-      setTimeout(() => resolve(), 1000)
     })
   }
 
