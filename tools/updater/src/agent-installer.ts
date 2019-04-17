@@ -23,6 +23,20 @@ export interface AgentInstallerIf {
   ): Promise<void>
 }
 
+interface GithubVersionAsset {
+  browser_download_url: string
+}
+
+interface GithubVersionAssets {
+  [position: number]: GithubVersionAsset
+  length: number
+}
+
+interface GithubVersionRsp {
+  tag_name: string
+  assets: GithubVersionAssets
+}
+
 export class AgentInstaller implements AgentInstallerIf {
   private _config: Config
   private _minimumRequiredDiskSpace: number = 400 * 1024 * 1024 // 400 MiB
@@ -472,8 +486,16 @@ export class AgentInstaller implements AgentInstallerIf {
           'Checking dependencies for mbed-cloud-connector',
           this._log,
           async (): Promise<void> => {
-            await this._system.installDebianPackages(['git', 'cmake', 'python-pip'])
-            return this._system.installPythonPackages(['mbed-cli', 'click', 'requests'])
+            await this._system.installDebianPackages([
+              'git',
+              'cmake',
+              'python-pip'
+            ])
+            return this._system.installPythonPackages([
+              'mbed-cli',
+              'click',
+              'requests'
+            ])
           }
         )
 
@@ -492,11 +514,50 @@ export class AgentInstaller implements AgentInstallerIf {
     installPath: string,
     userInfo: UserInfo
   ): Promise<void> {
-    const url = `${this._config.getString(
-      'ENEBULAR_AGENT_DOWNLOAD_PATH'
-    )}/enebular-agent-${this._config.getString(
-      'ENEBULAR_AGENT_VERSION'
-    )}-prebuilt.tar.gz`
+    let url
+    if (this._config.getBoolean('ENEBULAR_AGENT_DOWNLOAD_FROM_GITHUB')) {
+      await Utils.taskAsync(
+        `Fetching enebular-agent version from github`,
+        this._log,
+        async (): Promise<void> => {
+          const apiPath = this._config.getString(
+            'ENEBULAR_AGENT_GITHUB_API_PATH'
+          )
+          const getVersionURL =
+            this._config.getString('ENEBULAR_AGENT_VERSION') == 'latest'
+              ? `${apiPath}/releases/latest`
+              : `${apiPath}/releases/tags/${this._config.getString(
+                  'ENEBULAR_AGENT_VERSION'
+                )}`
+          let info
+          try {
+            info = await Utils.fetchJSON(getVersionURL, {})
+          } catch (err) {
+            throw new Error(
+              `Failed to get version ${this._config.getString(
+                'ENEBULAR_AGENT_VERSION'
+              )} from github.`
+            )
+          }
+          const assets = (info as GithubVersionRsp).assets
+          if (assets && assets.length > 0) {
+            url = assets[0].browser_download_url
+          }
+          if (!url) {
+            throw new Error(
+              `Updater only support install from prebuilt package, please check your github releases.`
+            )
+          }
+        }
+      )
+    } else {
+      url = `${this._config.getString(
+        'ENEBULAR_AGENT_DOWNLOAD_PATH'
+      )}/enebular-agent-${this._config.getString(
+        'ENEBULAR_AGENT_VERSION'
+      )}-prebuilt.tar.gz`
+    }
+
     await this._downloadAndExtract(
       url,
       '/tmp/enebular-runtime-agent-' + Utils.randomString(),

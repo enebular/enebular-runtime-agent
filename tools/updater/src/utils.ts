@@ -1,5 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
+import fetch from 'isomorphic-fetch'
 
 import { execSync, spawn } from 'child_process'
 import Log from './log'
@@ -11,6 +12,44 @@ export interface UserInfo {
 }
 
 export class Utils {
+  /**
+   * HTTP request with JSON response
+   *
+   * This makes a HTTP request with a JSON response and provides
+   * consistent error handling of that response.
+   *
+   * @param  {string} url     Fetch URL
+   * @param  {Object} options Fetch options
+   * @return {Object}         The fetched JSON
+   */
+  public static async fetchJSON(url, options): Promise<Record<string, any>> {
+    options = Object.assign({}, options)
+    options.headers = Object.assign(options.headers || {}, {
+      Accept: 'application/json'
+    })
+
+    const res = await fetch(url, options)
+    if (!res.ok) {
+      let msg = `Failed response (${res.status} ${res.statusText})`
+      let details
+      try {
+        const resJson = await res.json()
+        details = resJson.message ? resJson.message : JSON.stringify(resJson)
+      } catch (err) {
+        details = 'No error details available'
+      }
+      msg += ' - ' + details
+      throw new Error(msg)
+    }
+
+    try {
+      const resJson = await res.json()
+      return resJson
+    } catch (err) {
+      throw new Error('Response did not contain JSON')
+    }
+  }
+
   public static exec(cmd: string): boolean {
     return Utils.execReturnStdout(cmd) == undefined ? false : true
   }
