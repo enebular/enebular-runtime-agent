@@ -2,7 +2,7 @@ import * as path from 'path'
 import * as fs from 'fs'
 import * as rimraf from 'rimraf'
 
-import { UserInfo, Utils } from './utils'
+import Utils from './utils'
 import Log from './log'
 
 export interface SystemIf {
@@ -303,7 +303,9 @@ export class System implements SystemIf {
     try {
       await Utils.spawn('pip', options, this._log)
     } catch (err) {
-      throw new Error(`Failed to install python ${packages.join(' ')}: ${err.message}`)
+      throw new Error(
+        `Failed to install python ${packages.join(' ')}: ${err.message}`
+      )
     }
   }
 }
