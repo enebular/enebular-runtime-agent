@@ -535,7 +535,7 @@ export default class NodeREDController {
   }
 
   async cmdFetchAndUpdateFlow(params: { downloadUrl: string }) {
-    this.flowState.controlSrc = 'cmd'
+    this._flowState.controlSrc = 'cmd'
     return this.fetchAndUpdateFlow(params.downloadUrl)
   }
 
