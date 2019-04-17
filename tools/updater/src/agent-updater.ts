@@ -340,6 +340,7 @@ export default class AgentUpdater {
     )
 
     if (
+      agentInfo &&
       this._config.isOverridden('ENEBULAR_AGENT_INSTALL_DIR') &&
       agentInfo.path != agentPath
     ) {
