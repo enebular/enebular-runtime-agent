@@ -32,7 +32,8 @@ export async function createStartedAgent(
 
 export async function createConnectedAgent(
   t: test,
-  agentConfig: EnebularAgentConfig
+  agentConfig: EnebularAgentConfig,
+  ctrlMsgCallback: (message: any) => void
 ) {
   let connector = new ConnectorService(() => {
     connector.updateActiveState(true)
@@ -51,6 +52,11 @@ export async function createConnectedAgent(
       resolve({ agent: agent, connector: connector })
     })
 
+    agent.on('connectorCtrlMessageSend', msg => {
+        if (ctrlMsgCallback)
+          ctrlMsgCallback(connector, msg)
+    })
+
     await agent.startup(agentConfig)
     setTimeout(async () => {
       reject(new Error('no connect request.'))
@@ -62,7 +68,8 @@ export async function createAuthenticatedAgent(
   t: test,
   server: DummyEnebularServer,
   agentConfig: EnebularAgentConfig,
-  port: number
+  port: number,
+  ctrlMsgCallback: (message: any) => void
 ) {
   let authRequestReceived = false
   const authCallback = req => {
@@ -81,7 +88,8 @@ export async function createAuthenticatedAgent(
   const configFile = Utils.createDummyEnebularConfig({}, port)
   const { agent, connector } = await createConnectedAgent(
     t,
-    Object.assign({ ENEBULAR_CONFIG_PATH: configFile }, agentConfig)
+    Object.assign({ ENEBULAR_CONFIG_PATH: configFile }, agentConfig),
+    ctrlMsgCallback
   )
   return new Promise(async (resolve, reject) => {
     setTimeout(async () => {
@@ -99,13 +107,15 @@ export async function createUnauthenticatedAgent(
   t: test,
   server: DummyEnebularServer,
   agentConfig: EnebularAgentConfig,
-  port: number
+  port: number,
+  ctrlMsgCallback: (message: any) => void
 ) {
   // An existing registered config
   const configFile = Utils.createDummyEnebularConfig({}, port)
   return createConnectedAgent(
     t,
-    Object.assign({ ENEBULAR_CONFIG_PATH: configFile }, agentConfig)
+    Object.assign({ ENEBULAR_CONFIG_PATH: configFile }, agentConfig),
+    ctrlMsgCallback
   )
 }
 
