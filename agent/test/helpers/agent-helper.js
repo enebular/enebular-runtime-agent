@@ -145,25 +145,40 @@ export async function createAgentWithDummyServerAssetHandler(
   reportedStates,
   populateDesiredState
 ) {
-  dummyServer.onDeviceStateGet = (req, res) => {
-    populateDesiredState(deviceStates[0])
-    res.send({ states: deviceStates })
-  }
-
-  dummyServer.onDeviceStateUpdate = (req, res) => {
-    const result = req.body.updates.map(update => {
-      updateReq.push(update)
-      if (update.op === 'set') {
-        objectPath.set(reportedStates, 'state.' + update.path, update.state)
-      } else if (update.op === 'remove') {
-        objectPath.del(reportedStates, 'state.' + update.path)
-      }
-      return {
-        success: true,
-        meta: {}
-      }
-    })
-    res.send({ updates: result })
+  const ctrlMsgCallback = (connector, msg) => {
+    if (msg.topic == 'deviceState/device/get') {
+      populateDesiredState(deviceStates[0])
+      connector.sendCtrlMessage({
+        type: 'res',
+        id: msg.id,
+        res: 'ok',
+        body: {
+          states: deviceStates
+        }
+      })
+    }
+    else if (msg.topic == 'deviceState/device/update') {
+      const result = msg.body.updates.map(update => {
+        updateReq.push(update)
+        if (update.op === 'set') {
+          objectPath.set(reportedStates, 'state.' + update.path, update.state)
+        } else if (update.op === 'remove') {
+          objectPath.del(reportedStates, 'state.' + update.path)
+        }
+        return {
+          success: true,
+          meta: {}
+        }
+      })
+      connector.sendCtrlMessage({
+        type: 'res',
+        id: msg.id,
+        res: 'ok',
+        body: {
+          updates: result
+        }
+      })
+    }
   }
 
   const ret = await createAuthenticatedAgent(
@@ -176,7 +191,8 @@ export async function createAgentWithDummyServerAssetHandler(
       },
       nodeRedPort
     ),
-    dummyServerPort
+    dummyServerPort,
+    ctrlMsgCallback
   )
   return ret
 }

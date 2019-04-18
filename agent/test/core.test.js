@@ -1,6 +1,6 @@
 /* @flow */
 import test from 'ava'
-import fs from 'fs'
+import fs from 'fs-extra'
 import path from 'path'
 import jwt from 'jsonwebtoken'
 import { Server } from 'net'
@@ -225,6 +225,7 @@ test.serial(
   'Core.6: Agent enables sending log when status changed to authenticated',
   async t => {
     let recordLogsReceived = false
+    let tmpLogCacheDir = '/tmp/enebular-log-cache-' + Utils.randomString()
     server.on('recordLogs', () => {
       console.log('recordLogs received.')
       recordLogsReceived = true
@@ -233,7 +234,9 @@ test.serial(
     const ret = await createAuthenticatedAgent(
       t,
       server,
-      Utils.addNodeRedPortToConfig({}, NodeRedPort),
+      Utils.addNodeRedPortToConfig({
+        ENEBULAR_ENEBULAR_LOG_CACHE_PATH: tmpLogCacheDir
+      }, NodeRedPort),
       DummyServerPort
     )
     agent = ret.agent
@@ -262,6 +265,7 @@ test.serial(
         5000
       )
     )
+    fs.removeSync(tmpLogCacheDir)
   }
 )
 
