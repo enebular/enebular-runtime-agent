@@ -92,7 +92,7 @@ async function createAgentRunningWithTestNodeRedSettings(
 }
 
 test.serial(
-  'NodeRedController.1: Agent starts/shutdowns node-red correctly',
+  'NodeRedControllerLegacy.1: Agent starts/shutdowns node-red correctly',
   async t => {
     const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
     const ret = await createConnectedAgent(
@@ -111,7 +111,7 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedController.2: Agent restarts node-red correctly',
+  'NodeRedControllerLegacy.2: Agent restarts node-red correctly',
   async t => {
     const data = fs.readFileSync(
       path.join(__dirname, 'data', 'flow1.json'),
@@ -152,7 +152,7 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedController.3: Agent handles deploy message correctly',
+  'NodeRedControllerLegacy.3: Agent handles deploy message correctly',
   async t => {
     await createAgentRunningWithTestNodeRedSettings(t)
 
@@ -188,7 +188,7 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedController.4: Agent handles update-flow message correctly',
+  'NodeRedControllerLegacy.4: Agent handles update-flow message correctly',
   async t => {
     await createAgentRunningWithTestNodeRedSettings(t)
 
@@ -224,7 +224,7 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedController.5: Agent handles shutdown/start message correctly',
+  'NodeRedControllerLegacy.5: Agent handles shutdown/start message correctly',
   async t => {
     await createAgentRunningWithTestNodeRedSettings(t)
 
@@ -236,7 +236,7 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedController.6: Agent handles deploy dependencies correctly',
+  'NodeRedControllerLegacy.6: Agent handles deploy dependencies correctly',
   async t => {
     await createAgentRunningWithTestNodeRedSettings(t)
 
@@ -261,7 +261,7 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedController.7: Agent handles deploy credentials correctly',
+  'NodeRedControllerLegacy.7: Agent handles deploy credentials correctly',
   async t => {
     await createAgentRunningWithTestNodeRedSettings(t)
 
@@ -297,7 +297,7 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedController.8: Agent handles deploy encrypted credentials correctly',
+  'NodeRedControllerLegacy.8: Agent handles deploy encrypted credentials correctly',
   async t => {
     await createAgentRunningWithTestNodeRedSettings(
       t,
@@ -345,7 +345,7 @@ test.serial(
 
 /*
 test.serial(
-  'NodeRedController.8: Agent accepts flow credentials correctly if secret is specified',
+  'NodeRedControllerLegacy.8: Agent accepts flow credentials correctly if secret is specified',
   async t => {
     await createAgentRunningWithTestNodeRedSettings(t, 'node-red-test-settings-with-credential-secret')
 
@@ -378,7 +378,7 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedController.9: Agent fails to recover flow credentials without secret',
+  'NodeRedControllerLegacy.9: Agent fails to recover flow credentials without secret',
   async t => {
     await createAgentRunningWithTestNodeRedSettings(t)
 
@@ -411,7 +411,7 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedController.10: Agent accepts clear text flow credentials correctly',
+  'NodeRedControllerLegacy.10: Agent accepts clear text flow credentials correctly',
   async t => {
     await createAgentRunningWithTestNodeRedSettings(t)
 
