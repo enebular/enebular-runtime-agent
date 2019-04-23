@@ -387,8 +387,6 @@ test.serial(
       type: 'desired',
       op: 'remove',
       path: 'assets.assets.nonexistent',
-      meta: desiredState.meta,
-      state: desiredState.state.assets.assets[newAssetId]
     })
 
     await waitAssetProcessing(agent, 1000, 5000)
