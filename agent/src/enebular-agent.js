@@ -332,6 +332,7 @@ export default class EnebularAgent extends EventEmitter {
     await this._agentInfoManager.setup()
     await this._assetManager.setup()
     await this._nodeRed.setup()
+    this._nodeRed.activate(true)
 
     this._updateMonitoringFromDesiredState()
 
@@ -608,7 +609,6 @@ export default class EnebularAgent extends EventEmitter {
         break
       case 'authenticated':
         this._assetManager.activate(true)
-        this._nodeRed.activate(true)
         setTimeout(() => {
           this._updateMonitoringActiveState()
         }, 10 * 1000)
