@@ -53,8 +53,14 @@ export async function createConnectedAgent(
     })
 
     agent.on('connectorCtrlMessageSend', msg => {
-        if (ctrlMsgCallback)
-          ctrlMsgCallback(connector, msg)
+        if (ctrlMsgCallback) {
+          if (ctrlMsgCallback.ctrlMsgCallback) {
+            ctrlMsgCallback.ctrlMsgCallback(connector, msg)
+          }
+          else {
+            ctrlMsgCallback(connector, msg)
+          }
+        }
     })
 
     await agent.startup(agentConfig)

@@ -1,0 +1,324 @@
+/* @flow */
+import test from 'ava'
+import fs from 'fs-extra'
+import path from 'path'
+import { Server } from 'net'
+import crypto from 'crypto'
+import objectPath from 'object-path'
+
+import EnebularAgent from '../src/enebular-agent'
+import ConnectorService from '../src/connector-service'
+import { decryptCredential } from '../src/utils'
+import NodeRedAdminApi from './helpers/node-red-admin-api'
+import DummyCtrlMsgHandler from './helpers/dummy-ctrl-msg-handler'
+import Utils from './helpers/utils'
+import DummyServer from './helpers/dummy-server'
+import {
+  createUnauthenticatedAgent,
+  createAuthenticatedAgent,
+  createConnectedAgent,
+  nodeRedIsAlive,
+  nodeRedIsDead,
+  polling,
+  agentCleanup
+} from './helpers/agent-helper'
+
+const DummyServerPort = 3011
+const NodeRedPort = 4011
+
+let agent: EnebularAgent
+let connector: ConnectorService
+let server: DummyServer
+let http: Server
+let tmpNodeRedDataDir: string
+
+test.before(async t => {
+  process.env.ENEBULAR_TEST = true
+  process.env.DEBUG = 'debug'
+  server = new DummyServer()
+  http = await server.start(DummyServerPort)
+})
+
+test.after(t => {
+  http.close()
+})
+
+test.afterEach.always('cleanup', async t => {
+  await agentCleanup(agent, NodeRedPort)
+
+  if (tmpNodeRedDataDir) {
+    fs.removeSync(tmpNodeRedDataDir)
+    tmpNodeRedDataDir = null
+  }
+})
+
+async function createAgentRunningWithTestNodeRedSettings(
+  t: test,
+  ctrlMsgCallback
+) {
+  tmpNodeRedDataDir = '/tmp/.node-red-config-' + Utils.randomString()
+  fs.ensureDirSync(tmpNodeRedDataDir)
+  fs.copySync(
+    path.join(__dirname, '..', '..', 'node-red', '.node-red-config'),
+    tmpNodeRedDataDir
+  )
+  fs.copySync(
+    path.join(
+      __dirname,
+      'data',
+      'node-red-test-settings'
+    ),
+    tmpNodeRedDataDir + '/settings.js'
+  )
+
+  const ret = await createAuthenticatedAgent(
+    t,
+    server,
+    {
+      NODE_RED_DATA_DIR: tmpNodeRedDataDir,
+      NODE_RED_COMMAND:
+        './node_modules/.bin/node-red -p ' +
+        NodeRedPort +
+        ' -s ' +
+        tmpNodeRedDataDir +
+        '/settings.js'
+    },
+    DummyServerPort,
+    ctrlMsgCallback
+  )
+  agent = ret.agent
+  connector = ret.connector
+
+  // console.log("user directory: ", agent._nodeRed._getDataDir())
+  t.true(await nodeRedIsAlive(NodeRedPort))
+}
+
+test.serial(
+  'NodeRedController.1: Agent deploys flow to Node-Red via ctrl-msg correctly',
+  async t => {
+    const expectedFlowName = 'flow1.json'
+    const expectedFlowJson = fs.readFileSync(
+      path.join(__dirname, 'data', expectedFlowName),
+      'utf8'
+    )
+    const url =
+      'http://127.0.0.1:' +
+      DummyServerPort +
+      '/test/download-flow?flow=' +
+      expectedFlowName
+
+    const assetId = Utils.randomString()
+    const updateId = Utils.randomString()
+    const ctrlMsgHandler = new DummyCtrlMsgHandler()
+    ctrlMsgHandler.setFlow(assetId, updateId)
+    ctrlMsgHandler.setFlowURL(url)
+
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler)
+
+    const callback = async () => {
+      const api = new NodeRedAdminApi('http://127.0.0.1:' + NodeRedPort)
+      const flow = await api.getFlow()
+      if (flow) {
+        t.truthy(flow)
+        const expectedFlow = JSON.parse(expectedFlowJson)
+        return Utils.jsonEquals(expectedFlow, flow)
+      }
+      return false
+    }
+
+    // give it 2s to start
+    t.true(await polling(callback, 2000, 500, 30000))
+
+    console.log(JSON.stringify(ctrlMsgHandler.getReportedStates()))
+    const reportedStates = ctrlMsgHandler.getReportedStates()
+    t.is(reportedStates.state.flow.flow.assetId, assetId)
+    t.is(reportedStates.state.flow.flow.updateId, updateId)
+    t.is(reportedStates.state.flow.flow.state, 'deployed')
+  }
+)
+
+test.serial(
+  'NodeRedController.2: Agent handles flow deploying via ctrl-msg fail (flow/device/getFlowDataUrl return error)',
+  async t => {
+    const expectedFlowName = 'flow1.json'
+    const expectedFlowJson = fs.readFileSync(
+      path.join(__dirname, 'data', expectedFlowName),
+      'utf8'
+    )
+    const url =
+      'http://127.0.0.1:' +
+      DummyServerPort +
+      '/test/download-flow?flow=' +
+      expectedFlowName
+
+    const assetId = Utils.randomString()
+    const updateId = Utils.randomString()
+    const ctrlMsgHandler = new DummyCtrlMsgHandler()
+    ctrlMsgHandler.setFlow(assetId, updateId)
+
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler)
+
+    const reportedStates = ctrlMsgHandler.getReportedStates()
+    const callback = async () => {
+      if (reportedStates && reportedStates.state
+          && reportedStates.state.flow && reportedStates.state.flow.flow
+          && reportedStates.state.flow.flow.state === 'deployFail')
+        return true
+      return false
+    }
+
+    // give it 2s to start
+    t.true(await polling(callback, 2000, 500, 10000))
+
+    t.is(reportedStates.state.flow.flow.assetId, assetId)
+    t.is(reportedStates.state.flow.flow.updateId, updateId)
+    t.is(reportedStates.state.flow.flow.state, 'deployFail')
+    t.is(reportedStates.state.flow.flow.message, 'Too many update attempts')
+    t.is(ctrlMsgHandler.flowURLAttemptCount, 3)
+  }
+)
+
+test.serial(
+  'NodeRedController.3: Deploying second flow while the first deployment is in progress',
+  async t => {
+    const expectedFlowName = 'flow1.json'
+    const expectedFlowJson = fs.readFileSync(
+      path.join(__dirname, 'data', expectedFlowName),
+      'utf8'
+    )
+    const url =
+      'http://127.0.0.1:' +
+      DummyServerPort +
+      '/test/download-flow?flow=' +
+      expectedFlowName
+
+    const assetId = Utils.randomString()
+    const updateId = Utils.randomString()
+    const ctrlMsgHandler = new DummyCtrlMsgHandler()
+    ctrlMsgHandler.setFlow(assetId, updateId)
+    ctrlMsgHandler.setFlowURL(url)
+    // first flow return 
+    ctrlMsgHandler.flowURLTimeout = true
+
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler)
+
+    const updateRequests = ctrlMsgHandler.getUpdateRequest()
+    const reportedStates = ctrlMsgHandler.getReportedStates()
+    let callback = async () => {
+      return (updateRequests && updateRequests.length > 2)
+    }
+    t.true(await polling(callback, 5 * 1000, 500, 10000))
+
+    ctrlMsgHandler.flowURLTimeout = false
+    const assetId2 = Utils.randomString()
+    const updateId2 = Utils.randomString()
+    const rawDesiredState = {}
+    objectPath.set(rawDesiredState, 'flow.flow', {
+        assetId: assetId2,
+        updateId: updateId2
+    })
+    const desiredState = Utils.getDummyState('desired', rawDesiredState)
+    connector.sendMessage('deviceStateChange', {
+      type: 'desired',
+      op: 'set',
+      path: 'flow.flow',
+      meta: desiredState.meta,
+      state: desiredState.state.flow.flow
+    })
+
+    callback = async () => {
+      if (reportedStates && reportedStates.state
+          && reportedStates.state.flow && reportedStates.state.flow.flow
+          && reportedStates.state.flow.flow.state === 'deployed')
+        return true
+      return false
+    }
+
+    // give it 2s to start
+    t.true(await polling(callback, 2000, 500, 30000))
+
+    // TODO: should check the first flow's state
+    console.log(updateRequests)
+
+    t.is(reportedStates.state.flow.flow.assetId, assetId2)
+    t.is(reportedStates.state.flow.flow.updateId, updateId2)
+    t.is(reportedStates.state.flow.flow.state, 'deployed')
+  }
+)
+
+test.serial(
+  'NodeRedController.4: Agent remove existing flow via ctrl-msg correctly',
+  async t => {
+    const expectedFlowName = 'flow1.json'
+    const expectedFlowJson = fs.readFileSync(
+      path.join(__dirname, 'data', expectedFlowName),
+      'utf8'
+    )
+    const url =
+      'http://127.0.0.1:' +
+      DummyServerPort +
+      '/test/download-flow?flow=' +
+      expectedFlowName
+
+    const assetId = Utils.randomString()
+    const updateId = Utils.randomString()
+    const ctrlMsgHandler = new DummyCtrlMsgHandler()
+    ctrlMsgHandler.setFlow(assetId, updateId)
+    ctrlMsgHandler.setFlowURL(url)
+
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler)
+
+    let callback = async () => {
+      const api = new NodeRedAdminApi('http://127.0.0.1:' + NodeRedPort)
+      const flow = await api.getFlow()
+      if (flow) {
+        t.truthy(flow)
+        const expectedFlow = JSON.parse(expectedFlowJson)
+        return Utils.jsonEquals(expectedFlow, flow)
+      }
+      return false
+    }
+
+    // give it 2s to start
+    t.true(await polling(callback, 2000, 500, 30000))
+
+    console.log(JSON.stringify(ctrlMsgHandler.getReportedStates()))
+    const reportedStates = ctrlMsgHandler.getReportedStates()
+    const updateRequests = ctrlMsgHandler.getUpdateRequest()
+    t.is(reportedStates.state.flow.flow.assetId, assetId)
+    t.is(reportedStates.state.flow.flow.updateId, updateId)
+    t.is(reportedStates.state.flow.flow.state, 'deployed')
+
+    const desiredState = Utils.getDummyState('desired', { flow: {} })
+    connector.sendMessage('deviceStateChange', {
+      type: 'desired',
+      op: 'remove',
+      path: 'flow.flow',
+      meta: desiredState.meta,
+      state: desiredState.state.flow
+    })
+
+    callback = async () => {
+      if (reportedStates && reportedStates.state
+          && reportedStates.state.flow && !reportedStates.state.flow.flow)
+        return true
+      return false
+    }
+
+    // give it 2s to start
+    t.true(await polling(callback, 2000, 500, 30000))
+
+    console.log(updateRequests)
+
+    t.is(updateRequests[1].state.assetId, assetId)
+    t.is(updateRequests[1].state.state, 'deployPending')
+    t.is(updateRequests[2].state.state, 'deploying')
+    t.is(updateRequests[3].state.state, 'deployed')
+    t.is(updateRequests[4].state.state, 'removePending')
+    t.is(updateRequests[5].state.state, 'removing')
+    t.is(reportedStates.state.flow.flow, undefined)
+  }
+)
+
+
+
