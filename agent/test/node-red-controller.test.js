@@ -281,6 +281,7 @@ test.serial(
 
     // give it 2s to start
     t.true(await polling(callback, 2000, 500, 30000))
+    t.true(fs.existsSync(tmpNodeRedDataDir + '/flows.json'))
 
     console.log(JSON.stringify(ctrlMsgHandler.getReportedStates()))
     const reportedStates = ctrlMsgHandler.getReportedStates()
@@ -317,6 +318,9 @@ test.serial(
     t.is(updateRequests[4].state.state, 'removePending')
     t.is(updateRequests[5].state.state, 'removing')
     t.is(reportedStates.state.flow.flow, undefined)
+
+    t.false(fs.existsSync(tmpNodeRedDataDir + '/flows.json'))
+    t.false(fs.existsSync(tmpNodeRedDataDir + '/flows_cred.json'))
   }
 )
 
