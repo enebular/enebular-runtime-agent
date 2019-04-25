@@ -792,6 +792,7 @@ export default class NodeREDController {
         if (code !== 0) {
           let shouldRetry = ProcessUtil.shouldRetryOnCrash(this._retryInfo)
           if (shouldRetry) {
+            clearTimeout(startTimeout)
             this.info(
               'Unexpected exit, restarting service in 1 second. Retry count:' +
                 this._retryInfo.retryCount
