@@ -23,6 +23,10 @@ enebular-agentが標準ではないユーザの下でインストールされて
 
 enebular-agentのPelionポートをアップデートする場合、`--pelion-mode`オプションで利用中のPelionモードを`developer` または`factory`に設定する必要があります。
 
+### 自動起動が無効の場合
+
+enebular-agentが`--no-startup-register`オプションでインストールされている場合、アップデート時にenebular-agentのインストールディレクトリを`--install-dir`オプションで指定する必要があります。
+
 ## アップデートスクリプトによる簡単アップデート実行
 
 アップデートスクリプトをターゲットのデバイスで実行するには、次に示すように wget を使用してダウンロードして実行します。
