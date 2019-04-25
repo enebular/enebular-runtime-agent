@@ -119,3 +119,5 @@ The following describes the update process followed by the update script and upd
 1. All existing enebular-agent configuration and data files are migrated to the new version.
 1. The existing enebular-agent and new enebular-agent are swapped.
 1. The new enebular-agent is started.
+
+Note that even if enebular-agent was already halted at the time of the update, it will still be started at the end of the update process.

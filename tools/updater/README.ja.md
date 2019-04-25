@@ -119,3 +119,5 @@ OPTION                       DESCRIPTION
 1. 既存のenebular-agentの設定やデータファイルが新しいenebular-agentにマイグレーションされます。
 1. 既存のenebular-agentと新しいenebular-agentが交換されます。
 1. 新しいenebular-agentが起動されます。
+
+なお、アップデート時にenebular-agentがすでに停止していた場合でも、アップデート処理の最後で起動されます。
