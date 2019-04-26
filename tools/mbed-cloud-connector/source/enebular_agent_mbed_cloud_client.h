@@ -100,6 +100,13 @@ public:
     void set_agent_info(const char *info);
 
     /**
+     * Sets the ctrl message.
+     * 
+     * @param message Control message
+     */
+    void set_from_device_ctrl_message(const char *message);
+
+    /**
      * Adds a client connection state change callback.
      *
      * Multiple callbackes can be added.
@@ -148,6 +155,8 @@ private:
     M2MResource *_update_auth_state_res;
     M2MResource *_agent_info_res;
     M2MResource *_device_state_change_res;
+    M2MResource *_enebular_msg_to_device_res;
+    M2MResource *_enebular_msg_from_device_res;
 
     unsigned long long _register_connection_id_time;
     unsigned long long _register_device_id_time;
@@ -210,6 +219,8 @@ private:
     void update_auth_state_cb(const char *name);
     void agent_info_cb(const char *name);
     void device_state_change_cb(const char *name);
+    void enebular_msg_to_device_cb(const char *name);
+    void enebular_msg_from_device_cb(const char *name);
 
     //void example_execute_function(void * argument);
 

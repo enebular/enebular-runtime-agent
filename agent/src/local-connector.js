@@ -74,6 +74,9 @@ export default class LocalConnector {
               message.message.message
             )
             break
+          case 'ctrlMessage':
+            connector.sendCtrlMessage(message.message)
+            break
           case 'log':
             localPort._log(
               message.log.level,
@@ -177,6 +180,10 @@ export default class LocalConnector {
 
     this._agent.on('connectorDisconnect', () => {
       this._clientSendMessage('disconnect')
+    })
+
+    this._agent.on('connectorCtrlMessageSend', msg => {
+      this._clientSendMessage('ctrlMessage: ' + JSON.stringify(msg))
     })
 
     this._localServer = await this._startLocalServer(this._connector)

@@ -71,8 +71,11 @@ test.serial(
     let desiredGetReceived = false
     let reportedGetReceived = false
     let statusGetReceived = false
-    server.onDeviceStateGet = (req, res) => {
-      req.body.states.map(state => {
+
+    const ctrlMsgCallback = (connector, msg) => {
+      t.true(msg.type == 'req')
+      t.true(msg.topic == 'deviceState/device/get')
+      msg.body.states.map(state => {
         switch (state.type) {
           case 'desired':
             desiredGetReceived = true
@@ -84,20 +87,18 @@ test.serial(
             statusGetReceived = true
             break
         }
-
-        return null
       })
-
-      res.send({ states: null })
     }
 
     const ret = await createAuthenticatedAgent(
       t,
       server,
       Utils.addNodeRedPortToConfig({}, NodeRedPort),
-      DummyServerPort
+      DummyServerPort,
+      ctrlMsgCallback 
     )
     agent = ret.agent
+
     const callback = () => {
       return desiredGetReceived && reportedGetReceived && statusGetReceived
     }
@@ -106,9 +107,8 @@ test.serial(
 )
 
 test.serial(
-  'DeviceState.3: Device handles server error respond (http error)',
+  'DeviceState.3: Device retries ctrl message sending if timeout',
   async t => {
-    // don't set callback so the dummy server respond 400 error.
     let tmpLogPath = '/tmp/tmp-test-log-' + Utils.randomString()
     const ret = await createAuthenticatedAgent(
       t,
@@ -124,10 +124,15 @@ test.serial(
     )
     agent = ret.agent
 
+    const callback = () => {
+      return false
+    }
+    t.false(await polling(callback, 0, 100, 33000))
+
     const log = fs.readFileSync(tmpLogPath, 'utf8')
     t.true(
       log.includes(
-        'Device state get request failed: Failed response (400 Bad Request)'
+        "Retrying request '1' (2/3) module=connector-messenger"
       )
     )
     fs.unlinkSync(tmpLogPath)
@@ -136,12 +141,34 @@ test.serial(
 )
 
 test.serial(
-  'DeviceState.4: Device handles server error respond (json format error)',
+  'DeviceState.4: Device handles ctrl message error respond',
   async t => {
     let tmpLogPath = '/tmp/tmp-test-log-' + Utils.randomString()
-    server.onDeviceStateGet = (req, res) => {
-      res.send(Buffer.from('bad json string'))
+    let desiredGetReceived = false
+    let reportedGetReceived = false
+    let statusGetReceived = false
+
+    const ctrlMsgCallback = (connector, msg) => {
+      t.true(msg.type == 'req')
+      t.true(msg.topic == 'deviceState/device/get')
+      msg.body.states.map(state => {
+        switch (state.type) {
+          case 'desired':
+            desiredGetReceived = true
+            break
+          case 'reported':
+            reportedGetReceived = true
+            break
+          case 'status':
+            statusGetReceived = true
+            break
+        }
+      })
+      connector.sendCtrlMessage({ type: 'res', id: msg.id })
+      // duplicated message
+      connector.sendCtrlMessage({ type: 'res', id: msg.id })
     }
+
     const ret = await createAuthenticatedAgent(
       t,
       server,
@@ -152,14 +179,15 @@ test.serial(
         },
         NodeRedPort
       ),
-      DummyServerPort
+      DummyServerPort,
+      ctrlMsgCallback 
     )
     agent = ret.agent
 
     const log = fs.readFileSync(tmpLogPath, 'utf8')
     t.true(
       log.includes(
-        'Device state get request failed: Response did not contain JSON'
+        'Failed to get device state: Error response'
       )
     )
     fs.unlinkSync(tmpLogPath)
@@ -167,30 +195,53 @@ test.serial(
   }
 )
 
-async function agentShouldUpdateStatus(t) {
+async function agentShouldUpdateStatus(t, getStateCallback) {
   let deviceStateUpdateReceived = false
   let reportedStates = {}
-  server.onDeviceStateUpdate = (req, res) => {
-    const result = req.body.updates.map(update => {
-      if (update.op === 'set') {
-        objectPath.set(reportedStates, 'state.' + update.path, update.state)
-      } else if (update.op === 'remove') {
-        objectPath.del(reportedStates, 'state.' + update.path)
-      }
-      if (update.type === 'status') deviceStateUpdateReceived = true
-      return {
-        success: true,
-        meta: {}
-      }
-    })
-    res.send({ updates: result })
+  const ctrlMsgCallback = (connector, msg) => {
+    if (msg.topic == 'deviceState/device/get') {
+      const _states = getStateCallback(msg)
+
+      connector.sendCtrlMessage({ 
+        type: 'res',
+        id: msg.id, 
+        res: 'ok', 
+        body: {
+          states: _states
+        } 
+      })
+    }
+    else if (msg.topic == 'deviceState/device/update') {
+      const result = msg.body.updates.map(update => {
+        if (update.op === 'set') {
+          objectPath.set(reportedStates, 'state.' + update.path, update.state)
+        } else if (update.op === 'remove') {
+          objectPath.del(reportedStates, 'state.' + update.path)
+        }
+        if (update.type === 'status') deviceStateUpdateReceived = true
+        return {
+          success: true,
+          meta: {}
+        }
+      })
+
+      connector.sendCtrlMessage({ 
+        type: 'res',
+        id: msg.id, 
+        res: 'ok', 
+        body: {
+          updates: result
+        } 
+      })
+    }
   }
 
-  const ret = await createAuthenticatedAgent(
+ const ret = await createAuthenticatedAgent(
     t,
     server,
     Utils.addNodeRedPortToConfig({}, NodeRedPort),
-    DummyServerPort
+    DummyServerPort,
+    ctrlMsgCallback 
   )
   agent = ret.agent
   const callback = () => {
@@ -205,25 +256,24 @@ async function agentShouldUpdateStatus(t) {
 test.serial(
   'DeviceState.5: Device should update status if status state on server is empty',
   async t => {
-    server.onDeviceStateGet = (req, res) => {
-      let _states = req.body.states.map(state => {
+    const getStateCallback = (msg) => {
+      return msg.body.states.map(state => {
         return {
           type: state.type,
           state: {}
         }
       })
-      res.send({ states: _states })
     }
 
-    await agentShouldUpdateStatus(t)
+    await agentShouldUpdateStatus(t, getStateCallback)
   }
 )
 
 test.serial(
   'DeviceState.6: Device should update status if agent type in status is NOT identical',
   async t => {
-    server.onDeviceStateGet = (req, res) => {
-      let _states = req.body.states.map(state => {
+    const getStateCallback = (msg) => {
+      return msg.body.states.map(state => {
         switch (state.type) {
           case 'desired':
           case 'reported':
@@ -238,18 +288,17 @@ test.serial(
             )
         }
       })
-      res.send({ states: _states })
     }
 
-    await agentShouldUpdateStatus(t)
+    await agentShouldUpdateStatus(t, getStateCallback)
   }
 )
 
 test.serial(
   'DeviceState.7: Device should update status if agent version in status is NOT identical',
   async t => {
-    server.onDeviceStateGet = (req, res) => {
-      let _states = req.body.states.map(state => {
+    const getStateCallback = (msg) => {
+      return msg.body.states.map(state => {
         switch (state.type) {
           case 'desired':
           case 'reported':
@@ -261,38 +310,55 @@ test.serial(
             return Utils.getDummyStatusState('enebular-agent', agentVer + '.1')
         }
       })
-      res.send({ states: _states })
     }
 
-    await agentShouldUpdateStatus(t)
+    await agentShouldUpdateStatus(t, getStateCallback)
   }
 )
 
 test.serial(
   'DeviceState.8: Device should NOT update status if status is identical',
   async t => {
-    let deviceStatusStateUpdateReceived = false
-    server.onDeviceStateGet = (req, res) => {
-      res.send({ states: Utils.getEmptyDeviceState() })
-    }
-    server.onDeviceStateUpdate = (req, res) => {
-      const result = req.body.updates.map(update => {
-        if (update.type === 'status') {
-          deviceStatusStateUpdateReceived = true
-        }
-        return {
-          success: true,
-          meta: {}
-        }
-      })
-      res.send({ updates: result })
+    let deviceStatusStateUpdateReceived = 0
+    const ctrlMsgCallback = (connector, msg) => {
+      if (msg.topic == 'deviceState/device/get') {
+        connector.sendCtrlMessage({ 
+          type: 'res',
+          id: msg.id, 
+          res: 'ok', 
+          body: {
+            states: Utils.getEmptyDeviceState()
+          } 
+        })
+      }
+      else if (msg.topic == 'deviceState/device/update') {
+        const result = msg.body.updates.map(update => {
+          if (update.type === 'status') {
+            deviceStatusStateUpdateReceived = true
+          }
+          return {
+            success: true,
+            meta: {}
+          }
+        })
+
+        connector.sendCtrlMessage({ 
+          type: 'res',
+          id: msg.id, 
+          res: 'ok', 
+          body: {
+            updates: result
+          } 
+        })
+      }
     }
 
     const ret = await createAuthenticatedAgent(
       t,
       server,
       Utils.addNodeRedPortToConfig({}, NodeRedPort),
-      DummyServerPort
+      DummyServerPort,
+      ctrlMsgCallback
     )
     agent = ret.agent
     const callback = () => {
@@ -304,26 +370,30 @@ test.serial(
 
 test.serial('DeviceState.9: Device retries if status updates fail', async t => {
   let deviceStateUpdateReceived = 0
-  server.onDeviceStateGet = (req, res) => {
-    let _states = req.body.states.map(state => {
-      return {
-        type: state.type,
-        state: {}
-      }
-    })
-    res.send({ states: _states })
-  }
-
-  server.onDeviceStateUpdate = (req, res) => {
-    deviceStateUpdateReceived++
-    res.status(400).send({})
+  const ctrlMsgCallback = (connector, msg) => {
+    if (msg.topic == 'deviceState/device/get') {
+      connector.sendCtrlMessage({ 
+        type: 'res',
+        id: msg.id, 
+        res: 'ok', 
+        body: {
+          states: Utils.getEmptyDeviceState()
+        } 
+      })
+    }
+    else if (msg.topic == 'deviceState/device/update') {
+      const result = msg.body.updates.map(update => {
+        deviceStateUpdateReceived++
+      })
+    }
   }
 
   const ret = await createAuthenticatedAgent(
     t,
     server,
     Utils.addNodeRedPortToConfig({}, NodeRedPort),
-    DummyServerPort
+    DummyServerPort,
+    ctrlMsgCallback
   )
   agent = ret.agent
   const callback = () => {
@@ -336,27 +406,44 @@ test.serial(
   'DeviceState.10: Device should update monitoring state if not existed in reported state',
   async t => {
     let monitoringStateUpdateReceived = false
-    server.onDeviceStateGet = (req, res) => {
-      res.send({ states: Utils.getEmptyDeviceState() })
-    }
-    server.onDeviceStateUpdate = (req, res) => {
-      const result = req.body.updates.map(update => {
-        if (update.type === 'reported' && update.path === 'monitoring') {
-          monitoringStateUpdateReceived = true
-        }
-        return {
-          success: true,
-          meta: {}
-        }
-      })
-      res.send({ updates: result })
+    const ctrlMsgCallback = (connector, msg) => {
+      if (msg.topic == 'deviceState/device/get') {
+        connector.sendCtrlMessage({ 
+          type: 'res',
+          id: msg.id, 
+          res: 'ok', 
+          body: {
+            states: Utils.getEmptyDeviceState()
+          } 
+        })
+      }
+      else if (msg.topic == 'deviceState/device/update') {
+        const result = msg.body.updates.map(update => {
+          if (update.type === 'reported' && update.path === 'monitoring') {
+            monitoringStateUpdateReceived = true
+          }
+          return {
+            success: true,
+            meta: {}
+          }
+        })
+        connector.sendCtrlMessage({ 
+          type: 'res',
+          id: msg.id, 
+          res: 'ok', 
+          body: {
+            updates: result
+          } 
+        })
+      }
     }
 
     const ret = await createAuthenticatedAgent(
       t,
       server,
       Utils.addNodeRedPortToConfig({}, NodeRedPort),
-      DummyServerPort
+      DummyServerPort,
+      ctrlMsgCallback
     )
     agent = ret.agent
     const callback = () => {

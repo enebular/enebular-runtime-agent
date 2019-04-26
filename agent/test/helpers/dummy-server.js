@@ -45,7 +45,7 @@ export default class DummyServer extends EventEmitter {
     app.post(DummyServerConfig.authenticationURL, (req, res) => {
       server.emit('authRequest', req.body)
       console.log('auth request', req.body)
-      res.sendStatus(req.body.connectionId === 'return_bad_request' ? 400 : 200)
+      res.status(req.body.connectionId === 'return_bad_request' ? 400 : 200).send({})
     })
     app.post(
       DummyServerConfig.recordLogsURL,
@@ -58,7 +58,7 @@ export default class DummyServer extends EventEmitter {
     )
     app.post(DummyServerConfig.notifyStatusURL, (req, res) => {
       server.emit('notifyStatus', req.body)
-      res.sendStatus(200)
+      res.status(200).send({})
     })
     app.post(DummyServerConfig.deviceStateGetURL, (req, res) => {
       server.emit('deviceStateGet', req.body)
