@@ -37,6 +37,13 @@ module.exports = {
       `${context['newPortBasePath']}/assets`,
       true // might not be created yet
     )
+    Helper.addFileCopy(
+      migration,
+      'enebular-agent flow data file',
+      `${context['portBasePath']}/.enebular-flow.json`,
+      `${context['newPortBasePath']}/.enebular-flow.json`,
+      true // might not be created yet
+    )
     if (context.port == 'awsiot') {
       Helper.addAWSIoTConfigFileCopy(
         migration,
