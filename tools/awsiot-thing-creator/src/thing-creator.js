@@ -45,7 +45,7 @@ export default class ThingCreator {
         policy = policies[0]
       }
     } catch (err) {
-      throw new Error('Failed to list policies, reason:\n' + err.message)
+      throw new Error('Failed to list policies, reason: ' + err.message)
     }
 
     if (!policy) {
@@ -67,7 +67,7 @@ export default class ThingCreator {
           .promise()
         policy = ret.Policy
       } catch (err) {
-        throw new Error('Failed to create policy, reason:\n' + err.message)
+        throw new Error('Failed to create policy, reason: ' + err.message)
       }
     }
 
@@ -80,7 +80,7 @@ export default class ThingCreator {
         .promise()
     } catch (err) {
       throw new Error(
-        'Failed to attach policy to role, reason:\n' + err.message
+        'Failed to attach policy to role, reason: ' + err.message
       )
     }
   }
@@ -94,7 +94,7 @@ export default class ThingCreator {
       roleArn = ret.Role.Arn
     } catch (err) {
       if (err.statusCode !== 404) {
-        throw new Error('Failed to get role, reason:\n' + err.message)
+        throw new Error('Failed to get role, reason: ' + err.message)
       }
       console.log(`Unable to find ${roleName}, creating...`)
       try {
@@ -110,7 +110,7 @@ export default class ThingCreator {
           .promise()
         roleArn = ret.Role.Arn
       } catch (err) {
-        throw new Error('Failed to create role, reason:\n' + err.message)
+        throw new Error('Failed to create role, reason: ' + err.message)
       }
     }
 
@@ -119,7 +119,7 @@ export default class ThingCreator {
       ret = await iam.listAttachedRolePolicies({ RoleName: roleName }).promise()
     } catch (err) {
       throw new Error(
-        'Failed to listAttachedRolePolicies, reason:\n' + err.message
+        'Failed to listAttachedRolePolicies, reason: ' + err.message
       )
     }
 
@@ -159,7 +159,7 @@ export default class ThingCreator {
       endPoint = await iot.describeEndpoint().promise()
     } catch (err) {
       throw new Error(
-        `Get AWS IoT unique endpoint failed. Please check your aws iot configuration, reason:\n${
+        `Get AWS IoT unique endpoint failed. Please check your aws iot configuration, reason: ${
           err.message
         }`
       )
@@ -172,7 +172,7 @@ export default class ThingCreator {
         .promise()
     } catch (err) {
       throw new Error(
-        `Create key pairs and certificate failed, reason:\n${err.message}`
+        `Create key pairs and certificate failed, reason: ${err.message}`
       )
     }
 
@@ -189,7 +189,7 @@ export default class ThingCreator {
           })
           .promise()
       } catch (err) {
-        throw new Error(`Failed to create policy, reason:\n${err.message}`)
+        throw new Error(`Failed to create policy, reason: ${err.message}`)
       }
     }
 
@@ -202,7 +202,7 @@ export default class ThingCreator {
         .promise()
     } catch (err) {
       throw new Error(
-        `Attach policy to certificate failed, reason:\n${err.message}`
+        `Attach policy to certificate failed, reason: ${err.message}`
       )
     }
 
@@ -210,7 +210,7 @@ export default class ThingCreator {
     try {
       thingRet = await iot.createThing({ thingName: thingName }).promise()
     } catch (err) {
-      throw new Error(`Create thing failed, reason:\n${err.message}`)
+      throw new Error(`Create thing failed, reason: ${err.message}`)
     }
 
     try {
@@ -222,7 +222,7 @@ export default class ThingCreator {
         .promise()
     } catch (err) {
       throw new Error(
-        `Attach thing to certificate failed, reason:\n${err.message}`
+        `Attach thing to certificate failed, reason: ${err.message}`
       )
     }
 
@@ -242,7 +242,7 @@ export default class ThingCreator {
       } catch (err) {
         if (err.statusCode !== 401) {
           console.log(err)
-          throw new Error('Failed to get rule, reason:\n' + err.message)
+          throw new Error('Failed to get rule, reason: ' + err.message)
         }
         try {
           await iot
@@ -262,7 +262,7 @@ export default class ThingCreator {
             })
             .promise()
         } catch (err) {
-          throw new Error('Failed to createTopicRule, reason:\n' + err.message)
+          throw new Error('Failed to createTopicRule, reason: ' + err.message)
         }
       }
     }
