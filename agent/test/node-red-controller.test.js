@@ -204,10 +204,7 @@ test.serial(
 
     const updateRequests = ctrlMsgHandler.getUpdateRequest()
     const reportedStates = ctrlMsgHandler.getReportedStates()
-    let callback = async () => {
-      return (updateRequests && updateRequests.length > 2)
-    }
-    t.true(await polling(callback, 5 * 1000, 500, 10000))
+    t.true(await polling(() => { return true }, 5 * 1000, 0, 10 * 1000))
 
     ctrlMsgHandler.flowURLTimeout = false
     const assetId2 = Utils.randomString()
@@ -226,7 +223,7 @@ test.serial(
       state: desiredState.state.flow.flow
     })
 
-    callback = async () => {
+    const callback = async () => {
       if (reportedStates && reportedStates.state
           && reportedStates.state.flow && reportedStates.state.flow.flow
           && reportedStates.state.flow.flow.state === 'deployed')
@@ -311,12 +308,14 @@ test.serial(
 
     console.log(updateRequests)
 
-    t.is(updateRequests[1].state.assetId, assetId)
-    t.is(updateRequests[1].state.state, 'deployPending')
-    t.is(updateRequests[2].state.state, 'deploying')
-    t.is(updateRequests[3].state.state, 'deployed')
-    t.is(updateRequests[4].state.state, 'removePending')
-    t.is(updateRequests[5].state.state, 'removing')
+    let index = updateRequests.length - 1
+    t.is(updateRequests[index].path, 'flow.flow')
+    t.is(updateRequests[index--].op, 'remove')
+    t.is(updateRequests[index].state.assetId, assetId)
+    t.is(updateRequests[index--].state.state, 'removing')
+    t.is(updateRequests[index--].state.state, 'removePending')
+    t.is(updateRequests[index--].state.state, 'deployed')
+    t.is(updateRequests[index--].state.state, 'deploying')
     t.is(reportedStates.state.flow.flow, undefined)
 
     t.false(fs.existsSync(tmpNodeRedDataDir + '/flows.json'))
