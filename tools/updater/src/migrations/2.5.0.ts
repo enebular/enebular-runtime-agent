@@ -48,7 +48,8 @@ module.exports = {
       Helper.addAWSIoTConfigFileCopy(
         migration,
         `${context['portBasePath']}/config.json`,
-        `${context['newPortBasePath']}/config.json`
+        `${context['newPortBasePath']}/config.json`,
+        true // might not be created yet
       )
     }
     if (context.port == 'pelion') {

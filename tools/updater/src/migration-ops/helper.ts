@@ -17,9 +17,12 @@ export default class Helper {
   public static addAWSIoTConfigFileCopy(
     migration: Migration,
     src: string,
-    dst: string
+    dst: string,
+    optional = false
   ): void {
-    migration.push(new AwsiotConfigCopy('AWSIoT config files', src, dst))
+    migration.push(
+      new AwsiotConfigCopy('AWSIoT config files', src, dst, optional)
+    )
   }
 
   public static addNodeJSChange(

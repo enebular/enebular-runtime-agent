@@ -6,8 +6,13 @@ import { MigrateContext } from '../migrator'
 import Utils from '../utils'
 
 export default class AwsiotConfigCopy extends Copy {
-  public constructor(name: string, copyFrom: string, copyTo: string) {
-    super(name, copyFrom, copyTo, false)
+  public constructor(
+    name: string,
+    copyFrom: string,
+    copyTo: string,
+    optional = false
+  ) {
+    super(name, copyFrom, copyTo, optional)
   }
 
   private _ensureAbsolutePath(
