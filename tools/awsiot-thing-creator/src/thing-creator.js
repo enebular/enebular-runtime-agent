@@ -22,7 +22,7 @@ export default class ThingCreator {
     this._awsAccessKeyId = config.awsAccessKeyId
     this._awsSecretAccessKey = config.awsSecretAccessKey
     this._awsIotRegion = config.awsIotRegion
-    this._disableRuleCreation = (config.disableRuleCreation == 'true')
+    this._disableRuleCreation = config.disableRuleCreation === 'true'
   }
 
   async _attachPolicy(
@@ -54,7 +54,10 @@ export default class ThingCreator {
           `./role-policies/${policyName}.json`,
           'utf8'
         )
-        policyDocument = policyDocument.replace('<$$TOPIC_ARN_BASE$$>', iotArnBase)
+        policyDocument = policyDocument.replace(
+          '<$$TOPIC_ARN_BASE$$>',
+          iotArnBase
+        )
         const ret = await iam
           .createPolicy({
             PolicyName: policyName,
@@ -80,6 +83,27 @@ export default class ThingCreator {
         'Failed to attach policy to role, reason:\n' + err.message
       )
     }
+  }
+
+  async _isLegacyPolicy(iam: IAM, policyArn: string): Promise<boolean> {
+    let policy, version
+    try {
+      policy = await iam.getPolicy({ PolicyArn: policyArn }).promise()
+    } catch (err) {
+      throw new Error('Failed to getPolicy, reason:\n' + err.message)
+    }
+    try {
+      version = await iam
+        .getPolicyVersion({
+          PolicyArn: policy.Policy.Arn,
+          VersionId: policy.Policy.DefaultVersionId
+        })
+        .promise()
+    } catch (err) {
+      throw new Error('Failed to getPolicyVersion, reason:\n' + err.message)
+    }
+    const policyDoc = decodeURIComponent(version.PolicyVersion.Document)
+    return !policyDoc.includes('"Resource": "arn:aws:iot:*:')
   }
 
   async _ensureRoleCreated(iotArnBase: string) {
@@ -121,15 +145,69 @@ export default class ThingCreator {
     }
 
     const policyNamesArray = ['enebular_aws_iot_shadow_update']
-    const allPromise = policyNamesArray.map(async name => {
+    const allPromise = policyNamesArray.map(async policyName => {
       const policies = ret.AttachedPolicies.filter(item => {
-        return item.PolicyName === name
+        return item.PolicyName === policyName
       })
       if (policies.length < 1) {
         console.log(
-          `${name} policy is not attached to ${roleName}, attaching...`
+          `${policyName} policy is not attached to ${roleName}, attaching...`
         )
-        return this._attachPolicy(iotArnBase, iam, roleName, name)
+        return this._attachPolicy(iotArnBase, iam, roleName, policyName)
+      } else {
+        const legacy = await this._isLegacyPolicy(iam, policies[0].PolicyArn)
+        if (legacy) {
+          console.log(
+            'Policy is legacy policy, create a new version with latest policy...'
+          )
+          try {
+            ret = await iam
+              .listPolicyVersions({ PolicyArn: policies[0].PolicyArn })
+              .promise()
+          } catch (err) {
+            throw new Error(
+              'Failed to listPolicyVersions, reason:\n' + err.message
+            )
+          }
+          // A managed policy can have up to 5 versions
+          if (ret.Versions.length > 4) {
+            const versionToBeRemoved =
+              ret.Versions[ret.Versions.length - 1].VersionId
+            try {
+              ret = await iam
+                .deletePolicyVersion({
+                  PolicyArn: policies[0].PolicyArn,
+                  VersionId: versionToBeRemoved
+                })
+                .promise()
+            } catch (err) {
+              throw new Error(
+                'Failed to deletePolicyVersion, reason:\n' + err.message
+              )
+            }
+          }
+          try {
+            let policyDocument = fs.readFileSync(
+              `./role-policies/${policyName}.json`,
+              'utf8'
+            )
+            policyDocument = policyDocument.replace(
+              '<$$TOPIC_ARN_BASE$$>',
+              iotArnBase
+            )
+            await iam
+              .createPolicyVersion({
+                PolicyArn: policies[0].PolicyArn,
+                PolicyDocument: policyDocument,
+                SetAsDefault: true
+              })
+              .promise()
+          } catch (err) {
+            throw new Error(
+              'Failed to createPolicyVersion, reason:\n' + err.message
+            )
+          }
+        }
       }
     })
     await Promise.all(allPromise)
@@ -216,10 +294,10 @@ export default class ThingCreator {
     }
 
     if (!this._disableRuleCreation) {
-      const iotArnBase = thingRet.thingArn
+      const iotArnBase = `arn:aws:iot:*:${thingRet.thingArn
         .split(':')
-        .slice(0, 5)
-        .join(':')
+        .slice(4, 5)
+        .join('')}`
       const roleArn = await this._ensureRoleCreated(iotArnBase)
       const enebularShadowUpdateRuleName = 'enebular_shadow_update'
       try {
