@@ -24,6 +24,10 @@ export default class CommandLine {
       'ENEBULAR_AGENT_DOWNLOAD_PATH',
       '--agent-download-path <url>'
     )
+    this.addConfigOption(
+      'ENEBULAR_AGENT_GITHUB_API_PATH',
+      '--agent-github-api-path <url>'
+    )
     this.addConfigOption('ENEBULAR_AGENT_USER', '--user <user>')
     this.addConfigOption(
       'PELION_MODE',
