@@ -230,7 +230,7 @@ ensure_nodejs_version() {
   eval "$1='${NODE_PATH}'"
 }
 
-UPDATER_DOWNLOAD_URL="http://enebular-agent-update-youxin-test.s3-website-ap-southeast-2.amazonaws.com/enebular-agent-updater-latest.tar.gz"
+UPDATER_DOWNLOAD_URL="https://download.enebular.com/enebular-agent-update/latest"
 USER=enebular
 
 declare -a UPDATER_PARAMETER
