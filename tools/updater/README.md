@@ -23,6 +23,10 @@ If enebular-agent was installed under a non-default user, then that user must be
 
 When updating the Pelion port of enebular-agent, the Pelion mode in use must be specified with the `--pelion-mode` option (either `developer` or `factory`).
 
+### When Auto Startup is Disabled
+
+If enebular-agent was installed with the `--no-startup-register` option, then the install directory of enebular-agent must be specified with the `--install-dir` option.
+
 ## Simple Updates Using Update Script
 
 To run the update script on a target device, you can download it with wget and then run it as shown below.
@@ -119,3 +123,5 @@ The following describes the update process followed by the update script and upd
 1. All existing enebular-agent configuration and data files are migrated to the new version.
 1. The existing enebular-agent and new enebular-agent are swapped.
 1. The new enebular-agent is started.
+
+Note that even if enebular-agent was already halted at the time of the update, it will still be started at the end of the update process.
