@@ -45,6 +45,16 @@ export default class Config {
         description: 'the URL PATH to download enebular-agent',
         userExpose: true
       },
+      ENEBULAR_AGENT_GITHUB_API_PATH: {
+        value: 'https://api.github.com/repos/enebular/enebular-runtime-agent',
+        description: 'the URL PATH to enebular-agent github api',
+        userExpose: true
+      },
+      ENEBULAR_AGENT_DOWNLOAD_FROM_GITHUB: {
+        value: true,
+        description: 'download enebular-agent from github',
+        userExpose: true
+      },
       ENEBULAR_AGENT_USER: {
         value: 'enebular',
         description: 'user to run as after being installed',
