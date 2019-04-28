@@ -93,10 +93,11 @@ async function createAgentRunningWithTestNodeRedSettings(
   t.true(await nodeRedIsAlive(NodeRedPort))
 }
 
-test.serial(
-  'NodeRedController.1: Agent deploys flow to Node-Red via ctrl-msg correctly',
-  async t => {
-    const expectedFlowName = 'flow1.json'
+async function createAgentRunningWithDeployedFlow(
+  t: test,
+  flowName: string
+) {
+    const expectedFlowName = flowName
     const expectedFlowJson = fs.readFileSync(
       path.join(__dirname, 'data', expectedFlowName),
       'utf8'
@@ -134,6 +135,17 @@ test.serial(
     t.is(reportedStates.state.flow.flow.assetId, assetId)
     t.is(reportedStates.state.flow.flow.updateId, updateId)
     t.is(reportedStates.state.flow.flow.state, 'deployed')
+    t.true(fs.existsSync(tmpNodeRedDataDir + '/flows.json'))
+
+    return {
+      ctrlMsgHandler: ctrlMsgHandler
+    }
+}
+
+test.serial(
+  'NodeRedController.1: Agent deploys flow to Node-Red via ctrl-msg correctly',
+  async t => {
+    await createAgentRunningWithDeployedFlow(t, 'flow1.json')
   }
 )
 
@@ -246,46 +258,11 @@ test.serial(
 test.serial(
   'NodeRedController.4: Agent remove existing flow via ctrl-msg correctly',
   async t => {
-    const expectedFlowName = 'flow1.json'
-    const expectedFlowJson = fs.readFileSync(
-      path.join(__dirname, 'data', expectedFlowName),
-      'utf8'
-    )
-    const url =
-      'http://127.0.0.1:' +
-      DummyServerPort +
-      '/test/download-flow?flow=' +
-      expectedFlowName
+    const ret = await createAgentRunningWithDeployedFlow(t, 'flow1.json')
+    const ctrlMsgHandler = ret.ctrlMsgHandler
 
-    const assetId = Utils.randomString()
-    const updateId = Utils.randomString()
-    const ctrlMsgHandler = new DummyCtrlMsgHandler()
-    ctrlMsgHandler.setFlow(assetId, updateId)
-    ctrlMsgHandler.setFlowURL(url)
-
-    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler)
-
-    let callback = async () => {
-      const api = new NodeRedAdminApi('http://127.0.0.1:' + NodeRedPort)
-      const flow = await api.getFlow()
-      if (flow) {
-        t.truthy(flow)
-        const expectedFlow = JSON.parse(expectedFlowJson)
-        return Utils.jsonEquals(expectedFlow, flow)
-      }
-      return false
-    }
-
-    // give it 2s to start
-    t.true(await polling(callback, 2000, 500, 30000))
-    t.true(fs.existsSync(tmpNodeRedDataDir + '/flows.json'))
-
-    console.log(JSON.stringify(ctrlMsgHandler.getReportedStates()))
     const reportedStates = ctrlMsgHandler.getReportedStates()
     const updateRequests = ctrlMsgHandler.getUpdateRequest()
-    t.is(reportedStates.state.flow.flow.assetId, assetId)
-    t.is(reportedStates.state.flow.flow.updateId, updateId)
-    t.is(reportedStates.state.flow.flow.state, 'deployed')
 
     const desiredState = Utils.getDummyState('desired', { flow: {} })
     connector.sendMessage('deviceStateChange', {
@@ -296,7 +273,7 @@ test.serial(
       state: desiredState.state.flow
     })
 
-    callback = async () => {
+    const callback = async () => {
       if (reportedStates && reportedStates.state
           && reportedStates.state.flow && !reportedStates.state.flow.flow)
         return true
@@ -311,7 +288,6 @@ test.serial(
     let index = updateRequests.length - 1
     t.is(updateRequests[index].path, 'flow.flow')
     t.is(updateRequests[index--].op, 'remove')
-    t.is(updateRequests[index].state.assetId, assetId)
     t.is(updateRequests[index--].state.state, 'removing')
     t.is(updateRequests[index--].state.state, 'removePending')
     t.is(updateRequests[index--].state.state, 'deployed')
