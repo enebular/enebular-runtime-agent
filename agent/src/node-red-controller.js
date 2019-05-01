@@ -878,12 +878,4 @@ export default class NodeREDController {
     await this._shutdownService()
     await this._startService()
   }
-
-  getStatus() {
-    if (this._cproc) {
-      return 'connected'
-    } else {
-      return 'disconnected'
-    }
-  }
 }
