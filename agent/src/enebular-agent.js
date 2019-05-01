@@ -109,9 +109,6 @@ export default class EnebularAgent extends EventEmitter {
   _monitorIntervalFast: number
   _monitorIntervalFastPeriod: number
   _monitorIntervalNormal: number
-  _notifyStatusActivated: boolean = false
-  _notifyStatusInterval: number
-  _notifyStatusIntervalID: ?number
 
   constructor(options: EnebularAgentOptions) {
     super()
@@ -234,8 +231,6 @@ export default class EnebularAgent extends EventEmitter {
     this._deviceAuth.on('accessTokenClear', () => this._onAccessTokenClear())
 
     this._configFile = configFile
-    this._notifyStatusInterval = this._monitorIntervalNormal
-    this._notifyStatusActivated = false
     this._agentState = 'init'
   }
 
@@ -351,9 +346,6 @@ export default class EnebularAgent extends EventEmitter {
 
   async shutdown() {
     this._deviceAuth.endAuthAttempt()
-    if (this._monitoringActive) {
-      await this._agentMan.notifyStatus('disconnected')
-    }
     await this._nodeRed.shutdownService()
     this._nodeRed.activate(false)
     this._assetManager.activate(false)
@@ -436,7 +428,6 @@ export default class EnebularAgent extends EventEmitter {
     }
 
     this._logManager.activateEnebular(this._monitoringActive)
-    this._activateStatusNotification(this._monitoringActive)
   }
 
   _refreshMonitoringInterval() {
@@ -457,30 +448,6 @@ export default class EnebularAgent extends EventEmitter {
     this._logManager.configureEnebular({
       sendInterval: interval
     })
-    this._setStatusNotificationInterval(interval)
-  }
-
-  _updateStatusNotificationInterval() {
-    if (this._notifyStatusIntervalID) {
-      clearInterval(this._notifyStatusIntervalID)
-      this._notifyStatusIntervalID = null
-    }
-    if (this._notifyStatusActivated) {
-      this._agentMan.notifyStatus(this._nodeRed.getStatus())
-      this._notifyStatusIntervalID = setInterval(() => {
-        this._agentMan.notifyStatus(this._nodeRed.getStatus())
-      }, this._notifyStatusInterval * 1000)
-    }
-  }
-
-  _setStatusNotificationInterval(interval: number) {
-    this._notifyStatusInterval = interval
-    this._updateStatusNotificationInterval()
-  }
-
-  _activateStatusNotification(active: boolean) {
-    this._notifyStatusActivated = active
-    this._updateStatusNotificationInterval()
   }
 
   _loadAgentConfig() {
