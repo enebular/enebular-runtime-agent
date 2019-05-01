@@ -231,7 +231,7 @@ export default class ThingCreator {
 
     let endPoint
     try {
-      endPoint = await iot.describeEndpoint().promise()
+      endPoint = await iot.describeEndpoint({ endpointType: "iot:Data-ATS" }).promise()
     } catch (err) {
       throw new Error(
         `Get AWS IoT unique endpoint failed. Please check your aws iot configuration, reason: ${
@@ -397,7 +397,7 @@ export default class ThingCreator {
 
     try {
       await this._download(
-        'https://www.symantec.com/content/en/us/enterprise/verisign/roots/VeriSign-Class%203-Public-Primary-Certification-Authority-G5.pem',
+        'https://www.amazontrust.com/repository/AmazonRootCA1.pem',
         path.resolve(configSavePath, rootCertRelativePath)
       )
     } catch (err) {
