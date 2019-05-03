@@ -54,7 +54,8 @@ test.afterEach.always('cleanup', async t => {
 
 async function createAgentRunningWithTestNodeRedSettings(
   t: test,
-  ctrlMsgCallback
+  ctrlMsgCallback,
+  agentConfig
 ) {
   tmpNodeRedDataDir = '/tmp/.node-red-config-' + Utils.randomString()
   fs.ensureDirSync(tmpNodeRedDataDir)
@@ -71,18 +72,24 @@ async function createAgentRunningWithTestNodeRedSettings(
     tmpNodeRedDataDir + '/settings.js'
   )
 
+  let config = {
+    NODE_RED_DATA_DIR: tmpNodeRedDataDir,
+    NODE_RED_COMMAND:
+      './node_modules/.bin/node-red -p ' +
+      NodeRedPort +
+      ' -s ' +
+      tmpNodeRedDataDir +
+      '/settings.js'
+  }
+
+  if (agentConfig) {
+    config = Object.assign(config, agentConfig)
+  }
+
   const ret = await createAuthenticatedAgent(
     t,
     server,
-    {
-      NODE_RED_DATA_DIR: tmpNodeRedDataDir,
-      NODE_RED_COMMAND:
-        './node_modules/.bin/node-red -p ' +
-        NodeRedPort +
-        ' -s ' +
-        tmpNodeRedDataDir +
-        '/settings.js'
-    },
+    config,
     DummyServerPort,
     ctrlMsgCallback
   )
@@ -90,7 +97,6 @@ async function createAgentRunningWithTestNodeRedSettings(
   connector = ret.connector
 
   // console.log("user directory: ", agent._nodeRed._getDataDir())
-  t.true(await nodeRedIsAlive(NodeRedPort))
 }
 
 async function createAgentRunningWithDeployedFlow(
@@ -150,7 +156,7 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedController.2: Agent handles flow deploying via ctrl-msg fail (flow/device/getFlowDataUrl return error)',
+  'NodeRedController.2: Agent handles flow deploy failure via ctrl-msg (flow/device/getFlowDataUrl return error)',
   async t => {
     const expectedFlowName = 'flow1.json'
     const expectedFlowJson = fs.readFileSync(
@@ -169,6 +175,7 @@ test.serial(
     ctrlMsgHandler.setFlow(assetId, updateId)
 
     await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler)
+    t.true(await nodeRedIsAlive(NodeRedPort))
 
     const reportedStates = ctrlMsgHandler.getReportedStates()
     const callback = async () => {
@@ -191,7 +198,58 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedController.3: Deploying second flow while the first deployment is in progress',
+  'NodeRedController.3: Agent handles flow deploy failure via ctrl-msg (Node-RED start fail)',
+  async t => {
+    const expectedFlowName = "flow1.json"
+    const expectedFlowJson = fs.readFileSync(
+      path.join(__dirname, 'data', expectedFlowName),
+      'utf8'
+    )
+    const url =
+      'http://127.0.0.1:' +
+      DummyServerPort +
+      '/test/download-flow?flow=' +
+      expectedFlowName
+
+    const assetId = Utils.randomString()
+    const updateId = Utils.randomString()
+    const ctrlMsgHandler = new DummyCtrlMsgHandler()
+    ctrlMsgHandler.setFlow(assetId, updateId)
+    ctrlMsgHandler.setFlowURL(url)
+
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
+        NODE_RED_COMMAND:
+          './node_modules/.bin/node-red-invalid -p ' +
+          NodeRedPort +
+          ' -s ' +
+          tmpNodeRedDataDir +
+          '/settings.js'
+    })
+
+    const reportedStates = ctrlMsgHandler.getReportedStates()
+    const updateRequests = ctrlMsgHandler.getUpdateRequest()
+    const callback = async () => {
+      if (reportedStates && reportedStates.state
+          && reportedStates.state.flow && reportedStates.state.flow.flow
+          && reportedStates.state.flow.flow.state === 'deployFail')
+        return true
+      return false
+    }
+
+    // give it 2s to start
+    t.true(await polling(callback, 2000, 500, 20000))
+
+    t.is(reportedStates.state.flow.flow.assetId, assetId)
+    t.is(reportedStates.state.flow.flow.updateId, updateId)
+    t.is(reportedStates.state.flow.flow.state, 'deployFail')
+    t.is(reportedStates.state.flow.flow.message, 'Too many update attempts')
+    t.is(ctrlMsgHandler.flowURLAttemptCount, 3)
+  }
+)
+
+
+test.serial(
+  'NodeRedController.4: Deploying second flow while the first deployment is in progress',
   async t => {
     const expectedFlowName = 'flow1.json'
     const expectedFlowJson = fs.readFileSync(
@@ -213,6 +271,7 @@ test.serial(
     ctrlMsgHandler.flowURLTimeout = true
 
     await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler)
+    t.true(await nodeRedIsAlive(NodeRedPort))
 
     const updateRequests = ctrlMsgHandler.getUpdateRequest()
     const reportedStates = ctrlMsgHandler.getReportedStates()
@@ -256,7 +315,7 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedController.4: Agent remove existing flow via ctrl-msg correctly',
+  'NodeRedController.5: Agent remove existing flow via ctrl-msg correctly',
   async t => {
     const ret = await createAgentRunningWithDeployedFlow(t, 'flow1.json')
     const ctrlMsgHandler = ret.ctrlMsgHandler
@@ -283,8 +342,6 @@ test.serial(
     // give it 2s to start
     t.true(await polling(callback, 2000, 500, 30000))
 
-    console.log(updateRequests)
-
     let index = updateRequests.length - 1
     t.is(updateRequests[index].path, 'flow.flow')
     t.is(updateRequests[index--].op, 'remove')
@@ -299,5 +356,94 @@ test.serial(
   }
 )
 
+test.serial(
+  'NodeRedController.6: Agent remove absent flow via ctrl-msg',
+  async t => {
+    const ctrlMsgHandler = new DummyCtrlMsgHandler()
+
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler)
+    t.true(await nodeRedIsAlive(NodeRedPort))
+
+    const reportedStates = ctrlMsgHandler.getReportedStates()
+    const updateRequests = ctrlMsgHandler.getUpdateRequest()
+
+    const desiredState = Utils.getDummyState('desired', { flow: {} })
+    connector.sendMessage('deviceStateChange', {
+      type: 'desired',
+      op: 'remove',
+      path: 'flow.flow',
+      meta: desiredState.meta,
+      state: desiredState.state.flow
+    })
+
+    const callback = async () => {
+      if (updateRequests && updateRequests.length > 1)
+        return true
+      return false
+    }
+
+    // give it 2s to start
+    t.true(await polling(callback, 2000, 500, 30000))
+    t.is(updateRequests[0].path, 'monitoring')
+    t.is(updateRequests[1].path, 'monitoring')
+  }
+)
+
+test.serial(
+  'NodeRedController.7: Agent multiple re-deploy requests via ctrl-msg',
+  async t => {
+    const ret = await createAgentRunningWithDeployedFlow(t, 'flow1.json')
+    const ctrlMsgHandler = ret.ctrlMsgHandler
+
+    const reportedStates = ctrlMsgHandler.getReportedStates()
+    const updateRequests = ctrlMsgHandler.getUpdateRequest()
+
+    const assetId2 = Utils.randomString()
+    const updateId2 = Utils.randomString()
+    const rawDesiredState = {}
+    objectPath.set(rawDesiredState, 'flow.flow', {
+        assetId: assetId2,
+        updateId: updateId2
+    })
+    const desiredState = Utils.getDummyState('desired', rawDesiredState)
+    connector.sendMessage('deviceStateChange', {
+      type: 'desired',
+      op: 'set',
+      path: 'flow.flow',
+      meta: desiredState.meta,
+      state: desiredState.state.flow.flow
+    })
+
+    const assetId3 = Utils.randomString()
+    const updateId3 = Utils.randomString()
+    const rawDesiredState3 = {}
+    objectPath.set(rawDesiredState3, 'flow.flow', {
+        assetId: assetId3,
+        updateId: updateId3
+    })
+    const desiredState3 = Utils.getDummyState('desired', rawDesiredState3)
+    connector.sendMessage('deviceStateChange', {
+      type: 'desired',
+      op: 'set',
+      path: 'flow.flow',
+      meta: desiredState3.meta,
+      state: desiredState3.state.flow.flow
+    })
+
+    const callback = async () => {
+      if (reportedStates && reportedStates.state
+          && reportedStates.state.flow && reportedStates.state.flow.flow
+          && reportedStates.state.flow.flow.state === 'deployed'
+          && reportedStates.state.flow.flow.assetId === assetId3)
+        return true
+      return false
+    }
+    t.true(await polling(callback, 2000, 500, 30000))
+
+    t.is(reportedStates.state.flow.flow.assetId, assetId3)
+    t.is(reportedStates.state.flow.flow.updateId, updateId3)
+    t.is(reportedStates.state.flow.flow.state, 'deployed')
+  }
+)
 
 
