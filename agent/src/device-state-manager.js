@@ -263,13 +263,29 @@ export default class DeviceStateManager extends EventEmitter {
       this._info('Failed to apply state changes: ' + err.message)
     }
 
+    const refreshStates = []
+
     if (this._stateIsValid(newState)) {
       this._debug('State change applied successfully')
       this._setStateForType(type, newState)
       this._notifyStateChange(type, path)
     } else {
       this._info('Updated state is not valid. Will fully refresh.')
-      this._refreshStatesFromAgentManager([type])
+      refreshStates.push(type)
+    }
+
+    const possibleStates = ['desired', 'reported', 'status']
+    for (let possibleState of possibleStates) {
+      if (
+        !this._stateForTypeExists(possibleState) &&
+        !refreshStates.includes(possibleState)
+      ) {
+        refreshStates.push(possibleState)
+      }
+    }
+
+    if (refreshStates.length > 0) {
+      this._refreshStatesFromAgentManager(refreshStates)
     }
   }
 
@@ -383,7 +399,7 @@ export default class DeviceStateManager extends EventEmitter {
       this._refreshStatesFromAgentManager(['desired', 'reported', 'status'])
 
       this._refreshIntervalID = setInterval(() => {
-        this._refreshStatesFromAgentManager(['desired'])
+        this._refreshStatesFromAgentManager(['desired', 'reported', 'status'])
       }, this._refreshInterval * 1000)
     }
   }
