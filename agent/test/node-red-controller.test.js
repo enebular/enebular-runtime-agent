@@ -446,4 +446,87 @@ test.serial(
   }
 )
 
+test.serial(
+  'NodeRedController.8: Agent handles both deploy methods correctly',
+  async t => {
+    process.env.ENEBULAR_FLOW_STATE_PATH = '/tmp/enebular-flow-' + Utils.randomString()
+    // update the flow
+    const expectedFlowName = 'flow1.json'
+    const expectedFlowJson = fs.readFileSync(
+      path.join(__dirname, 'data', expectedFlowName),
+      'utf8'
+    )
+    const url =
+      'http://127.0.0.1:' +
+      DummyServerPort +
+      '/test/download-flow?flow=' +
+      expectedFlowName
 
+    const ctrlMsgHandler = new DummyCtrlMsgHandler()
+
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler)
+
+    // old method
+    connector.sendMessage('deploy', {
+      downloadUrl: url
+    })
+
+    let callback = async () => {
+      const api = new NodeRedAdminApi('http://127.0.0.1:' + NodeRedPort)
+      const flow = await api.getFlow()
+      if (flow) {
+        t.truthy(flow)
+        const expectedFlow = JSON.parse(expectedFlowJson)
+        return Utils.jsonEquals(expectedFlow, flow)
+      }
+      return false
+    }
+
+    // give it 2s to shutdown
+    t.true(await polling(callback, 2000, 500, 30000))
+
+    const assetId = Utils.randomString()
+    const updateId = Utils.randomString()
+    const rawDesiredState = {}
+    objectPath.set(rawDesiredState, 'flow.flow', {
+        assetId: assetId,
+        updateId: updateId
+    })
+
+    ctrlMsgHandler.setFlow(assetId, updateId)
+    ctrlMsgHandler.setFlowURL(url)
+
+    const desiredState = Utils.getDummyState('desired', rawDesiredState)
+    // ctrl message method
+    connector.sendMessage('deviceStateChange', {
+      type: 'desired',
+      op: 'set',
+      path: 'flow.flow',
+      meta: desiredState.meta,
+      state: desiredState.state.flow.flow
+    })
+
+    const reportedStates = ctrlMsgHandler.getReportedStates()
+    const updateRequests = ctrlMsgHandler.getUpdateRequest()
+
+    callback = async () => {
+      const api = new NodeRedAdminApi('http://127.0.0.1:' + NodeRedPort)
+      const flow = await api.getFlow()
+      if (flow) {
+        t.truthy(flow)
+        const expectedFlow = JSON.parse(expectedFlowJson)
+        return Utils.jsonEquals(expectedFlow, flow)
+      }
+      return false
+    }
+
+    // give it 2s to start
+    t.true(await polling(callback, 2000, 500, 30000))
+
+    t.is(reportedStates.state.flow.flow.assetId, assetId)
+    t.is(reportedStates.state.flow.flow.updateId, updateId)
+    t.is(reportedStates.state.flow.flow.state, 'deployed')
+    t.true(fs.existsSync(tmpNodeRedDataDir + '/flows.json'))
+  }
+)
+ 
