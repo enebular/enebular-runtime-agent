@@ -148,6 +148,63 @@ async function createAgentRunningWithDeployedFlow(
     }
 }
 
+async function DeployFlowCtrlMsg(
+  t: test,
+  ctrlMsgHandler,
+) {
+    const expectedFlowName = "flow1.json"
+    const expectedFlowJson = fs.readFileSync(
+      path.join(__dirname, 'data', expectedFlowName),
+      'utf8'
+    )
+    const url =
+      'http://127.0.0.1:' +
+      DummyServerPort +
+      '/test/download-flow?flow=' +
+      expectedFlowName
+
+    const assetId = Utils.randomString()
+    const updateId = Utils.randomString()
+    const rawDesiredState = {}
+    objectPath.set(rawDesiredState, 'flow.flow', {
+        assetId: assetId,
+        updateId: updateId
+    })
+
+    ctrlMsgHandler.setFlow(assetId, updateId)
+    ctrlMsgHandler.setFlowURL(url)
+
+    const desiredState = Utils.getDummyState('desired', rawDesiredState)
+    // ctrl message method
+    connector.sendMessage('deviceStateChange', {
+      type: 'desired',
+      op: 'set',
+      path: 'flow.flow',
+      meta: desiredState.meta,
+      state: desiredState.state.flow.flow
+    })
+
+    const reportedStates = ctrlMsgHandler.getReportedStates()
+    const updateRequests = ctrlMsgHandler.getUpdateRequest()
+
+    const callback = async () => {
+      if (reportedStates && reportedStates.state
+          && reportedStates.state.flow && reportedStates.state.flow.flow
+          && reportedStates.state.flow.flow.state === 'deployed'
+          && reportedStates.state.flow.flow.assetId === assetId)
+        return true
+      return false
+    }
+
+    // give it 2s to start
+    t.true(await polling(callback, 2000, 500, 30000))
+
+    t.is(reportedStates.state.flow.flow.assetId, assetId)
+    t.is(reportedStates.state.flow.flow.updateId, updateId)
+    t.is(reportedStates.state.flow.flow.state, 'deployed')
+    t.true(fs.existsSync(tmpNodeRedDataDir + '/flows.json'))
+}
+
 test.serial(
   'NodeRedController.1: Agent deploys flow to Node-Red via ctrl-msg correctly',
   async t => {
@@ -390,7 +447,7 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedController.7: Agent multiple re-deploy requests via ctrl-msg',
+  'NodeRedController.7: Agent handles multiple re-deploy requests via ctrl-msg',
   async t => {
     const ret = await createAgentRunningWithDeployedFlow(t, 'flow1.json')
     const ctrlMsgHandler = ret.ctrlMsgHandler
@@ -485,48 +542,38 @@ test.serial(
     // give it 2s to shutdown
     t.true(await polling(callback, 2000, 500, 30000))
 
-    const assetId = Utils.randomString()
-    const updateId = Utils.randomString()
-    const rawDesiredState = {}
-    objectPath.set(rawDesiredState, 'flow.flow', {
-        assetId: assetId,
-        updateId: updateId
-    })
-
-    ctrlMsgHandler.setFlow(assetId, updateId)
-    ctrlMsgHandler.setFlowURL(url)
-
-    const desiredState = Utils.getDummyState('desired', rawDesiredState)
-    // ctrl message method
-    connector.sendMessage('deviceStateChange', {
-      type: 'desired',
-      op: 'set',
-      path: 'flow.flow',
-      meta: desiredState.meta,
-      state: desiredState.state.flow.flow
-    })
-
-    const reportedStates = ctrlMsgHandler.getReportedStates()
-    const updateRequests = ctrlMsgHandler.getUpdateRequest()
-
-    callback = async () => {
-      const api = new NodeRedAdminApi('http://127.0.0.1:' + NodeRedPort)
-      const flow = await api.getFlow()
-      if (flow) {
-        t.truthy(flow)
-        const expectedFlow = JSON.parse(expectedFlowJson)
-        return Utils.jsonEquals(expectedFlow, flow)
-      }
-      return false
-    }
-
-    // give it 2s to start
-    t.true(await polling(callback, 2000, 500, 30000))
-
-    t.is(reportedStates.state.flow.flow.assetId, assetId)
-    t.is(reportedStates.state.flow.flow.updateId, updateId)
-    t.is(reportedStates.state.flow.flow.state, 'deployed')
-    t.true(fs.existsSync(tmpNodeRedDataDir + '/flows.json'))
+    await DeployFlowCtrlMsg(t, ctrlMsgHandler)
   }
 )
+
+test.serial(
+  'NodeRedController.9: Agent refreshes uninitialised states when state is changed',
+  async t => {
+    const expectedFlowName = "flow1.json"
+    const expectedFlowJson = fs.readFileSync(
+      path.join(__dirname, 'data', expectedFlowName),
+      'utf8'
+    )
+    const url =
+      'http://127.0.0.1:' +
+      DummyServerPort +
+      '/test/download-flow?flow=' +
+      expectedFlowName
+
+    const ctrlMsgHandler = new DummyCtrlMsgHandler()
+    // This casues agent fails to refresh state at boot
+    ctrlMsgHandler.ctrlMsgRequestTimeout = true
+
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
+        ENEBULAR_CONNECTOR_MESSENGER_REQ_RETYR_TIMEOUT: 1000
+    })
+    t.true(await nodeRedIsAlive(NodeRedPort))
+    await polling(() => { return true }, 5000, 0, 5000)
+
+    ctrlMsgHandler.ctrlMsgRequestTimeout = false
+    await DeployFlowCtrlMsg(t, ctrlMsgHandler)
+  }
+)
+
+
  
