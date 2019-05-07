@@ -136,7 +136,6 @@ async function createAgentRunningWithDeployedFlow(
     // give it 2s to start
     t.true(await polling(callback, 2000, 500, 30000))
 
-    console.log(JSON.stringify(ctrlMsgHandler.getReportedStates()))
     const reportedStates = ctrlMsgHandler.getReportedStates()
     t.is(reportedStates.state.flow.flow.assetId, assetId)
     t.is(reportedStates.state.flow.flow.updateId, updateId)
@@ -197,8 +196,10 @@ async function DeployFlowCtrlMsg(
     }
 
     // give it 2s to start
-    t.true(await polling(callback, 2000, 500, 30000))
+    await polling(callback, 2000, 500, 120 * 1000)
 
+    // console.log(reportedStates)
+    // console.log(updateRequests)
     t.is(reportedStates.state.flow.flow.assetId, assetId)
     t.is(reportedStates.state.flow.flow.updateId, updateId)
     t.is(reportedStates.state.flow.flow.state, 'deployed')
@@ -565,13 +566,60 @@ test.serial(
     ctrlMsgHandler.ctrlMsgRequestTimeout = true
 
     await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
-        ENEBULAR_CONNECTOR_MESSENGER_REQ_RETYR_TIMEOUT: 1000
+        ENEBULAR_CONNECTOR_MESSENGER_REQ_RETYR_TIMEOUT: 1000,
+        ENEBULAR_FLOW_STATE_PATH: '/tmp/enebular-flow-' + Utils.randomString()
     })
     t.true(await nodeRedIsAlive(NodeRedPort))
     await polling(() => { return true }, 5000, 0, 5000)
 
     ctrlMsgHandler.ctrlMsgRequestTimeout = false
     await DeployFlowCtrlMsg(t, ctrlMsgHandler)
+  }
+)
+
+test.serial(
+  'NodeRedController.10: Agent recovers from ctrl message request retry',
+  async t => {
+    const ctrlMsgHandler = new DummyCtrlMsgHandler()
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
+        ENEBULAR_CONNECTOR_MESSENGER_REQ_RETYR_TIMEOUT: 3000,
+        ENEBULAR_FLOW_STATE_PATH: '/tmp/enebular-flow-' + Utils.randomString()
+    })
+    t.true(await nodeRedIsAlive(NodeRedPort))
+    await polling(() => { return true }, 5000, 0, 5000)
+
+    ctrlMsgHandler.ctrlMsgRequestTimeout = true
+
+    setTimeout(() => {
+      ctrlMsgHandler.ctrlMsgRequestTimeout = false
+    }, 15 * 1000)
+    await DeployFlowCtrlMsg(t, ctrlMsgHandler)
+  }
+)
+
+test.serial(
+  'NodeRedController.11: Agent refreshes state periodically',
+  async t => {
+    const ctrlMsgHandler = new DummyCtrlMsgHandler()
+    ctrlMsgHandler.ctrlMsgRequestTimeout = true
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
+        ENEBULAR_FLOW_STATE_PATH: '/tmp/enebular-flow-' + Utils.randomString(),
+        ENEBULAR_CONNECTOR_MESSENGER_REQ_RETYR_TIMEOUT: 500,
+        ENEBULAR_DEVICE_STATE_REFRESH_INTERVAL: 10
+    })
+    t.true(await nodeRedIsAlive(NodeRedPort))
+    await polling(() => { return true }, 8000, 0, 8000)
+
+    ctrlMsgHandler.ctrlMsgRequestTimeout = false
+    const reportedStates = ctrlMsgHandler.getReportedStates()
+    const callback = async () => {
+      if (reportedStates && reportedStates.state
+          && reportedStates.state.monitoring
+          && reportedStates.state.monitoring.enable)
+        return true
+      return false
+    }
+    t.true(await polling(callback, 2000, 500, 30000))
   }
 )
 
