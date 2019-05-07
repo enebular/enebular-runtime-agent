@@ -736,7 +736,13 @@ export default class NodeREDController {
   }
 
   async startService(editSession: EditSession) {
-    return this._queueAction(() => this._startService(editSession))
+    return this._queueAction(async () => {
+      try {
+        await this._startService(editSession)
+      } catch (err) {
+        this.error('Failed to start Node-RED service: ' + err.message)
+      }
+    })
   }
 
   async _startService(editSession: EditSession) {
@@ -797,8 +803,13 @@ export default class NodeREDController {
               'Unexpected exit, restarting service in 1 second. Retry count:' +
                 this._retryInfo.retryCount
             )
-            setTimeout(() => {
-              this._startService(editSession)
+            setTimeout(async () => {
+              try {
+                await this._startService(editSession)
+                resolve()
+              } catch (err) {
+                reject(err)
+              }
             }, 1000)
           } else {
             this.info(
@@ -806,6 +817,7 @@ export default class NodeREDController {
                 this._retryInfo.retryCount
               }) exceed max.`
             )
+            reject(new Error('Too many retry to start Node-RED service'))
             /* Other restart strategies (change port, etc.) could be tried here. */
           }
         }
