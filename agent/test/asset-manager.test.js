@@ -98,13 +98,6 @@ test.serial(
 
     console.log(JSON.stringify(updateReq, null, 4))
 
-    t.is(updateReq[1].state.state, 'deploying')
-    t.is(updateReq[2].state.state, 'deployPending')
-    t.is(updateReq[3].state.state, 'deploying')
-    t.is(updateReq[4].state.state, 'deployPending')
-    t.is(updateReq[5].state.state, 'deploying')
-    t.is(updateReq[6].state.state, 'deployFail')
-
     const state = JSON.parse(fs.readFileSync(tmpAssetStatePath, 'utf8'))
     // console.log(JSON.stringify(state, null, 4))
     t.is(state[0].id, newAssetId)
@@ -150,13 +143,6 @@ test.serial(
     agent = ret.agent
 
     await waitAssetProcessing(agent, 0, 10000)
-
-    t.is(updateReq[1].state.state, 'deploying')
-    t.is(updateReq[2].state.state, 'deployPending')
-    t.is(updateReq[3].state.state, 'deploying')
-    t.is(updateReq[4].state.state, 'deployPending')
-    t.is(updateReq[5].state.state, 'deploying')
-    t.is(updateReq[6].state.state, 'deployFail')
 
     const state = JSON.parse(fs.readFileSync(tmpAssetStatePath, 'utf8'))
     console.log(JSON.stringify(state, null, 4))

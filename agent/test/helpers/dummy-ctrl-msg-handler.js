@@ -7,14 +7,13 @@ export default class DummyCtrlMsgHandler {
   _flowURL: string
   _updateRequests: Array
   _reportedStates: Object
-  flowURLAttemptCount: number
-  flowURLTimeout: boolean
+  flowURLAttemptCount =  0
+  flowURLTimeout = false
+  ctrlMsgRequestTimeout = false
 
   constructor() {
     this._updateRequests = []
     this._reportedStates = {}
-    this.flowURLAttemptCount = 0
-    this.flowURLTimeout = false
   }
 
   setFlow(assetId, updateId) {
@@ -35,6 +34,8 @@ export default class DummyCtrlMsgHandler {
   }
 
   ctrlMsgCallback(connector, msg) {
+    if (this.ctrlMsgRequestTimeout)
+      return
     let deviceStates = Utils.getEmptyDeviceState()
     if (msg.topic == 'deviceState/device/get') {
       const rawDesiredState = {}

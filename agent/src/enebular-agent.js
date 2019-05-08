@@ -169,7 +169,8 @@ export default class EnebularAgent extends EventEmitter {
 
     this._connectorMessenger = new ConnectorMessenger(
       this._connector,
-      this._log
+      this._log,
+      this._config.get('ENEBULAR_CONNECTOR_MESSENGER_REQ_RETYR_TIMEOUT')
     )
     this._connectorMessenger.on('requestConnectorCtrlMessageSend', msg =>
       this._onRequestConnectorCtrlMessageSend(msg)
