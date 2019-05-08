@@ -44,29 +44,6 @@ export default class AgentManagerMediator {
     return !!this._baseUrl && !!this._accessToken
   }
 
-  async notifyStatus(status: string) {
-    if (!this._accessRequirementsConfigured()) {
-      throw new Error('Access requirements not configured')
-    }
-
-    this.debug(`Notifying status (${status})...`)
-
-    try {
-      await postJSON(
-        `${this._baseUrl}/notify-status`,
-        JSON.stringify({ status }),
-        {
-          headers: {
-            Authorization: `Bearer ${this._accessToken}`
-          }
-        }
-      )
-      this.debug('Status notified')
-    } catch (err) {
-      this.debug('Failed to notify status: ' + err.message)
-    }
-  }
-
   async sendLog(filename: string) {
     if (!this._accessRequirementsConfigured()) {
       throw new Error('Access requirements not configured')

@@ -173,6 +173,9 @@ function setupThingShadow(config: AWSIoTConfig) {
     payload: JSON.stringify(willPayload)
   }
   const shadow = awsIot.thingShadow(config)
+  const toDeviceTopic = `enebular/things/${thingName}/msg/to_device`
+
+  shadow.subscribe(toDeviceTopic)
 
   shadow.on('connect', () => {
     info('Connected to AWS IoT')
@@ -231,7 +234,11 @@ function setupThingShadow(config: AWSIoTConfig) {
   })
 
   shadow.on('message', (topic, payload) => {
-    debug('AWS IoT message', topic, payload)
+    if (topic === toDeviceTopic) {
+      connector.sendCtrlMessage(JSON.parse(payload))
+    } else {
+      debug('AWS IoT message', topic, payload)
+    }
   })
 
   shadow.on('delta', async (thingName, stateObject) => {
@@ -307,6 +314,16 @@ function onConnectorInit() {
   agent.on('connectorDisconnect', () => {
     canRegisterThingShadow = false
     updateThingShadowRegisterState()
+  })
+
+  agent.on('connectorCtrlMessageSend', msg => {
+    thingShadow.publish(
+      `enebular/things/${thingName}/msg/from_device`,
+      JSON.stringify(msg),
+      {
+        qos: 1
+      }
+    )
   })
 
   connector.updateActiveState(true)

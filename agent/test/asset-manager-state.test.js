@@ -89,19 +89,26 @@ test.serial(
       integrity
     )
 
-    // console.log(JSON.stringify(desiredState, null, 2))
-
-    server.onDeviceStateGet = (req, res) => {
-      ret.deviceStates[0] = desiredState
-      res.send({ states: ret.deviceStates })
-    }
+    agent.removeAllListeners('connectorCtrlMessageSend')
+    agent.on('connectorCtrlMessageSend', msg => {
+      if (msg.topic == 'deviceState/device/get') {
+        ret.deviceStates[0] = desiredState
+        ret.connector.sendCtrlMessage({
+          type: 'res',
+          id: msg.id,
+          res: 'ok',
+          body: {
+            states: ret.deviceStates
+          }
+        })
+      }
+    })
 
     // send message without meta data will trigger a desired status refresh.
     ret.connector.sendMessage('deviceStateChange', {
       type: 'desired',
       op: 'remove',
-      path: 'assets.assets.' + newAssetId,
-      state: desiredState.state.assets.assets[newAssetId]
+      path: 'assets.assets.wrong',
     })
 
     await waitAssetProcessing(agent, 2000, 10000)
@@ -139,15 +146,26 @@ test.serial(
 
     ret.updateRequests.length = 0
 
-    server.onDeviceStateGet = (req, res) => {
-      ret.deviceStates[1] = ret.reportedStates
-      res.send({ states: ret.deviceStates })
-    }
+    agent.removeAllListeners('connectorCtrlMessageSend')
+    agent.on('connectorCtrlMessageSend', msg => {
+      if (msg.topic == 'deviceState/device/get') {
+        ret.deviceStates[1] = ret.reportedStates
+        ret.connector.sendCtrlMessage({
+          type: 'res',
+          id: msg.id,
+          res: 'ok',
+          body: {
+            states: ret.deviceStates
+          }
+        })
+      }
+    })
+
     // send message without meta data will trigger a state refresh.
     ret.connector.sendMessage('deviceStateChange', {
       type: 'desired',
       op: 'remove',
-      state: {}
+      path: 'assets.assets.wrong',
     })
 
     await waitAssetProcessing(agent, 1000, 10000)
@@ -183,16 +201,48 @@ test.serial(
 
     ret.updateRequests.length = 0
 
-    server.onDeviceStateGet = (req, res) => {
-      ret.deviceStates[1] = reported
-      res.send({ states: ret.deviceStates })
-    }
+    agent.removeAllListeners('connectorCtrlMessageSend')
+    agent.on('connectorCtrlMessageSend', msg => {
+      if (msg.topic == 'deviceState/device/get') {
+        ret.deviceStates[1] = reported
+        ret.connector.sendCtrlMessage({
+          type: 'res',
+          id: msg.id,
+          res: 'ok',
+          body: {
+            states: ret.deviceStates
+          }
+        })
+      }
+      else if (msg.topic == 'deviceState/device/update') {
+        const result = msg.body.updates.map(update => {
+          ret.updateRequests.push(update)
+          if (update.op === 'set') {
+            objectPath.set(ret.reportedStates, 'state.' + update.path, update.state)
+          } else if (update.op === 'remove') {
+            objectPath.del(ret.reportedStates, 'state.' + update.path)
+          }
+          return {
+            success: true,
+            meta: {}
+          }
+        })
+        ret.connector.sendCtrlMessage({
+          type: 'res',
+          id: msg.id,
+          res: 'ok',
+          body: {
+            updates: result
+          }
+        })
+      }
+    })
 
     // send message without meta data will trigger a state refresh.
     ret.connector.sendMessage('deviceStateChange', {
       type: 'desired',
       op: 'remove',
-      state: {}
+      path: 'assets.assets.wrong',
     })
 
     await waitAssetProcessing(agent, 2000, 10000)
@@ -253,10 +303,43 @@ test.serial(
       }
     })
 
-    server.onDeviceStateGet = (req, res) => {
-      ret.deviceStates[1] = ret.reportedStates
-      res.send({ states: ret.deviceStates })
-    }
+    agent.removeAllListeners('connectorCtrlMessageSend')
+    agent.on('connectorCtrlMessageSend', msg => {
+      if (msg.topic == 'deviceState/device/get') {
+        ret.deviceStates[1] = ret.reportedStates
+        ret.connector.sendCtrlMessage({
+          type: 'res',
+          id: msg.id,
+          res: 'ok',
+          body: {
+            states: ret.deviceStates
+          }
+        })
+      }
+      else if (msg.topic == 'deviceState/device/update') {
+        const result = msg.body.updates.map(update => {
+          ret.updateRequests.push(update)
+          if (update.op === 'set') {
+            objectPath.set(ret.reportedStates, 'state.' + update.path, update.state)
+          } else if (update.op === 'remove') {
+            objectPath.del(ret.reportedStates, 'state.' + update.path)
+          }
+          return {
+            success: true,
+            meta: {}
+          }
+        })
+        ret.connector.sendCtrlMessage({
+          type: 'res',
+          id: msg.id,
+          res: 'ok',
+          body: {
+            updates: result
+          }
+        })
+      }
+    })
+
     // send message without meta data will trigger a state refresh.
     ret.connector.sendMessage('deviceStateChange', {
       type: 'desired',

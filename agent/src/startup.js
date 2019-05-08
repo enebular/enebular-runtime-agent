@@ -78,7 +78,7 @@ export default class Startup {
       appendEnvs = Startup._appendEnvironment(
         appendEnvs,
         key,
-        overriddenItems[key]
+        overriddenItems[key].toString()
       )
     })
 

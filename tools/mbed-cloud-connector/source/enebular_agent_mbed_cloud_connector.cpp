@@ -52,6 +52,9 @@ bool EnebularAgentMbedCloudConnector::startup(void *iface)
     _agent->on_agent_info(
         AgentInfoCB(this, &EnebularAgentMbedCloudConnector::agent_info_cb)
     );
+    _agent->on_ctrl_message(
+        CtrlMessageCB(this, &EnebularAgentMbedCloudConnector::ctrl_message_cb)
+    );
 
     /* connect to agent */
     if (!_agent->connect()) {
@@ -290,6 +293,11 @@ void EnebularAgentMbedCloudConnector::agent_info_cb(const char *info)
     _mbed_cloud_client->set_agent_info(info);
 }
 
+void EnebularAgentMbedCloudConnector::ctrl_message_cb(const char *message)
+{
+    _mbed_cloud_client->set_from_device_ctrl_message(message);
+}
+
 void EnebularAgentMbedCloudConnector::client_connection_change_cb()
 {
     bool connected = _mbed_cloud_client->is_connected();
@@ -332,6 +340,10 @@ void EnebularAgentMbedCloudConnector::agent_manager_message_cb(const char *type,
     _logger->log_console(DEBUG, "Agent-man message: type:%s, content:%s", type, content);
 
     if (_agent->is_connected()) {
-        _agent->send_message(type, content);
+        if (strcmp(type, "ctrlMessage") == 0) {
+            _agent->send_ctrl_message(content);
+        } else {
+            _agent->send_message(type, content);
+        }
     }
 }

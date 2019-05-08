@@ -68,6 +68,12 @@ The current ports are:
 
 To use enebular-agent with the enebular editor, enebular-agent must be started in developer mode by specifying the `--dev-mode` option. This option can be specified both when using the install script in the "Quick Setup" section and when starting enebular-agent manually.
 
+## Updating
+
+For information on updating enebular-agent to a newer version, please refer to the updater readme file.
+
+- [Updater README](tools/updater/README.md)
+
 ## Quick Setup
 
 You can quickly set up enebular-agent on a Debian based device (like a Raspberry Pi) by using the install script. The best way to use the script is by running it as a command with an ssh client on your development PC. To use the script you'll need to have the following.

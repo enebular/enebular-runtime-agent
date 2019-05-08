@@ -6,7 +6,7 @@ import path from 'path'
 import EnebularAgent from '../src/enebular-agent'
 import ConnectorService from '../src/connector-service'
 import Utils from './helpers/utils'
-import { nodeRedIsAlive, agentCleanup } from './helpers/agent-helper'
+import { nodeRedIsAlive, agentCleanup, polling } from './helpers/agent-helper'
 import DummyServerConfig from './helpers/dummy-server-config'
 
 const DummyServerPort = 3001
@@ -34,9 +34,7 @@ test.serial('Env.1: Agent starts if node-red path is valid', async t => {
     connector: connector,
     config: agentConfig
   })
-  t.notThrows(async () => {
-    await agent.startup()
-  }, Error)
+  await t.notThrowsAsync(agent.startup())
   t.true(await nodeRedIsAlive(30001))
 })
 
@@ -54,7 +52,7 @@ test.serial(
       connector: connector,
       config: agentConfig
     })
-    await t.throws(agent.startup(), Error)
+    await t.throwsAsync(agent.startup(), Error)
   }
 )
 
@@ -71,7 +69,7 @@ test.serial(
       connector: connector,
       config: agentConfig
     })
-    await t.throws(agent.startup(), Error)
+    await t.throwsAsync(agent.startup(), Error)
   }
 )
 
@@ -114,7 +112,7 @@ test.serial('Env.5: Agent takes nodeRedCommand to launch node-red', async t => {
     connector: connector,
     config: agentConfig
   })
-  await t.notThrows(agent.startup(), Error)
+  await t.notThrowsAsync(agent.startup())
 
   t.true(await nodeRedIsAlive(30000))
 })
@@ -124,26 +122,28 @@ test.serial(
   async t => {
     const connector = new ConnectorService()
     let agentConfig = Utils.createDefaultAgentConfig(1990)
+    let tmpLogPath = '/tmp/tmp-test-log-' + Utils.randomString()
     agentConfig['NODE_RED_COMMAND'] = './node_modules/.bin/node-red-invalid'
+    agentConfig['ENEBULAR_ENABLE_FILE_LOG'] = true
+    agentConfig['ENEBULAR_LOG_FILE_PATH'] = tmpLogPath
 
     agent = new EnebularAgent({
       portBasePath: path.resolve(__dirname, '../'),
       connector: connector,
       config: agentConfig
     })
-    await t.notThrows(
-      agent
-        .startup()
-        .then(function(error) {
-          console.log(error)
-          t.fail()
-        })
-        .catch(function(error) {
-          console.log(error)
-          t.pass()
-        }),
-      Error
+    await t.notThrowsAsync(agent.startup())
+
+    // wait for 2 second for creating log file
+    await polling(()=>{}, 2000, 0, 0)
+
+    const log = fs.readFileSync(tmpLogPath, 'utf8')
+    t.true(
+      log.includes(
+        "Failed to start Node-RED service"
+      )
     )
+    fs.unlinkSync(tmpLogPath)
   }
 )
 
@@ -160,7 +160,7 @@ test.serial('Env.7: Agent starts normally with no config file', async t => {
     config: agentConfig
   })
   return new Promise(async (resolve, reject) => {
-    await t.notThrows(agent.startup(), Error)
+    await t.notThrowsAsync(agent.startup())
     connector.updateActiveState(true)
     setTimeout(() => {
       fs.unlink(agentConfig['ENEBULAR_CONFIG_PATH'], err => {
@@ -184,7 +184,7 @@ test.serial('Env.8: Agent accepts all supported config items', async t => {
     config: agentConfig
   })
   return new Promise(async (resolve, reject) => {
-    await t.notThrows(agent.startup(), Error)
+    await t.notThrowsAsync(agent.startup())
     connector.updateActiveState(true)
     setTimeout(() => {
       fs.unlink(agentConfig['ENEBULAR_CONFIG_PATH'], err => {
@@ -221,7 +221,7 @@ test.serial('Env.9: Agent handles an invalid config file', async t => {
     config: agentConfig
   })
   return new Promise(async (resolve, reject) => {
-    await t.notThrows(agent.startup(), Error)
+    await t.notThrowsAsync(agent.startup())
     connector.updateActiveState(true)
     setTimeout(() => {
       fs.unlink(agentConfig['ENEBULAR_CONFIG_PATH'], err => {

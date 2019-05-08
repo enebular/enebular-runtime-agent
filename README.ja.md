@@ -68,6 +68,12 @@ enebular-agent を利用するには、利用する外部サービスに合わ�
 
 enebular-agent を enebular editor と連携して利用するには、`--dev-mode`オプションを指定して enebular-agent を開発者用モードで起動する必要があります。このオプションは、下記「クイックセットアップ」の項で説明されているインストール用のスクリプトを利用する場合にも、 enebular-agent を手動で起動する場合にも指定することができます。
 
+## アップデート
+
+enebular-agentのアップデート方法の詳細情報については、アップデータの readme ファイルを参照してください。
+
+- [Updater README](tools/updater/README.ja.md)
+
 ## クイックセットアップ
 
 インストール用のスクリプトを使用して enebular-agent を Raspberry Pi のような Debian ベースのデバイスで素早くセットアップできます。 このスクリプトは ssh クライアントを使用して開発用の PC 上のコマンドとして実行することをお勧めします。スクリプトの使用要件は以下の通りです。
