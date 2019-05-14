@@ -22,7 +22,14 @@ export type NodeREDConfig = {
   command: string,
   killSignal: string,
   pidFile: string,
-  assetsDataPath: string
+  assetsDataPath: string,
+  allowEditSessions: boolean
+}
+
+export type NodeREDAction = {
+  promiseFunction: () => Promise<any>,
+  resolve: (ret: any) => void,
+  reject: () => void
 }
 
 const moduleName = 'node-red'
@@ -52,8 +59,8 @@ export default class NodeREDController {
   _pidFile: string
   _assetsDataPath: string
   _cproc: ?ChildProcess = null
-  _actions: Array<() => Promise<any>> = []
-  _isProcessing: ?Promise<void> = null
+  _actions: Array<NodeREDAction> = []
+  _currentAction: ?NodeREDAction = null
   _log: Logger
   _logManager: LogManager
   _nodeRedLog: Logger
@@ -351,7 +358,7 @@ export default class NodeREDController {
     }
   }
 
-  _setFlowState(state: string, msg: string) {
+  _setFlowState(state: ?string, msg: ?string) {
     this._flowState.state = state
     this._flowState.changeErrMsg = msg
     this._flowState.changeTs = Date.now()
@@ -504,34 +511,38 @@ export default class NodeREDController {
     })
   }
 
-  async _queueAction(fn: () => Promise<any>) {
-    this.debug('Queuing action')
-    this._actions.push(fn)
-    if (this._isProcessing) {
-      await this._isProcessing
-    } else {
-      await this._processActions()
-    }
+  async _queueAction(promiseFunction: () => Promise<any>) {
+    return new Promise(async (resolve, reject) => {
+      this.debug('Queuing action')
+      this._actions.push({
+        promiseFunction: promiseFunction,
+        resolve: resolve,
+        reject: reject
+      })
+
+      if (!this._currentAction) {
+        await this._processNextAction()
+      }
+    })
   }
 
-  async _processActions() {
-    this.debug('Processing actions:', this._actions.length)
-    this._isProcessing = (async () => {
-      while (this._actions.length > 0) {
-        const action = this._actions.shift()
-        await action()
-      }
-    })()
-    try {
-      await this._isProcessing
-      this._isProcessing = null
-    } catch (err) {
-      while (this._actions.length > 0) {
-        this._actions.pop()
-      }
-      this._isProcessing = null
-      throw err
+  async _processNextAction() {
+    this._currentAction = this._actions.shift()
+    if (!this._currentAction) {
+      return false
     }
+
+    this.debug('Pending promises count:', this._actions.length + 1)
+
+    try {
+      const ret = await this._currentAction.promiseFunction()
+      this._currentAction.resolve(ret)
+      this._processNextAction()
+    } catch (err) {
+      this._currentAction.reject(err)
+      this._processNextAction()
+    }
+    return true
   }
 
   async cmdFetchAndUpdateFlow(params: { downloadUrl: string }) {
@@ -736,13 +747,7 @@ export default class NodeREDController {
   }
 
   async startService(editSession: EditSession) {
-    return this._queueAction(async () => {
-      try {
-        await this._startService(editSession)
-      } catch (err) {
-        this.error('Failed to start Node-RED service: ' + err.message)
-      }
-    })
+    return this._queueAction(() => this._startService(editSession))
   }
 
   async _startService(editSession: EditSession) {

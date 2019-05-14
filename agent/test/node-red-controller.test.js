@@ -120,7 +120,9 @@ async function createAgentRunningWithDeployedFlow(
     ctrlMsgHandler.setFlow(assetId, updateId)
     ctrlMsgHandler.setFlowURL(url)
 
-    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler)
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
+      ENEBULAR_FLOW_STATE_PATH: '/tmp/enebular-flow-' + Utils.randomString(),
+    })
 
     const callback = async () => {
       const api = new NodeRedAdminApi('http://127.0.0.1:' + NodeRedPort)
@@ -232,7 +234,9 @@ test.serial(
     const ctrlMsgHandler = new DummyCtrlMsgHandler()
     ctrlMsgHandler.setFlow(assetId, updateId)
 
-    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler)
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
+      ENEBULAR_FLOW_STATE_PATH: '/tmp/enebular-flow-' + Utils.randomString(),
+    })
     t.true(await nodeRedIsAlive(NodeRedPort))
 
     const reportedStates = ctrlMsgHandler.getReportedStates()
@@ -276,12 +280,13 @@ test.serial(
     ctrlMsgHandler.setFlowURL(url)
 
     await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
-        NODE_RED_COMMAND:
-          './node_modules/.bin/node-red-invalid -p ' +
-          NodeRedPort +
-          ' -s ' +
-          tmpNodeRedDataDir +
-          '/settings.js'
+      ENEBULAR_FLOW_STATE_PATH: '/tmp/enebular-flow-' + Utils.randomString(),
+      NODE_RED_COMMAND:
+        './node_modules/.bin/node-red-invalid -p ' +
+        NodeRedPort +
+        ' -s ' +
+        tmpNodeRedDataDir +
+        '/settings.js'
     })
 
     const reportedStates = ctrlMsgHandler.getReportedStates()
@@ -328,7 +333,9 @@ test.serial(
     // first flow return 
     ctrlMsgHandler.flowURLTimeout = true
 
-    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler)
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
+      ENEBULAR_FLOW_STATE_PATH: '/tmp/enebular-flow-' + Utils.randomString(),
+    })
     t.true(await nodeRedIsAlive(NodeRedPort))
 
     const updateRequests = ctrlMsgHandler.getUpdateRequest()
@@ -419,7 +426,9 @@ test.serial(
   async t => {
     const ctrlMsgHandler = new DummyCtrlMsgHandler()
 
-    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler)
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
+      ENEBULAR_FLOW_STATE_PATH: '/tmp/enebular-flow-' + Utils.randomString(),
+    })
     t.true(await nodeRedIsAlive(NodeRedPort))
 
     const reportedStates = ctrlMsgHandler.getReportedStates()
@@ -507,7 +516,6 @@ test.serial(
 test.serial(
   'NodeRedController.8: Agent handles both deploy methods correctly',
   async t => {
-    process.env.ENEBULAR_FLOW_STATE_PATH = '/tmp/enebular-flow-' + Utils.randomString()
     // update the flow
     const expectedFlowName = 'flow1.json'
     const expectedFlowJson = fs.readFileSync(
@@ -522,7 +530,9 @@ test.serial(
 
     const ctrlMsgHandler = new DummyCtrlMsgHandler()
 
-    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler)
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
+      ENEBULAR_FLOW_STATE_PATH: '/tmp/enebular-flow-' + Utils.randomString(),
+    })
 
     // old method
     connector.sendMessage('deploy', {
