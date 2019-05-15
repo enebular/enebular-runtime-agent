@@ -505,11 +505,6 @@ export default class NodeREDController {
   _registerHandler(emitter: EventEmitter) {
     emitter.on('update-flow', params => this.cmdFetchAndUpdateFlow(params))
     emitter.on('deploy', params => this.cmdFetchAndUpdateFlow(params))
-    emitter.on('start', () => this.startService())
-    emitter.on('restart', () => this.restartService())
-    emitter.on('shutdown', () => {
-      this.shutdownService()
-    })
   }
 
   async _queueAction(promiseFunction: () => Promise<any>) {
