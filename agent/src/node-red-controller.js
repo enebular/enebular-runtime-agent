@@ -68,6 +68,7 @@ export default class NodeREDController {
   _allowEditSessions: boolean = false
   _inited: boolean = false
   _active: boolean = false
+  _shutdownRequested: boolean = false
 
   constructor(
     deviceStateMan: DeviceStateManager,
@@ -757,6 +758,9 @@ export default class NodeREDController {
       this.info('Starting service...')
     }
 
+    if (this._shutdownRequested) {
+      throw(new Error('Stopping start service since shutdown is requested.'))
+    }
     let signaledSuccess = false
     return new Promise((resolve, reject) => {
       if (fs.existsSync(this._pidFile)) {
@@ -838,7 +842,10 @@ export default class NodeREDController {
   }
 
   async shutdownService() {
-    return this._queueAction(() => this._shutdownService())
+    this._shutdownRequested = true
+    // clear all the previous actions, but wait for the last one if have
+    this._actions = []
+    return this._queueAction(async () => this._shutdownService())
   }
 
   async _shutdownService() {
