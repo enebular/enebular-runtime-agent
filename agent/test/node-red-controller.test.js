@@ -647,6 +647,28 @@ function flowEnableRequest(connector, enable, _desiredState) {
   })
 }
 
+function reportedFlowEnableIs(reportedStates, enable) {
+  const callback = () => {
+    if (reportedStates && reportedStates.state
+        && reportedStates.state.flow
+        && reportedStates.state.flow.enable === enable)
+      return true
+    return false
+  }
+  return polling(callback, 0, 500, 10000)
+}
+
+function statusFlowStateIs(statusStates, state) {
+  const callback = () => {
+    if (statusStates && statusStates.state
+        && statusStates.state.flow
+        && statusStates.state.flow.state === state)
+      return true
+    return false
+  }
+  return polling(callback, 0, 500, 10000)
+}
+
 test.serial(
   'NodeRedController.12: Agent handles flow enable and disable',
   async t => {
@@ -658,18 +680,25 @@ test.serial(
     t.true(await nodeRedIsAlive(NodeRedPort))
 
     const reportedStates = ctrlMsgHandler.getReportedStates()
+    const statusStates = ctrlMsgHandler.getStatusStates()
     const updateRequests = ctrlMsgHandler.getUpdateRequest()
 
     flowEnableRequest(connector, false)
     t.true(await waitNodeRedToDie(NodeRedPort))
-    t.false(reportedStates.state.flow.enable)
+    // reported: flow.enable == false
+    t.true(await reportedFlowEnableIs(reportedStates, false))
+    // status: flow.state == stopped
+    t.true(await statusFlowStateIs(statusStates, 'stopped'))
 
     flowEnableRequest(connector, true)
     const callback = async () => {
       return await nodeRedIsAlive(NodeRedPort)
     }
     t.true(await polling(callback, 2000, 500, 30000))
-    t.true(reportedStates.state.flow.enable)
+    // reported: flow.enable == true
+    t.true(await reportedFlowEnableIs(reportedStates, true))
+    // status: flow.state == running
+    t.true(await statusFlowStateIs(statusStates, 'running'))
   }
 )
 
@@ -684,6 +713,7 @@ test.serial(
     t.true(await nodeRedIsAlive(NodeRedPort))
 
     const reportedStates = ctrlMsgHandler.getReportedStates()
+    const statusStates = ctrlMsgHandler.getStatusStates()
     const updateRequests = ctrlMsgHandler.getUpdateRequest()
 
     flowEnableRequest(connector, false)
@@ -696,9 +726,11 @@ test.serial(
     const callback = async () => {
       return await nodeRedIsAlive(NodeRedPort)
     }
-    t.true(await polling(callback, 10000, 500, 30000))
-    t.true(reportedStates.state.flow.enable)
-    console.log(updateRequests)
+    t.true(await polling(callback, 2000, 500, 30000))
+    // reported: flow.enable == true
+    t.true(await reportedFlowEnableIs(reportedStates, true))
+    // status: flow.state == running
+    t.true(await statusFlowStateIs(statusStates, 'running'))
   }
 )
 
@@ -709,19 +741,26 @@ test.serial(
     const ctrlMsgHandler = ret.ctrlMsgHandler
 
     const reportedStates = ctrlMsgHandler.getReportedStates()
+    const statusStates = ctrlMsgHandler.getStatusStates()
     const desiredStates = ctrlMsgHandler.getDesiredStates()
     const updateRequests = ctrlMsgHandler.getUpdateRequest()
 
     flowEnableRequest(connector, false, desiredStates)
     t.true(await waitNodeRedToDie(NodeRedPort))
-    t.false(reportedStates.state.flow.enable)
+    // reported: flow.enable == false
+    t.true(await reportedFlowEnableIs(reportedStates, false))
+    // status: flow.state == stopped
+    t.true(await statusFlowStateIs(statusStates, 'stopped'))
 
     flowEnableRequest(connector, true, desiredStates)
     const callback = async () => {
       return await nodeRedIsAlive(NodeRedPort)
     }
     t.true(await polling(callback, 2000, 500, 30000))
-    t.true(reportedStates.state.flow.enable)
+    // reported: flow.enable == true
+    t.true(await reportedFlowEnableIs(reportedStates, true))
+    // status: flow.state == running
+    t.true(await statusFlowStateIs(statusStates, 'running'))
 
     const expectedFlowJson = fs.readFileSync(
       path.join(__dirname, 'data', 'flow1.json'),

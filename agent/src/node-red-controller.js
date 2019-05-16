@@ -388,6 +388,7 @@ export default class NodeREDController {
   _setFlowStatus(state: string, msg: ?string) {
     this._flowStatus.state = state
     this._flowStatus.message = msg
+    this._deviceStateMan.updateState('status', 'set', 'flow', this._flowStatus)
 
     this.debug('Flow status:')
     this.debug('  state: ' + this._flowStatus.state)
@@ -890,6 +891,9 @@ export default class NodeREDController {
             /* Other restart strategies (change port, etc.) could be tried here. */
           }
         }
+        else {
+          this._setFlowStatus('stopped', null)
+        }
         this._removePIDFile()
       })
       cproc.once('error', err => {
@@ -917,7 +921,6 @@ export default class NodeREDController {
         cproc.once('exit', () => {
           this.info('Service ended')
           this._cproc = null
-          this._setFlowStatus('stopped', null)
           resolve()
         })
         cproc.kill(this._killSignal)

@@ -8,6 +8,7 @@ export default class DummyCtrlMsgHandler {
   _updateRequests: Array
   _reportedStates: Object
   _desiredStates: Object
+  _statusStates: Object
   flowURLAttemptCount =  0
   flowURLTimeout = false
   ctrlMsgRequestTimeout = false
@@ -16,6 +17,7 @@ export default class DummyCtrlMsgHandler {
     this._updateRequests = []
     this._reportedStates = {}
     this._desiredStates = {}
+    this._statusStates = {}
   }
 
   setFlow(assetId, updateId) {
@@ -25,6 +27,10 @@ export default class DummyCtrlMsgHandler {
 
   setFlowURL(url) {
     this._flowURL = url
+  }
+
+  getStatusStates() {
+    return this._statusStates
   }
 
   getDesiredStates() {
@@ -65,7 +71,10 @@ export default class DummyCtrlMsgHandler {
       const result = msg.body.updates.map(update => {
         this._updateRequests.push(update)
         if (update.op === 'set') {
-          objectPath.set(this._reportedStates, 'state.' + update.path, update.state)
+          if (update.type === 'reported')
+            objectPath.set(this._reportedStates, 'state.' + update.path, update.state)
+          if (update.type === 'status')
+            objectPath.set(this._statusStates, 'state.' + update.path, update.state)
         } else if (update.op === 'remove') {
           objectPath.del(this._reportedStates, 'state.' + update.path)
         }
