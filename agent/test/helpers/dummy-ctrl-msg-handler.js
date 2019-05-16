@@ -7,6 +7,7 @@ export default class DummyCtrlMsgHandler {
   _flowURL: string
   _updateRequests: Array
   _reportedStates: Object
+  _desiredStates: Object
   flowURLAttemptCount =  0
   flowURLTimeout = false
   ctrlMsgRequestTimeout = false
@@ -14,6 +15,7 @@ export default class DummyCtrlMsgHandler {
   constructor() {
     this._updateRequests = []
     this._reportedStates = {}
+    this._desiredStates = {}
   }
 
   setFlow(assetId, updateId) {
@@ -23,6 +25,10 @@ export default class DummyCtrlMsgHandler {
 
   setFlowURL(url) {
     this._flowURL = url
+  }
+
+  getDesiredStates() {
+    return this._desiredStates
   }
 
   getReportedStates() {
@@ -38,14 +44,13 @@ export default class DummyCtrlMsgHandler {
       return
     let deviceStates = Utils.getEmptyDeviceState()
     if (msg.topic == 'deviceState/device/get') {
-      const rawDesiredState = {}
       if (this._flowAssetsId) {
-        objectPath.set(rawDesiredState, 'flow.flow', {
+        objectPath.set(this._desiredStates, 'flow.flow', {
             assetId: this._flowAssetsId,
             updateId: this._flowUpdateId
         })
       }
-      const desiredState = Utils.getDummyState('desired', rawDesiredState)
+      const desiredState = Utils.getDummyState('desired', this._desiredStates)
       deviceStates[0] = desiredState
       connector.sendCtrlMessage({
         type: 'res',

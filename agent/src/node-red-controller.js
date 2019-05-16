@@ -46,6 +46,11 @@ type NodeRedFlowPackage = {
   editSession?: EditSession
 }
 
+type FlowStatus = {
+  state: string,
+  messenge?: string
+}
+
 export default class NodeREDController {
   _deviceStateMan: DeviceStateManager
   _connectorMessenger: ConnectorMessenger
@@ -69,6 +74,7 @@ export default class NodeREDController {
   _inited: boolean = false
   _active: boolean = false
   _shutdownRequested: boolean = false
+  _flowStatus: FlowStatus = { state: "stopped" }
 
   constructor(
     deviceStateMan: DeviceStateManager,
@@ -292,6 +298,13 @@ export default class NodeREDController {
       }
     }
 
+    if (desiredState.hasOwnProperty('enable')) {
+      if (this._flowState.enable !== desiredState.enable) {
+        this._flowState.pendingEnable = desiredState.enable
+        change = true
+      }
+    }
+
     this.debug('Flow state: ' + JSON.stringify(this._flowState, null, 2))
 
     if (change) {
@@ -310,6 +323,12 @@ export default class NodeREDController {
     let reportedState = this._deviceStateMan.getState('reported', 'flow')
     if (!reportedState) {
       reportedState = {}
+    }
+
+    // Handle flow.enable
+    if (this._flowState.enable !== reportedState.enable) {
+      this.debug(`Updating reported flow enable ${reportedState.enable} => ${this._flowState.enable}`)
+      this._deviceStateMan.updateState('reported', 'set', 'flow.enable', this._flowState.enable)
     }
 
     // Handle flow.flow
@@ -366,6 +385,18 @@ export default class NodeREDController {
     this._updateFlowReportedState()
   }
 
+  _setFlowStatus(state: string, msg: ?string) {
+    this._flowStatus.state = state
+    this._flowStatus.message = msg
+
+    this.debug('Flow status:')
+    this.debug('  state: ' + this._flowStatus.state)
+    if (this._flowStatus.message)
+      this.debug('  message: ' + this._flowStatus.message)
+    if (this._flowState.controlSrc)
+      this.debug('  contrlsrc: ' + this._flowState.controlSrc)
+  }
+
   async _processPendingFlowChanges() {
     if (this._flowStateProcessingChanges) {
       return
@@ -373,7 +404,7 @@ export default class NodeREDController {
     this._flowStateProcessingChanges = true
 
     while (this._active) {
-      if (!this._flowState.pendingChange) {
+      if (this._flowState.pendingChange === null && this._flowState.pendingEnable === null) {
         break
       }
 
@@ -381,99 +412,117 @@ export default class NodeREDController {
       let pendingChange = this._flowState.pendingChange
       let pendingAssetId = this._flowState.pendingAssetId
       let pendingUpdateId = this._flowState.pendingUpdateId
+      let pendingEnable = this._flowState.pendingEnable
       this._flowState.pendingChange = null
       this._flowState.pendingAssetId = null
       this._flowState.pendingUpdateId = null
+      this._flowState.pendingEnable = null
 
       // Process the change
-      let success
-      switch (pendingChange) {
-        case 'deploy':
-          // Update attempt count handling
-          if (
-            pendingAssetId !== this._flowState.lastAttemptedAssetId ||
-            pendingUpdateId !== this._flowState.lastAttemptedUpdateId
-          ) {
-            this._flowState.lastAttemptedAssetId = pendingAssetId
-            this._flowState.lastAttemptedUpdateId = pendingUpdateId
-            this._flowState.updateAttemptCount = 0
-          }
-          this._flowState.updateAttemptCount++
-          this._saveFlowState()
+      if (pendingChange !== null) {
+        switch (pendingChange) {
+          case 'deploy':
+            // Update attempt count handling
+            if (
+              pendingAssetId !== this._flowState.lastAttemptedAssetId ||
+              pendingUpdateId !== this._flowState.lastAttemptedUpdateId
+            ) {
+              this._flowState.lastAttemptedAssetId = pendingAssetId
+              this._flowState.lastAttemptedUpdateId = pendingUpdateId
+              this._flowState.updateAttemptCount = 0
+            }
+            this._flowState.updateAttemptCount++
+            this._saveFlowState()
 
-          // Make the pending update the current one
-          this._flowState.assetId = pendingAssetId
-          this._flowState.updateId = pendingUpdateId
+            // Make the pending update the current one
+            this._flowState.assetId = pendingAssetId
+            this._flowState.updateId = pendingUpdateId
 
-          // Handle too many attempts
-          if (this._flowState.updateAttemptCount > 3) {
-            this.info(`Deploy failed maximum number of times (3)`)
-            this._flowState.updateAttemptCount = 0
-            // TODO: better actual error message capture and reporting
-            this._setFlowState('deployFail', 'Too many update attempts')
-            break
-          }
+            // Handle too many attempts
+            if (this._flowState.updateAttemptCount > 3) {
+              this.info(`Deploy failed maximum number of times (3)`)
+              this._flowState.updateAttemptCount = 0
+              // TODO: better actual error message capture and reporting
+              this._setFlowState('deployFail', 'Too many update attempts')
+              break
+            }
 
-          // report deploying
-          this._setFlowState('deploying', null)
+            // report deploying
+            this._setFlowState('deploying', null)
 
-          try {
-            await this.removeFlow()
-          } catch (err) {
-            this.info('Existing flow remove failed: ' + err.message)
-          }
+            try {
+              await this.removeFlow()
+            } catch (err) {
+              this.info('Existing flow remove failed: ' + err.message)
+            }
 
-          // deploy
-          this.info(`Deploying flow '${pendingAssetId}'...`)
-          try {
-            const downloadUrl = await this._getFlowDataUrl(
-              this._flowState.assetId,
-              this._flowState.updateId
-            )
-            await this.fetchAndUpdateFlow(downloadUrl)
-            this.info(`Deployed flow '${pendingAssetId}'`)
-            this._flowState.updateAttemptCount = 0
-            this._setFlowState('deployed', null)
-          } catch (err) {
-            this.error('Error occured during deploy: ' + err.message)
-            if (this._flowState.pendingChange === null) {
-              // TODO: handle too many attempts here too, not just above
-              this.info(
-                `Deploy failed, but will retry (${
-                  this._flowState.updateAttemptCount
-                }/3).`
+            // deploy
+            this.info(`Deploying flow '${pendingAssetId}'...`)
+            try {
+              const downloadUrl = await this._getFlowDataUrl(
+                this._flowState.assetId,
+                this._flowState.updateId
               )
+              await this.fetchAndUpdateFlow(downloadUrl)
+              this.info(`Deployed flow '${pendingAssetId}'`)
+              this._flowState.updateAttemptCount = 0
+              this._setFlowState('deployed', null)
+            } catch (err) {
+              this.error('Error occured during deploy: ' + err.message)
+              if (this._flowState.pendingChange === null) {
+                // TODO: handle too many attempts here too, not just above
+                this.info(
+                  `Deploy failed, but will retry (${
+                    this._flowState.updateAttemptCount
+                  }/3).`
+                )
+                this._flowState.assetId = null
+                this._flowState.updateId = null
+                this._flowState.pendingChange = 'deploy'
+                this._flowState.pendingAssetId = pendingAssetId
+                this._flowState.pendingUpdateId = pendingUpdateId
+                this._setFlowState(null, null)
+              } else {
+                this.info('Deploy failed, but new change already pending.')
+              }
+            }
+            break
+
+          case 'remove':
+            this.info(`Removing flow '${this._flowState.assetId}'...`)
+            this._setFlowState('removing')
+            try {
+              await this.removeFlow()
+              await this.restartService()
+              this.info(`Removed flow '${this._flowState.assetId}'`)
               this._flowState.assetId = null
               this._flowState.updateId = null
-              this._flowState.pendingChange = 'deploy'
-              this._flowState.pendingAssetId = pendingAssetId
-              this._flowState.pendingUpdateId = pendingUpdateId
               this._setFlowState(null, null)
-            } else {
-              this.info('Deploy failed, but new change already pending.')
+            } catch (err) {
+              this.info('Remove failed: ' + err.message)
+              this._setFlowState('removeFail', 'Remove failed: ' + err.message)
             }
-          }
-          break
+            break
 
-        case 'remove':
-          this.info(`Removing flow '${this._flowState.assetId}'...`)
-          this._setFlowState('removing')
-          try {
-            await this.removeFlow()
-            await this.restartService()
-            this.info(`Removed flow '${this._flowState.assetId}'`)
-            this._flowState.assetId = null
-            this._flowState.updateId = null
-            this._setFlowState(null, null)
-          } catch (err) {
-            this.info('Remove failed: ' + err.message)
-            this._setFlowState('removeFail', 'Remove failed: ' + err.message)
-          }
-          break
+          default:
+            this.error('Unsupported pending change: ' + pendingChange)
+            break
+        }
+      }
 
-        default:
-          this.error('Unsupported pending change: ' + pendingChange)
-          break
+      if (pendingEnable !== null) {
+        if (pendingEnable && !this._serviceIsRunning()) {
+          this.debug('Enabling flow')
+          await this._startService()
+          this._flowState.enable = true
+          this._updateFlowReportedState()
+        }
+        if (!pendingEnable && this._serviceIsRunning())  {
+          this.debug('Disabling flow')
+          await this._shutdownService()
+          this._flowState.enable = false
+          this._updateFlowReportedState()
+        }
       }
 
       // Save the changed state
@@ -500,6 +549,10 @@ export default class NodeREDController {
 
   _getDataDir() {
     return this._dataDir
+  }
+
+  _isFlowEnabled(): boolean {
+    return this._flowState.enable || this._flowState.enable === undefined
   }
 
   _registerHandler(emitter: EventEmitter) {
@@ -543,7 +596,8 @@ export default class NodeREDController {
 
   async cmdFetchAndUpdateFlow(params: { downloadUrl: string }) {
     this._flowState.controlSrc = 'cmd'
-    return this.fetchAndUpdateFlow(params.downloadUrl)
+    await this.fetchAndUpdateFlow(params.downloadUrl)
+    this._saveFlowState()
   }
 
   async fetchAndUpdateFlow(downloadUrl: string) {
@@ -562,10 +616,13 @@ export default class NodeREDController {
     }
 
     await this._updatePackage(flowPackage)
-    if (editSessionRequested) {
-      await this._restartInEditorMode(flowPackage.editSession)
-    } else {
-      await this._restartService()
+
+    if (this._isFlowEnabled()) {
+      if (editSessionRequested) {
+        await this._restartInEditorMode(flowPackage.editSession)
+      } else {
+        await this._restartService()
+      }
     }
   }
 
@@ -742,6 +799,10 @@ export default class NodeREDController {
     }
   }
 
+  _serviceIsRunning() {
+    return this._cproc !== null
+  }
+
   async startService(editSession: EditSession) {
     return this._queueAction(() => this._startService(editSession))
   }
@@ -788,6 +849,7 @@ export default class NodeREDController {
             this._nodeRedLog.info('Pinging enebular editor...')
             this._sendEditorAgentIPAddress(editSession)
           }
+          this._setFlowStatus('running', null)
           resolve()
         }
       })
@@ -796,10 +858,13 @@ export default class NodeREDController {
         this._nodeRedLog.error(str)
       })
       cproc.once('exit', (code, signal) => {
-        this.info(`Service exited (${code !== null ? code : signal})`)
+        const message = code !== null ? `Service exited, code ${code}` : 
+          `Service killed by signal ${signal}`
+        this.info(message)
         this._cproc = null
         /* Restart automatically on an abnormal exit. */
         if (code !== 0) {
+          this._setFlowStatus('error', message)
           let shouldRetry = ProcessUtil.shouldRetryOnCrash(this._retryInfo)
           if (shouldRetry) {
             clearTimeout(startTimeout)
@@ -829,6 +894,7 @@ export default class NodeREDController {
       })
       cproc.once('error', err => {
         this._cproc = null
+        this._setFlowStatus('error', err.message)
         reject(err)
       })
       this._cproc = cproc
@@ -851,6 +917,7 @@ export default class NodeREDController {
         cproc.once('exit', () => {
           this.info('Service ended')
           this._cproc = null
+          this._setFlowStatus('stopped', null)
           resolve()
         })
         cproc.kill(this._killSignal)

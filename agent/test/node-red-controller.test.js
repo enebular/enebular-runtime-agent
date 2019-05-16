@@ -19,6 +19,7 @@ import {
   createConnectedAgent,
   nodeRedIsAlive,
   nodeRedIsDead,
+  waitNodeRedToDie,
   polling,
   agentCleanup
 } from './helpers/agent-helper'
@@ -633,5 +634,103 @@ test.serial(
   }
 )
 
+function flowEnableRequest(connector, enable, _desiredState) {
+  const rawDesiredState = _desiredState ? _desiredState : {}
+  objectPath.set(rawDesiredState, 'flow.enable', enable)
+  const desiredState = Utils.getDummyState('desired', rawDesiredState)
+  connector.sendMessage('deviceStateChange', {
+    type: 'desired',
+    op: 'set',
+    path: 'flow.enable',
+    meta: desiredState.meta,
+    state: desiredState.state.flow.enable
+  })
+}
 
- 
+test.serial(
+  'NodeRedController.12: Agent handles flow enable and disable',
+  async t => {
+    const ctrlMsgHandler = new DummyCtrlMsgHandler()
+
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
+      ENEBULAR_FLOW_STATE_PATH: '/tmp/enebular-flow-' + Utils.randomString(),
+    })
+    t.true(await nodeRedIsAlive(NodeRedPort))
+
+    const reportedStates = ctrlMsgHandler.getReportedStates()
+    const updateRequests = ctrlMsgHandler.getUpdateRequest()
+
+    flowEnableRequest(connector, false)
+    t.true(await waitNodeRedToDie(NodeRedPort))
+    t.false(reportedStates.state.flow.enable)
+
+    flowEnableRequest(connector, true)
+    const callback = async () => {
+      return await nodeRedIsAlive(NodeRedPort)
+    }
+    t.true(await polling(callback, 2000, 500, 30000))
+    t.true(reportedStates.state.flow.enable)
+  }
+)
+
+test.serial(
+  'NodeRedController.13: Agent handles multiple flow enable requests',
+  async t => {
+    const ctrlMsgHandler = new DummyCtrlMsgHandler()
+
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
+      ENEBULAR_FLOW_STATE_PATH: '/tmp/enebular-flow-' + Utils.randomString(),
+    })
+    t.true(await nodeRedIsAlive(NodeRedPort))
+
+    const reportedStates = ctrlMsgHandler.getReportedStates()
+    const updateRequests = ctrlMsgHandler.getUpdateRequest()
+
+    flowEnableRequest(connector, false)
+    flowEnableRequest(connector, true)
+    flowEnableRequest(connector, false)
+    flowEnableRequest(connector, true)
+    flowEnableRequest(connector, false)
+    flowEnableRequest(connector, true)
+
+    const callback = async () => {
+      return await nodeRedIsAlive(NodeRedPort)
+    }
+    t.true(await polling(callback, 10000, 500, 30000))
+    t.true(reportedStates.state.flow.enable)
+    console.log(updateRequests)
+  }
+)
+
+test.serial(
+  'NodeRedController.14: Agent handles flow enable and disable after flow has been deployed',
+  async t => {
+    const ret = await createAgentRunningWithDeployedFlow(t, 'flow1.json')
+    const ctrlMsgHandler = ret.ctrlMsgHandler
+
+    const reportedStates = ctrlMsgHandler.getReportedStates()
+    const desiredStates = ctrlMsgHandler.getDesiredStates()
+    const updateRequests = ctrlMsgHandler.getUpdateRequest()
+
+    flowEnableRequest(connector, false, desiredStates)
+    t.true(await waitNodeRedToDie(NodeRedPort))
+    t.false(reportedStates.state.flow.enable)
+
+    flowEnableRequest(connector, true, desiredStates)
+    const callback = async () => {
+      return await nodeRedIsAlive(NodeRedPort)
+    }
+    t.true(await polling(callback, 2000, 500, 30000))
+    t.true(reportedStates.state.flow.enable)
+
+    const expectedFlowJson = fs.readFileSync(
+      path.join(__dirname, 'data', 'flow1.json'),
+      'utf8'
+    )
+    const api = new NodeRedAdminApi('http://127.0.0.1:' + NodeRedPort)
+    const flow = await api.getFlow()
+    t.truthy(flow)
+    const expectedFlow = JSON.parse(expectedFlowJson)
+    t.true(Utils.jsonEquals(expectedFlow, flow))
+  }
+)
