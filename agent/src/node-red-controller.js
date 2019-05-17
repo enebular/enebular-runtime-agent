@@ -846,11 +846,11 @@ export default class NodeREDController {
       this.info('Starting service...')
     }
 
-    if (this._shutdownRequested) {
-      throw new Error('Stopping start service since shutdown is requested.')
-    }
     let signaledSuccess = false
     return new Promise((resolve, reject) => {
+      if (this._shutdownRequested) {
+        reject(new Error('Stopping start service since shutdown is requested.'))
+      }
       if (fs.existsSync(this._pidFile)) {
         ProcessUtil.killProcessByPIDFile(this._pidFile)
       }
@@ -952,6 +952,7 @@ export default class NodeREDController {
         this.info('Shutting down service...')
         cproc.once('exit', () => {
           this.info('Service ended')
+          this._shutdownRequested = false
           this._cproc = null
           resolve()
         })
