@@ -6,6 +6,7 @@ export default class DummyCtrlMsgHandler {
   _flowUpdateId: string
   _flowURL: string
   _updateRequests: Array
+  _getRequests: Array
   _reportedStates: Object
   _desiredStates: Object
   _statusStates: Object
@@ -15,6 +16,7 @@ export default class DummyCtrlMsgHandler {
 
   constructor() {
     this._updateRequests = []
+    this._getRequests = []
     this._reportedStates = {}
     this._desiredStates = {}
     this._statusStates = {}
@@ -41,6 +43,10 @@ export default class DummyCtrlMsgHandler {
     return this._reportedStates
   }
 
+  getGetRequests() {
+    return this._getRequests
+  }
+
   getUpdateRequest() {
     return this._updateRequests
   }
@@ -50,6 +56,7 @@ export default class DummyCtrlMsgHandler {
       return
     let deviceStates = Utils.getEmptyDeviceState()
     if (msg.topic == 'deviceState/device/get') {
+      this._getRequests.push(msg)
       if (this._flowAssetsId) {
         objectPath.set(this._desiredStates, 'flow.flow', {
             assetId: this._flowAssetsId,

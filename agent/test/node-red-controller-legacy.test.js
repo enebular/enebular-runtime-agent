@@ -111,48 +111,7 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedControllerLegacy.2: Agent restarts node-red correctly',
-  async t => {
-    const data = fs.readFileSync(
-      path.join(__dirname, 'data', 'flow1.json'),
-      'utf8'
-    )
-    let flowFileName = '/tmp/.enebular-flow-' + Utils.randomString() + '.json'
-    fs.writeFileSync(flowFileName, data)
-
-    const ret = await createConnectedAgent(t, {
-      NODE_RED_COMMAND:
-        './node_modules/.bin/node-red -p ' + NodeRedPort + ' ' + flowFileName
-    })
-    agent = ret.agent
-
-    t.true(await nodeRedIsAlive(NodeRedPort))
-    // update the flow
-    const expectedFlowJson = fs.readFileSync(
-      path.join(__dirname, 'data', 'flow2.json'),
-      'utf8'
-    )
-    fs.writeFileSync(flowFileName, expectedFlowJson)
-
-    ret.connector.sendMessage('restart')
-
-    const callback = async () => {
-      const api = new NodeRedAdminApi('http://127.0.0.1:' + NodeRedPort)
-      const flow = await api.getFlow()
-      if (flow) {
-        t.truthy(flow)
-        const expectedFlow = JSON.parse(expectedFlowJson)
-        t.deepEqual(expectedFlow, flow)
-        return true
-      }
-      return false
-    }
-    t.true(await polling(callback, 0, 500, 30000))
-  }
-)
-
-test.serial(
-  'NodeRedControllerLegacy.3: Agent handles deploy message correctly',
+  'NodeRedControllerLegacy.2: Agent handles deploy message correctly',
   async t => {
     await createAgentRunningWithTestNodeRedSettings(t)
 
@@ -188,7 +147,7 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedControllerLegacy.4: Agent handles update-flow message correctly',
+  'NodeRedControllerLegacy.3: Agent handles update-flow message correctly',
   async t => {
     await createAgentRunningWithTestNodeRedSettings(t)
 
@@ -224,19 +183,7 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedControllerLegacy.5: Agent handles shutdown/start message correctly',
-  async t => {
-    await createAgentRunningWithTestNodeRedSettings(t)
-
-    connector.sendMessage('shutdown')
-    t.true(await nodeRedIsDead(NodeRedPort))
-    connector.sendMessage('start')
-    t.true(await nodeRedIsAlive(NodeRedPort))
-  }
-)
-
-test.serial(
-  'NodeRedControllerLegacy.6: Agent handles deploy dependencies correctly',
+  'NodeRedControllerLegacy.4: Agent handles deploy dependencies correctly',
   async t => {
     await createAgentRunningWithTestNodeRedSettings(t)
 
@@ -261,7 +208,7 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedControllerLegacy.7: Agent handles deploy credentials correctly',
+  'NodeRedControllerLegacy.5: Agent handles deploy credentials correctly',
   async t => {
     await createAgentRunningWithTestNodeRedSettings(t)
 
@@ -297,7 +244,7 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedControllerLegacy.8: Agent handles deploy encrypted credentials correctly',
+  'NodeRedControllerLegacy.6: Agent handles deploy encrypted credentials correctly',
   async t => {
     await createAgentRunningWithTestNodeRedSettings(
       t,
