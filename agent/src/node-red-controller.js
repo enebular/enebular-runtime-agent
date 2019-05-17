@@ -74,7 +74,7 @@ export default class NodeREDController {
   _inited: boolean = false
   _active: boolean = false
   _shutdownRequested: boolean = false
-  _flowStatus: FlowStatus = { state: "stopped" }
+  _flowStatus: FlowStatus = { state: 'stopped' }
 
   constructor(
     deviceStateMan: DeviceStateManager,
@@ -331,8 +331,17 @@ export default class NodeREDController {
 
     // Handle flow.enable
     if (this._flowState.enable !== reportedState.enable) {
-      this.debug(`Updating reported flow enable ${reportedState.enable} => ${this._flowState.enable}`)
-      this._deviceStateMan.updateState('reported', 'set', 'flow.enable', this._flowState.enable)
+      this.debug(
+        `Updating reported flow enable ${reportedState.enable} => ${
+          this._flowState.enable
+        }`
+      )
+      this._deviceStateMan.updateState(
+        'reported',
+        'set',
+        'flow.enable',
+        this._flowState.enable
+      )
     }
 
     // Handle flow.flow
@@ -399,13 +408,15 @@ export default class NodeREDController {
       flowStatusState = {}
     }
 
-    if (flowStatusState.state !== this._flowStatus.state ||
-        flowStatusState.message !== this._flowStatus.message ||
-        flowStatusState.controlSrc !== this._flowState.controlSrc) {
+    if (
+      flowStatusState.state !== this._flowStatus.state ||
+      flowStatusState.message !== this._flowStatus.message ||
+      flowStatusState.controlSrc !== this._flowState.controlSrc
+    ) {
       const state = {
         state: this._flowStatus.state,
         message: this._flowStatus.message,
-        controlSrc: this._flowState.controlSrc,
+        controlSrc: this._flowState.controlSrc
       }
 
       this.debug('Update flow status:' + JSON.stringify(state, null, 2))
@@ -426,7 +437,10 @@ export default class NodeREDController {
     this._flowStateProcessingChanges = true
 
     while (this._active) {
-      if (this._flowState.pendingChange == null && this._flowState.pendingEnable == null) {
+      if (
+        this._flowState.pendingChange == null &&
+        this._flowState.pendingEnable == null
+      ) {
         break
       }
 
@@ -539,7 +553,7 @@ export default class NodeREDController {
           this._flowState.enable = true
           this._updateFlowReportedState()
         }
-        if (!pendingEnable && this._serviceIsRunning())  {
+        if (!pendingEnable && this._serviceIsRunning()) {
           this.debug('Disabling flow')
           await this._shutdownService()
           this._flowState.enable = false
@@ -678,10 +692,8 @@ export default class NodeREDController {
       updates.push(
         new Promise((resolve, reject) => {
           const flowFilePath = path.join(this._getDataDir(), 'flows.json')
-          fs.writeFile(
-            flowFilePath,
-            JSON.stringify(flows),
-            err => (err ? reject(err) : resolve())
+          fs.writeFile(flowFilePath, JSON.stringify(flows), err =>
+            err ? reject(err) : resolve()
           )
         })
       )
@@ -716,7 +728,7 @@ export default class NodeREDController {
               )
 
               // enebular-node-red dont see credentialSecret in settings.js
-              //const defaultKey =
+              // const defaultKey =
               //  settings.credentialSecret ||
               //  JSON.parse(dotconfig)._credentialSecret
               const defaultKey = JSON.parse(dotconfig)._credentialSecret
@@ -730,10 +742,8 @@ export default class NodeREDController {
             }
           }
 
-          fs.writeFile(
-            credFilePath,
-            JSON.stringify(creds),
-            err => (err ? reject(err) : resolve())
+          fs.writeFile(credFilePath, JSON.stringify(creds), err =>
+            err ? reject(err) : resolve()
           )
         })
       )
@@ -763,10 +773,8 @@ export default class NodeREDController {
             null,
             2
           )
-          fs.writeFile(
-            packageJSONFilePath,
-            packageJSON,
-            err => (err ? reject(err) : resolve())
+          fs.writeFile(packageJSONFilePath, packageJSON, err =>
+            err ? reject(err) : resolve()
           )
         })
       )
@@ -827,8 +835,7 @@ export default class NodeREDController {
   }
 
   async startService(editSession: EditSession) {
-    if (!this._isFlowEnabled())
-      return
+    if (!this._isFlowEnabled()) return
     return this._queueAction(() => this._startService(editSession))
   }
 
@@ -840,7 +847,7 @@ export default class NodeREDController {
     }
 
     if (this._shutdownRequested) {
-      throw(new Error('Stopping start service since shutdown is requested.'))
+      throw new Error('Stopping start service since shutdown is requested.')
     }
     let signaledSuccess = false
     return new Promise((resolve, reject) => {
@@ -883,8 +890,10 @@ export default class NodeREDController {
         this._nodeRedLog.error(str)
       })
       cproc.once('exit', (code, signal) => {
-        const message = code !== null ? `Service exited, code ${code}` : 
-          `Service killed by signal ${signal}`
+        const message =
+          code !== null
+            ? `Service exited, code ${code}`
+            : `Service killed by signal ${signal}`
         this.info(message)
         this._cproc = null
         /* Restart automatically on an abnormal exit. */
@@ -914,8 +923,7 @@ export default class NodeREDController {
             reject(new Error('Too many retry to start Node-RED service'))
             /* Other restart strategies (change port, etc.) could be tried here. */
           }
-        }
-        else {
+        } else {
           this._setFlowStatus('stopped', undefined)
         }
         this._removePIDFile()

@@ -188,9 +188,15 @@ export default class Config {
         this._items[key] = {}
       }
 
-      if (typeof value == 'string' && typeof this._items[key].value == 'boolean') {
-        this._items[key].value = (value == 'true')
-      } else if (typeof value == 'string' && typeof this._items[key].value == 'number') {
+      if (
+        typeof value === 'string' &&
+        typeof this._items[key].value === 'boolean'
+      ) {
+        this._items[key].value = value == 'true'
+      } else if (
+        typeof value === 'string' &&
+        typeof this._items[key].value === 'number'
+      ) {
         this._items[key].value = parseInt(value)
       } else {
         this._items[key].value = value
