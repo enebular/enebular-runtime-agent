@@ -781,14 +781,35 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedController.15: Agent handles flow enable and disable after flow has been deployed',
+  'NodeRedController.15: Agent shall not start Node-RED if flow is not enabled when booting',
   async t => {
-    const ret = await createAgentRunningWithDeployedFlow(t, 'flow1.json')
-    const ctrlMsgHandler = ret.ctrlMsgHandler
+    const tmpFlowStateFile = '/tmp/enebular-flow-' + Utils.randomString()
+    fs.writeFileSync(
+      tmpFlowStateFile,
+      JSON.stringify({ enable: false }),
+      'utf8'
+    )
 
-    const reportedStates = ctrlMsgHandler.getReportedStates()
+    const ctrlMsgHandler = new DummyCtrlMsgHandler()
     const statusStates = ctrlMsgHandler.getStatusStates()
     const desiredStates = ctrlMsgHandler.getDesiredStates()
-    const updateRequests = ctrlMsgHandler.getUpdateRequest()
+
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
+      ENEBULAR_FLOW_STATE_PATH: tmpFlowStateFile,
+    })
+
+    let callback = async () => {
+      return await nodeRedIsAlive(NodeRedPort)
+    }
+    t.false(await polling(callback, 0, 500, 5000))
+    t.true(statusStates.state.flow.state === 'stopped')
+
+    flowEnableRequest(connector, true, desiredStates)
+    callback = async () => {
+      return await nodeRedIsAlive(NodeRedPort)
+    }
+    t.true(await polling(callback, 2000, 500, 30000))
+    // status: flow.state == running
+    t.true(await statusFlowStateIs(statusStates, 'running'))
   }
 )

@@ -827,6 +827,8 @@ export default class NodeREDController {
   }
 
   async startService(editSession: EditSession) {
+    if (!this._isFlowEnabled())
+      return
     return this._queueAction(() => this._startService(editSession))
   }
 
