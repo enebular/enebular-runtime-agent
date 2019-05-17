@@ -235,6 +235,9 @@ export default class NodeREDController {
       case 'reported':
         this._updateFlowReportedState()
         break
+      case 'status':
+        this._updateFlowStatusState()
+        break
       default:
         break
     }
@@ -309,6 +312,7 @@ export default class NodeREDController {
 
     if (change) {
       this._flowState.controlSrc = 'deviceState'
+      this._updateFlowStatusState()
       this._updateFlowReportedState()
       this._processPendingFlowChanges()
     }
@@ -385,17 +389,34 @@ export default class NodeREDController {
     this._updateFlowReportedState()
   }
 
+  _updateFlowStatusState() {
+    if (!this._deviceStateMan.canUpdateState('status')) {
+      return
+    }
+
+    let flowStatusState = this._deviceStateMan.getState('status', 'flow')
+    if (!flowStatusState) {
+      flowStatusState = {}
+    }
+
+    if (flowStatusState.state !== this._flowStatus.state ||
+        flowStatusState.message !== this._flowStatus.message ||
+        flowStatusState.controlSrc !== this._flowState.controlSrc) {
+      const state = {
+        state: this._flowStatus.state,
+        message: this._flowStatus.message,
+        controlSrc: this._flowState.controlSrc,
+      }
+
+      this.debug('Update flow status:' + JSON.stringify(state, null, 2))
+      this._deviceStateMan.updateState('status', 'set', 'flow', state)
+    }
+  }
+
   _setFlowStatus(state: string, msg: ?string) {
     this._flowStatus.state = state
     this._flowStatus.message = msg
-    this._deviceStateMan.updateState('status', 'set', 'flow', this._flowStatus)
-
-    this.debug('Flow status:')
-    this.debug('  state: ' + this._flowStatus.state)
-    if (this._flowStatus.message)
-      this.debug('  message: ' + this._flowStatus.message)
-    if (this._flowState.controlSrc)
-      this.debug('  contrlsrc: ' + this._flowState.controlSrc)
+    this._updateFlowStatusState()
   }
 
   async _processPendingFlowChanges() {
@@ -405,7 +426,7 @@ export default class NodeREDController {
     this._flowStateProcessingChanges = true
 
     while (this._active) {
-      if (this._flowState.pendingChange === null && this._flowState.pendingEnable === null) {
+      if (this._flowState.pendingChange == null && this._flowState.pendingEnable == null) {
         break
       }
 
@@ -420,7 +441,7 @@ export default class NodeREDController {
       this._flowState.pendingEnable = null
 
       // Process the change
-      if (pendingChange !== null) {
+      if (pendingChange != null) {
         switch (pendingChange) {
           case 'deploy':
             // Update attempt count handling
@@ -511,7 +532,7 @@ export default class NodeREDController {
         }
       }
 
-      if (pendingEnable !== null) {
+      if (pendingEnable != null) {
         if (pendingEnable && !this._serviceIsRunning()) {
           this.debug('Enabling flow')
           await this._startService()
@@ -598,6 +619,7 @@ export default class NodeREDController {
   async cmdFetchAndUpdateFlow(params: { downloadUrl: string }) {
     this._flowState.controlSrc = 'cmd'
     await this.fetchAndUpdateFlow(params.downloadUrl)
+    this._updateFlowStatusState()
     this._saveFlowState()
   }
 
@@ -850,7 +872,7 @@ export default class NodeREDController {
             this._nodeRedLog.info('Pinging enebular editor...')
             this._sendEditorAgentIPAddress(editSession)
           }
-          this._setFlowStatus('running', null)
+          this._setFlowStatus('running', undefined)
           resolve()
         }
       })
@@ -892,7 +914,7 @@ export default class NodeREDController {
           }
         }
         else {
-          this._setFlowStatus('stopped', null)
+          this._setFlowStatus('stopped', undefined)
         }
         this._removePIDFile()
       })
