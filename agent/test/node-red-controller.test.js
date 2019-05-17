@@ -813,3 +813,24 @@ test.serial(
     t.true(await statusFlowStateIs(statusStates, 'running'))
   }
 )
+
+test.serial(
+  'NodeRedController.16: Agent reports Node-RED error status',
+  async t => {
+    const ret = await createAgentRunningWithDeployedFlow(t, 'flow1.json')
+    const ctrlMsgHandler = ret.ctrlMsgHandler
+
+    const reportedStates = ctrlMsgHandler.getReportedStates()
+    const statusStates = ctrlMsgHandler.getStatusStates()
+    const desiredStates = ctrlMsgHandler.getDesiredStates()
+    const updateRequests = ctrlMsgHandler.getUpdateRequest()
+
+    agent._nodeRed._cproc.kill('SIGTERM')
+
+    t.true(await statusFlowStateIs(statusStates, 'error'))
+    t.true(await statusFlowStateIs(statusStates, 'running'))
+  }
+)
+
+
+
