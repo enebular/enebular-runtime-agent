@@ -611,7 +611,7 @@ export default class NodeREDController {
   }
 
   async _queueAction(promiseFunction: () => Promise<any>) {
-    return new Promise(async (resolve, reject) => {
+    return new Promise((resolve, reject) => {
       this.debug('Queuing action')
       this._actions.push({
         promiseFunction: promiseFunction,
@@ -620,7 +620,7 @@ export default class NodeREDController {
       })
 
       if (!this._currentAction) {
-        await this._processNextAction()
+        this._processNextAction()
       }
     })
   }
@@ -674,6 +674,9 @@ export default class NodeREDController {
       } else {
         await this._restartService()
       }
+    }
+    else {
+      this.info('Skipped Node-RED restart since flow is disabled')
     }
   }
 
@@ -849,7 +852,10 @@ export default class NodeREDController {
   }
 
   async startService(editSession: EditSession) {
-    if (!this._isFlowEnabled()) return
+    if (!this._isFlowEnabled()) {
+      this.info('Skipped Node-RED start since flow is disabled')
+      return
+    }
     return this._queueAction(() => this._startService(editSession))
   }
 
@@ -900,7 +906,7 @@ export default class NodeREDController {
             this._nodeRedLog.info('Pinging enebular editor...')
             this._sendEditorAgentIPAddress(editSession)
           }
-          this._setFlowStatus('running', undefined)
+          this._setFlowStatus('running', null)
           resolve()
         }
       })
@@ -943,7 +949,7 @@ export default class NodeREDController {
             /* Other restart strategies (change port, etc.) could be tried here. */
           }
         } else {
-          this._setFlowStatus('stopped', undefined)
+          this._setFlowStatus('stopped', null)
         }
         this._removePIDFile()
       })
