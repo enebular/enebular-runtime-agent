@@ -309,6 +309,16 @@ export default class NodeREDController {
         change = true
       }
     }
+    else {
+      if (this._flowState.enable != null) {
+        // enable = false has been cleared, start Node-RED if it stopped
+        if (this._flowState.enable === false) {
+          this._flowState.pendingEnable = true
+        }
+        delete this._flowState.enable
+        change = true
+      }
+    }
 
     this.debug('Flow state: ' + JSON.stringify(this._flowState, null, 2))
 
@@ -338,12 +348,20 @@ export default class NodeREDController {
           this._flowState.enable
         }`
       )
-      this._deviceStateMan.updateState(
-        'reported',
-        'set',
-        'flow.enable',
-        this._flowState.enable
-      )
+      if (this._flowState.enable == null) {
+        this._deviceStateMan.updateState(
+          'reported',
+          'remove',
+          'flow.enable')
+      }
+      else {
+        this._deviceStateMan.updateState(
+          'reported',
+          'set',
+          'flow.enable',
+          this._flowState.enable
+        )
+      }
     }
 
     // Handle flow.flow
@@ -430,6 +448,30 @@ export default class NodeREDController {
     this._flowStatus.state = state
     this._flowStatus.message = msg
     this._updateFlowStatusState()
+  }
+
+  async _attemptEnableFlow() {
+    if (!this._serviceIsRunning()) {
+      this.info('Enable flow')
+      try {
+        await this._startService()
+      }
+      catch (err) {
+        this.error('Enable flow failed, Node-RED failed to start: ' + err.message)
+      }
+    }
+  }
+
+  async _attemptDisableFlow() {
+    if (this._serviceIsRunning()) {
+      this.info('Disable flow')
+      try {
+        await this._shutdownService()
+      }
+      catch (err) {
+        this.error('Disable flow failed, Node-RED failed to shutdown: ' + err.message)
+      }
+    }
   }
 
   async _processPendingFlowChanges() {
@@ -550,26 +592,9 @@ export default class NodeREDController {
 
       if (pendingEnable != null) {
         if (pendingEnable) {
-          if (!this._serviceIsRunning()) {
-            this.debug('Enabling flow')
-            try {
-              await this._startService()
-            }
-            catch (err) {
-              this.error('Enable flow failed, Node-RED failed to start: ' + err.message)
-            }
-          }
-        }
-        else {
-          if (this._serviceIsRunning()) {
-            this.debug('Disabling flow')
-            try {
-              await this._shutdownService()
-            }
-            catch (err) {
-              this.error('Disable flow failed, Node-RED failed to shutdown: ' + err.message)
-            }
-          }
+          await this._attemptEnableFlow()
+        } else {
+          await this._attemptDisableFlow()
         }
         this._flowState.enable = pendingEnable
         this._updateFlowReportedState()

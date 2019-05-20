@@ -907,7 +907,7 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedController.19: Agent captures error if Node-RED fails to start after retrying)',
+  'NodeRedController.19: Agent captures error if Node-RED fails to start (port in use)',
   async t => {
     const app = express()
     let http
@@ -940,3 +940,42 @@ test.serial(
     http.close()
   }
 )
+
+test.serial(
+  'NodeRedController.20: Agent shall restart Node-RED if flow.enable state is cleared',
+  async t => {
+    const tmpFlowStateFile = '/tmp/enebular-flow-' + Utils.randomString()
+    const ctrlMsgHandler = new DummyCtrlMsgHandler()
+    const statusStates = ctrlMsgHandler.getStatusStates()
+    const desiredStates = ctrlMsgHandler.getDesiredStates()
+    const reportedStates = ctrlMsgHandler.getReportedStates()
+
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
+      ENEBULAR_FLOW_STATE_PATH: tmpFlowStateFile,
+    })
+
+    t.true(await statusFlowStateIs(statusStates, 'running'))
+
+    flowEnableRequest(connector, false)
+    t.true(await waitNodeRedToDie(NodeRedPort))
+    // reported: flow.enable == false
+    t.true(await reportedFlowEnableIs(reportedStates, false))
+    // status: flow.state == stopped
+    t.true(await statusFlowStateIs(statusStates, 'stopped'))
+
+    const desiredState = Utils.getDummyState('desired', { flow: {} })
+    connector.sendMessage('deviceStateChange', {
+      type: 'desired',
+      op: 'remove',
+      path: 'flow.enable',
+      meta: desiredState.meta,
+      state: desiredState.state.flow
+    })
+
+    // status: flow.state == running
+    t.true(await statusFlowStateIs(statusStates, 'running'),
+        'Node-RED restarted if flow.enable is cleared')
+  }
+)
+
+
