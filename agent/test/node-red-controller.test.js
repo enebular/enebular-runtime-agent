@@ -4,6 +4,7 @@ import fs from 'fs-extra'
 import path from 'path'
 import { Server } from 'net'
 import crypto from 'crypto'
+import express from 'express'
 import objectPath from 'object-path'
 
 import EnebularAgent from '../src/enebular-agent'
@@ -832,5 +833,110 @@ test.serial(
   }
 )
 
+test.serial(
+  'NodeRedController.17: Flow is enabled if Node-RED fails to start',
+  async t => {
+    const tmpFlowStateFile = '/tmp/enebular-flow-' + Utils.randomString()
+    fs.writeFileSync(
+      tmpFlowStateFile,
+      JSON.stringify({ enable: false }),
+      'utf8'
+    )
 
+    const ctrlMsgHandler = new DummyCtrlMsgHandler()
+    const statusStates = ctrlMsgHandler.getStatusStates()
+    const desiredStates = ctrlMsgHandler.getDesiredStates()
+    const reportedStates = ctrlMsgHandler.getReportedStates()
 
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
+      ENEBULAR_FLOW_STATE_PATH: tmpFlowStateFile,
+    })
+
+    let callback = async () => {
+      return await nodeRedIsAlive(NodeRedPort)
+    }
+    t.false(await polling(callback, 0, 500, 5000))
+    t.true(statusStates.state.flow.state === 'stopped')
+
+    agent._nodeRed._shutdownRequested = true
+
+    flowEnableRequest(connector, true, desiredStates)
+    // reported: flow.enable == true
+    t.true(await reportedFlowEnableIs(reportedStates, true))
+    // status: flow.state == running
+    t.true(await statusFlowStateIs(statusStates, 'error'))
+  }
+)
+
+test.serial(
+  'NodeRedController.18: Agent reports error when starting flow timed out',
+  async t => {
+    const tmpFlowStateFile = '/tmp/enebular-flow-' + Utils.randomString()
+    const ctrlMsgHandler = new DummyCtrlMsgHandler()
+    // set log to minimum so we won't know if it started or not
+    const settings = path.join(
+      __dirname,
+      'data',
+      'node-red-test-settings-log-minimum'
+    )
+
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
+      ENEBULAR_FLOW_STATE_PATH: tmpFlowStateFile,
+      ENEBULAR_NODE_RED_FLOW_START_TIMEOUT: 5000,
+      NODE_RED_COMMAND:
+        './node_modules/.bin/node-red -p ' +
+        NodeRedPort +
+        ' -s ' + settings
+    })
+
+    const reportedStates = ctrlMsgHandler.getReportedStates()
+    const statusStates = ctrlMsgHandler.getStatusStates()
+    const desiredStates = ctrlMsgHandler.getDesiredStates()
+    const updateRequests = ctrlMsgHandler.getUpdateRequest()
+
+    const callback = () => {
+      if (statusStates && statusStates.state
+          && statusStates.state.flow
+          && statusStates.state.flow.state === 'error'
+          && statusStates.state.flow.message === 'Flow start timed out')
+        return true
+      return false
+    }
+    t.true(await polling(callback, 0, 500, 30000))
+  }
+)
+
+test.serial(
+  'NodeRedController.19: Agent captures error if Node-RED fails to start after retrying)',
+  async t => {
+    const app = express()
+    let http
+    await new Promise(resolve => {
+      http = app.listen(NodeRedPort, () => {
+        resolve(http)
+      })
+    })
+
+    const tmpFlowStateFile = '/tmp/enebular-flow-' + Utils.randomString()
+    const ctrlMsgHandler = new DummyCtrlMsgHandler()
+    const statusStates = ctrlMsgHandler.getStatusStates()
+    const desiredStates = ctrlMsgHandler.getDesiredStates()
+
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
+      ENEBULAR_FLOW_STATE_PATH: tmpFlowStateFile,
+    })
+
+    let retryCount = 0
+    const callback = () => {
+      if (statusStates && statusStates.state
+          && statusStates.state.flow
+          && statusStates.state.flow.state === 'error'
+          && statusStates.state.flow.message === 'Service exited, code 1') {
+        return true
+      }
+      return false
+    }
+    t.true(await polling(callback, 0, 500, 30000))
+    http.close()
+  }
+)
