@@ -55,6 +55,7 @@ export default class NodeREDController {
   _deviceStateMan: DeviceStateManager
   _connectorMessenger: ConnectorMessenger
   _flowStateFilePath: string
+  _flowStartTimeout: number
   _flowState: Object
   _flowStateProcessingChanges: boolean = false
   _dir: string
@@ -85,6 +86,7 @@ export default class NodeREDController {
     logManager: LogManager,
     nodeRedConfig: NodeREDConfig
   ) {
+    this._flowStartTimeout = config.get('ENEBULAR_NODE_RED_FLOW_START_TIMEOUT')
     this._flowStateFilePath = config.get('ENEBULAR_FLOW_STATE_PATH')
     if (!this._flowStateFilePath) {
       throw new Error('Missing node-red controller configuration')
@@ -547,18 +549,30 @@ export default class NodeREDController {
       }
 
       if (pendingEnable != null) {
-        if (pendingEnable && !this._serviceIsRunning()) {
-          this.debug('Enabling flow')
-          await this._startService()
-          this._flowState.enable = true
-          this._updateFlowReportedState()
+        if (pendingEnable) {
+          if (!this._serviceIsRunning()) {
+            this.debug('Enabling flow')
+            try {
+              await this._startService()
+            }
+            catch (err) {
+              this.error('Enable flow failed, Node-RED failed to start: ' + err.message)
+            }
+          }
         }
-        if (!pendingEnable && this._serviceIsRunning()) {
-          this.debug('Disabling flow')
-          await this._shutdownService()
-          this._flowState.enable = false
-          this._updateFlowReportedState()
+        else {
+          if (this._serviceIsRunning()) {
+            this.debug('Disabling flow')
+            try {
+              await this._shutdownService()
+            }
+            catch (err) {
+              this.error('Disable flow failed, Node-RED failed to shutdown: ' + err.message)
+            }
+          }
         }
+        this._flowState.enable = pendingEnable
+        this._updateFlowReportedState()
       }
 
       // Save the changed state
@@ -849,7 +863,10 @@ export default class NodeREDController {
     let signaledSuccess = false
     return new Promise((resolve, reject) => {
       if (this._shutdownRequested) {
-        reject(new Error('Stopping start service since shutdown is requested.'))
+        const errorMsg = 'Start service failed since shutdown is requested.'
+        reject(new Error(errorMsg))
+        this._setFlowStatus('error', errorMsg)
+        return
       }
       if (fs.existsSync(this._pidFile)) {
         ProcessUtil.killProcessByPIDFile(this._pidFile)
@@ -869,8 +886,10 @@ export default class NodeREDController {
         env: env
       })
       const startTimeout = setTimeout(() => {
-        reject(new Error('Flow start timed out'))
-      }, 30 * 1000)
+        const errorMsg = 'Flow start timed out'
+        reject(new Error(errorMsg))
+        this._setFlowStatus('error', errorMsg)
+      }, this._flowStartTimeout)
       cproc.stdout.on('data', data => {
         let str = data.toString().replace(/(\n|\r)+$/, '')
         this._nodeRedLog.info(str)
