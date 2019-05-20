@@ -6,7 +6,7 @@ import path from 'path'
 import EnebularAgent from '../src/enebular-agent'
 import ConnectorService from '../src/connector-service'
 import Utils from './helpers/utils'
-import { nodeRedIsAlive, agentCleanup } from './helpers/agent-helper'
+import { nodeRedIsAlive, agentCleanup, polling } from './helpers/agent-helper'
 import DummyServerConfig from './helpers/dummy-server-config'
 
 const DummyServerPort = 3001
@@ -122,25 +122,28 @@ test.serial(
   async t => {
     const connector = new ConnectorService()
     let agentConfig = Utils.createDefaultAgentConfig(1990)
+    let tmpLogPath = '/tmp/tmp-test-log-' + Utils.randomString()
     agentConfig['NODE_RED_COMMAND'] = './node_modules/.bin/node-red-invalid'
+    agentConfig['ENEBULAR_ENABLE_FILE_LOG'] = true
+    agentConfig['ENEBULAR_LOG_FILE_PATH'] = tmpLogPath
 
     agent = new EnebularAgent({
       portBasePath: path.resolve(__dirname, '../'),
       connector: connector,
       config: agentConfig
     })
-    await t.notThrowsAsync(
-      agent
-        .startup()
-        .then(function(error) {
-          console.log(error)
-          t.fail()
-        })
-        .catch(function(error) {
-          console.log(error)
-          t.pass()
-        }),
+    await t.notThrowsAsync(agent.startup())
+
+    // wait for 2 second for creating log file
+    await polling(()=>{}, 2000, 0, 0)
+
+    const log = fs.readFileSync(tmpLogPath, 'utf8')
+    t.true(
+      log.includes(
+        "Failed to start Node-RED service"
+      )
     )
+    fs.unlinkSync(tmpLogPath)
   }
 )
 

@@ -10,9 +10,9 @@
 #define OBJECT_ID_DEPLOY_FLOW           (26242)
 #define OBJECT_ID_REGISTER              (26243)
 #define OBJECT_ID_AUTH_TOKEN            (26244)
-#define OBJECT_ID_CONFIG                (26245)
 #define OBJECT_ID_AGENT_INFO            (26246)
 #define OBJECT_ID_DEVICE_STATE          (26247)
+#define OBJECT_ID_ENEBULAR_MSG          (26248)
 
 #define RESOURCE_ID_DOWNLOAD_URL            (26241)
 #define RESOURCE_ID_CONNECTION_ID           (26241)
@@ -25,6 +25,8 @@
 #define RESOURCE_ID_MONITOR_ENABLE          (26241)
 #define RESOURCE_ID_AGENT_INFO              (26241)
 #define RESOURCE_ID_DEVICE_STATE_CHANGE     (26241)
+#define RESOURCE_ID_TO_DEVICE               (26241)
+#define RESOURCE_ID_FROM_DEVICE             (26242)
 
 #define MAX_RESOURCE_SET_UPDATE_GAP (10)
 
@@ -137,6 +139,16 @@ void EnebularAgentMbedCloudClient::setup_objects()
         OBJECT_ID_DEVICE_STATE, 0, RESOURCE_ID_DEVICE_STATE_CHANGE, "device_state_change",
         M2MResourceInstance::STRING, NULL, false,
         value_updated_callback(this, &EnebularAgentMbedCloudClient::device_state_change_cb), 0);
+
+    _enebular_msg_to_device_res = add_rw_resource(
+        OBJECT_ID_ENEBULAR_MSG, 0, RESOURCE_ID_TO_DEVICE, "to_device",
+        M2MResourceInstance::STRING, NULL, false,
+        value_updated_callback(this, &EnebularAgentMbedCloudClient::enebular_msg_to_device_cb), 0);
+
+    _enebular_msg_from_device_res = add_rw_resource(
+        OBJECT_ID_ENEBULAR_MSG, 0, RESOURCE_ID_FROM_DEVICE, "from_device",
+        M2MResourceInstance::STRING, NULL, true,
+        value_updated_callback(this, &EnebularAgentMbedCloudClient::enebular_msg_from_device_cb), 0);
 }
 
 void EnebularAgentMbedCloudClient::process_deploy_flow_update()
@@ -330,6 +342,25 @@ void EnebularAgentMbedCloudClient::device_state_change_cb(const char *name)
     process_device_state_change();
 }
 
+/* Note: called from separate thread */
+void EnebularAgentMbedCloudClient::enebular_msg_to_device_cb(const char *name)
+{
+    _logger->log_console(DEBUG, "Client: enebular_msg_to_device: %s",
+        _enebular_msg_to_device_res->get_value_string().c_str());
+
+    queue_agent_man_msg("ctrlMessage",
+        _enebular_msg_to_device_res->get_value_string().c_str());
+}
+
+/* Note: called from separate thread */
+void EnebularAgentMbedCloudClient::enebular_msg_from_device_cb(const char *name)
+{
+    _logger->log_console(DEBUG, "Client: enebular_msg_from_device: %s",
+        _enebular_msg_from_device_res->get_value_string().c_str());
+
+    //
+}
+
 bool EnebularAgentMbedCloudClient::init_fcc()
 {
     fcc_status_e status;
@@ -440,6 +471,11 @@ void EnebularAgentMbedCloudClient::set_agent_info(const char *info)
     _agent_info = strdup(info);
 
     pthread_mutex_unlock(&_lock);
+}
+
+void EnebularAgentMbedCloudClient::set_from_device_ctrl_message(const char *message)
+{
+    _enebular_msg_from_device_res->set_value((uint8_t *)message, strlen(message));
 }
 
 void EnebularAgentMbedCloudClient::on_connection_change(ClientConnectionStateCB cb)

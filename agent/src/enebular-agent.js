@@ -3,19 +3,20 @@ import EventEmitter from 'events'
 import fs from 'fs'
 import type { Logger } from 'winston'
 import { version as agentVer } from '../package.json'
-import AgentInfoManager from './agent-info-manager'
+import ConnectorService from './connector-service'
+import ConnectorMessenger from './connector-messenger'
+import EnebularActivator from './enebular-activator'
+import DeviceAuthMediator from './device-auth-mediator'
 import AgentManagerMediator from './agent-manager-mediator'
+import DeviceStateManager from './device-state-manager'
+import AgentInfoManager from './agent-info-manager'
 import AssetManager from './asset-manager'
 import CommandLine from './command-line'
 import Config from './config'
-import ConnectorService from './connector-service'
-import DeviceAuthMediator from './device-auth-mediator'
-import DeviceStateManager from './device-state-manager'
 import DockerManager from './docker-manager'
-import EnebularActivator from './enebular-activator'
 import LogManager from './log-manager'
 import NodeREDController from './node-red-controller'
-import PortManager from './port-manager.js'
+import PortManager from './port-manager'
 
 export type EnebularAgentConfig = {
   NODE_RED_DIR: string,
@@ -77,6 +78,7 @@ function isPossibleStateTransition(state: AgentState, nextState: AgentState) {
 
 export default class EnebularAgent extends EventEmitter {
   _connector: ConnectorService
+  _connectorMessenger: ConnectorMessenger
   _activator: EnebularActivator
   _configFile: string
   _config: Config
@@ -110,10 +112,6 @@ export default class EnebularAgent extends EventEmitter {
   _monitorIntervalFast: number
   _monitorIntervalFastPeriod: number
   _monitorIntervalNormal: number
-  _notifyStatusActivated: boolean = false
-  _notifyStatusInterval: number
-  _notifyStatusIntervalID: ?number
-  _ipAddress: ?string
 
   constructor(options: EnebularAgentOptions) {
     super()
@@ -129,6 +127,9 @@ export default class EnebularAgent extends EventEmitter {
       this._onConnectorConnectionChange()
     )
     this._connector.on('message', params => this._onConnectorMessage(params))
+    this._connector.on('ctrlMessage', params =>
+      this._onConnectorCtrlMessage(params)
+    )
   }
 
   _init() {
@@ -170,6 +171,15 @@ export default class EnebularAgent extends EventEmitter {
     this._log.info('Node-RED command: ' + nodeRedCommand)
     this._log.info('Enebular config file: ' + configFile)
 
+    this._connectorMessenger = new ConnectorMessenger(
+      this._connector,
+      this._log,
+      this._config.get('ENEBULAR_CONNECTOR_MESSENGER_REQ_RETYR_TIMEOUT')
+    )
+    this._connectorMessenger.on('requestConnectorCtrlMessageSend', msg =>
+      this._onRequestConnectorCtrlMessageSend(msg)
+    )
+
     this._activator = new EnebularActivator(
       this._config.get('ACTIVATOR_CONFIG_PATH')
     )
@@ -180,7 +190,7 @@ export default class EnebularAgent extends EventEmitter {
     this._messageEmitter = new EventEmitter()
 
     this._deviceStateManager = new DeviceStateManager(
-      this._agentMan,
+      this._connectorMessenger,
       this._messageEmitter,
       this._config,
       this._log
@@ -213,7 +223,10 @@ export default class EnebularAgent extends EventEmitter {
     )
 
     this._nodeRed = new NodeREDController(
+      this._deviceStateManager,
+      this._connectorMessenger,
       this._messageEmitter,
+      this._config,
       this._log,
       this._logManager,
       {
@@ -235,8 +248,6 @@ export default class EnebularAgent extends EventEmitter {
     this._deviceAuth.on('accessTokenClear', () => this._onAccessTokenClear())
 
     this._configFile = configFile
-    this._notifyStatusInterval = this._monitorIntervalNormal
-    this._notifyStatusActivated = false
     this._agentState = 'init'
   }
 
@@ -334,6 +345,8 @@ export default class EnebularAgent extends EventEmitter {
     await this._assetManager.setup()
     await this._dockerManager.setup()
     await this._portManager.setup()
+    await this._nodeRed.setup()
+    this._nodeRed.activate(true)
 
     this._updateMonitoringFromDesiredState()
 
@@ -341,17 +354,19 @@ export default class EnebularAgent extends EventEmitter {
       await this._connector.init()
     }
 
-    await this._nodeRed.startService()
+    try {
+      await this._nodeRed.startService()
+    } catch (err) {
+      this._log.error('Node-RED service start failed: ' + err.message)
+    }
+
     return true
   }
 
   async shutdown() {
     this._deviceAuth.endAuthAttempt()
-    if (this._monitoringActive) {
-      await this._agentMan.notifyStatus('disconnected')
-    }
-
     await this._nodeRed.shutdownService()
+    this._nodeRed.activate(false)
     this._assetManager.activate(false)
     this._deviceStateManager.activate(false)
     this._dockerManager.activate(false)
@@ -433,7 +448,6 @@ export default class EnebularAgent extends EventEmitter {
     }
 
     this._logManager.activateEnebular(this._monitoringActive)
-    this._activateStatusNotification(this._monitoringActive)
   }
 
   _refreshMonitoringInterval() {
@@ -454,30 +468,6 @@ export default class EnebularAgent extends EventEmitter {
     this._logManager.configureEnebular({
       sendInterval: interval
     })
-    this._setStatusNotificationInterval(interval)
-  }
-
-  _updateStatusNotificationInterval() {
-    if (this._notifyStatusIntervalID) {
-      clearInterval(this._notifyStatusIntervalID)
-      this._notifyStatusIntervalID = null
-    }
-    if (this._notifyStatusActivated) {
-      this._agentMan.notifyStatus(this._nodeRed.getStatus())
-      this._notifyStatusIntervalID = setInterval(() => {
-        this._agentMan.notifyStatus(this._nodeRed.getStatus())
-      }, this._notifyStatusInterval * 1000)
-    }
-  }
-
-  _setStatusNotificationInterval(interval: number) {
-    this._notifyStatusInterval = interval
-    this._updateStatusNotificationInterval()
-  }
-
-  _activateStatusNotification(active: boolean) {
-    this._notifyStatusActivated = active
-    this._updateStatusNotificationInterval()
   }
 
   _loadAgentConfig() {
@@ -587,6 +577,9 @@ export default class EnebularAgent extends EventEmitter {
     this._deviceStateManager.setFqDeviceId(
       `${this._connectionId}::${this._deviceId}`
     )
+    if (this._connector.connected) {
+      this._deviceStateManager.activate(true)
+    }
   }
 
   async _onChangeState() {
@@ -602,7 +595,6 @@ export default class EnebularAgent extends EventEmitter {
       case 'unregistered':
         break
       case 'authenticated':
-        this._deviceStateManager.activate(true)
         this._assetManager.activate(true)
         this._dockerManager.activate(true)
         setTimeout(() => {
@@ -715,6 +707,7 @@ export default class EnebularAgent extends EventEmitter {
       `Connector: ${this._connector.connected ? 'connected' : 'disconnected'}`
     )
     if (this._connector.connected) {
+      this._deviceStateManager.activate(true)
       if (
         this._agentState === 'registered' ||
         this._agentState === 'unauthenticated'
@@ -764,5 +757,13 @@ export default class EnebularAgent extends EventEmitter {
         break
     }
     this._messageEmitter.emit(params.messageType, params.message)
+  }
+
+  async _onConnectorCtrlMessage(message: any) {
+    this._connectorMessenger.handleReceivedMessage(message)
+  }
+
+  _onRequestConnectorCtrlMessageSend(msg) {
+    this.emit('connectorCtrlMessageSend', msg)
   }
 }

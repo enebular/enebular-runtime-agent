@@ -123,6 +123,17 @@ export default class Config {
         description: 'Ports state file path',
         userExpose: true
       },
+      ENEBULAR_FLOW_STATE_PATH: {
+        value: p.resolve(portBasePath, '.enebular-flow.json'),
+        description: 'Flow state file path',
+        userExpose: true
+      },
+      ENEBULAR_CONNECTOR_MESSENGER_REQ_RETYR_TIMEOUT: {
+        value: 30 * 1000,
+        description: '',
+        userExpose: false
+      },
+
       // logging
       ENEBULAR_LOG_LEVEL: {
         value: 'info',

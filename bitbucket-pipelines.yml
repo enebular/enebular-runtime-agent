@@ -11,14 +11,16 @@ pipelines:
         script:
         - (node -v | xargs echo nodejs version:)
         - (npm -v | xargs echo npm version:)
+        - echo 'if ((`git diff package-lock.json | wc -l` != 0)); then echo "package-lock.file is required to be committed" && (exit 1); fi;' > /tmp/check_lock_file.sh
 # TODO: change npm i to npm ci once ci is available
         - (cd node-red && npm i)
-        - (cd agent && npm i && npm run test:serial)
-        - (cd ports/awsiot && npm i
+        - (cd agent && npm i && . /tmp/check_lock_file.sh && npm run test:serial)
+        - (cd ports/awsiot && npm i && . /tmp/check_lock_file.sh
           && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientId":"thing_name","thingName":"thing_name","caCert":"./certs/root_certificate","clientCert":"./certs/thing_cert","privateKey":"./certs/thing_private_key>","topic":"aws/things/thing_name/shadow/update"}' > ./config.json
           && npm run test && rm ./config.json)
-        - (cd ports/pelion && npm i && npm run test)
-        - (cd tools/awsiot-thing-creator && npm i)
+        - (cd ports/pelion && npm i && . /tmp/check_lock_file.sh && npm run test)
+        - (cd tools/awsiot-thing-creator && npm i && . /tmp/check_lock_file.sh)
+        - (cd tools/updater && npm i && . /tmp/check_lock_file.sh && npm run test)
   tags:
     '*':
       - step:
@@ -35,16 +37,21 @@ pipelines:
             && npm run test && rm ./config.json)
           - (cd ports/pelion && npm i && npm run test)
           - (cd tools/awsiot-thing-creator && npm i)
+          - (cd tools/updater && npm i && npm run test)
           # package
           - (cd node-red && rm -rf node_modules)
           - (cd agent && rm -rf node_modules)
           - (cd ports/awsiot && rm -rf node_modules)
           - (cd ports/pelion && rm -rf node_modules)
           - (cd tools/awsiot-thing-creator && rm -rf node_modules)
+          - (cd tools/updater && rm -rf node_modules)
           - rm -rf .git
           - tar --transform "s,^\.,${BITBUCKET_TAG}," -czf /tmp/${BITBUCKET_TAG}-prebuilt.tar.gz .
-          - mkdir -p dist 
-            && mv /tmp/${BITBUCKET_TAG}-prebuilt.tar.gz dist/ 
+          - mkdir -p dist
+          - mv /tmp/${BITBUCKET_TAG}-prebuilt.tar.gz dist/
+          - UPDATER_NAME=enebular-agent-updater-${BITBUCKET_TAG}
+          - (cd tools/updater && npm i --production && tar --transform "s,^\.,${UPDATER_NAME}," -czf /tmp/${UPDATER_NAME}.tar.gz .)
+          - mv /tmp/${UPDATER_NAME}.tar.gz dist/
           artifacts:
           - dist/**
 #      - step:

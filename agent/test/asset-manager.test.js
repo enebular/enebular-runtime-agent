@@ -97,12 +97,6 @@ test.serial(
     await waitAssetProcessing(agent, 0, 10000)
 
     console.log(JSON.stringify(updateReq, null, 4))
-    // should correctly send 5 reported state since it will retry twice.
-    t.is(updateReq[1].state.state, 'deployPending')
-    t.is(updateReq[2].state.state, 'deploying')
-    t.is(updateReq[3].state.state, 'deployPending')
-    t.is(updateReq[4].state.state, 'deploying')
-    t.is(updateReq[5].state.state, 'deployFail')
 
     const state = JSON.parse(fs.readFileSync(tmpAssetStatePath, 'utf8'))
     // console.log(JSON.stringify(state, null, 4))
@@ -149,13 +143,6 @@ test.serial(
     agent = ret.agent
 
     await waitAssetProcessing(agent, 0, 10000)
-
-    // should correctly send 5 reported state since it will retry twice.
-    t.is(updateReq[1].state.state, 'deployPending')
-    t.is(updateReq[2].state.state, 'deploying')
-    t.is(updateReq[3].state.state, 'deployPending')
-    t.is(updateReq[4].state.state, 'deploying')
-    t.is(updateReq[5].state.state, 'deployFail')
 
     const state = JSON.parse(fs.readFileSync(tmpAssetStatePath, 'utf8'))
     console.log(JSON.stringify(state, null, 4))
@@ -386,8 +373,6 @@ test.serial(
       type: 'desired',
       op: 'remove',
       path: 'assets.assets.nonexistent',
-      meta: desiredState.meta,
-      state: desiredState.state.assets.assets[newAssetId]
     })
 
     await waitAssetProcessing(agent, 1000, 5000)

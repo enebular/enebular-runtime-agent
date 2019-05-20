@@ -32,7 +32,8 @@ export async function createStartedAgent(
 
 export async function createConnectedAgent(
   t: test,
-  agentConfig: EnebularAgentConfig
+  agentConfig: EnebularAgentConfig,
+  ctrlMsgCallback: (message: any) => void
 ) {
   let connector = new ConnectorService(() => {
     connector.updateActiveState(true)
@@ -51,6 +52,17 @@ export async function createConnectedAgent(
       resolve({ agent: agent, connector: connector })
     })
 
+    agent.on('connectorCtrlMessageSend', msg => {
+        if (ctrlMsgCallback) {
+          if (ctrlMsgCallback.ctrlMsgCallback) {
+            ctrlMsgCallback.ctrlMsgCallback(connector, msg)
+          }
+          else {
+            ctrlMsgCallback(connector, msg)
+          }
+        }
+    })
+
     await agent.startup(agentConfig)
     setTimeout(async () => {
       reject(new Error('no connect request.'))
@@ -62,7 +74,8 @@ export async function createAuthenticatedAgent(
   t: test,
   server: DummyEnebularServer,
   agentConfig: EnebularAgentConfig,
-  port: number
+  port: number,
+  ctrlMsgCallback: (message: any) => void
 ) {
   let authRequestReceived = false
   const authCallback = req => {
@@ -81,7 +94,8 @@ export async function createAuthenticatedAgent(
   const configFile = Utils.createDummyEnebularConfig({}, port)
   const { agent, connector } = await createConnectedAgent(
     t,
-    Object.assign({ ENEBULAR_CONFIG_PATH: configFile }, agentConfig)
+    Object.assign({ ENEBULAR_CONFIG_PATH: configFile }, agentConfig),
+    ctrlMsgCallback
   )
   return new Promise(async (resolve, reject) => {
     setTimeout(async () => {
@@ -99,13 +113,15 @@ export async function createUnauthenticatedAgent(
   t: test,
   server: DummyEnebularServer,
   agentConfig: EnebularAgentConfig,
-  port: number
+  port: number,
+  ctrlMsgCallback: (message: any) => void
 ) {
   // An existing registered config
   const configFile = Utils.createDummyEnebularConfig({}, port)
   return createConnectedAgent(
     t,
-    Object.assign({ ENEBULAR_CONFIG_PATH: configFile }, agentConfig)
+    Object.assign({ ENEBULAR_CONFIG_PATH: configFile }, agentConfig),
+    ctrlMsgCallback
   )
 }
 
@@ -135,25 +151,40 @@ export async function createAgentWithDummyServerAssetHandler(
   reportedStates,
   populateDesiredState
 ) {
-  dummyServer.onDeviceStateGet = (req, res) => {
-    populateDesiredState(deviceStates[0])
-    res.send({ states: deviceStates })
-  }
-
-  dummyServer.onDeviceStateUpdate = (req, res) => {
-    const result = req.body.updates.map(update => {
-      updateReq.push(update)
-      if (update.op === 'set') {
-        objectPath.set(reportedStates, 'state.' + update.path, update.state)
-      } else if (update.op === 'remove') {
-        objectPath.del(reportedStates, 'state.' + update.path)
-      }
-      return {
-        success: true,
-        meta: {}
-      }
-    })
-    res.send({ updates: result })
+  const ctrlMsgCallback = (connector, msg) => {
+    if (msg.topic == 'deviceState/device/get') {
+      populateDesiredState(deviceStates[0])
+      connector.sendCtrlMessage({
+        type: 'res',
+        id: msg.id,
+        res: 'ok',
+        body: {
+          states: deviceStates
+        }
+      })
+    }
+    else if (msg.topic == 'deviceState/device/update') {
+      const result = msg.body.updates.map(update => {
+        updateReq.push(update)
+        if (update.op === 'set') {
+          objectPath.set(reportedStates, 'state.' + update.path, update.state)
+        } else if (update.op === 'remove') {
+          objectPath.del(reportedStates, 'state.' + update.path)
+        }
+        return {
+          success: true,
+          meta: {}
+        }
+      })
+      connector.sendCtrlMessage({
+        type: 'res',
+        id: msg.id,
+        res: 'ok',
+        body: {
+          updates: result
+        }
+      })
+    }
   }
 
   const ret = await createAuthenticatedAgent(
@@ -166,7 +197,8 @@ export async function createAgentWithDummyServerAssetHandler(
       },
       nodeRedPort
     ),
-    dummyServerPort
+    dummyServerPort,
+    ctrlMsgCallback
   )
   return ret
 }

@@ -71,6 +71,6 @@ export default class ProcessUtil {
         ? retryInfo.retryCount + 1
         : 0
     retryInfo.lastRetryTimestamp = now
-    return retryInfo.retryCount < maxRetryCount
+    return retryInfo.retryCount <= maxRetryCount
   }
 }

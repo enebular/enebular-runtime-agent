@@ -22,7 +22,7 @@
 
 #define MBED_CLOUD_CLIENT_ENDPOINT_TYPE         "default"
 #define MBED_CLOUD_CLIENT_TRANSPORT_MODE_TCP
-#define MBED_CLOUD_CLIENT_LIFETIME              3600
+#define MBED_CLOUD_CLIENT_LIFETIME              420        /* 7 minutes */
 
 #ifdef __FREERTOS__
     #define SN_COAP_MAX_BLOCKWISE_PAYLOAD_SIZE       512
