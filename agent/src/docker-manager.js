@@ -6,7 +6,6 @@ import stream from 'stream'
 import type { Logger } from 'winston'
 import { delay } from './utils'
 import Container from './container'
-import Exec from './exec'
 import type AgentInfoManager from './agent-info-manager'
 
 const moduleName = 'docker-man'
@@ -19,7 +18,6 @@ export default class DockerManager {
   _docker: Docker
   _aiModelDir: string
   _containers: Array<Container> = []
-  _execs: Array<Exec> = []
   _inited: boolean = false
   _active: boolean = false
   _updateAttemptsMax: number = 3
@@ -131,13 +129,6 @@ export default class DockerManager {
       const container = this._deserializeContainer(serializedContainer)
       this._containers.push(container)
     }
-    const serializedExecs = dockerState.execs
-    // this.info('serializedContainers', serializedContainers)
-    for (const serializedExec of serializedExecs) {
-      const exec = this._deserializeExec(serializedExec)
-      this._execs.push(exec)
-    }
-    // this.info('_containers, ', this._containers)
   }
 
   _deserializeContainer(serializedContainer: Object): Container {
@@ -155,23 +146,6 @@ export default class DockerManager {
     container.lastAttemptedUpdateId = serializedContainer.lastAttemptedUpdateId
 
     return container
-  }
-
-  _deserializeExec(serializedExec: Object): Exec {
-    const exec = new Exec(serializedExec.id, this)
-
-    exec.updateId = serializedExec.updateId
-    exec.config = serializedExec.config
-    exec.state = serializedExec.state
-    exec.changeTs = serializedExec.changeTs
-    exec.changeErrMsg = serializedExec.changeErrMsg
-    exec.pendingChange = serializedExec.pendingChange
-    exec.pendingUpdateId = serializedExec.pendingUpdateId
-    exec.pendingConfig = serializedExec.pendingConfig
-    exec.updateAttemptCount = serializedExec.updateAttemptCount
-    exec.lastAttemptedUpdateId = serializedExec.lastAttemptedUpdateId
-
-    return exec
   }
 
   async _saveDockerState() {
@@ -193,23 +167,8 @@ export default class DockerManager {
           break
       }
     }
-    const serializedExecs = []
-    for (const exec of this._execs) {
-      switch (exec.state) {
-        case 'running':
-        case 'stopped':
-        case 'down':
-        case 'error':
-        case 'removeFail':
-          serializedExecs.push(exec.serialize())
-          break
-        default:
-          break
-      }
-    }
     const dockerState = {
-      containers: serializedContainers,
-      execs: serializedExecs
+      containers: serializedContainers
     }
     this.debug('Docker state: ' + JSON.stringify(dockerState, null, 2))
     try {
@@ -297,8 +256,6 @@ export default class DockerManager {
     }
   }
 
-  async _handleExecsDesiredStateUpdate(desiredExecs) {}
-
   _updateDockerReportedState() {
     const reportedState = this._deviceStateMan.getState('reported', 'docker')
     if (!reportedState) {
@@ -334,29 +291,6 @@ export default class DockerManager {
     for (let container of this._containers) {
       this._updateContainerReportedState(container)
     }
-
-    if (reportedState.execs) {
-      // Remove reported assets that no longer exist
-      for (const reportedExecId in reportedState.execs) {
-        if (!reportedState.execs.hasOwnProperty(reportedExecId)) {
-          continue
-        }
-        let found = false
-        for (let exec of this._execs) {
-          if (exec.id() === reportedExecId) {
-            found = true
-            break
-          }
-        }
-        if (!found) {
-          this._removeExecReportedState(reportedExecId)
-        }
-      }
-    }
-    // Update all current assets (if required)
-    for (let exec of this._execs) {
-      this._updateExecReportedState(exec)
-    }
   }
 
   _removeContainerReportedState(containerId: string) {
@@ -372,26 +306,10 @@ export default class DockerManager {
     )
   }
 
-  _removeExecReportedState(execId: string) {
-    if (!this._deviceStateMan.canUpdateState('reported')) {
-      return
-    }
-
-    this.debug(`Removing exec '${execId}' reported state`)
-    this._deviceStateMan.updateState(
-      'reported',
-      'remove',
-      'docker.execs.' + execId
-    )
-  }
-
   async sync(type, item) {
     switch (type) {
       case 'container':
         this._updateContainerReportedState(item)
-        break
-      case 'exec':
-        this._updateExecReportedState(item)
         break
       default:
         return
@@ -471,75 +389,6 @@ export default class DockerManager {
     )
   }
 
-  // Only updates the reported state if required (if there is a difference)
-  _updateExecReportedState(exec: Exec) {
-    if (!this._deviceStateMan.canUpdateState('reported')) {
-      this.info('NOT UPDATING DESIRED STATE EXEC')
-      return
-    }
-    this.info('UPDATING DESIRED STATE EZEX')
-
-    // Create new reported state
-    let state
-    if (exec.pendingChange) {
-      switch (exec.pendingChange) {
-        case 'start':
-          state = 'startPending'
-          break
-        case 'stop':
-          state = 'stopPending'
-          break
-        case 'remove':
-          state = 'removePending'
-          break
-        default:
-          state = 'unknown'
-          break
-      }
-    } else {
-      state = exec.state
-    }
-    let newStateObj = {
-      ts: exec.changeTs,
-      state: state
-    }
-    if (exec.changeErrMsg) {
-      newStateObj.message = exec.changeErrMsg
-    }
-    if (exec.pendingChange) {
-      newStateObj.pendingUpdateId = exec.pendingUpdateId
-    }
-    if (state === 'starting' || state === 'stopping') {
-      newStateObj.updateAttemptCount = exec.updateAttemptCount
-    }
-    if (exec.config) {
-      newStateObj.config = exec.config
-    }
-    newStateObj.updateId = exec.updateId
-
-    // Compare with currently reported state
-    const currentStateObj = this._getReportedExecState(exec.id())
-    if (
-      currentStateObj &&
-      objectHash(currentStateObj) === objectHash(newStateObj)
-    ) {
-      this.info(`Update of exec '${exec.name()}' reported state not required`)
-      return
-    }
-    // this.info('CURRENT STATE OBJECT ', newStateObj)
-
-    // Update if required
-    this.debug(`Updating container '${exec.name()}' reported state...`)
-    // this.debug('Current state: ' + util.inspect(currentStateObj))
-    // this.debug('New state: ' + util.inspect(newStateObj))
-    this._deviceStateMan.updateState(
-      'reported',
-      'set',
-      'docker.execs.' + exec.id(),
-      newStateObj
-    )
-  }
-
   _getReportedContainerState(containerId: string): ?Object {
     const reportedState = this._deviceStateMan.getState('reported', 'docker')
     if (!reportedState || !reportedState.containers) {
@@ -547,15 +396,6 @@ export default class DockerManager {
     }
 
     return reportedState.containers[containerId]
-  }
-
-  _getReportedExecState(execId: string): ?Object {
-    const reportedState = this._deviceStateMan.getState('reported', 'docker')
-    if (!reportedState || !reportedState.execs) {
-      return null
-    }
-
-    return reportedState.execs[execId]
   }
 
   _getFirstPendingChangeContainer(): ?Container {
@@ -570,26 +410,9 @@ export default class DockerManager {
     return null
   }
 
-  _getFirstPendingChangeExec(): ?Exec {
-    if (this._execs.length < 1) {
-      return null
-    }
-    for (let exec of this._execs) {
-      if (exec.pendingChange) {
-        return exec
-      }
-    }
-    return null
-  }
-
   _setContainerState(container: Container, state: string) {
     container.setState(state)
     this._updateContainerReportedState(container)
-  }
-
-  _setExecState(exec: Exec, state: string) {
-    exec.setState(state)
-    this._updateExecReportedState(exec)
   }
 
   async _processPendingChanges() {
@@ -779,24 +602,11 @@ export default class DockerManager {
     await Promise.all(
       this._containers.map(async (container, idx) => {
         const success = await this._wakeContainer(container)
-        if (success && container.models().length > 0) {
-          this.info(`Starting execs of container ${container.name()}...`)
-          for (const modelId of container.models()) {
-            const exec = this.getExec(modelId)
-            await container.wakeExec(exec)
-          }
+        if (!success) {
+          this.error(`Could not start a container ${container.name()}...`)
         }
       })
     )
-  }
-
-  getExec(key) {
-    return this._execs.find(exec => exec.id() === key)
-  }
-
-  removeExec(key) {
-    this._execs = this._execs.filter(exec => exec.id() !== key)
-    this._removeExecReportedState(key)
   }
 
   removeContainer(key) {
@@ -808,6 +618,10 @@ export default class DockerManager {
 
   getContainer(key) {
     return this._docker.getContainer(key)
+  }
+
+  container(key) {
+    return this._containers.find(container => container.id() === key)
   }
 
   async _wakeContainer(container) {
@@ -834,75 +648,6 @@ export default class DockerManager {
       }
     }
     return success
-  }
-
-  async startContainer(container) {
-    if (!container.canStart()) {
-      return
-    }
-    const containerId = container.containerId()
-    this.debug('Starting container : ', containerId)
-    let existingContainer
-    try {
-      existingContainer = this.getContainer(containerId)
-    } catch (err) {
-      throw new Error('Container does not exist')
-    }
-    try {
-      container.activate(existingContainer)
-      await container.start()
-      await existingContainer.start()
-      this._attachLogsToContainer(existingContainer, container)
-      this._setContainerState(container, 'running')
-      return existingContainer
-    } catch (err) {
-      if (err.statusCode === 304) {
-        this._setContainerState(container, 'running')
-        return existingContainer
-      }
-      if (err.statusCode === 404) {
-        return this._recreateContainer(container.config, container)
-          .then(newContainer => {
-            this._transferContainer(containerId, newContainer.id)
-            return newContainer
-          })
-          .catch(err => {
-            this.error('Failed to recreate a container')
-            this.error(err.message)
-
-            this._cleanContainer(containerId)
-            this._removeContainerReportedState(container.id())
-          })
-      }
-      this.error(err.message)
-      throw new Error('Cannot start a container')
-    }
-  }
-
-  async stopContainer(containerId) {
-    this.debug('Stopping container: ', containerId)
-    try {
-      const container = this.getContainer(containerId)
-      await container.stop()
-      return true
-    } catch (err) {
-      this.error(err.message)
-      return false
-    }
-  }
-
-  _cleanContainer(containerId) {
-    this.debug('Cleaning container ', containerId)
-    this._containers = this._containers.filter(
-      container => container.id !== containerId
-    )
-  }
-
-  _transferContainer(oldId, newId) {
-    const container = this._containers.find(
-      container => container.containerId() === oldId
-    )
-    container.transfer(newId)
   }
 
   async shutDown() {
@@ -987,10 +732,16 @@ export default class DockerManager {
           // this._runImage(repoTag)
           resolve(output)
         }
+        let count = 0
         const onProgress = ({ status, progress }) => {
-          this.info(status)
-          if (progress) {
-            this.info(progress)
+          if (count % 15 === 0) {
+            this.info(status)
+            if (progress) {
+              this.info(progress)
+            }
+            count = 1
+          } else {
+            count++
           }
         }
         this._docker.modem.followProgress(stream, onFinished, onProgress)
@@ -1000,157 +751,58 @@ export default class DockerManager {
   }
 
   async checkExistingContainer(imageName, modelId) {
-    let alreadyRunning = false
     const container = this._containers.filter(container => {
-      if (
-        container.state === 'running' &&
-        container.config.imageName === imageName
-      ) {
-        if (container.models().find(model => model.modelId === modelId)) {
-          alreadyRunning = true
-          return true
-        } else {
-          return container.isAccepting()
-        }
+      if (container.id === modelId) {
+        return true
       } else {
         return false
       }
     })[0]
     if (container) {
-      return { container, alreadyRunning }
+      return { container }
     } else {
       return null
     }
-  }
-
-  async _recreateContainer(containerConfig, stateContainer) {
-    this.info('Recreating a container')
-    const { mounts, cmd, ports, imageName } = containerConfig
-    const config = {
-      HostConfig: {
-        Binds: mounts,
-        Privileged: true
-      },
-      Image: imageName,
-      Cmd: cmd,
-      Tty: true
-    }
-    if (ports) {
-      config.HostConfig.PortBindings = {}
-      config.ExposedPorts = {}
-      Object.keys(ports).forEach(port => {
-        config.HostConfig.PortBindings[port] = [{ HostPort: ports[port] }]
-        config.ExposedPorts[port] = {}
-      })
-    }
-    const container = await this._docker
-      // .run(imageName, options, process.stdout, { cmd: '/bin/bash' })
-      .createContainer(config)
-      .then(container => {
-        this.info('===========RUN?=============')
-        this._log.info(container)
-        return container.start().then(() => {
-          this.info('~~~~~~STARTED CONTAINER~~~~~~~')
-          this._attachLogsToContainer(container, stateContainer)
-          return container
-        })
-      })
-      .catch(err => {
-        this.info('================RUN ERROR=========', err)
-      })
-    return container
   }
 
   async createContainer(config) {
     return this._docker.createContainer(config)
   }
 
-  async _checkExistingModels(modelId, useExistingContainer) {
-    // checking if model is already running
-  }
-
-  async _checkRunningModel(config) {
-    const { modelId } = config
-    try {
-      await Promise.all(
-        this._containers
-          .filter(
-            container =>
-              container.state === 'running' &&
-              container.models().includes(modelId)
-          )
-          .map(async container => {
-            if (container.models().length <= 1) {
-              await this.removeContainer(container.containerId())
-            }
-          })
-      )
-      await this._saveDockerState()
-    } catch (err) {
-      this.error('Checking containers error', err.message)
-    }
-  }
-
-  _checkExistingModel(modelId) {
+  _checkExistingContainer(modelId) {
     this.info('Checking if model is already running...')
     try {
-      const exec = this.getExec(modelId)
-      return exec
+      const container = this.container(modelId)
+      return container
     } catch (err) {
       this.error('Checking containers error', err.message)
     }
-  }
-
-  _checkExistingContainer(imageName) {
-    this.info('Checking for existing container...')
-    return this._containers.find(
-      container =>
-        container.state === 'running' &&
-        container.imageName() === imageName &&
-        container.isOpen()
-    )
   }
 
   async prepare(config) {
-    const { modelId, useExistingContainer, imageName } = config
+    const { modelId } = config
 
-    const existingExec = this._checkExistingModel(modelId)
-    if (existingExec) {
-      this.info('Running model found... Removing')
-      await existingExec.remove(true)
-      this.removeExec(config.modelId)
-    }
-    if (useExistingContainer) {
-      const container = this._checkExistingContainer(imageName)
-      if (container) {
-        this.info(`Found existing container ${container.name()}`)
-
-        if (!container.isAccepting()) {
-          this.info('Removing first model from container')
-          await container.removeFirstExec()
-        }
-
-        return {
-          exist: true,
-          mountDir: container.mountDir(),
-          port: container.freePort(),
-          container: container
-        }
-      } else {
-        this.info('No suitable container found')
-      }
+    const existingContainer = this._checkExistingContainer(modelId)
+    if (existingContainer) {
+      this.info('Same container found... Removing')
+      await existingContainer.remove(true)
+      this.removeContainer(modelId)
+      return { exist: true, port: existingContainer.port() }
     }
     return { exist: false }
   }
 
-  async createNewContainer(imageName, dockerOptions, modelConfig) {
+  async createNewContainer(createOptions, modelConfig) {
+    this.info('Creating container')
+    const { mounts, ports, imageName, cmd, cores, maxRam } = createOptions
+    const { mountDir, port, handlers, language, id, name } = modelConfig
     // pulling docker image
     await this.pullImage(imageName)
-    this.info('Creating container')
-    const { mounts, cmd, ports } = dockerOptions
     const config = {
       HostConfig: {
         Binds: mounts,
+        Memory: maxRam,
+        CpuShares: cores,
         Privileged: true
       },
       Image: imageName,
@@ -1170,16 +822,15 @@ export default class DockerManager {
     this.debug(JSON.stringify(config, null, 2))
     const dockerContainer = await this._docker.createContainer(config)
 
-    const newContainer = new Container(dockerContainer.id, this)
+    const newContainer = new Container(id, this)
     const containerConfig = {
+      name,
       containerId: dockerContainer.id,
-      imageName: imageName,
-      models: [],
-      mountDir: modelConfig.mountDir,
-      accept: modelConfig.cacheSize,
-      ports: modelConfig.ports,
-      cacheSize: modelConfig.cacheSize,
-      dockerOptions
+      mountDir: mountDir,
+      port: port,
+      handlers,
+      language,
+      createOptions
     }
     newContainer.config = containerConfig
 
@@ -1188,40 +839,6 @@ export default class DockerManager {
     newContainer.activate(dockerContainer)
 
     return newContainer
-  }
-
-  async createExec(container, options) {
-    this.info('Creating new execution to a container')
-    const exec = await container.exec(options)
-    return exec
-  }
-
-  addExec(exec) {
-    this._execs.push(exec)
-  }
-
-  async exec(container, options) {
-    this.info('Creating new execution to a container')
-    const exec = await container.exec(options)
-    exec.start((err, stream) => {
-      if (err) {
-        return this.error(err.message)
-      }
-
-      this._attachLogsToExec(container, stream)
-    })
-  }
-
-  _attachLogsToExec(container, execStream) {
-    const logStream = new stream.PassThrough()
-    logStream.on('data', chunk => {
-      this.info('exec container: ', chunk.toString('utf-8'))
-    })
-
-    container.modem.demuxStream(execStream, logStream, logStream)
-    execStream.on('end', function() {
-      logStream.end('!stop exec!')
-    })
   }
 
   _attachLogsToContainer(dockerContainer, stateContainer) {

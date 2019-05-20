@@ -10,8 +10,10 @@ export default class Container {
   _active: boolean = false
   _dockerMan: DockerManager
   _container: Object
+  _exec: Object
   _id: string
   _execs: Array<Exec> = []
+  _restartCount: number = 0
   config: Object
   state: string
   changeTs: number
@@ -56,6 +58,10 @@ export default class Container {
     return this.config.models
   }
 
+  handlers(): Array<Object> {
+    return this.config.handlers || []
+  }
+
   freePort(): Number {
     return this.config.ports[this.config.models.length]
   }
@@ -72,8 +78,13 @@ export default class Container {
     return this.config.imageName
   }
 
-  endpoint(port) {
-    return `${this._dockerMan.ipAddress()}:${port}`
+  _updateEndpoint() {
+    const endpoint = `${this._dockerMan.ipAddress()}:${this.port()}`
+    this.config.endpoint = endpoint
+  }
+
+  endpoint() {
+    return this.config.endpoint
   }
 
   isActive(): boolean {
@@ -82,6 +93,14 @@ export default class Container {
 
   isOpen(): Boolean {
     return this.config.cacheSize > 1
+  }
+
+  port(): string {
+    return this.config.port
+  }
+
+  createOptions(): Object {
+    return this.config.createOptions
   }
 
   canStart(): boolean {
@@ -101,7 +120,6 @@ export default class Container {
     this._active = true
     this._container = container
     this.config.containerId = container.id
-    this.config.name = container.id.slice(0, 12)
   }
 
   deactivate() {
@@ -168,16 +186,6 @@ export default class Container {
     this.config.containerId = newId
   }
 
-  addModel(key) {
-    this.config.models.push(key)
-    this.config.accept--
-  }
-
-  removeModel(key) {
-    this.config.models = this.config.models.filter(modelId => modelId !== key)
-    this.config.accept++
-  }
-
   sync() {
     this.changeTs = Date.now()
     this._dockerMan.sync('container', this)
@@ -194,15 +202,74 @@ export default class Container {
     })
   }
 
+  async _showEndpoints() {
+    let message = `Model's ${this.name()} endpoint(s):\n`
+    this.handlers().forEach(handler => {
+      message += `'${handler.nodeTitle}' at ${this.endpoint()}/${handler.id}\n`
+    })
+    this._info(message)
+  }
+
+  async _startExec() {
+    return new Promise((resolve, reject) => {
+      this._exec.start((err, stream) => {
+        if (err) {
+          reject(err)
+        }
+        resolve(stream)
+      })
+    })
+  }
+
+  async _execModel() {
+    this._info(`Executing model '${this.name()}'...`)
+    try {
+      const { command, workDir } = this.createOptions()
+      const options = {
+        Cmd: command,
+        AttachStdout: true,
+        AttachStderr: true,
+        Privileged: true,
+        WorkingDir: workDir
+      }
+      this._exec = await this._container.exec(options)
+      const logStream = await this._startExec()
+      this._attachLogsToExec(logStream)
+      this.setState('running')
+    } catch (err) {
+      this._error(err.message)
+    }
+  }
+
+  async _restart() {
+    if (!this._active) {
+      return
+    }
+    if (this._restartCount < 3) {
+      this._restartCount++
+      this._info(`Restart #${this.restartCount} of model '${this.name()}'...`)
+      await this._execModel()
+      this._showEndpoints()
+    } else {
+      this._info(
+        `Exceeded maximum number of restarts of model '${this.name()}'...`
+      )
+      await this._crash()
+    }
+  }
+
   async start() {
     if (!this.canStart() || !this._container) {
       return
     }
     this._info(`Starting container '${this.name()}'...`)
     try {
+      this._updateEndpoint()
+      this._restartCount = 0
       await this._container.start()
-      this._attachLogs()
-      this.setState('running')
+      this._attachLogsToContainer()
+      await this._execModel()
+      this._showEndpoints()
       return true
     } catch (err) {
       if (err.statusCode === 404) {
@@ -215,6 +282,20 @@ export default class Container {
     return false
   }
 
+  async _crash() {
+    try {
+      this.setState('error')
+      await this._container.stop()
+      this._active = false
+    } catch (err) {
+      if (err.statusCode !== 304) {
+        this._error('Cannot stop container', this.name())
+        this._debug(err)
+        this.setState('error')
+      }
+    }
+  }
+
   async stop() {
     if (!this._container || this.state !== 'running') {
       return
@@ -222,7 +303,6 @@ export default class Container {
     this._info(`Stopping container '${this.name()}'...`)
     try {
       this.setState('stopping')
-      await this._stopExec()
       await this._container.stop()
       this.setState('stopped')
       return true
@@ -268,12 +348,13 @@ export default class Container {
     }
     this._info('Restoring config...')
     const {
-      imageName,
-      dockerOptions: { mounts, cmd, ports }
+      createOptions: { mounts, ports, imageName, cmd, cores, maxRam }
     } = this.config
     const config = {
       HostConfig: {
         Binds: mounts,
+        Memory: maxRam,
+        CpuShares: cores,
         Privileged: true
       },
       Image: imageName,
@@ -324,10 +405,10 @@ export default class Container {
     }
   }
 
-  _attachLogs() {
+  _attachLogsToContainer() {
     const logStream = new stream.PassThrough()
     logStream.on('data', chunk => {
-      this._info(`container `, chunk.toString('utf-8'))
+      this._info(`container '${this.name()}':`, chunk.toString('utf-8'))
     })
     this._container.logs(
       {
@@ -341,9 +422,9 @@ export default class Container {
         }
         this._container.modem.demuxStream(stream, logStream, logStream)
         stream.on('end', () => {
-          if (this.active) {
-            if (this.state !== 'stopping') {
-              this._error(`Unexpected stopping of container ${this.name()}`)
+          if (this._active) {
+            if (this.state !== 'stopping' && this.state !== 'removing') {
+              this._error(`Unexpected stopping of container '${this.name()}'`)
               this.setState('error')
               // this.sync()
             }
@@ -356,85 +437,23 @@ export default class Container {
     )
   }
 
-  async newExec(modelConfig, execOptions) {
-    this._info(`Creating new exec to container '${this.name()}'...`)
-    try {
-      const newExec = new Exec(modelConfig.id, this._dockerMan)
-      const baseEndpoint = this.endpoint(modelConfig.port)
-      const endpoints = modelConfig.handlers.map(
-        handler => `${handler.nodeTitle} at ${baseEndpoint}/${handler.id}`
-      )
-      const config = {
-        name: modelConfig.name,
-        language: modelConfig.language,
-        mountDir: modelConfig.mountDir,
-        port: modelConfig.port,
-        endpoint: baseEndpoint,
-        handlers: endpoints,
-        options: execOptions
+  _attachLogsToExec(execStream) {
+    const logStream = new stream.PassThrough()
+    logStream.on('data', chunk => {
+      this._info(`model ${this.name()}: `, chunk.toString('utf-8'))
+    })
+
+    this._container.modem.demuxStream(execStream, logStream, logStream)
+    execStream.on('end', () => {
+      if (this._active) {
+        if (this.state !== 'stopping' && this.state !== 'removing') {
+          this._error(`Unexpected stopping of model ${this.name()}`)
+          setTimeout(() => this._restart(), 1000)
+        }
+      } else {
+        this.setState('down')
       }
-      newExec.config = config
-      const dockerExec = await this._container.exec(execOptions)
-      newExec.activate(dockerExec, this)
-      this.addModel(modelConfig.id)
-      this._dockerMan.addExec(newExec)
-      this._execs.push(newExec)
-      this.sync()
-      await newExec.start()
-      // setTimeout(
-      //   () =>
-      //     this._container.top({ ps_args: 'aux' }, (err, data) => {
-      //       if (err) {
-      //         this._error('TOP ERROR', err)
-      //       }
-      //       this._info('TOP   ', data)
-      //     }),
-      //   10000
-      // )
-      // setTimeout(() => newExec.stop(), 5000)
-      return true
-    } catch (err) {
-      this._error(err.message)
-      return false
-    }
-  }
-
-  async wakeExec(existingExec) {
-    try {
-      this._info(`Creating exec to container '${this.name()}'...`)
-      const dockerExec = await this._container.exec(existingExec.options())
-      existingExec.activate(dockerExec, this)
-      this._execs.push(existingExec)
-      await existingExec.start()
-      return true
-    } catch (err) {
-      this._error(err.message)
-      return false
-    }
-  }
-
-  async removeExec(execId, hard) {
-    this._execs = this._execs.filter(exec => exec.id() !== execId)
-    this.removeModel(execId)
-    if (hard && this._execs.length < 1) {
-      await this.remove(hard)
-    }
-    this.sync()
-  }
-
-  async _stopExecs() {
-    return Promise.all(this._execs.map(exec => exec.stop()))
-  }
-
-  _reshufflePorts() {
-    this.config.ports.push(this.config.ports.shift())
-  }
-
-  async removeFirstExec() {
-    const exec = this._execs.shift()
-    this.removeModel(exec.id)
-    this._reshufflePorts()
-    this.sync()
-    await exec.remove(true)
+      logStream.end(`!stop exec!`)
+    })
   }
 }

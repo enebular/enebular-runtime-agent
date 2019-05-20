@@ -52,7 +52,7 @@ export default class AiModel extends Asset {
   }
 
   _mountModelDir(): string {
-    return this._mountDir || this.config.destPath
+    return this.config.destPath
   }
 
   _mountContainerDirPath(): string {
@@ -61,10 +61,6 @@ export default class AiModel extends Asset {
       '.mount',
       this._mountModelDir()
     )
-  }
-
-  _mountModelDirPath(): string {
-    return path.join(this._mountContainerDirPath(), this.config.destPath)
   }
 
   _wrapperSubPath(): string {
@@ -76,12 +72,12 @@ export default class AiModel extends Asset {
   }
 
   _containerWrapperDirPath(): string {
-    return path.join('/mount', this.config.destPath, this._wrapperSubPath())
+    return path.join('/mount', this._wrapperSubPath())
   }
 
   _mountWrapperPath(): string {
     return path.join(
-      this._mountModelDirPath(),
+      this._mountContainerDirPath(),
       this._wrapperSubPath(),
       'wrapper.py'
     )
@@ -101,6 +97,10 @@ export default class AiModel extends Asset {
 
   _cores(): number {
     return this.config.cores
+  }
+
+  _maxRam(): number {
+    return this.config.maxRam
   }
 
   _cacheSize(): number {
@@ -244,24 +244,19 @@ export default class AiModel extends Asset {
 
     this._info('Preparing container...')
     const preparation = await this._dockerMan().prepare({
-      imageName: this._dockerImage(),
-      modelId: this.id(),
-      useExistingContainer: this._isExistingContainerFlag()
+      modelId: this.id()
     })
-
     if (preparation.exist) {
-      this._container = preparation.container
-      this._mountDir = preparation.mountDir
       this._port = preparation.port
     } else {
-      this._ports = await this._portMan().findFreePorts(this._cacheSize())
-      this._port = this._ports[0]
+      this._port = await this._portMan().findFreePort()
     }
+
     this._info('Using port', this._port)
 
     // Extract archived model
     const path = this._filePath()
-    const dest = this._mountModelDirPath()
+    const dest = this._mountContainerDirPath()
     await new Promise((resolve, reject) => {
       this._info(`Extracting model ${this._fileName()} to ${dest}...`)
       extract(path, { dir: dest }, err => {
@@ -335,46 +330,47 @@ export default class AiModel extends Asset {
     this._info(`Using image ${this._dockerImage()}...`)
 
     const language = this._language() === 'Python3' ? 'python3' : 'python2'
-    const command = `cd ${this._containerWrapperDirPath()} && ${language} wrapper.py`
-    // creating container
-    let container
-    if (this._container) {
-      container = this._container
-    } else {
-      container = await this._dockerMan().createNewContainer(
-        this._dockerImage(),
-        {
-          cmd: ['/bin/bash'],
-          mounts: [`${this._mountContainerDirPath()}:/mount`],
-          ports: this._ports
-        },
-        {
-          modelId: this.id(),
-          existingContainer: this._isExistingContainerFlag(),
-          cacheSize: this._cacheSize(),
-          mountDir: this._mountModelDir(),
-          ports: this._ports,
-          cmd: command
-        }
-      )
-      await container.start()
-    }
-    await container.newExec(
+    // const command = `cd ${this._containerWrapperDirPath()} && ls && ${language} wrapper.py`
+
+    const container = await this._dockerMan().createNewContainer(
+      {
+        cmd: ['/bin/bash'],
+        command: [`${language}`, `wrapper.py`],
+        workDir: this._containerWrapperDirPath(),
+        mounts: [`${this._mountContainerDirPath()}:/mount`],
+        ports: [this._port],
+        imageName: this._dockerImage(),
+        cores: this._cores(),
+        maxRam: this._maxRam() * 1024 * 1024
+      },
       {
         id: this.id(),
         name: this.name(),
-        mountDir: this._destDir(),
+        mountDir: this._mountModelDir(),
         port: this._port,
-        language: language,
+        language,
         handlers: this._handlers()
-      },
-      {
-        Cmd: ['/bin/bash', '-c', command],
-        AttachStdout: true,
-        AttachStderr: true,
-        Privileged: true
       }
     )
+
+    await container.start()
+
+    // await container.newExec(
+    //   {
+    //     id: this.id(),
+    //     name: this.name(),
+    //     mountDir: this._destDir(),
+    //     port: this._port,
+    //     language: language,
+    //     handlers: this._handlers()
+    //   },
+    //   {
+    //     Cmd: ['/bin/bash', '-c', command],
+    //     AttachStdout: true,
+    //     AttachStderr: true,
+    //     Privileged: true
+    //   }
+    // )
     // await this._dockerMan().exec(container, {
     //   Cmd: ['/bin/bash', '-c', command],
     //   AttachStdout: true,
@@ -384,7 +380,7 @@ export default class AiModel extends Asset {
 
   async _delete() {
     const filePath = this._filePath()
-    const mountPath = this._mountModelDirPath()
+    const mountPath = this._mountContainerDirPath()
     if (fs.existsSync(filePath)) {
       this._debug(`Deleting ${filePath}...`)
       fs.unlinkSync(filePath)
