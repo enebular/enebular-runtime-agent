@@ -11,6 +11,7 @@ import FileAsset from './file-asset'
 import { delay } from './utils'
 import type DeviceStateManager from './device-state-manager'
 import type DockerManager from './docker-manager'
+import type PortManager from './port-manager'
 import type AgentManagerMediator from './agent-manager-mediator'
 import type Config from './config'
 
@@ -94,12 +95,14 @@ const moduleName = 'asset-man'
 export default class AssetManager {
   _deviceStateMan: DeviceStateManager
   _dockerMan: DockerManager
+  _portMan: PortManager
   _log: Logger
   _assets: Array<Asset> = []
   _processingChanges: boolean = false
   _inited: boolean = false
   _active: boolean = false
   _dataDir: string
+  _aiModelDir: string
   _stateFilePath: string
   _updateAttemptsMax: number = 3
   agentMan: AgentManagerMediator
@@ -108,18 +111,20 @@ export default class AssetManager {
     deviceStateMan: DeviceStateManager,
     dockerMan: DockerManager,
     agentMan: AgentManagerMediator,
+    portMan: PortManager,
     config: Config,
     log: Logger
   ) {
     this._dataDir = path.resolve(config.get('ENEBULAR_ASSETS_DATA_PATH'))
     this._aiModelDir = path.resolve(config.get('ENEBULAR_AI_MODELS_DATA_PATH'))
     this._stateFilePath = config.get('ENEBULAR_ASSETS_STATE_PATH')
-    if (!this._dataDir || !this._stateFilePath) {
+    if (!this._dataDir || !this._aiModelDir || !this._stateFilePath) {
       throw new Error('Missing asset-man configuration')
     }
 
     this._deviceStateMan = deviceStateMan
     this._dockerMan = dockerMan
+    this._portMan = portMan
     this.agentMan = agentMan
     this._log = log
 
@@ -151,7 +156,7 @@ export default class AssetManager {
     this._log.error(msg, ...args)
   }
 
-  async setup(dockerMode) {
+  async setup() {
     if (this._inited) {
       return
     }
@@ -164,10 +169,6 @@ export default class AssetManager {
     }
 
     await this._initAssets()
-
-    if (dockerMode) {
-      await this._dockerMan.setup()
-    }
 
     this._inited = true
   }
@@ -540,7 +541,7 @@ export default class AssetManager {
             this._setAssetState(asset, 'removing')
             let success = await asset.remove()
             if (!success) {
-              this.info('Remove failed, but contining with deploy...')
+              this.info('Remove failed, but continuing with deploy...')
               this._setAssetState(asset, 'removeFail')
             }
           }

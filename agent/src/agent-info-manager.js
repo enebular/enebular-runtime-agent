@@ -1,12 +1,13 @@
 /* @flow */
-
+import ip from 'ip'
+import type { Logger } from 'winston'
 import { version as agentVer } from '../package.json'
 import type DeviceStateManager from './device-state-manager'
-import type { Logger } from 'winston'
 
 const moduleName = 'agent-info-man'
 
 export default class AgentInfoManager {
+  _ip: string
   _deviceStateMan: DeviceStateManager
   _log: Logger
 
@@ -23,7 +24,12 @@ export default class AgentInfoManager {
     this._log.debug(msg, ...args)
   }
 
+  ip() {
+    return this._ip
+  }
+
   async setup() {
+    this._ip = ip.address()
     //
   }
 
@@ -39,11 +45,13 @@ export default class AgentInfoManager {
     if (
       !agentInfo ||
       agentInfo.v !== agentVer ||
-      agentInfo.type !== 'enebular-agent'
+      agentInfo.type !== 'enebular-agent' ||
+      agentInfo.ip !== this._ip
     ) {
       this._deviceStateMan.updateState('status', 'set', 'agent', {
         type: 'enebular-agent',
-        v: agentVer
+        v: agentVer,
+        ip: this._ip
       })
     }
   }

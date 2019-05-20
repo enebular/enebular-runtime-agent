@@ -154,14 +154,16 @@ export function decryptCredential(key, credential) {
   return decrypted
 }
 
-export async function createNodeDefinition(node, aiNodeDir) {
+export async function createNodeDefinition(node, aiNodeDir, endpoint) {
   const htmlFile = `<script type="text/javascript">RED.nodes.registerType('${
     node.id
   }',{category:'Enebular AI',color:'#F0F0F0 ',defaults:{name:{value:''},handlerFunc:{value:'${
     node.handlerFunc
   }'},enebularAi:{value:true},modelId:{value:'${
     node.assetId
-  }'},url:{value:''}},inputs:1,outputs:1,icon:'icon.svg',label:function(){return this.name||'${
+  }'},url:{value:'http://${endpoint}/${
+    node.id
+  }'}},inputs:1,outputs:1,icon:'icon.svg',label:function(){return this.name||'${
     node.nodeTitle
   }'},paletteLabel:'${
     node.nodeTitle
@@ -181,7 +183,7 @@ module.exports = function(RED) {
   function main(config) {
     RED.nodes.createNode(this, config)
     var node = this
-    var nodeUrl = config.url
+    var nodeUrl = config.url || 'http://${endpoint}/${node.id}'
     this.on('input', function(msg) {
       var preRequestTimestamp = process.hrtime()
       node.status({

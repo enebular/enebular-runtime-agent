@@ -8,12 +8,18 @@ import request from 'request'
 import progress from 'request-progress'
 import util from 'util'
 import extract from 'extract-zip'
-import portfinder from 'portfinder'
 import rimraf from 'rimraf'
 import Asset from './asset'
 import type DockerManager from './docker-manager'
+import type PortManager from './port-manager'
+import type Container from './container'
 
 export default class AiModel extends Asset {
+  _port: string
+  _ports: Array<string>
+  _mountDir: string
+  _container: Container
+
   _fileName(): string {
     return this.config.fileTypeConfig.filename
   }
@@ -22,8 +28,8 @@ export default class AiModel extends Asset {
     return this.config.fileTypeConfig.size
   }
 
-  _config(): Object {
-    return this.config
+  _destDir(): string {
+    return this.config.destPath
   }
 
   /** @override */
@@ -45,23 +51,19 @@ export default class AiModel extends Asset {
     return path.join(this._destDirPath(), this.config.fileTypeConfig.filename)
   }
 
-  _baseMountDir(): string {
-    return this._mountDir || this.config.destPath
+  _mountModelDir(): string {
+    return this.config.destPath
   }
 
-  _baseMountPath(): string {
+  _mountContainerDirPath(): string {
     return path.join(
       this._assetMan.aiModelDir(),
       '.mount',
-      this._baseMountDir()
+      this._mountModelDir()
     )
   }
 
-  _mountPath(): string {
-    return path.join(this._baseMountPath(), this.config.destPath)
-  }
-
-  _mainFileDir(): string {
+  _wrapperSubPath(): string {
     let mainFileDir = this._mainFilePath().split('.')
     if (mainFileDir.length > 1) {
       mainFileDir = mainFileDir.slice(0, -1)
@@ -69,12 +71,16 @@ export default class AiModel extends Asset {
     return path.join(...mainFileDir)
   }
 
-  _mountFileDir(): string {
-    return path.join('/mount', this.config.destPath, this._mainFileDir())
+  _containerWrapperDirPath(): string {
+    return path.join('/mount', this._wrapperSubPath())
   }
 
-  _wrapperPath(): string {
-    return path.join(this._mountPath(), this._mainFileDir(), 'wrapper.py')
+  _mountWrapperPath(): string {
+    return path.join(
+      this._mountContainerDirPath(),
+      this._wrapperSubPath(),
+      'wrapper.py'
+    )
   }
 
   _key(): string {
@@ -85,12 +91,16 @@ export default class AiModel extends Asset {
     return this.config.handlers
   }
 
-  _existingContainer(): boolean {
+  _isExistingContainerFlag(): boolean {
     return this.config.existingContainer
   }
 
   _cores(): number {
     return this.config.cores
+  }
+
+  _maxRam(): number {
+    return this.config.maxRam
   }
 
   _cacheSize(): number {
@@ -119,6 +129,10 @@ export default class AiModel extends Asset {
 
   _dockerMan(): DockerManager {
     return this._assetMan._dockerMan
+  }
+
+  _portMan(): PortManager {
+    return this._assetMan._portMan
   }
 
   async _getIntegrity(path: string) {
@@ -228,29 +242,35 @@ export default class AiModel extends Asset {
     fs.chmodSync(this._filePath(), 0o740)
     this._info('File installed to: ' + this._fileSubPath())
 
-    if (this._existingContainer()) {
-      const container = await this._dockerMan().checkExistingContainer(
-        this._dockerImage(),
-        this.id()
-      )
-      if (container) {
-        this._mountDir = container.mountDir
-        this._port = container.port
-        this._info('Using existing container with port ', container.port)
-      } else {
-        this._info('Cannot find an existing container')
-        await this._findFreePort()
-      }
+    this._info('Preparing container...')
+    const preparation = await this._dockerMan().prepare({
+      modelId: this.id()
+    })
+    if (preparation.exist) {
+      this._port = preparation.port
     } else {
-      this._info('Using new container')
-      // Searching for open port
-      await this._findFreePort()
+      this._port = await this._portMan().findFreePort()
     }
 
+    this._info('Using port', this._port)
+
     // Extract archived model
-    const that = this
     const path = this._filePath()
-    const dest = this._mountPath()
+    const dest = this._mountContainerDirPath()
+    await new Promise((resolve, reject) => {
+      this._info(`Extracting model ${this._fileName()} to ${dest}...`)
+      extract(path, { dir: dest }, err => {
+        if (err) {
+          this._error('Extraction failed')
+          reject(err)
+        }
+        this._info('Extraction complete')
+        resolve()
+      })
+    })
+
+    // Downloading wrapper
+    const that = this
     const onProgress = state => {
       this._info(
         util.format(
@@ -261,25 +281,15 @@ export default class AiModel extends Asset {
         )
       )
     }
-    await new Promise((resolve, reject) => {
-      this._info(`extracting archive ${this._fileName()} to ${dest}`)
-      extract(path, { dir: dest }, err => {
-        if (err) {
-          this._error('extraction failed')
-          reject(err)
-        }
-        this._info('extraction complete')
-        resolve()
-      })
-    })
-
-    // Downloading wrapper
-    const wrapperUrl = await this._assetMan.agentMan.getAiModelWrapperUrl({
-      ...this._config(),
-      Port: this._port
-    })
-    const wrapperPath = this._wrapperPath()
-    this._debug(`Downloading wrapper ${wrapperUrl} to ${wrapperPath} ...`)
+    const wrapperUrl = await this._assetMan.agentMan.getAiModelWrapperUrl(
+      {
+        ...this.config,
+        Port: this._port
+      },
+      this._dockerMan().isTestMode()
+    )
+    const wrapperPath = this._mountWrapperPath()
+    this._info(`Downloading wrapper to ${wrapperPath} ...`)
     await new Promise(function(resolve, reject) {
       const fileStream = fs.createWriteStream(wrapperPath)
       fileStream.on('error', err => {
@@ -314,70 +324,63 @@ export default class AiModel extends Asset {
     })
   }
 
-  async _findFreePort() {
-    return portfinder
-      .getPortPromise()
-      .then(port => {
-        this._info('Using port: ', port)
-        this._port = port
-      })
-      .catch(err => {
-        this._error(err.message)
-      })
-  }
-
   async _runPostInstallOps() {
-    this._info('==============DOCKER STUFF==================')
+    this._info('Setting docker...')
     // this._dockerMan().listContainers()
-    this._info('==============DOCKER IMAGE============', this._dockerImage())
+    this._info(`Using image ${this._dockerImage()}...`)
 
-    // creating container
-    const container = await this._dockerMan().createContainer(
-      this._dockerImage(),
+    const language = this._language() === 'Python3' ? 'python3' : 'python2'
+    // const command = `cd ${this._containerWrapperDirPath()} && ls && ${language} wrapper.py`
+
+    const container = await this._dockerMan().createNewContainer(
       {
         cmd: ['/bin/bash'],
-        mounts: [`${this._baseMountPath()}:/mount`],
-        ports: {
-          [`${this._port}/tcp`]: `${this._port}`
-        }
+        command: [`${language}`, `wrapper.py`],
+        workDir: this._containerWrapperDirPath(),
+        mounts: [`${this._mountContainerDirPath()}:/mount`],
+        ports: [this._port],
+        imageName: this._dockerImage(),
+        cores: this._cores(),
+        maxRam: this._maxRam() * 1024 * 1024
       },
       {
-        modelId: this.id(),
-        existingContainer: this._existingContainer(),
-        cacheSize: this._cacheSize(),
-        mountDir: this._baseMountDir(),
-        port: this._port
+        id: this.id(),
+        name: this.name(),
+        mountDir: this._mountModelDir(),
+        port: this._port,
+        language,
+        handlers: this._handlers()
       }
     )
 
-    // await container.start()
-    // const exec = await container.exec({
-    //   Cmd: ['bash', '-c', 'echo Hello Container && ls'],
+    await container.start()
+
+    // await container.newExec(
+    //   {
+    //     id: this.id(),
+    //     name: this.name(),
+    //     mountDir: this._destDir(),
+    //     port: this._port,
+    //     language: language,
+    //     handlers: this._handlers()
+    //   },
+    //   {
+    //     Cmd: ['/bin/bash', '-c', command],
+    //     AttachStdout: true,
+    //     AttachStderr: true,
+    //     Privileged: true
+    //   }
+    // )
+    // await this._dockerMan().exec(container, {
+    //   Cmd: ['/bin/bash', '-c', command],
     //   AttachStdout: true,
     //   AttachStderr: true
     // })
-    const language = this._language() === 'Python3' ? 'python3' : 'python2'
-    await this._dockerMan().exec(container, {
-      Cmd: [
-        '/bin/bash',
-        '-c',
-        `cd ${this._mountFileDir()} && ${language} wrapper.py`
-      ],
-      AttachStdout: true,
-      AttachStderr: true
-    })
-    // this._info('EXEC', exec)
-    // setTimeout(() => this._dockerMan().listContainers(), 5000)
-    // exec.inspect()
-    // const smh = await exec.inspect()
-    // this._info('INSPECT', smh)
-
-    // INSTALLING OF DOCKER SHOULD BE HERE
   }
 
   async _delete() {
     const filePath = this._filePath()
-    const mountPath = this._mountPath()
+    const mountPath = this._mountContainerDirPath()
     if (fs.existsSync(filePath)) {
       this._debug(`Deleting ${filePath}...`)
       fs.unlinkSync(filePath)

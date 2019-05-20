@@ -267,6 +267,13 @@ export default class NodeREDController {
           const exist = fs.existsSync(aiNodesDir)
           if (exist) {
             rimraf.sync(aiNodesDir)
+            rimraf.sync(
+              path.join(
+                this._getDataDir(),
+                'node_modules',
+                'enebular-ai-contrib*'
+              )
+            )
           }
           fs.mkdir(aiNodesDir, err => {
             if (err) {
@@ -379,16 +386,18 @@ export default class NodeREDController {
   //   )
   // }
 
-  async _createAiNodes(nodes, aiNodesDir) {
-    const packageIds = Object.keys(nodes)
+  async _createAiNodes(handlers, aiNodesDir) {
+    const packageIds = Object.keys(handlers)
     await Promise.all(
       packageIds.map(async key => {
         const aiNodeDir = path.resolve(aiNodesDir, key)
         await mkdirAsync(aiNodeDir)
         await mkdirAsync(path.resolve(aiNodeDir, 'nodes'))
         return Promise.all(
-          nodes[key].map(node =>
-            createNodeDefinition(node, aiNodeDir).then(() => node.id)
+          handlers[key].nodes.map(node =>
+            createNodeDefinition(node, aiNodeDir, handlers[key].endpoint).then(
+              () => node.id
+            )
           )
         )
       })
@@ -401,7 +410,7 @@ export default class NodeREDController {
           path.resolve(this._getDataDir(), 'img', 'enebular_logo.svg'),
           path.resolve(aiNodeDir, 'icons', 'icon.svg')
         )
-        const pkgNodes = nodes[pkgId].reduce((accum, node) => {
+        const pkgNodes = handlers[pkgId].nodes.reduce((accum, node) => {
           accum[node.id] = `./nodes/${node.id}.js`
           return accum
         }, {})
