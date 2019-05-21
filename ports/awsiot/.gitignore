@@ -29,5 +29,6 @@ node_modules
 .enebular-assets.json
 .enebular-docker.json
 .enebular-port.json
+.enebular-flow.json
 
 
