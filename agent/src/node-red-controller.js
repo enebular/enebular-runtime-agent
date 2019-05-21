@@ -304,20 +304,14 @@ export default class NodeREDController {
     }
 
     if (desiredState.hasOwnProperty('enable')) {
-      if (
-        this._flowState.enable !== desiredState.enable &&
-        this._flowState.pendingEnable !== desiredState.enable
-      ) {
+      if (this._flowState.pendingEnable !== desiredState.enable) {
         this._flowState.pendingEnable = desiredState.enable
         change = true
       }
     } else {
-      if (this._flowState.enable != null) {
-        // enable = false has been cleared, start Node-RED if it stopped
-        if (this._flowState.enable === false) {
-          this._flowState.pendingEnable = true
-        }
-        delete this._flowState.enable
+      // enable is undefined or false
+      if (!this._flowState.enable && this._flowState.pendingEnable !== true) {
+        this._flowState.pendingEnable = true
         change = true
       }
     }
@@ -544,10 +538,14 @@ export default class NodeREDController {
                 this._flowState.updateId
               )
               await this.fetchAndUpdateFlow(downloadUrl)
-              if (pendingEnable !== false && this._isFlowEnabled()) {
+              if (pendingEnable == null) {
                 await this._restartService()
-              } else {
-                this.info('Skipped Node-RED restart since flow is disabled')
+              } else if (pendingEnable) {
+                // we have to handle pending here, as restart result is accounted for deploy result
+                await this._restartService()
+                this._flowState.enable = pendingEnable
+                this._updateFlowReportedState()
+                pendingEnable = null
               }
               this.info(`Deployed flow '${pendingAssetId}'`)
               this._flowState.updateAttemptCount = 0
@@ -683,8 +681,7 @@ export default class NodeREDController {
       } else {
         await this._restartService()
       }
-    }
-    catch (err) {
+    } catch (err) {
       this.error('Update flow failed: ' + err.message)
     }
     this._updateFlowStatusState()
@@ -702,7 +699,7 @@ export default class NodeREDController {
     let editSessionRequested = this._flowPackageContainsEditSession(flowPackage)
     if (editSessionRequested && !this._allowEditSessions) {
       this.info('Edit session flow deploy requested but not allowed')
-      throw(new Error('Start agent in --dev-mode to allow edit session.'))
+      throw new Error('Start agent in --dev-mode to allow edit session.')
     }
 
     await this._updatePackage(flowPackage)
@@ -885,7 +882,9 @@ export default class NodeREDController {
       this.info('Skipped Node-RED start since flow is disabled')
       return
     }
-    return this._queueAction(() => this._startService(editSession))
+
+    this._flowState.pendingEnable = true
+    this._processPendingFlowChanges()
   }
 
   async _startService(editSession: EditSession) {

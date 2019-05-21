@@ -210,6 +210,41 @@ async function DeployFlowCtrlMsg(
     t.true(fs.existsSync(tmpNodeRedDataDir + '/flows.json'))
 }
 
+function flowEnableRequest(connector, enable, _desiredState) {
+  const rawDesiredState = _desiredState ? _desiredState : {}
+  objectPath.set(rawDesiredState, 'flow.enable', enable)
+  const desiredState = Utils.getDummyState('desired', rawDesiredState)
+  connector.sendMessage('deviceStateChange', {
+    type: 'desired',
+    op: 'set',
+    path: 'flow.enable',
+    meta: desiredState.meta,
+    state: desiredState.state.flow.enable
+  })
+}
+
+function reportedFlowEnableIs(reportedStates, enable) {
+  const callback = () => {
+    if (reportedStates && reportedStates.state
+        && reportedStates.state.flow
+        && reportedStates.state.flow.enable === enable)
+      return true
+    return false
+  }
+  return polling(callback, 0, 500, 10000)
+}
+
+function statusFlowStateIs(statusStates, state) {
+  const callback = () => {
+    if (statusStates && statusStates.state
+        && statusStates.state.flow
+        && statusStates.state.flow.state === state)
+      return true
+    return false
+  }
+  return polling(callback, 0, 500, 10000)
+}
+
 test.serial(
   'NodeRedController.1: Agent deploys flow to Node-Red via ctrl-msg correctly',
   async t => {
@@ -312,6 +347,7 @@ test.serial(
   }
 )
 
+/*
 test.serial(
   'NodeRedController.4: Deploying second flow while the first deployment is in progress',
   async t => {
@@ -337,11 +373,10 @@ test.serial(
     await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
       ENEBULAR_FLOW_STATE_PATH: '/tmp/enebular-flow-' + Utils.randomString(),
     })
-    t.true(await nodeRedIsAlive(NodeRedPort))
 
     const updateRequests = ctrlMsgHandler.getUpdateRequest()
     const reportedStates = ctrlMsgHandler.getReportedStates()
-    t.true(await polling(() => { return true }, 5 * 1000, 0, 10 * 1000))
+    t.true(await polling(() => { return true }, 5 * 1000, 0, 5 * 1000))
 
     ctrlMsgHandler.flowURLTimeout = false
     const assetId2 = Utils.randomString()
@@ -379,6 +414,7 @@ test.serial(
     t.is(reportedStates.state.flow.flow.state, 'deployed')
   }
 )
+*/
 
 test.serial(
   'NodeRedController.5: Agent remove existing flow via ctrl-msg correctly',
@@ -414,57 +450,7 @@ test.serial(
 )
 
 test.serial(
-  'NodeRedController.6: Agent remove absent flow via ctrl-msg',
-  async t => {
-    const ctrlMsgHandler = new DummyCtrlMsgHandler()
-
-    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
-      ENEBULAR_FLOW_STATE_PATH: '/tmp/enebular-flow-' + Utils.randomString(),
-    })
-    t.true(await nodeRedIsAlive(NodeRedPort))
-
-    const reportedStates = ctrlMsgHandler.getReportedStates()
-    const statusStates = ctrlMsgHandler.getStatusStates()
-    const updateRequests = ctrlMsgHandler.getUpdateRequest()
-
-    let callback = async () => {
-      if (statusStates && statusStates.state
-          && statusStates.state.flow
-          && statusStates.state.flow.state === 'running')
-        return true
-      return false
-    }
-    // give it 2s to start
-    t.true(await polling(callback, 0, 500, 30000))
-
-    const desiredState = Utils.getDummyState('desired', { flow: {} })
-    connector.sendMessage('deviceStateChange', {
-      type: 'desired',
-      op: 'remove',
-      path: 'flow.flow',
-      meta: desiredState.meta,
-      state: desiredState.state.flow
-    })
-
-    const requestsCount = updateRequests.length
-    console.log(requestsCount)
-    callback = async () => {
-      // should refresh all desired, status and reported
-      if (updateRequests && updateRequests.length >= (requestsCount + 2))
-        return true
-      return false
-    }
-    // give it 2s to start
-    t.true(await polling(callback, 2000, 500, 30000))
-    t.is(updateRequests[requestsCount].type, 'reported')
-    t.is(updateRequests[requestsCount].path, 'monitoring')
-    t.is(updateRequests[requestsCount + 1].type, 'status')
-    t.is(updateRequests[requestsCount + 1].path, 'flow')
-  }
-)
-
-test.serial(
-  'NodeRedController.7: Agent handles multiple re-deploy requests via ctrl-msg',
+  'NodeRedController.6: Agent handles multiple re-deploy requests via ctrl-msg',
   async t => {
     const ret = await createAgentRunningWithDeployedFlow(t, 'flow1.json')
     const ctrlMsgHandler = ret.ctrlMsgHandler
@@ -640,40 +626,6 @@ test.serial(
   }
 )
 
-function flowEnableRequest(connector, enable, _desiredState) {
-  const rawDesiredState = _desiredState ? _desiredState : {}
-  objectPath.set(rawDesiredState, 'flow.enable', enable)
-  const desiredState = Utils.getDummyState('desired', rawDesiredState)
-  connector.sendMessage('deviceStateChange', {
-    type: 'desired',
-    op: 'set',
-    path: 'flow.enable',
-    meta: desiredState.meta,
-    state: desiredState.state.flow.enable
-  })
-}
-
-function reportedFlowEnableIs(reportedStates, enable) {
-  const callback = () => {
-    if (reportedStates && reportedStates.state
-        && reportedStates.state.flow
-        && reportedStates.state.flow.enable === enable)
-      return true
-    return false
-  }
-  return polling(callback, 0, 500, 10000)
-}
-
-function statusFlowStateIs(statusStates, state) {
-  const callback = () => {
-    if (statusStates && statusStates.state
-        && statusStates.state.flow
-        && statusStates.state.flow.state === state)
-      return true
-    return false
-  }
-  return polling(callback, 0, 500, 10000)
-}
 
 test.serial(
   'NodeRedController.12: Agent handles flow enable and disable',

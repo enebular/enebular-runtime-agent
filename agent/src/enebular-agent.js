@@ -336,12 +336,7 @@ export default class EnebularAgent extends EventEmitter {
       await this._connector.init()
     }
 
-    try {
-      await this._nodeRed.startService()
-    } catch (err) {
-      this._log.error('Node-RED service start failed: ' + err.message)
-    }
-
+    await this._nodeRed.startService()
     return true
   }
 

@@ -140,7 +140,7 @@ test.serial(
     const log = fs.readFileSync(tmpLogPath, 'utf8')
     t.true(
       log.includes(
-        "Node-RED service start failed"
+        "Node-RED failed to start"
       )
     )
     fs.unlinkSync(tmpLogPath)
