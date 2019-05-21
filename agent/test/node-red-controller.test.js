@@ -312,7 +312,6 @@ test.serial(
   }
 )
 
-
 test.serial(
   'NodeRedController.4: Deploying second flow while the first deployment is in progress',
   async t => {
@@ -978,4 +977,51 @@ test.serial(
   }
 )
 
+test.serial(
+  'NodeRedController.21: Agent shall restart Node-RED if flow.enable state is cleared',
+  async t => {
+    const tmpFlowStateFile = '/tmp/enebular-flow-' + Utils.randomString()
+    const url =
+      'http://127.0.0.1:' +
+      DummyServerPort +
+      '/test/download-flow?flow=' +
+      'flow1.json'
+    const assetId = Utils.randomString()
+    const updateId = Utils.randomString()
 
+    const ctrlMsgHandler = new DummyCtrlMsgHandler()
+    const statusStates = ctrlMsgHandler.getStatusStates()
+    const desiredStates = ctrlMsgHandler.getDesiredStates()
+    const reportedStates = ctrlMsgHandler.getReportedStates()
+
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
+      ENEBULAR_FLOW_STATE_PATH: tmpFlowStateFile,
+    })
+
+    t.true(await statusFlowStateIs(statusStates, 'running'))
+
+    ctrlMsgHandler.setFlow(assetId, updateId)
+    ctrlMsgHandler.setFlowURL(url)
+
+    const rawDesiredState = {}
+    objectPath.set(rawDesiredState, 'flow.flow', {
+        assetId: assetId,
+        updateId: updateId
+    })
+    objectPath.set(rawDesiredState, 'flow.enable', false)
+    const desiredState = Utils.getDummyState('desired', rawDesiredState)
+    connector.sendMessage('deviceStateChange', {
+      type: 'desired',
+      op: 'set',
+      path: 'flow',
+      meta: desiredState.meta,
+      state: desiredState.state.flow
+    })
+
+    t.true(await waitNodeRedToDie(NodeRedPort))
+    // reported: flow.enable == false
+    t.true(await reportedFlowEnableIs(reportedStates, false))
+    // status: flow.state == stopped
+    t.true(await statusFlowStateIs(statusStates, 'stopped'))
+  }
+)

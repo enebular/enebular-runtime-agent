@@ -28,6 +28,8 @@ let connector: ConnectorService
 let server: DummyServer
 let http: Server
 let tmpNodeRedDataDir: string
+let tmpFlowStateFile: string
+let tmpLogPath: string
 
 test.before(async t => {
   process.env.ENEBULAR_TEST = true
@@ -43,6 +45,14 @@ test.after(t => {
 test.afterEach.always('cleanup', async t => {
   await agentCleanup(agent, NodeRedPort)
 
+  if (tmpLogPath) {
+    fs.removeSync(tmpLogPath)
+    tmpLogPath = null
+  }
+  if (tmpFlowStateFile) {
+    fs.removeSync(tmpFlowStateFile)
+    tmpFlowStateFile = null
+  }
   if (tmpNodeRedDataDir) {
     fs.removeSync(tmpNodeRedDataDir)
     tmpNodeRedDataDir = null
@@ -53,6 +63,8 @@ async function createAgentRunningWithTestNodeRedSettings(
   t: test,
   withCredentialSecretFileName: string
 ) {
+  tmpLogPath = '/tmp/tmp-test-log-' + Utils.randomString()
+  tmpFlowStateFile = '/tmp/enebular-flow-' + Utils.randomString()
   tmpNodeRedDataDir = '/tmp/.node-red-config-' + Utils.randomString()
   fs.ensureDirSync(tmpNodeRedDataDir)
   fs.copySync(
@@ -74,6 +86,9 @@ async function createAgentRunningWithTestNodeRedSettings(
     t,
     server,
     {
+      ENEBULAR_ENABLE_FILE_LOG: true,
+      ENEBULAR_LOG_FILE_PATH: tmpLogPath,
+      ENEBULAR_FLOW_STATE_PATH: tmpFlowStateFile,
       NODE_RED_DATA_DIR: tmpNodeRedDataDir,
       NODE_RED_COMMAND:
         './node_modules/.bin/node-red -p ' +
@@ -287,6 +302,66 @@ test.serial(
         resolve()
       }, 4000)
     })
+  }
+)
+
+test.serial(
+  'NodeRedControllerLegacy.7: Agent requires -dev-mode if flow package contains editSession',
+  async t => {
+    await createAgentRunningWithTestNodeRedSettings(t)
+
+    // update the flow
+    const expectedFlowName = 'flow1.json'
+    const expectedFlowJson = fs.readFileSync(
+      path.join(__dirname, 'data', expectedFlowName),
+      'utf8'
+    )
+    const url =
+      'http://127.0.0.1:' +
+      DummyServerPort +
+      '/test/download-flow?edit=on&flow=' +
+      expectedFlowName
+    connector.sendMessage('deploy', {
+      downloadUrl: url
+    })
+
+    const callback = async () => {
+      const log = fs.readFileSync(tmpLogPath, 'utf8')
+      return log.includes('Start agent in --dev-mode to allow edit session')
+    }
+
+    // give it 2s to shutdown
+    t.true(await polling(callback, 2000, 500, 10000))
+  }
+)
+
+test.serial(
+  'NodeRedControllerLegacy.8: Agent handles deploy failure (flow downloading fail)',
+  async t => {
+    await createAgentRunningWithTestNodeRedSettings(t)
+
+    // update the flow
+    const expectedFlowName = 'flow1.json'
+    const expectedFlowJson = fs.readFileSync(
+      path.join(__dirname, 'data', expectedFlowName),
+      'utf8'
+    )
+    const url =
+      'http://127.0.0.1:' +
+      DummyServerPort +
+      '/test/wrong-flow?flow=' +
+      expectedFlowName
+    connector.sendMessage('deploy', {
+      downloadUrl: url
+    })
+
+    const callback = async () => {
+      const log = fs.readFileSync(tmpLogPath, 'utf8')
+      return log.includes('Update flow failed: Failed response')
+    }
+
+    // give it 2s to shutdown
+    t.true(await polling(callback, 2000, 500, 10000))
   }
 )
 

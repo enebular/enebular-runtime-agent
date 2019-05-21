@@ -304,12 +304,14 @@ export default class NodeREDController {
     }
 
     if (desiredState.hasOwnProperty('enable')) {
-      if (this._flowState.enable !== desiredState.enable) {
+      if (
+        this._flowState.enable !== desiredState.enable &&
+        this._flowState.pendingEnable !== desiredState.enable
+      ) {
         this._flowState.pendingEnable = desiredState.enable
         change = true
       }
-    }
-    else {
+    } else {
       if (this._flowState.enable != null) {
         // enable = false has been cleared, start Node-RED if it stopped
         if (this._flowState.enable === false) {
@@ -349,12 +351,8 @@ export default class NodeREDController {
         }`
       )
       if (this._flowState.enable == null) {
-        this._deviceStateMan.updateState(
-          'reported',
-          'remove',
-          'flow.enable')
-      }
-      else {
+        this._deviceStateMan.updateState('reported', 'remove', 'flow.enable')
+      } else {
         this._deviceStateMan.updateState(
           'reported',
           'set',
@@ -455,9 +453,10 @@ export default class NodeREDController {
       this.info('Enable flow')
       try {
         await this._startService()
-      }
-      catch (err) {
-        this.error('Enable flow failed, Node-RED failed to start: ' + err.message)
+      } catch (err) {
+        this.error(
+          'Enable flow failed, Node-RED failed to start: ' + err.message
+        )
       }
     }
   }
@@ -467,9 +466,10 @@ export default class NodeREDController {
       this.info('Disable flow')
       try {
         await this._shutdownService()
-      }
-      catch (err) {
-        this.error('Disable flow failed, Node-RED failed to shutdown: ' + err.message)
+      } catch (err) {
+        this.error(
+          'Disable flow failed, Node-RED failed to shutdown: ' + err.message
+        )
       }
     }
   }
@@ -544,6 +544,11 @@ export default class NodeREDController {
                 this._flowState.updateId
               )
               await this.fetchAndUpdateFlow(downloadUrl)
+              if (pendingEnable !== false && this._isFlowEnabled()) {
+                await this._restartService()
+              } else {
+                this.info('Skipped Node-RED restart since flow is disabled')
+              }
               this.info(`Deployed flow '${pendingAssetId}'`)
               this._flowState.updateAttemptCount = 0
               this._setFlowState('deployed', null)
@@ -671,7 +676,17 @@ export default class NodeREDController {
 
   async cmdFetchAndUpdateFlow(params: { downloadUrl: string }) {
     this._flowState.controlSrc = 'cmd'
-    await this.fetchAndUpdateFlow(params.downloadUrl)
+    try {
+      const flowPackage = await this.fetchAndUpdateFlow(params.downloadUrl)
+      if (this._flowPackageContainsEditSession(flowPackage)) {
+        await this._restartInEditorMode(flowPackage.editSession)
+      } else {
+        await this._restartService()
+      }
+    }
+    catch (err) {
+      this.error('Update flow failed: ' + err.message)
+    }
     this._updateFlowStatusState()
     this._saveFlowState()
   }
@@ -680,29 +695,18 @@ export default class NodeREDController {
     return this._queueAction(() => this._fetchAndUpdateFlow(downloadUrl))
   }
 
-  async _fetchAndUpdateFlow(downloadUrl: string) {
+  async _fetchAndUpdateFlow(downloadUrl: string): Promise<Object> {
     this.info('Updating flow')
 
     const flowPackage = await this._downloadPackage(downloadUrl)
     let editSessionRequested = this._flowPackageContainsEditSession(flowPackage)
     if (editSessionRequested && !this._allowEditSessions) {
       this.info('Edit session flow deploy requested but not allowed')
-      this.info('Start agent in --dev-mode to allow edit session.')
-      return
+      throw(new Error('Start agent in --dev-mode to allow edit session.'))
     }
 
     await this._updatePackage(flowPackage)
-
-    if (this._isFlowEnabled()) {
-      if (editSessionRequested) {
-        await this._restartInEditorMode(flowPackage.editSession)
-      } else {
-        await this._restartService()
-      }
-    }
-    else {
-      this.info('Skipped Node-RED restart since flow is disabled')
-    }
+    return flowPackage
   }
 
   _flowPackageContainsEditSession(flowPackage: NodeRedFlowPackage) {

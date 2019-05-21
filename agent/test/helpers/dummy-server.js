@@ -117,7 +117,12 @@ export default class DummyServer extends EventEmitter {
         creds: cred,
         packages: req.query.dependencies
           ? { 'node-red-node-pi-gpiod': '0.0.10' }
-          : {}
+          : {},
+        editSession: req.query.edit 
+        ? {
+          ipAddress: '0.0.0.0',
+          sessionToken: 'token'
+        } : {}
       })
     })
     app.get(DummyServerConfig.credsURL, (req, res) => {
