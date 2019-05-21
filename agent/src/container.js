@@ -224,13 +224,12 @@ export default class Container {
   async _execModel() {
     this._info(`Executing model '${this.name()}'...`)
     try {
-      const { command, workDir } = this.createOptions()
+      const { command } = this.createOptions()
       const options = {
         Cmd: command,
         AttachStdout: true,
         AttachStderr: true,
-        Privileged: true,
-        WorkingDir: workDir
+        Privileged: true
       }
       this._exec = await this._container.exec(options)
       const logStream = await this._startExec()

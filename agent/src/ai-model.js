@@ -330,12 +330,12 @@ export default class AiModel extends Asset {
     this._info(`Using image ${this._dockerImage()}...`)
 
     const language = this._language() === 'Python3' ? 'python3' : 'python2'
-    // const command = `cd ${this._containerWrapperDirPath()} && ls && ${language} wrapper.py`
+    const command = `cd ${this._containerWrapperDirPath()} && ls && ${language} wrapper.py`
 
     const container = await this._dockerMan().createNewContainer(
       {
         cmd: ['/bin/bash'],
-        command: [`${language}`, `wrapper.py`],
+        command: ['/bin/bash', '-c', command],
         workDir: this._containerWrapperDirPath(),
         mounts: [`${this._mountContainerDirPath()}:/mount`],
         ports: [this._port],
