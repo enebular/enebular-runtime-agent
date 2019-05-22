@@ -76,6 +76,7 @@ export default class NodeREDController {
   _active: boolean = false
   _shutdownRequested: boolean = false
   _flowStatus: FlowStatus = { state: 'stopped' }
+  _pendingEnableRequest: boolean = false
 
   constructor(
     deviceStateMan: DeviceStateManager,
@@ -442,8 +443,8 @@ export default class NodeREDController {
   }
 
   _enableRequest() {
-    if (this._flowState.pendingEnableRequest !== true) {
-      this._flowState.pendingEnableRequest = true
+    if (!this._pendingEnableRequest) {
+      this._pendingEnableRequest = true
     }
   }
 
@@ -482,7 +483,7 @@ export default class NodeREDController {
     while (this._active) {
       if (
         this._flowState.pendingChange == null &&
-        this._flowState.pendingEnableRequest == null
+        !this._pendingEnableRequest
       ) {
         break
       }
@@ -491,11 +492,11 @@ export default class NodeREDController {
       let pendingChange = this._flowState.pendingChange
       let pendingAssetId = this._flowState.pendingAssetId
       let pendingUpdateId = this._flowState.pendingUpdateId
-      let pendingEnableRequest = this._flowState.pendingEnableRequest
+      let pendingEnableRequest = this._pendingEnableRequest
       this._flowState.pendingChange = null
       this._flowState.pendingAssetId = null
       this._flowState.pendingUpdateId = null
-      this._flowState.pendingEnableRequest = null
+      this._pendingEnableRequest = false
 
       // Process the change
       if (pendingChange != null) {
