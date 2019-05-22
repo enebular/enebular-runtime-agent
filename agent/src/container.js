@@ -2,9 +2,9 @@ import fs from 'fs'
 import stream from 'stream'
 import path from 'path'
 import rimraf from 'rimraf'
-import mkdirp from 'mkdirp'
 import type DockerManager from './docker-manager'
 import Exec from './exec'
+import { delay } from './utils'
 
 export default class Container {
   _active: boolean = false
@@ -103,13 +103,8 @@ export default class Container {
     return this.config.createOptions
   }
 
-  canStart(): boolean {
-    return (
-      !this.state ||
-      this.state === 'running' ||
-      this.state === 'down' ||
-      this.state === 'error'
-    )
+  canStart(): Boolean {
+    return !this.state || this.state !== 'stopped'
   }
 
   container(): Object {
@@ -153,18 +148,19 @@ export default class Container {
   }
 
   setState(state: string) {
-    this.state = state
-    if (this._active) {
-      this.sync()
+    if (state !== this.state) {
+      this.state = state
+      if (this._active) {
+        this.sync()
+      }
     }
   }
 
-  setPendingChange(change: string, updateId: ?string, config: ?Object) {
+  setPendingChange(change: string, updateId: ?string) {
     this._info(`Container '${this.name()}' now pending '${change}'`)
 
     this.pendingChange = change
     this.pendingUpdateId = updateId
-    this.pendingConfig = config
     this.changeErrMsg = null
     this.changeTs = Date.now()
   }
@@ -258,22 +254,61 @@ export default class Container {
   }
 
   async start() {
-    if (!this.canStart() || !this._container) {
-      return
+    this._info('WE ARE STARTING', this.state)
+    if (!this._container) {
+      this._info(
+        `No actual docker container attached to model '${this.name()}'...`
+      )
+      const repaired = await this.repair()
+      if (!repaired) {
+        return false
+      }
     }
     this._info(`Starting container '${this.name()}'...`)
     try {
       this._updateEndpoint()
-      this._restartCount = 0
       await this._container.start()
+    } catch (err) {
+      if (err.statusCode === 304) {
+        this._info(
+          `Received 304... Container '${this.name()}' is already running... Restarting container for safety`
+        )
+        const stopped = await this._container
+          .stop()
+          .then(() => true)
+          .catch(err => {
+            if (err === 304) {
+              return true
+            }
+            return false
+          })
+        if (!stopped) {
+          return false
+        }
+        await delay(3000)
+        const started = await this._container
+          .start()
+          .then(() => true)
+          .catch(() => false)
+        if (!started) {
+          return false
+        }
+      } else {
+        if (err.statusCode === 404) {
+          this.deactivate()
+        }
+        this._error('Cannot start container', this.name())
+        this._info(err)
+        this.setState('error')
+      }
+    }
+    try {
+      this._restartCount = 0
       this._attachLogsToContainer()
       await this._execModel()
       this._showEndpoints()
       return true
     } catch (err) {
-      if (err.statusCode === 404) {
-        this.deactivate()
-      }
       this._error('Cannot start container', this.name())
       this._info(err)
       this.setState('error')
@@ -296,8 +331,20 @@ export default class Container {
   }
 
   async stop() {
-    if (!this._container || this.state !== 'running') {
+    this._info(
+      'HMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMmmmmmmmmmmmmmmmmmmmm',
+      this.state
+    )
+    if (!this._container) {
       return
+    }
+    if (this.state !== 'running' && this.state !== 'stopping') {
+      this._info(
+        `Container '${this.name()}' is not running... Current state : ${
+          this.state
+        }`
+      )
+      return true
     }
     this._info(`Stopping container '${this.name()}'...`)
     try {
@@ -445,7 +492,11 @@ export default class Container {
     this._container.modem.demuxStream(execStream, logStream, logStream)
     execStream.on('end', () => {
       if (this._active) {
-        if (this.state !== 'stopping' && this.state !== 'removing') {
+        if (
+          this.state !== 'stopping' &&
+          this.state !== 'starting' &&
+          this.state !== 'removing'
+        ) {
           this._error(`Unexpected stopping of model ${this.name()}`)
           setTimeout(() => this._restart(), 1000)
         }

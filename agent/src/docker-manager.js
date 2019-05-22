@@ -2,7 +2,6 @@ import fs from 'fs'
 import objectHash from 'object-hash'
 import path from 'path'
 import Docker from 'dockerode'
-import stream from 'stream'
 import type { Logger } from 'winston'
 import { delay } from './utils'
 import Container from './container'
@@ -141,7 +140,6 @@ export default class DockerManager {
     container.changeErrMsg = serializedContainer.changeErrMsg
     container.pendingChange = serializedContainer.pendingChange
     container.pendingUpdateId = serializedContainer.pendingUpdateId
-    container.pendingConfig = serializedContainer.pendingConfig
     container.updateAttemptCount = serializedContainer.updateAttemptCount
     container.lastAttemptedUpdateId = serializedContainer.lastAttemptedUpdateId
 
@@ -156,6 +154,8 @@ export default class DockerManager {
     const serializedContainers = []
     for (const container of this._containers) {
       switch (container.state) {
+        case 'starting':
+        case 'stopping':
         case 'running':
         case 'stopped':
         case 'down':
@@ -209,18 +209,17 @@ export default class DockerManager {
       return
     }
 
-    // this.debug('Assets state change: ' + JSON.stringify(desiredState, null, 2))
+    this.debug('Assets state change: ' + JSON.stringify(desiredState, null, 2))
 
     // handle changes for containers
     this._handleContainersDesiredStateUpdate(desiredState.containers || {})
-    // handle changes for execs
-    this._handleExecsDesiredStateUpdate(desiredState.execs || {})
 
     this._updateDockerReportedState()
     this._processPendingChanges()
   }
 
   async _handleContainersDesiredStateUpdate(desiredContainers) {
+    this.info('HANDLE CONTAINER DESIRED STATE UPDATE')
     for (const desiredContainerId in desiredContainers) {
       if (!desiredContainers.hasOwnProperty(desiredContainerId)) {
         continue
@@ -229,6 +228,10 @@ export default class DockerManager {
 
       // determinate containers required of change
       for (let container of this._containers) {
+        this.info(
+          `~~~~~~~~~~~~~~ desiredContainer ~~~~~~~~~~~~~~`,
+          JSON.stringify(desiredContainer, null, 2)
+        )
         if (container.id() === desiredContainerId) {
           if (
             (!container.pendingChange &&
@@ -239,9 +242,8 @@ export default class DockerManager {
             container.pendingChange === 'remove'
           ) {
             container.setPendingChange(
-              'deploy',
-              desiredContainer.updateId,
-              desiredContainer.config
+              desiredContainer.state,
+              desiredContainer.updateId
             )
           }
           break
@@ -251,7 +253,7 @@ export default class DockerManager {
     // find containers to remove
     for (let container of this._containers) {
       if (!desiredContainers.hasOwnProperty(container.id())) {
-        container.setPendingChange('remove', null, null)
+        container.setPendingChange('remove', null)
       }
     }
   }
@@ -430,10 +432,8 @@ export default class DockerManager {
       // Dequeue the pending change
       let pendingChange = container.pendingChange
       let pendingUpdateId = container.pendingUpdateId
-      let pendingConfig = container.pendingConfig
       container.pendingChange = null
       container.pendingUpdateId = null
-      container.pendingConfig = null
 
       // Reset update attempt count if this is a different update
       if (pendingUpdateId !== container.lastAttemptedUpdateId) {
@@ -446,14 +446,12 @@ export default class DockerManager {
         case 'start': {
           // Save current state so we can revert back to it if required
           const prevState = container.state
-          const prevConfig = container.config
           const prevUpdateId = container.updateId
 
           // Apply the update and attempt deploy
           container.updateId = pendingUpdateId
-          container.config = pendingConfig
           container.updateAttemptCount++
-          this._setContainerState(container, 'starting')
+          container.setState('starting')
           let success = await container.start()
           if (!success) {
             if (container.updateAttemptCount < this._updateAttemptsMax) {
@@ -463,43 +461,36 @@ export default class DockerManager {
                     container.updateAttemptCount
                   }/${this._updateAttemptsMax}).`
                 )
-                container.setPendingChange(
-                  pendingChange,
-                  pendingUpdateId,
-                  pendingConfig
-                )
+                container.setPendingChange(pendingChange, pendingUpdateId)
               } else {
                 this.info('Starting failed, but new change already pending.')
               }
               container.updateId = prevUpdateId
-              container.config = prevConfig
               // Note that setting it back to prevConfig may be a lie as it may
               // have been 'removed', but it's ok for now to keep things simple.
-              this._setContainerState(container, prevState)
+              container.setState(prevState)
             } else {
               this.info(
                 `Starting failed maximum number of times (${
                   container.updateAttemptCount
                 })`
               )
-              this._setContainerState(container, 'error')
+              container.setState('error')
             }
           } else {
-            this._setContainerState(container, 'running')
+            container.setState('running')
           }
           break
         }
         case 'stop': {
           // Save current state so we can revert back to it if required
           const prevState = container.state
-          const prevConfig = container.config
           const prevUpdateId = container.updateId
 
           // Apply the update and attempt deploy
           container.updateId = pendingUpdateId
-          container.config = pendingConfig
           container.updateAttemptCount++
-          this._setContainerState(container, 'stopping')
+          container.setState('stopping')
           let success = await container.stop()
           if (!success) {
             if (container.updateAttemptCount < this._updateAttemptsMax) {
@@ -509,29 +500,24 @@ export default class DockerManager {
                     container.updateAttemptCount
                   }/${this._updateAttemptsMax}).`
                 )
-                container.setPendingChange(
-                  pendingChange,
-                  pendingUpdateId,
-                  pendingConfig
-                )
+                container.setPendingChange(pendingChange, pendingUpdateId)
               } else {
                 this.info('Stopping failed, but new change already pending.')
               }
               container.updateId = prevUpdateId
-              container.config = prevConfig
               // Note that setting it back to prevConfig may be a lie as it may
               // have been 'removed', but it's ok for now to keep things simple.
-              this._setContainerState(container, prevState)
+              container.setState(prevState)
             } else {
               this.info(
                 `Stopping failed maximum number of times (${
                   container.updateAttemptCount
                 })`
               )
-              this._setContainerState(container, 'error')
+              container.setState('error')
             }
           } else {
-            this._setContainerState(container, 'running')
+            container.setState('stopped')
           }
           break
         }
@@ -679,39 +665,6 @@ export default class DockerManager {
     } catch (err) {
       this.error('Stopping containers error', err.message)
     }
-    // return this._docker
-    //   .listContainers()
-    //   .then(containers => {
-    //     return Promise.all(
-    //       containers.map(containerInfo =>
-    //         this._docker.getContainer(containerInfo.Id).stop()
-    //       )
-    //     )
-    //   })
-    //   .catch(err => {
-    //     this.info('STOPPING CONTAINERS ERROR', err)
-    //   })
-  }
-
-  async listContainers() {
-    // const socket = process.env.DOCKER_SOCKET || '/var/run/docker.sock'
-    // const stats = fs.statSync(socket)
-    // if (!stats.isSocket()) {
-    //   throw new Error('Are you sure the docker is running?')
-    // }
-    return this._docker
-      .listContainers()
-      .then(containers => {
-        this.info('**********************************************')
-        this.info('CONTAINERs: ')
-        this.info(JSON.stringify(containers, null, 2))
-        this.info('ALL: ' + containers.length)
-      })
-      .catch(err => {
-        this.info('???????????????????????????????????????')
-        this.info('ERROR: ' + err)
-        this.info('???????????????????????????????????????')
-      })
   }
 
   async pullImage(repoTag, options) {
@@ -729,7 +682,6 @@ export default class DockerManager {
           }
 
           this.info('Finished pulling image: ', repoTag)
-          // this._runImage(repoTag)
           resolve(output)
         }
         let count = 0
@@ -745,24 +697,8 @@ export default class DockerManager {
           }
         }
         this._docker.modem.followProgress(stream, onFinished, onProgress)
-        // this._log.info(stream)
       })
     })
-  }
-
-  async checkExistingContainer(imageName, modelId) {
-    const container = this._containers.filter(container => {
-      if (container.id === modelId) {
-        return true
-      } else {
-        return false
-      }
-    })[0]
-    if (container) {
-      return { container }
-    } else {
-      return null
-    }
   }
 
   async createContainer(config) {
@@ -835,36 +771,8 @@ export default class DockerManager {
     newContainer.config = containerConfig
 
     this.addContainer(newContainer)
-    this.info('BEFORE ACTIVATE')
     newContainer.activate(dockerContainer)
 
     return newContainer
-  }
-
-  _attachLogsToContainer(dockerContainer, stateContainer) {
-    const logStream = new stream.PassThrough()
-    logStream.on('data', chunk => {
-      this.info('docker container: ', chunk.toString('utf-8'))
-    })
-    dockerContainer.logs(
-      {
-        follow: true,
-        stdout: true,
-        stderr: true
-      },
-      (err, stream) => {
-        if (err) {
-          return this.error(err.message)
-        }
-        dockerContainer.modem.demuxStream(stream, logStream, logStream)
-        stream.on('end', () => {
-          if (this._active) {
-            this.error('Unexpected stopping of a container', this._active)
-            this._setContainerState(stateContainer, 'error')
-          }
-          logStream.end('!stop container!')
-        })
-      }
-    )
   }
 }

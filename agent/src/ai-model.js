@@ -8,7 +8,6 @@ import request from 'request'
 import progress from 'request-progress'
 import util from 'util'
 import extract from 'extract-zip'
-import rimraf from 'rimraf'
 import Asset from './asset'
 import type DockerManager from './docker-manager'
 import type PortManager from './port-manager'
@@ -330,7 +329,7 @@ export default class AiModel extends Asset {
     this._info(`Using image ${this._dockerImage()}...`)
 
     const language = this._language() === 'Python3' ? 'python3' : 'python2'
-    const command = `cd ${this._containerWrapperDirPath()} && ls && ${language} wrapper.py`
+    const command = `cd ${this._containerWrapperDirPath()} && ${language} wrapper.py`
 
     const container = await this._dockerMan().createNewContainer(
       {
@@ -380,14 +379,9 @@ export default class AiModel extends Asset {
 
   async _delete() {
     const filePath = this._filePath()
-    const mountPath = this._mountContainerDirPath()
     if (fs.existsSync(filePath)) {
       this._debug(`Deleting ${filePath}...`)
       fs.unlinkSync(filePath)
-    }
-    if (fs.existsSync(mountPath)) {
-      this._debug(`Deleting ${mountPath}...`)
-      rimraf.sync(mountPath)
     }
   }
 }

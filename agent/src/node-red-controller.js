@@ -13,12 +13,8 @@ import {
   encryptCredential,
   delay,
   fsWriteFileAsync,
-  fsReadFileAsync,
   fsCopyFileAsync,
   mkdirAsync,
-  unlinkAsync,
-  symlinkAsync,
-  mkdirpAsync,
   createNodeDefinition
 } from './utils'
 import type DeviceStateManager from './device-state-manager'
@@ -743,53 +739,6 @@ export default class NodeREDController {
       cproc.once('exit', resolve)
     })
   }
-
-  // async _installAiNodes(aiNodes, projectId) {
-  //   const { nodes, ts } = aiNodes
-  //   const aiNodesDir = path.resolve(this._getAiNodesDir(), projectId)
-  //   const exist = fs.existsSync(path.resolve(aiNodesDir, '.config'))
-  //   let keys
-  //   if (!exist) {
-  //     await mkdirpAsync(aiNodesDir)
-  //     keys = await this._createAiNodes(nodes, aiNodesDir)
-  //   } else {
-  //     const oldConfig = await fsReadFileAsync(
-  //       path.resolve(aiNodesDir, '.config'),
-  //       'utf-8'
-  //     )
-  //     const jsonConfig = JSON.parse(oldConfig)
-  //     if (Number(ts) === Number(jsonConfig.ts)) {
-  //       keys = jsonConfig.keys
-  //     } else {
-  //       keys = await this._createAiNodes(nodes, aiNodesDir)
-  //     }
-  //   }
-  //   const pkgJSON = await fsReadFileAsync(
-  //     path.resolve(installDir, 'package.json'),
-  //     'utf-8'
-  //   )
-  //   const pkg = JSON.parse(pkgJSON)
-  //   const toInstall = {}
-  //   keys.map(key => {
-  //     toInstall[
-  //       `enebular-ai-contrib-${key}`
-  //     ] = `file:../../../node-red/node-red-enebular-ai-nodes/${projectId}/${key}`
-  //     return symlinkAsync(
-  //       path.resolve(this._getAiNodesDir(), projectId, key),
-  //       path.resolve(installDir, 'node_modules', `enebular-ai-contrib-${key}`),
-  //       'dir'
-  //     )
-  //   })
-  //   pkg.dependencies = { ...pkg.dependencies, ...toInstall }
-  //   await fsWriteFileAsync(
-  //     path.resolve(installDir, 'package.json'),
-  //     JSON.stringify(pkg, null, 2)
-  //   )
-  //   await fsWriteFileAsync(
-  //     path.resolve(aiNodesDir, '.config'),
-  //     JSON.stringify({ keys, ts })
-  //   )
-  // }
 
   async _createAiNodes(handlers, aiNodesDir) {
     const packageIds = Object.keys(handlers)
