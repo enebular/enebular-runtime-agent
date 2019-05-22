@@ -689,6 +689,18 @@ test.serial(
     t.true(await reportedFlowEnableIs(reportedStates, true))
     // status: flow.state == running
     t.true(await statusFlowStateIs(statusStates, 'running'))
+
+    flowEnableRequest(connector, false)
+    flowEnableRequest(connector, true)
+    flowEnableRequest(connector, false)
+    flowEnableRequest(connector, true)
+    flowEnableRequest(connector, false)
+    flowEnableRequest(connector, true)
+    flowEnableRequest(connector, false)
+
+    t.true(await waitNodeRedToDie(NodeRedPort))
+    t.true(await reportedFlowEnableIs(reportedStates, false))
+    t.true(await statusFlowStateIs(statusStates, 'stopped'))
   }
 )
 
@@ -745,6 +757,7 @@ test.serial(
     const ctrlMsgHandler = new DummyCtrlMsgHandler()
     const statusStates = ctrlMsgHandler.getStatusStates()
     const desiredStates = ctrlMsgHandler.getDesiredStates()
+    ctrlMsgHandler.setFlowEnable(false)
 
     await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
       ENEBULAR_FLOW_STATE_PATH: tmpFlowStateFile,
@@ -798,6 +811,7 @@ test.serial(
     const statusStates = ctrlMsgHandler.getStatusStates()
     const desiredStates = ctrlMsgHandler.getDesiredStates()
     const reportedStates = ctrlMsgHandler.getReportedStates()
+    ctrlMsgHandler.setFlowEnable(false)
 
     await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
       ENEBULAR_FLOW_STATE_PATH: tmpFlowStateFile,
@@ -977,3 +991,55 @@ test.serial(
     t.true(await statusFlowStateIs(statusStates, 'stopped'))
   }
 )
+
+test.serial(
+  'NodeRedController.22: Node-Red should not be restarted if flow is disabled when deploying',
+  async t => {
+    const tmpFlowStateFile = '/tmp/enebular-flow-' + Utils.randomString()
+    fs.writeFileSync(
+      tmpFlowStateFile,
+      JSON.stringify({ enable: false }),
+      'utf8'
+    )
+    const url =
+      'http://127.0.0.1:' +
+      DummyServerPort +
+      '/test/download-flow?flow=' +
+      'flow1.json'
+
+    const ctrlMsgHandler = new DummyCtrlMsgHandler()
+    const statusStates = ctrlMsgHandler.getStatusStates()
+    const desiredStates = ctrlMsgHandler.getDesiredStates()
+    const reportedStates = ctrlMsgHandler.getReportedStates()
+    ctrlMsgHandler.setFlowURL(url)
+    ctrlMsgHandler.setFlowEnable(false)
+
+    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
+      ENEBULAR_FLOW_STATE_PATH: tmpFlowStateFile,
+    })
+
+    const assetId = Utils.randomString()
+    const updateId = Utils.randomString()
+    const rawDesiredState = desiredStates
+    objectPath.set(rawDesiredState, 'flow.flow', {
+        assetId: assetId,
+        updateId: updateId
+    })
+
+    const desiredState = Utils.getDummyState('desired', rawDesiredState)
+    // ctrl message method
+    connector.sendMessage('deviceStateChange', {
+      type: 'desired',
+      op: 'set',
+      path: 'flow.flow',
+      meta: desiredState.meta,
+      state: desiredState.state.flow.flow
+    })
+
+    t.true(await polling(() => true, 2000, 500, 2000))
+  }
+)
+
+
+
+

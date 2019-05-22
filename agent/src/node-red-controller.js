@@ -304,14 +304,21 @@ export default class NodeREDController {
     }
 
     if (desiredState.hasOwnProperty('enable')) {
-      if (this._flowState.pendingEnable !== desiredState.enable) {
-        this._flowState.pendingEnable = desiredState.enable
+      if (this._flowState.enable !== desiredState.enable) {
+        this._flowState.enable = desiredState.enable
+        if (this._flowState.pendingEnableRequest !== true) {
+          this._flowState.pendingEnableRequest = true
+        }
         change = true
       }
     } else {
       // enable is undefined or false
-      if (!this._flowState.enable && this._flowState.pendingEnable !== true) {
-        this._flowState.pendingEnable = true
+      if (!this._flowState.enable) {
+        // the default enable state is true
+        this._flowState.enable = true
+        if (this._flowState.pendingEnableRequest !== true) {
+          this._flowState.pendingEnableRequest = true
+        }
         change = true
       }
     }
@@ -344,16 +351,12 @@ export default class NodeREDController {
           this._flowState.enable
         }`
       )
-      if (this._flowState.enable == null) {
-        this._deviceStateMan.updateState('reported', 'remove', 'flow.enable')
-      } else {
-        this._deviceStateMan.updateState(
-          'reported',
-          'set',
-          'flow.enable',
-          this._flowState.enable
-        )
-      }
+      this._deviceStateMan.updateState(
+        'reported',
+        'set',
+        'flow.enable',
+        this._flowState.enable
+      )
     }
 
     // Handle flow.flow
@@ -444,7 +447,7 @@ export default class NodeREDController {
 
   async _attemptEnableFlow() {
     if (!this._serviceIsRunning()) {
-      this.info('Enable flow')
+      this.info('Enabling flow')
       try {
         await this._startService()
       } catch (err) {
@@ -457,7 +460,7 @@ export default class NodeREDController {
 
   async _attemptDisableFlow() {
     if (this._serviceIsRunning()) {
-      this.info('Disable flow')
+      this.info('Disabling flow')
       try {
         await this._shutdownService()
       } catch (err) {
@@ -477,7 +480,7 @@ export default class NodeREDController {
     while (this._active) {
       if (
         this._flowState.pendingChange == null &&
-        this._flowState.pendingEnable == null
+        this._flowState.pendingEnableRequest == null
       ) {
         break
       }
@@ -486,11 +489,11 @@ export default class NodeREDController {
       let pendingChange = this._flowState.pendingChange
       let pendingAssetId = this._flowState.pendingAssetId
       let pendingUpdateId = this._flowState.pendingUpdateId
-      let pendingEnable = this._flowState.pendingEnable
+      let pendingEnableRequest = this._flowState.pendingEnableRequest
       this._flowState.pendingChange = null
       this._flowState.pendingAssetId = null
       this._flowState.pendingUpdateId = null
-      this._flowState.pendingEnable = null
+      this._flowState.pendingEnableRequest = null
 
       // Process the change
       if (pendingChange != null) {
@@ -538,14 +541,8 @@ export default class NodeREDController {
                 this._flowState.updateId
               )
               await this.fetchAndUpdateFlow(downloadUrl)
-              if (pendingEnable == null) {
+              if (this._isFlowEnabled()) {
                 await this._restartService()
-              } else if (pendingEnable) {
-                // we have to handle pending here, as restart result is accounted for deploy result
-                await this._restartService()
-                this._flowState.enable = pendingEnable
-                this._updateFlowReportedState()
-                pendingEnable = null
               }
               this.info(`Deployed flow '${pendingAssetId}'`)
               this._flowState.updateAttemptCount = 0
@@ -593,14 +590,13 @@ export default class NodeREDController {
         }
       }
 
-      if (pendingEnable != null) {
-        if (pendingEnable) {
+      if (pendingEnableRequest) {
+        this.info('Processing flow enable change')
+        if (this._isFlowEnabled()) {
           await this._attemptEnableFlow()
         } else {
           await this._attemptDisableFlow()
         }
-        this._flowState.enable = pendingEnable
-        this._updateFlowReportedState()
       }
 
       // Save the changed state
@@ -883,7 +879,7 @@ export default class NodeREDController {
       return
     }
 
-    this._flowState.pendingEnable = true
+    this._flowState.pendingEnableRequest = true
     this._processPendingFlowChanges()
   }
 

@@ -22,6 +22,10 @@ export default class DummyCtrlMsgHandler {
     this._statusStates = {}
   }
 
+  setFlowEnable(enable) {
+    this._flowEnable = enable
+  }
+
   setFlow(assetId, updateId) {
     this._flowAssetsId = assetId
     this._flowUpdateId = updateId
@@ -57,6 +61,9 @@ export default class DummyCtrlMsgHandler {
     let deviceStates = Utils.getEmptyDeviceState()
     if (msg.topic == 'deviceState/device/get') {
       this._getRequests.push(msg)
+      if (this._flowEnable != null) {
+        objectPath.set(this._desiredStates, 'flow.enable', this._flowEnable)
+      }
       if (this._flowAssetsId) {
         objectPath.set(this._desiredStates, 'flow.flow', {
             assetId: this._flowAssetsId,
