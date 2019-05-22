@@ -1036,7 +1036,12 @@ test.serial(
       state: desiredState.state.flow.flow
     })
 
-    t.true(await polling(() => true, 2000, 500, 2000))
+    const callback = () => {
+      return (statusStates && statusStates.state
+          && statusStates.state.flow
+          && statusStates.state.flow.state === 'running')
+    }
+    t.false(await polling(callback, 0, 500, 5000), 'should never change to running')
   }
 )
 

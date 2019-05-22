@@ -306,9 +306,7 @@ export default class NodeREDController {
     if (desiredState.hasOwnProperty('enable')) {
       if (this._flowState.enable !== desiredState.enable) {
         this._flowState.enable = desiredState.enable
-        if (this._flowState.pendingEnableRequest !== true) {
-          this._flowState.pendingEnableRequest = true
-        }
+        this._enableRequest()
         change = true
       }
     } else {
@@ -316,9 +314,7 @@ export default class NodeREDController {
       if (!this._flowState.enable) {
         // the default enable state is true
         this._flowState.enable = true
-        if (this._flowState.pendingEnableRequest !== true) {
-          this._flowState.pendingEnableRequest = true
-        }
+        this._enableRequest()
         change = true
       }
     }
@@ -443,6 +439,12 @@ export default class NodeREDController {
     this._flowStatus.state = state
     this._flowStatus.message = msg
     this._updateFlowStatusState()
+  }
+
+  _enableRequest() {
+    if (this._flowState.pendingEnableRequest !== true) {
+      this._flowState.pendingEnableRequest = true
+    }
   }
 
   async _attemptEnableFlow() {
@@ -879,7 +881,7 @@ export default class NodeREDController {
       return
     }
 
-    this._flowState.pendingEnableRequest = true
+    this._enableRequest()
     this._processPendingFlowChanges()
   }
 
