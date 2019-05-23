@@ -15,6 +15,8 @@ let canRegisterThingShadow: boolean = false
 let thingShadowRegistered: boolean = false
 let awsIotConnected: boolean = false
 let operationResultHandlers = {}
+let initRetryInterval = 2 * 1000
+let updateRequestIndex = 0
 
 function log(level: string, msg: string, ...args: Array<mixed>) {
   args.push({ module: MODULE_NAME })
@@ -72,17 +74,31 @@ function createThingShadowReportedAgentInfo(info) {
   })
 }
 
-async function updateThingShadow(state) {
+async function updateThingShadow(state, retryInterval, index) {
+  retryInterval = Math.min(retryInterval, 4 * 60 * 60 * 1000)
   return new Promise((resolve, reject) => {
     let token = thingShadow.update(thingName, state)
     if (token === null) {
-      error('Shadow update request failed')
+      error(
+        `Shadow update request failed, retrying update ${index} (in ${retryInterval /
+          1000}sec)...`
+      )
+      setTimeout(() => {
+        updateThingShadow(state, retryInterval * 2, index)
+      }, retryInterval)
       resolve()
     } else {
       debug(`Shadow update requested (${token})`)
       operationResultHandlers[token] = (timeout, stat) => {
+        info('Shadow update result, timeout:' + timeout + ' state:' + stat)
         if (timeout || stat !== 'accepted') {
-          error('Shadow update failed')
+          error(
+            `Shadow update failed, retrying update ${index} (in ${retryInterval /
+              1000}sec)...`
+          )
+          setTimeout(() => {
+            updateThingShadow(state, retryInterval * 2, index)
+          }, retryInterval)
         }
         resolve()
       }
@@ -91,7 +107,11 @@ async function updateThingShadow(state) {
 }
 
 async function updateThingShadowReportedRoot(reportedState) {
-  return updateThingShadow(createThingShadowReportedStateRoot(reportedState))
+  return updateThingShadow(
+    createThingShadowReportedStateRoot(reportedState),
+    initRetryInterval,
+    updateRequestIndex++
+  )
 }
 
 async function updateThingShadowReportedAwsIotConnectedState(
@@ -103,7 +123,9 @@ async function updateThingShadowReportedAwsIotConnectedState(
     }`
   )
   return updateThingShadow(
-    createThingShadowReportedAwsIotConnectedState(connected)
+    createThingShadowReportedAwsIotConnectedState(connected),
+    initRetryInterval,
+    updateRequestIndex++
   )
 }
 
@@ -112,7 +134,11 @@ async function updateThingShadowReportedAgentInfo() {
     type: 'enebular-agent',
     v: agentVer
   }
-  return updateThingShadow(createThingShadowReportedAgentInfo(info))
+  return updateThingShadow(
+    createThingShadowReportedAgentInfo(info),
+    initRetryInterval,
+    updateRequestIndex++
+  )
 }
 
 function handleThingShadowRegisterStateChange(registered: boolean) {
