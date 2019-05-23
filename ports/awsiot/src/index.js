@@ -75,7 +75,7 @@ function createThingShadowReportedAgentInfo(info) {
   })
 }
 
-async function updateThingShadow(state, retryInterval, index) {
+async function _updateThingShadow(state, retryInterval, index) {
   const disableRetry = retryInterval === 0
   retryInterval = Math.min(retryInterval, 4 * 60 * 60 * 1000)
   return new Promise((resolve, reject) => {
@@ -84,14 +84,13 @@ async function updateThingShadow(state, retryInterval, index) {
       if (shutdownRequested || disableRetry) {
         error(`Shadow update request failed`)
         resolve()
-      }
-      else {
+      } else {
         error(
           `Shadow update request failed, retrying update ${index} (in ${retryInterval /
             1000}sec)...`
         )
         setTimeout(async () => {
-          await updateThingShadow(state, retryInterval * 2, index)
+          await _updateThingShadow(state, retryInterval * 2, index)
           resolve()
         }, retryInterval)
       }
@@ -103,14 +102,13 @@ async function updateThingShadow(state, retryInterval, index) {
           if (shutdownRequested || disableRetry) {
             error(`Shadow update failed`)
             resolve()
-          }
-          else {
+          } else {
             error(
               `Shadow update failed, retrying update ${index} (in ${retryInterval /
                 1000}sec)...`
             )
             setTimeout(async () => {
-              await updateThingShadow(state, retryInterval * 2, index)
+              await _updateThingShadow(state, retryInterval * 2, index)
               resolve()
             }, retryInterval)
           }
@@ -122,12 +120,16 @@ async function updateThingShadow(state, retryInterval, index) {
   })
 }
 
+async function updateThingShadow(state) {
+  return _updateThingShadow(state, 0, updateRequestIndex++)
+}
+
+async function updateThingShadowRetry(state) {
+  return _updateThingShadow(state, initRetryInterval, updateRequestIndex++)
+}
+
 async function updateThingShadowReportedRoot(reportedState) {
-  return updateThingShadow(
-    createThingShadowReportedStateRoot(reportedState),
-    0,
-    updateRequestIndex++
-  )
+  return updateThingShadow(createThingShadowReportedStateRoot(reportedState))
 }
 
 async function updateThingShadowReportedAwsIotConnectedState(
@@ -138,10 +140,8 @@ async function updateThingShadowReportedAwsIotConnectedState(
       connected ? 'connected' : 'disconnected'
     }`
   )
-  return updateThingShadow(
-    createThingShadowReportedAwsIotConnectedState(connected),
-    initRetryInterval,
-    updateRequestIndex++
+  return updateThingShadowRetry(
+    createThingShadowReportedAwsIotConnectedState(connected)
   )
 }
 
@@ -150,11 +150,7 @@ async function updateThingShadowReportedAgentInfo() {
     type: 'enebular-agent',
     v: agentVer
   }
-  return updateThingShadow(
-    createThingShadowReportedAgentInfo(info),
-    initRetryInterval,
-    updateRequestIndex++
-  )
+  return updateThingShadowRetry(createThingShadowReportedAgentInfo(info))
 }
 
 function handleThingShadowRegisterStateChange(registered: boolean) {
