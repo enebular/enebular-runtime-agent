@@ -17,6 +17,7 @@ let awsIotConnected: boolean = false
 let operationResultHandlers = {}
 let initRetryInterval = 2 * 1000
 let updateRequestIndex = 0
+let shutdownRequested = false
 
 function log(level: string, msg: string, ...args: Array<mixed>) {
   args.push({ module: MODULE_NAME })
@@ -75,32 +76,47 @@ function createThingShadowReportedAgentInfo(info) {
 }
 
 async function updateThingShadow(state, retryInterval, index) {
+  const disableRetry = retryInterval === 0
   retryInterval = Math.min(retryInterval, 4 * 60 * 60 * 1000)
   return new Promise((resolve, reject) => {
     let token = thingShadow.update(thingName, state)
     if (token === null) {
-      error(
-        `Shadow update request failed, retrying update ${index} (in ${retryInterval /
-          1000}sec)...`
-      )
-      setTimeout(() => {
-        updateThingShadow(state, retryInterval * 2, index)
-      }, retryInterval)
-      resolve()
+      if (shutdownRequested || disableRetry) {
+        error(`Shadow update request failed`)
+        resolve()
+      }
+      else {
+        error(
+          `Shadow update request failed, retrying update ${index} (in ${retryInterval /
+            1000}sec)...`
+        )
+        setTimeout(async () => {
+          await updateThingShadow(state, retryInterval * 2, index)
+          resolve()
+        }, retryInterval)
+      }
     } else {
       debug(`Shadow update requested (${token})`)
       operationResultHandlers[token] = (timeout, stat) => {
         info('Shadow update result, timeout:' + timeout + ' state:' + stat)
         if (timeout || stat !== 'accepted') {
-          error(
-            `Shadow update failed, retrying update ${index} (in ${retryInterval /
-              1000}sec)...`
-          )
-          setTimeout(() => {
-            updateThingShadow(state, retryInterval * 2, index)
-          }, retryInterval)
+          if (shutdownRequested || disableRetry) {
+            error(`Shadow update failed`)
+            resolve()
+          }
+          else {
+            error(
+              `Shadow update failed, retrying update ${index} (in ${retryInterval /
+                1000}sec)...`
+            )
+            setTimeout(async () => {
+              await updateThingShadow(state, retryInterval * 2, index)
+              resolve()
+            }, retryInterval)
+          }
+        } else {
+          resolve()
         }
-        resolve()
       }
     }
   })
@@ -109,7 +125,7 @@ async function updateThingShadow(state, retryInterval, index) {
 async function updateThingShadowReportedRoot(reportedState) {
   return updateThingShadow(
     createThingShadowReportedStateRoot(reportedState),
-    initRetryInterval,
+    0,
     updateRequestIndex++
   )
 }
@@ -369,6 +385,7 @@ async function startup() {
 }
 
 async function shutdown() {
+  shutdownRequested = true
   await agent.shutdown()
   if (awsIotConnected) {
     canRegisterThingShadow = false
