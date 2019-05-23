@@ -547,6 +547,9 @@ export default class NodeREDController {
               if (this._isFlowEnabled()) {
                 await this._restartService()
               }
+              else {
+                this.info('Skipped Node-RED restart since flow is disabled')
+              }
               this.info(`Deployed flow '${pendingAssetId}'`)
               this._flowState.updateAttemptCount = 0
               this._setFlowState('deployed', null)
