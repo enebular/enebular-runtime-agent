@@ -80,7 +80,10 @@ export default class Container {
 
   _updateEndpoint() {
     const endpoint = `${this._dockerMan.ipAddress()}:${this.port()}`
-    this.config.endpoint = endpoint
+    if (this.endpoint() !== endpoint) {
+      this.config.endpoint = endpoint
+      this.sync()
+    }
   }
 
   endpoint() {
