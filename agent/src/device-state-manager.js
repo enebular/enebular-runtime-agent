@@ -214,7 +214,7 @@ export default class DeviceStateManager extends EventEmitter {
     if (op !== 'set' && op !== 'remove') {
       throw new Error('Unsupported operation type: ' + op)
     }
-    if (op === 'set' && !state) {
+    if (op === 'set' && state == null) {
       throw new Error('No state provided for set operation')
     }
     let currentState = this._getStateForType(type)
@@ -370,7 +370,7 @@ export default class DeviceStateManager extends EventEmitter {
       type: type,
       op: op,
       path: path,
-      state: Object.assign({}, state)
+      state: state
     })
     this._sendStateUpdates()
   }

@@ -193,7 +193,8 @@ export async function createAgentWithDummyServerAssetHandler(
     Utils.addNodeRedPortToConfig(
       {
         ENEBULAR_ASSETS_DATA_PATH: tmpAssetDataPath,
-        ENEBULAR_ASSETS_STATE_PATH: tmpAssetStatePath
+        ENEBULAR_ASSETS_STATE_PATH: tmpAssetStatePath,
+        ENEBULAR_FLOW_STATE_PATH: '/tmp/enebular-flow-' + Utils.randomString(),
       },
       nodeRedPort
     ),

@@ -103,6 +103,11 @@ export default class Config {
         description: '',
         userExpose: false
       },
+      ENEBULAR_NODE_RED_FLOW_START_TIMEOUT: {
+        value: 30 * 1000,
+        description: '',
+        userExpose: false
+      },
 
       // logging
       ENEBULAR_LOG_LEVEL: {
@@ -188,9 +193,15 @@ export default class Config {
         this._items[key] = {}
       }
 
-      if (typeof value == 'string' && typeof this._items[key].value == 'boolean') {
-        this._items[key].value = (value == 'true')
-      } else if (typeof value == 'string' && typeof this._items[key].value == 'number') {
+      if (
+        typeof value === 'string' &&
+        typeof this._items[key].value === 'boolean'
+      ) {
+        this._items[key].value = value == 'true'
+      } else if (
+        typeof value === 'string' &&
+        typeof this._items[key].value === 'number'
+      ) {
         this._items[key].value = parseInt(value)
       } else {
         this._items[key].value = value

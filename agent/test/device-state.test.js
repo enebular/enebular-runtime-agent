@@ -116,7 +116,9 @@ test.serial(
       Utils.addNodeRedPortToConfig(
         {
           ENEBULAR_ENABLE_FILE_LOG: true,
-          ENEBULAR_LOG_FILE_PATH: tmpLogPath
+          ENEBULAR_LOG_FILE_PATH: tmpLogPath,
+          ENEBULAR_CONNECTOR_MESSENGER_REQ_RETYR_TIMEOUT: 500,
+          ENEBULAR_DEVICE_STATE_REFRESH_INTERVAL: 10
         },
         NodeRedPort
       ),
@@ -125,16 +127,11 @@ test.serial(
     agent = ret.agent
 
     const callback = () => {
-      return false
+      const log = fs.readFileSync(tmpLogPath, 'utf8')
+      return log.includes("Retrying request '1' (2/3) module=connector-messenger")
     }
-    t.false(await polling(callback, 0, 100, 33000))
+    t.true(await polling(callback, 0, 1000, 15000))
 
-    const log = fs.readFileSync(tmpLogPath, 'utf8')
-    t.true(
-      log.includes(
-        "Retrying request '1' (2/3) module=connector-messenger"
-      )
-    )
     fs.unlinkSync(tmpLogPath)
     t.pass()
   }
@@ -316,59 +313,7 @@ test.serial(
   }
 )
 
-test.serial(
-  'DeviceState.8: Device should NOT update status if status is identical',
-  async t => {
-    let deviceStatusStateUpdateReceived = 0
-    const ctrlMsgCallback = (connector, msg) => {
-      if (msg.topic == 'deviceState/device/get') {
-        connector.sendCtrlMessage({ 
-          type: 'res',
-          id: msg.id, 
-          res: 'ok', 
-          body: {
-            states: Utils.getEmptyDeviceState()
-          } 
-        })
-      }
-      else if (msg.topic == 'deviceState/device/update') {
-        const result = msg.body.updates.map(update => {
-          if (update.type === 'status') {
-            deviceStatusStateUpdateReceived = true
-          }
-          return {
-            success: true,
-            meta: {}
-          }
-        })
-
-        connector.sendCtrlMessage({ 
-          type: 'res',
-          id: msg.id, 
-          res: 'ok', 
-          body: {
-            updates: result
-          } 
-        })
-      }
-    }
-
-    const ret = await createAuthenticatedAgent(
-      t,
-      server,
-      Utils.addNodeRedPortToConfig({}, NodeRedPort),
-      DummyServerPort,
-      ctrlMsgCallback
-    )
-    agent = ret.agent
-    const callback = () => {
-      return deviceStatusStateUpdateReceived
-    }
-    t.false(await polling(callback, 0, 100, 3000))
-  }
-)
-
-test.serial('DeviceState.9: Device retries if status updates fail', async t => {
+test.serial('DeviceState.8: Device retries if status updates fail', async t => {
   let deviceStateUpdateReceived = 0
   const ctrlMsgCallback = (connector, msg) => {
     if (msg.topic == 'deviceState/device/get') {
@@ -391,19 +336,23 @@ test.serial('DeviceState.9: Device retries if status updates fail', async t => {
   const ret = await createAuthenticatedAgent(
     t,
     server,
-    Utils.addNodeRedPortToConfig({}, NodeRedPort),
+    Utils.addNodeRedPortToConfig({
+      ENEBULAR_FLOW_STATE_PATH: '/tmp/enebular-flow-' + Utils.randomString(),
+      ENEBULAR_CONNECTOR_MESSENGER_REQ_RETYR_TIMEOUT: 500,
+      ENEBULAR_DEVICE_STATE_REFRESH_INTERVAL: 10
+    }, NodeRedPort),
     DummyServerPort,
     ctrlMsgCallback
   )
   agent = ret.agent
   const callback = () => {
-    return deviceStateUpdateReceived === 2
+    return deviceStateUpdateReceived === 3
   }
   t.true(await polling(callback, 0, 100, 1000 * 65))
 })
 
 test.serial(
-  'DeviceState.10: Device should update monitoring state if not existed in reported state',
+  'DeviceState.9: Device should update monitoring state if not existed in reported state',
   async t => {
     let monitoringStateUpdateReceived = false
     const ctrlMsgCallback = (connector, msg) => {
@@ -441,7 +390,9 @@ test.serial(
     const ret = await createAuthenticatedAgent(
       t,
       server,
-      Utils.addNodeRedPortToConfig({}, NodeRedPort),
+      Utils.addNodeRedPortToConfig({
+        ENEBULAR_FLOW_STATE_PATH: '/tmp/enebular-flow-' + Utils.randomString(),
+      }, NodeRedPort),
       DummyServerPort,
       ctrlMsgCallback
     )
