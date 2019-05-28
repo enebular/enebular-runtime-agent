@@ -6,14 +6,24 @@ export default class DummyCtrlMsgHandler {
   _flowUpdateId: string
   _flowURL: string
   _updateRequests: Array
+  _getRequests: Array
   _reportedStates: Object
+  _desiredStates: Object
+  _statusStates: Object
   flowURLAttemptCount =  0
   flowURLTimeout = false
   ctrlMsgRequestTimeout = false
 
   constructor() {
     this._updateRequests = []
+    this._getRequests = []
     this._reportedStates = {}
+    this._desiredStates = {}
+    this._statusStates = {}
+  }
+
+  setFlowEnable(enable) {
+    this._flowEnable = enable
   }
 
   setFlow(assetId, updateId) {
@@ -25,8 +35,20 @@ export default class DummyCtrlMsgHandler {
     this._flowURL = url
   }
 
+  getStatusStates() {
+    return this._statusStates
+  }
+
+  getDesiredStates() {
+    return this._desiredStates
+  }
+
   getReportedStates() {
     return this._reportedStates
+  }
+
+  getGetRequests() {
+    return this._getRequests
   }
 
   getUpdateRequest() {
@@ -38,14 +60,17 @@ export default class DummyCtrlMsgHandler {
       return
     let deviceStates = Utils.getEmptyDeviceState()
     if (msg.topic == 'deviceState/device/get') {
-      const rawDesiredState = {}
+      this._getRequests.push(msg)
+      if (this._flowEnable != null) {
+        objectPath.set(this._desiredStates, 'flow.enable', this._flowEnable)
+      }
       if (this._flowAssetsId) {
-        objectPath.set(rawDesiredState, 'flow.flow', {
+        objectPath.set(this._desiredStates, 'flow.flow', {
             assetId: this._flowAssetsId,
             updateId: this._flowUpdateId
         })
       }
-      const desiredState = Utils.getDummyState('desired', rawDesiredState)
+      const desiredState = Utils.getDummyState('desired', this._desiredStates)
       deviceStates[0] = desiredState
       connector.sendCtrlMessage({
         type: 'res',
@@ -60,7 +85,10 @@ export default class DummyCtrlMsgHandler {
       const result = msg.body.updates.map(update => {
         this._updateRequests.push(update)
         if (update.op === 'set') {
-          objectPath.set(this._reportedStates, 'state.' + update.path, update.state)
+          if (update.type === 'reported')
+            objectPath.set(this._reportedStates, 'state.' + update.path, update.state)
+          if (update.type === 'status')
+            objectPath.set(this._statusStates, 'state.' + update.path, update.state)
         } else if (update.op === 'remove') {
           objectPath.del(this._reportedStates, 'state.' + update.path)
         }

@@ -663,7 +663,7 @@ setup_mbed_cloud_connector_fcc() {
   local FCC_PATH=${INSTALL_DIR}/tools/mbed-cloud-connector-fcc
   local LOCAL_BIN_ENV
   LOCAL_BIN_ENV="PATH=/home/${USER}/.local/bin:${PATH}"
-  cmd_wrapper bash -c "(cd ${FCC_PATH} && mbed config root . && mbed deploy)"
+  cmd_wrapper bash -c "(cd ${FCC_PATH} && mbed config root . && mbed deploy -v)"
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
     _err "mbed deploy failed."
@@ -710,7 +710,7 @@ setup_mbed_cloud_connector() {
   local LOCAL_BIN_ENV
   LOCAL_BIN_ENV="PATH=/home/${USER}/.local/bin:${PATH}"
   cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector \
-    && mbed config root . && mbed deploy)" ${LOCAL_BIN_ENV}
+    && mbed config root . && mbed deploy -v)" ${LOCAL_BIN_ENV}
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
     _err "mbed deploy failed."

@@ -9,11 +9,15 @@ export default class ConnectorMessenger extends EventEmitter {
   _connector: Logger
   _log: Logger
   _requestTryMax = 3
-  _requestTryTimeout
+  _requestTryTimeout: number
   _requests: Object = {}
   _nextId: number = 0
 
-  constructor(connector: ConnectorService, log: Logger, requestTryTimeout: number) {
+  constructor(
+    connector: ConnectorService,
+    log: Logger,
+    requestTryTimeout: number
+  ) {
     super()
     this._connector = connector
     this._log = log
