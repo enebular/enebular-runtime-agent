@@ -538,7 +538,7 @@ export default class DockerManager {
           // The asset may have received a new pendingChange again while we were
           // await'ing, so check for that before we really remove it.
           if (!container.pendingChange) {
-            this._containers = this._container.filter(a => {
+            this._containers = this._containers.filter(a => {
               return a !== container
             })
           }

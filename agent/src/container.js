@@ -234,20 +234,22 @@ export default class Container {
       const logStream = await this._startExec()
       this._attachLogsToExec(logStream)
       this.setState('running')
+      return true
     } catch (err) {
       this._error(err.message)
     }
+    return false
   }
 
   async _restart() {
     if (!this._active) {
       return
     }
-    if (this._restartCount < 3) {
+    if (this._restartCount < 2) {
       this._restartCount++
       this._info(`Restart #${this.restartCount} of model '${this.name()}'...`)
-      await this._execModel()
-      this._showEndpoints()
+      await this.repair()
+      await this.start(true)
     } else {
       this._info(
         `Exceeded maximum number of restarts of model '${this.name()}'...`
@@ -256,7 +258,7 @@ export default class Container {
     }
   }
 
-  async start() {
+  async start(noRestart) {
     this._info('WE ARE STARTING', this.state)
     if (!this._container) {
       this._info(
@@ -306,11 +308,15 @@ export default class Container {
       }
     }
     try {
-      this._restartCount = 0
+      if (!noRestart) {
+        this._restartCount = 0
+      }
       this._attachLogsToContainer()
-      await this._execModel()
-      this._showEndpoints()
-      return true
+      const executed = await this._execModel()
+      if (executed) {
+        this._showEndpoints()
+        return true
+      }
     } catch (err) {
       this._error('Cannot start container', this.name())
       this._info(err)
@@ -426,7 +432,7 @@ export default class Container {
       return true
     } catch (err) {
       this._error(`Could not repair container '${this.name()}'`)
-      this._error(err)
+      this._debug(err)
       this.setState('error')
     }
     return false
@@ -472,7 +478,11 @@ export default class Container {
         this._container.modem.demuxStream(stream, logStream, logStream)
         stream.on('end', () => {
           if (this._active) {
-            if (this.state !== 'stopping' && this.state !== 'removing') {
+            if (
+              this.state !== 'stopping' &&
+              this.state !== 'starting' &&
+              this.state !== 'removing'
+            ) {
               this._error(`Unexpected stopping of container '${this.name()}'`)
               this.setState('error')
               // this.sync()
