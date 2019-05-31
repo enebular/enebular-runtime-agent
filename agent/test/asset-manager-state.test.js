@@ -10,7 +10,8 @@ import DummyServer from './helpers/dummy-server'
 import {
   createAgentWithAssetsDeployed,
   waitAssetProcessing,
-  agentCleanup
+  agentCleanup,
+  polling
 } from './helpers/agent-helper'
 
 import objectPath from 'object-path'
@@ -247,15 +248,10 @@ test.serial(
 
     await waitAssetProcessing(agent, 2000, 10000)
 
-    console.log(JSON.stringify(ret.updateRequests, null, 2))
-    t.is(ret.updateRequests[0].path, 'monitoring')
-
-    t.is(ret.updateRequests[1].path, 'assets.assets.' + ret.assets[0].id)
-    t.is(ret.updateRequests[1].state.state, 'deployed')
-
-    t.is(ret.updateRequests[2].path, 'assets.assets.' + ret.assets[1].id)
-    t.is(ret.updateRequests[2].state.state, 'deployed')
-
+    console.log(JSON.stringify(ret.reportedStates, null, 2))
+    t.is(ret.reportedStates.state.monitoring.enable, true)
+    t.is(ret.reportedStates.state.assets.assets[ret.assets[0].id].state, 'deployed')
+    t.is(ret.reportedStates.state.assets.assets[ret.assets[1].id].state, 'deployed')
     fs.unlinkSync(ret.assetStatePath)
     fs.removeSync(ret.assetDataPath)
   }
@@ -284,7 +280,8 @@ test.serial(
     // modify
     objectPath.set(ret.reportedStates, updateIdPath, newUpdateId)
     // add
-    const removeStatePath = 'assets.assets.' + Utils.randomString()
+    const assetShouldBeRemoved = Utils.randomString()
+    const removeStatePath = 'assets.assets.' + assetShouldBeRemoved
     objectPath.set(ret.reportedStates, 'state.' + removeStatePath, {
       updateId: Utils.randomString(),
       ts: Date.now(),
@@ -349,12 +346,10 @@ test.serial(
 
     await waitAssetProcessing(agent, 1000, 10000)
 
-    // console.log(JSON.stringify(ret.updateRequests, null, 2))
-    t.is(ret.updateRequests[0].path, 'monitoring')
-    t.is(ret.updateRequests[1].op, 'remove')
-    t.is(ret.updateRequests[1].path, removeStatePath)
-    t.is(ret.updateRequests[2].op, 'set')
-    t.is(ret.updateRequests[2].state.updateId, oldUpdateId)
+    console.log(JSON.stringify(ret.reportedStates, null, 2))
+    t.is(ret.reportedStates.state.monitoring.enable, true)
+    t.is(ret.reportedStates.state.assets.assets[assetShouldBeRemoved], undefined)
+    t.is(ret.reportedStates.state.assets.assets[ret.assets[0].id].updateId, oldUpdateId)
 
     fs.unlinkSync(ret.assetStatePath)
     fs.removeSync(ret.assetDataPath)

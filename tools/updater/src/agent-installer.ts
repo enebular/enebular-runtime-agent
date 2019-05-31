@@ -276,7 +276,7 @@ export class AgentInstaller implements AgentInstallerIf {
       this._log,
       async (): Promise<void> => {
         // Require root access as it will install dependencies by itself if missing
-        await this._buildConnector(fccPath, 'mbed', ['deploy'])
+        await this._buildConnector(fccPath, 'mbed', ['deploy', '-v'])
         return Utils.chown(this._log, fccPath, userInfo)
       }
     )
@@ -344,7 +344,7 @@ export class AgentInstaller implements AgentInstallerIf {
       'Deploying mbed-cloud-connector',
       this._log,
       async (): Promise<void> => {
-        return this._buildConnector(connectorPath, 'mbed', ['deploy'], userInfo)
+        return this._buildConnector(connectorPath, 'mbed', ['deploy', '-v'], userInfo)
       }
     )
 
