@@ -170,7 +170,7 @@ test('Migrator.7: migrator applies migrations according to version #3', async t 
   rimraf.sync(cache)
 })
 
-test('Migrator.8: migrator applies migrations according to version #4', async t => {
+test('Migrator.8: update fails if the migration file for the version to update is missing', async t => {
   const cache = '/tmp/enebular-agent-updater-test-' + Utils.randomString()
   process.env['ENEBULAR_AGENT_UPDATER_CACHE_DIR'] = cache
   const { system, installer } = Mockhelper.createDefaultMocks()
@@ -179,18 +179,8 @@ test('Migrator.8: migrator applies migrations according to version #4', async t 
   system.path = path.resolve('./test/data/fake_agent_awsiot_2.4.0')
 
   const updater = new AgentUpdater(system, installer, undefined)
-  await t.notThrowsAsync(updater.update())
-
-  t.true(fs.existsSync(`${system.newPath}/node-red/.node-red-config`))
-  t.true(
-    fs.existsSync(`/home/${system.user}/.enebular-agent/.enebular-config.json`)
-  )
-  t.true(fs.existsSync(`${system.newPath}/.enebular-assets.json`))
-  t.true(fs.existsSync(`${system.newPath}/assets`))
-  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/config.json`))
-  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/certs/ca-cert`))
-  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/certs/client-cert`))
-  t.true(fs.existsSync(`${system.newPath}/ports/awsiot/certs/private-key`))
+  const error = await t.throwsAsync(updater.update())
+  t.true(error.message.startsWith('No migration file found for'))
   rimraf.sync(cache)
 })
 
@@ -199,7 +189,7 @@ test('Migrator.9: Migration fails if migration file parsing fail', async t => {
   process.env['ENEBULAR_AGENT_UPDATER_CACHE_DIR'] = cache
   const { system, installer } = Mockhelper.createDefaultMocks()
   system.agent.version = '2.4.0'
-  system.newAgent.version = '8.0.0'
+  system.newAgent.version = '2.4.12'
   system.path = path.resolve('./test/data/fake_agent_awsiot_2.4.0')
 
   const updater = new AgentUpdater(system, installer, undefined)
