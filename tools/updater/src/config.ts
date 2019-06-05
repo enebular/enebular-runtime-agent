@@ -168,12 +168,14 @@ export default class Config {
 
   public getOverriddenItems(): ConfigItems {
     let ret: ConfigItems = {}
-    Object.entries(this._items).map(entry => {
-      const key = entry[0]
-      if (entry[1].override) {
-        ret[key] = this._items[key]
+    Object.entries(this._items).map(
+      (entry): void => {
+        const key = entry[0]
+        if (entry[1].override) {
+          ret[key] = this._items[key]
+        }
       }
-    })
+    )
     return ret
   }
 
@@ -204,20 +206,24 @@ export default class Config {
   }
 
   public importConfigStrings(items: ConfigStrings): void {
-    Object.keys(items).forEach(key => {
-      // modify only, we don't create new config item.
-      if (key in this._items) {
-        this.setAutoDetectType(key, items[key])
+    Object.keys(items).forEach(
+      (key): void => {
+        // modify only, we don't create new config item.
+        if (key in this._items) {
+          this.setAutoDetectType(key, items[key])
+        }
       }
-    })
+    )
   }
 
   public importConfigAnyTypes(items: ConfigAnyTypes): void {
-    Object.keys(items).forEach(key => {
-      // modify only, we don't create new config item.
-      if (key in this._items) {
-        this.set(key, items[key])
+    Object.keys(items).forEach(
+      (key): void => {
+        // modify only, we don't create new config item.
+        if (key in this._items) {
+          this.set(key, items[key])
+        }
       }
-    })
+    )
   }
 }

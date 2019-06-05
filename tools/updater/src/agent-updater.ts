@@ -79,10 +79,12 @@ export default class AgentUpdater {
     let appendEnvs = ''
     const overriddenItems = this._config.getOverriddenItems()
     const itemKeys = Object.keys(overriddenItems)
-    itemKeys.forEach(key => {
-      if (key !== 'ENEBULAR_AGENT_USER')
-        appendEnvs = appendEnvs + ` ${key}='${overriddenItems[key].value}'`
-    })
+    itemKeys.forEach(
+      (key): void => {
+        if (key !== 'ENEBULAR_AGENT_USER')
+          appendEnvs = appendEnvs + ` ${key}='${overriddenItems[key].value}'`
+      }
+    )
 
     this._log.info(
       'sudo env PATH=$PATH:' +
