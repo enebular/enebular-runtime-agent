@@ -184,6 +184,15 @@ export class Migrator implements MigratorIf {
           agentInfo.version,
           newAgentInfo.version
         )
+        const fileForNewVersion = migrationFilesToRun.filter(
+          (file): boolean =>
+            path.basename(file).startsWith(newAgentInfo.version.toString())
+        )
+        if (fileForNewVersion.length < 1) {
+          throw new Error(
+            `No migration file found for ${newAgentInfo.version}.`
+          )
+        }
       }
     )
     if (migrationFilesToRun.length < 1) {
