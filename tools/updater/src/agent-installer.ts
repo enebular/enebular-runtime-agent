@@ -516,7 +516,8 @@ export class AgentInstaller implements AgentInstallerIf {
               'mbed-cli',
               'click',
               'requests'
-            ])
+            ],
+            userInfo)
           }
         )
 
