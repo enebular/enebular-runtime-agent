@@ -79,7 +79,8 @@ async function _updateThingShadow(state, retryInterval, index) {
   const disableRetry = retryInterval === 0
   retryInterval = Math.min(retryInterval, 4 * 60 * 60 * 1000)
   return new Promise((resolve, reject) => {
-    let token = thingShadow.update(thingName, state)
+    const _state = Object.assign({}, state)
+    let token = thingShadow.update(thingName, _state)
     if (token === null) {
       if (shutdownRequested || disableRetry) {
         error(`Shadow update request failed`)
