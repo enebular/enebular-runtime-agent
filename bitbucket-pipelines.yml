@@ -2,49 +2,48 @@ image:
   name: node:9.2.1
   run-as-user: 1000
 
-pipelines:
-  default: 
-    - step:
+definitions: 
+  steps:
+    - step: &build-test
         name: Build and test
-        caches:
-        - node
         script:
-        - (node -v | xargs echo nodejs version:)
-        - (npm -v | xargs echo npm version:)
-        - echo 'if ((`git diff package-lock.json | wc -l` != 0)); then echo "package-lock.file is required to be committed" && (exit 1); fi;' > /tmp/check_lock_file.sh
-# TODO: change npm i to npm ci once ci is available
-        - (cd node-red && npm i)
-        - (cd agent && npm i && . /tmp/check_lock_file.sh && npm run test:serial)
-        - (cd ports/awsiot && npm i && . /tmp/check_lock_file.sh
-          && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientId":"thing_name","thingName":"thing_name","caCert":"./certs/root_certificate","clientCert":"./certs/thing_cert","privateKey":"./certs/thing_private_key>","topic":"aws/things/thing_name/shadow/update"}' > ./config.json
-          && npm run test && rm ./config.json)
-        - (cd ports/pelion && npm i && . /tmp/check_lock_file.sh && npm run test)
-        - (cd tools/awsiot-thing-creator && npm i && . /tmp/check_lock_file.sh)
-        - (cd tools/updater && npm i && . /tmp/check_lock_file.sh && npm run test)
-  tags:
-    '*':
-      - step:
-          name: Build, Test and Package
-          script:
           - (node -v | xargs echo nodejs version:)
           - (npm -v | xargs echo npm version:)
-          - (echo ${BITBUCKET_TAG} | xargs echo release tag:)
-          # build & test
+          - echo 'if ((`git diff package-lock.json | wc -l` != 0)); then echo "package-lock.file is required to be committed" && (exit 1); fi;' > /tmp/check_lock_file.sh
+          # build
+# TODO: change npm i to npm ci once ci is available
           - (cd node-red && npm i)
-          - (cd agent && npm i && npm run test:serial)
-          - (cd ports/awsiot && npm i
+          - (cd agent && npm i && . /tmp/check_lock_file.sh)
+          - (cd ports/awsiot && npm i && . /tmp/check_lock_file.sh)
+          - (cd ports/pelion && npm i && . /tmp/check_lock_file.sh)
+          - (cd tools/awsiot-thing-creator && npm i && . /tmp/check_lock_file.sh)
+          - (cd tools/updater && npm i && . /tmp/check_lock_file.sh)
+          # test
+          - (cd agent && npm run test:serial)
+          - (cd ports/awsiot
             && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientId":"thing_name","thingName":"thing_name","caCert":"./certs/root_certificate","clientCert":"./certs/thing_cert","privateKey":"./certs/thing_private_key>","topic":"aws/things/thing_name/shadow/update"}' > ./config.json
             && npm run test && rm ./config.json)
-          - (cd ports/pelion && npm i && npm run test)
-          - (cd tools/awsiot-thing-creator && npm i)
-          - (cd tools/updater && npm i && npm run test)
-          # package
+          - (cd ports/pelion && npm run test)
+          - (cd tools/updater && npm run test)
+          # clean up
           - (cd node-red && rm -rf node_modules)
           - (cd agent && rm -rf node_modules)
           - (cd ports/awsiot && rm -rf node_modules)
           - (cd ports/pelion && rm -rf node_modules)
           - (cd tools/awsiot-thing-creator && rm -rf node_modules)
           - (cd tools/updater && rm -rf node_modules)
+          - rm -rf .git
+        artifacts:
+          - '**'
+pipelines:
+  default: 
+    - step: *build-test
+  tags:
+    '*':
+      - step: *build-test
+      - step:
+          name: Package ${BITBUCKET_TAG}
+          script:
           - rm -rf .git
           - tar --transform "s,^\.,${BITBUCKET_TAG}," -czf /tmp/${BITBUCKET_TAG}-prebuilt.tar.gz .
           - mkdir -p dist
