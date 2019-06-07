@@ -35,29 +35,42 @@ definitions:
           - rm -rf .git
         artifacts:
           - '**'
+    - step: &pack
+        name: Pack
+        script:
+          - rm -rf .git
+          - mkdir -p dist
+          - AGENT_NAME=enebular-agent-${BITBUCKET_TAG}
+          - tar --transform "s,^\.,${AGENT_NAME}," -czf /tmp/${AGENT_NAME}-prebuilt.tar.gz .
+          - mv /tmp/${AGENT_NAME}-prebuilt.tar.gz dist/
+          - UPDATER_NAME=enebular-agent-updater-${BITBUCKET_TAG}
+          - (cd tools/updater && npm i --production && tar --transform "s,^\.,${UPDATER_NAME}," -czf /tmp/${UPDATER_NAME}.tar.gz .)
+          - mv /tmp/${UPDATER_NAME}.tar.gz dist/
+        artifacts:
+          - dist/**
+    - step: &upload
+        name: Upload (Test)
+        image: python:3.5.1
+        deployment: test
+        script:
+          - pip install boto3==1.3.0
+          - cd dist && find *tar.gz -print0 | xargs -t -0 -I {} python ../tools/s3_upload.py ${ENEBULAR_AGENT_S3_BUCKET} {} ${BITBUCKET_TAG}/{}
+        artifacts:
+          - dist/**
+
 pipelines:
   default: 
     - step: *build-test
   tags:
-    '*':
+    '[0-9]*.[0-9]*.[0-9]**':
       - step: *build-test
+      - step: *pack
       - step:
-          name: Package ${BITBUCKET_TAG}
-          script:
-          - rm -rf .git
-          - tar --transform "s,^\.,${BITBUCKET_TAG}," -czf /tmp/${BITBUCKET_TAG}-prebuilt.tar.gz .
-          - mkdir -p dist
-          - mv /tmp/${BITBUCKET_TAG}-prebuilt.tar.gz dist/
-          - UPDATER_NAME=enebular-agent-updater-${BITBUCKET_TAG}
-          - (cd tools/updater && npm i --production && tar --transform "s,^\.,${UPDATER_NAME}," -czf /tmp/${UPDATER_NAME}.tar.gz .)
-          - mv /tmp/${UPDATER_NAME}.tar.gz dist/
-          artifacts:
-          - dist/**
-#      - step:
-#          name: Upload to S3
-#          image: python:3.5.1
-#          script:
-#          - pip install boto3==1.3.0 # required for s3_upload.py
-#          - S3_BUCKET=enebular-release
-#          - python tools/s3_upload.py ${S3_BUCKET} "is_folder" "${BITBUCKET_TAG}/"
-#          - (cd dist && find * -exec python ../s3_upload.py ${S3_BUCKET} {} ${BITBUCKET_TAG}/{} \;)
+          <<: *upload
+          deployment: production
+          trigger: manual
+          name: Upload (Production)
+    'dev-test-*':
+      - step: *build-test
+      - step: *pack
+      - step: *upload
