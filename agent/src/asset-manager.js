@@ -10,8 +10,6 @@ import Asset from './asset'
 import FileAsset from './file-asset'
 import { delay } from './utils'
 import type DeviceStateManager from './device-state-manager'
-import type DockerManager from './docker-manager'
-import type PortManager from './port-manager'
 import type AgentManagerMediator from './agent-manager-mediator'
 import type Config from './config'
 
@@ -94,37 +92,29 @@ const moduleName = 'asset-man'
 
 export default class AssetManager {
   _deviceStateMan: DeviceStateManager
-  _dockerMan: DockerManager
-  _portMan: PortManager
   _log: Logger
   _assets: Array<Asset> = []
   _processingChanges: boolean = false
   _inited: boolean = false
   _active: boolean = false
   _dataDir: string
-  _aiModelDir: string
   _stateFilePath: string
   _updateAttemptsMax: number = 3
   agentMan: AgentManagerMediator
 
   constructor(
     deviceStateMan: DeviceStateManager,
-    dockerMan: DockerManager,
     agentMan: AgentManagerMediator,
-    portMan: PortManager,
     config: Config,
     log: Logger
   ) {
     this._dataDir = path.resolve(config.get('ENEBULAR_ASSETS_DATA_PATH'))
-    this._aiModelDir = path.resolve(config.get('ENEBULAR_AI_MODELS_DATA_PATH'))
     this._stateFilePath = config.get('ENEBULAR_ASSETS_STATE_PATH')
-    if (!this._dataDir || !this._aiModelDir || !this._stateFilePath) {
+    if (!this._dataDir || !this._stateFilePath) {
       throw new Error('Missing asset-man configuration')
     }
 
     this._deviceStateMan = deviceStateMan
-    this._dockerMan = dockerMan
-    this._portMan = portMan
     this.agentMan = agentMan
     this._log = log
 
@@ -135,10 +125,6 @@ export default class AssetManager {
 
   dataDir(): string {
     return this._dataDir
-  }
-
-  aiModelDir(): string {
-    return this._aiModelDir
   }
 
   debug(msg: string, ...args: Array<mixed>) {
@@ -199,9 +185,6 @@ export default class AssetManager {
     switch (serializedAsset.type) {
       case 'file':
         asset = new FileAsset(serializedAsset.type, serializedAsset.id, this)
-        break
-      case 'ai':
-        asset = new AiModel(serializedAsset.type, serializedAsset.id, this)
         break
       default:
         throw new Error('Unsupported asset type: ' + serializedAsset.type)

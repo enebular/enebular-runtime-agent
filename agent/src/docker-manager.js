@@ -1,3 +1,5 @@
+/* @flow */
+
 import fs from 'fs'
 import objectHash from 'object-hash'
 import path from 'path'
@@ -5,7 +7,12 @@ import Docker from 'dockerode'
 import type { Logger } from 'winston'
 import { delay } from './utils'
 import Container from './container'
+import AiModel from './ai-model'
 import type AgentInfoManager from './agent-info-manager'
+import type AgentManagerMediator from './agent-manager-mediator'
+import type DeviceStateManager from './device-state-manager'
+import type PortManager from './port-manager'
+import type Config from './config'
 
 const moduleName = 'docker-man'
 
@@ -16,14 +23,19 @@ export default class DockerManager {
   _log: Logger
   _docker: Docker
   _aiModelDir: string
-  _containers: Array<Container> = []
+  _models: Array<AiModel> = []
   _inited: boolean = false
   _active: boolean = false
-  _updateAttemptsMax: number = 3
+  _stateDockerPath: string
+  _updateAttemptsMax: number = 1
+  agentMan: AgentManagerMediator
+  portMan: PortManager
 
   constructor(
     deviceStateMan: DeviceStateManager,
+    agentMan: AgentManagerMediator,
     agentInfoMan: AgentInfoManager,
+    portMan: PortManager,
     config: Config,
     log: Logger
   ) {
@@ -36,17 +48,13 @@ export default class DockerManager {
 
     this._deviceStateMan = deviceStateMan
     this._agentInfoMan = agentInfoMan
+    this.agentMan = agentMan
+    this.portMan = portMan
     this._log = log
 
     if (config.get('ENEBULAR_DOCKER_MODE')) {
       this._test = true
     }
-    // var socket = process.env.DOCKER_SOCKET || '/var/run/docker.sock'
-    // var stats = fs.statSync(socket)
-    // var stats2 = fs.statSync(dockerHost)
-
-    // // this._log.info('STATS:' + stats)
-    // this._log.info('STATS2:' + stats2)
     this._deviceStateMan.on('stateChange', params =>
       this._handleDeviceStateChange(params)
     )
@@ -120,65 +128,68 @@ export default class DockerManager {
     if (!fs.existsSync(this._stateDockerPath)) {
       return
     }
+
     this.info('Loading docker state: ' + this._stateDockerPath)
+
     const data = fs.readFileSync(this._stateDockerPath, 'utf8')
-    const dockerState = JSON.parse(data)
-    const serializedContainers = dockerState.containers
-    for (const serializedContainer of serializedContainers) {
-      const container = this._deserializeContainer(serializedContainer)
-      this._containers.push(container)
+    const serializedModels = JSON.parse(data)
+    for (const serializedModel of serializedModels) {
+      const container = this._deserializeModel(serializedModel)
+      this._models.push(container)
     }
   }
 
-  _deserializeContainer(serializedContainer: Object): Container {
-    const container = new Container(serializedContainer.id, this)
+  _deserializeModel(serializedModel: Object): Container {
+    let model
+    switch (serializedModel.type) {
+      case 'ai':
+        model = new AiModel(serializedModel.type, serializedModel.id, this)
+        break
+      default:
+        throw new Error('Unsupported model type: ' + serializedModel.type)
+    }
+    model.updateId = serializedModel.updateId
+    model.config = serializedModel.config
+    model.dockerConfig = serializedModel.dockerConfig
+    model.state = serializedModel.state
+    model.status = serializedModel.status
+    model.endpoint = serializedModel.endpoint
+    model.changeTs = serializedModel.changeTs
+    model.changeErrMsg = serializedModel.changeErrMsg
+    model.pendingChange = serializedModel.pendingChange
+    model.pendingUpdateId = serializedModel.pendingUpdateId
+    model.pendingConfig = serializedModel.pendingConfig
+    model.updateAttemptCount = serializedModel.updateAttemptCount
+    model.lastAttemptedUpdateId = serializedModel.lastAttemptedUpdateId
 
-    container.updateId = serializedContainer.updateId
-    container.config = serializedContainer.config
-    container.state = serializedContainer.state
-    container.changeTs = serializedContainer.changeTs
-    container.changeErrMsg = serializedContainer.changeErrMsg
-    container.pendingChange = serializedContainer.pendingChange
-    container.pendingUpdateId = serializedContainer.pendingUpdateId
-    container.updateAttemptCount = serializedContainer.updateAttemptCount
-    container.lastAttemptedUpdateId = serializedContainer.lastAttemptedUpdateId
-
-    return container
+    return model
   }
 
-  async _saveDockerState() {
-    this.info('Saving docker state...')
+  _saveDockerState() {
+    this.debug('Saving docker state...')
 
-    // this.info(this._containers)
-
-    const serializedContainers = []
-    for (const container of this._containers) {
-      switch (container.state) {
-        case 'starting':
-        case 'stopping':
-        case 'running':
-        case 'stopped':
-        case 'down':
-        case 'error':
+    let serializedModels = []
+    for (let model of this._models) {
+      switch (model.state) {
+        case 'notDeployed':
+        case 'deployed':
+        case 'deployFail':
         case 'removeFail':
-          serializedContainers.push(container.serialize())
+          serializedModels.push(model.serialize())
           break
         default:
           break
       }
     }
-    const dockerState = {
-      containers: serializedContainers
-    }
-    this.debug('Docker state: ' + JSON.stringify(dockerState, null, 2))
+    this.debug('Model state: ' + JSON.stringify(serializedModels, null, 2))
     try {
       fs.writeFileSync(
         this._stateDockerPath,
-        JSON.stringify(dockerState),
+        JSON.stringify(serializedModels),
         'utf8'
       )
     } catch (err) {
-      this.error('Failed to save docker state: ' + err.message)
+      this.error('Failed to save model state: ' + err.message)
     }
   }
 
@@ -209,109 +220,139 @@ export default class DockerManager {
       return
     }
 
-    this.debug('Assets state change: ' + JSON.stringify(desiredState, null, 2))
+    this.debug('Docker state change: ' + JSON.stringify(desiredState, null, 2))
 
-    // handle changes for containers
-    this._handleContainersDesiredStateUpdate(desiredState.containers || {})
+    // handle changes for models
+    const desiredModels = desiredState.models || {}
+
+    // Determine models requiring a 'deploy' change
+    let newModels = []
+    for (const desiredModelId in desiredModels) {
+      if (!desiredModels.hasOwnProperty(desiredModelId)) {
+        continue
+      }
+      let desiredModel = desiredModels[desiredModelId]
+
+      // Updates to existing models
+      let found = false
+      for (let model of this._models) {
+        if (model.id() === desiredModelId) {
+          if (
+            (!model.pendingChange &&
+              model.updateId !== desiredModel.updateId) ||
+            (model.pendingChange === 'deploy' &&
+              model.pendingUpdateId !== desiredModel.updateId) ||
+            model.pendingChange === 'remove'
+          ) {
+            model.setPendingChange(
+              'deploy',
+              desiredModel.updateId,
+              desiredModel.config
+            )
+          }
+          found = true
+          break
+        }
+      }
+
+      // New models
+      if (!found) {
+        let model = null
+        switch (desiredModel.config.type) {
+          case 'ai':
+            model = new AiModel(desiredModel.config.type, desiredModelId, this)
+            model.state = 'notDeployed'
+            model.setPendingChange(
+              'deploy',
+              desiredModel.updateId,
+              desiredModel.config
+            )
+            break
+          default:
+            this.error('Unsupported model type: ' + desiredModel.config.type)
+            break
+        }
+        if (model) {
+          newModels.push(model)
+        }
+      }
+    }
+
+    // Determine models requiring a 'remove change
+    for (let model of this._models) {
+      if (!desiredModels.hasOwnProperty(model.id())) {
+        model.setPendingChange('remove', null, null)
+      }
+    }
+
+    // Append 'new' models
+    this._models = this._models.concat(newModels)
 
     this._updateDockerReportedState()
     this._processPendingChanges()
   }
 
-  async _handleContainersDesiredStateUpdate(desiredContainers) {
-    this.info('HANDLE CONTAINER DESIRED STATE UPDATE')
-    for (const desiredContainerId in desiredContainers) {
-      if (!desiredContainers.hasOwnProperty(desiredContainerId)) {
-        continue
-      }
-      let desiredContainer = desiredContainers[desiredContainerId]
-
-      // determinate containers required of change
-      for (let container of this._containers) {
-        this.info(
-          `~~~~~~~~~~~~~~ desiredContainer ~~~~~~~~~~~~~~`,
-          JSON.stringify(desiredContainer, null, 2)
-        )
-        if (container.id() === desiredContainerId) {
-          if (
-            (!container.pendingChange &&
-              container.updateId !== desiredContainer.updateId) ||
-            ((container.pendingChange === 'start' ||
-              container.pendingChange === 'stop') &&
-              container.pendingUpdateId !== desiredContainer.updateId) ||
-            container.pendingChange === 'remove'
-          ) {
-            container.setPendingChange(
-              desiredContainer.state,
-              desiredContainer.updateId
-            )
-          }
-          break
-        }
-      }
-    }
-    // find containers to remove
-    for (let container of this._containers) {
-      if (!desiredContainers.hasOwnProperty(container.id())) {
-        container.setPendingChange('remove', null)
-      }
-    }
-  }
-
   _updateDockerReportedState() {
     const reportedState = this._deviceStateMan.getState('reported', 'docker')
     if (!reportedState) {
-      // this.info('NOT UPDATING REPORTED STATE')
       return
     }
-    // this.info('UPDATING REPORTED STATE')
 
     this.debug(
       'Docker reported state: ' + JSON.stringify(reportedState, null, 2)
     )
 
-    if (reportedState.containers) {
-      // Remove reported assets that no longer exist
-      for (const reportedContainerId in reportedState.containers) {
-        if (!reportedState.containers.hasOwnProperty(reportedContainerId)) {
+    if (reportedState.models) {
+      // Remove reported models that no longer exist
+      for (const reportedModelId in reportedState.models) {
+        if (!reportedState.models.hasOwnProperty(reportedModelId)) {
           continue
         }
         let found = false
-        for (let container of this._containers) {
-          if (container.id() === reportedContainerId) {
+        for (let model of this._models) {
+          if (model.id() === reportedModelId) {
             found = true
             break
           }
         }
         if (!found) {
-          this._removeContainerReportedState(reportedContainerId)
+          this._removeModelReportedState(reportedModelId)
         }
       }
     }
 
-    // Update all current assets (if required)
-    for (let container of this._containers) {
-      this._updateContainerReportedState(container)
+    // Update all current models (if required)
+    for (let model of this._models) {
+      this._updateModelReportedState(model)
     }
   }
 
-  _removeContainerReportedState(containerId: string) {
+  _removeModelReportedState(modelId: string) {
     if (!this._deviceStateMan.canUpdateState('reported')) {
       return
     }
 
-    this.debug(`Removing container '${containerId}' reported state`)
+    this.debug(`Removing model '${modelId}' reported state`)
     this._deviceStateMan.updateState(
       'reported',
       'remove',
-      'docker.containers.' + containerId
+      'docker.models.' + modelId
     )
+  }
+
+  _getReportedModelState(modelId: string): ?Object {
+    const reportedState = this._deviceStateMan.getState('reported', 'docker')
+    if (!reportedState || !reportedState.models) {
+      return null
+    }
+
+    return reportedState.models[modelId]
   }
 
   async sync(type, item) {
     switch (type) {
-      case 'container':
-        this._updateContainerReportedState(item)
+      case 'status':
+        this._updateModelReportedState(item)
         break
       default:
         return
@@ -321,22 +362,17 @@ export default class DockerManager {
   }
 
   // Only updates the reported state if required (if there is a difference)
-  _updateContainerReportedState(container: Container) {
+  _updateModelReportedState(model: AiModel) {
     if (!this._deviceStateMan.canUpdateState('reported')) {
-      this.info('NOT UPDATING DESIRED STATE')
       return
     }
-    this.info('UPDATING DESIRED STATE')
 
     // Create new reported state
     let state
-    if (container.pendingChange) {
-      switch (container.pendingChange) {
-        case 'start':
-          state = 'startPending'
-          break
-        case 'stop':
-          state = 'stopPending'
+    if (model.pendingChange) {
+      switch (model.pendingChange) {
+        case 'deploy':
+          state = 'deployPending'
           break
         case 'remove':
           state = 'removePending'
@@ -346,75 +382,75 @@ export default class DockerManager {
           break
       }
     } else {
-      state = container.state
+      state = model.state
     }
     let newStateObj = {
-      ts: container.changeTs,
+      ts: model.changeTs,
       state: state
     }
-    if (container.changeErrMsg) {
-      newStateObj.message = container.changeErrMsg
+    if (model.changeErrMsg) {
+      newStateObj.message = model.changeErrMsg
     }
-    if (container.pendingChange) {
-      newStateObj.pendingUpdateId = container.pendingUpdateId
+    if (model.pendingChange) {
+      newStateObj.pendingUpdateId = model.pendingUpdateId
     }
-    if (state === 'starting' || state === 'stopping') {
-      newStateObj.updateAttemptCount = container.updateAttemptCount
+    if (state === 'deploying') {
+      newStateObj.updateAttemptCount = model.updateAttemptCount
     }
-    if (container.config) {
-      newStateObj.config = container.config
+    if (model.config) {
+      newStateObj.config = model.config
+    } else if (model.state === 'notDeployed' && model.pendingConfig) {
+      newStateObj.config = model.pendingConfig
     }
-    newStateObj.updateId = container.updateId
+    if (model.dockerConfig) {
+      newStateObj.dockerConfig = model.dockerConfig
+    }
+    if (model.status) {
+      newStateObj.status = model.status
+    }
+    if (model.endpoint) {
+      newStateObj.endpoint = model.endpoint
+    }
+    newStateObj.updateId =
+      model.state === 'notDeployed' ? model.pendingUpdateId : model.updateId
 
     // Compare with currently reported state
-    const currentStateObj = this._getReportedContainerState(container.id())
+    const currentStateObj = this._getReportedModelState(model.id())
     if (
       currentStateObj &&
       objectHash(currentStateObj) === objectHash(newStateObj)
     ) {
-      this.info(
-        `Update of container '${container.name()}' reported state not required`
-      )
+      this.debug(`Update of model '${model.id()}' reported state not required`)
       return
     }
-    // this.info('CURRENT STATE OBJECT ', newStateObj)
 
     // Update if required
-    this.debug(`Updating container '${container.name()}' reported state...`)
+    this.debug(`Updating model '${model.id()}' reported state...`)
     // this.debug('Current state: ' + util.inspect(currentStateObj))
     // this.debug('New state: ' + util.inspect(newStateObj))
     this._deviceStateMan.updateState(
       'reported',
       'set',
-      'docker.containers.' + container.id(),
+      'docker.models.' + model.id(),
       newStateObj
     )
   }
 
-  _getReportedContainerState(containerId: string): ?Object {
-    const reportedState = this._deviceStateMan.getState('reported', 'docker')
-    if (!reportedState || !reportedState.containers) {
+  _getFirstPendingChangeModel(): ?Container {
+    if (this._models.length < 1) {
       return null
     }
-
-    return reportedState.containers[containerId]
-  }
-
-  _getFirstPendingChangeContainer(): ?Container {
-    if (this._containers.length < 1) {
-      return null
-    }
-    for (let container of this._containers) {
-      if (container.pendingChange) {
-        return container
+    for (let model of this._models) {
+      if (model.pendingChange) {
+        return model
       }
     }
     return null
   }
 
-  _setContainerState(container: Container, state: string) {
-    container.setState(state)
-    this._updateContainerReportedState(container)
+  _setModelState(model: Model, state: string) {
+    model.setState(state)
+    this._updateModelReportedState(model)
   }
 
   async _processPendingChanges() {
@@ -424,122 +460,98 @@ export default class DockerManager {
     this._processingChanges = true
 
     while (this._active) {
-      let container = this._getFirstPendingChangeContainer()
-      if (!container) {
+      let model = this._getFirstPendingChangeModel()
+      if (!model) {
         break
       }
 
       // Dequeue the pending change
-      let pendingChange = container.pendingChange
-      let pendingUpdateId = container.pendingUpdateId
-      container.pendingChange = null
-      container.pendingUpdateId = null
+      let pendingChange = model.pendingChange
+      let pendingUpdateId = model.pendingUpdateId
+      let pendingConfig = model.pendingConfig
+      model.pendingChange = null
+      model.pendingUpdateId = null
+      model.pendingConfig = null
 
       // Reset update attempt count if this is a different update
-      if (pendingUpdateId !== container.lastAttemptedUpdateId) {
-        container.lastAttemptedUpdateId = pendingUpdateId
-        container.updateAttemptCount = 0
+      if (pendingUpdateId !== model.lastAttemptedUpdateId) {
+        model.lastAttemptedUpdateId = pendingUpdateId
+        model.updateAttemptCount = 0
       }
 
       // Process the change
       switch (pendingChange) {
-        case 'start': {
+        case 'deploy':
           // Save current state so we can revert back to it if required
-          const prevState = container.state
-          const prevUpdateId = container.updateId
+          const prevState = model.state
+          const prevConfig = model.config
+          const prevUpdateId = model.updateId
 
-          // Apply the update and attempt deploy
-          container.updateId = pendingUpdateId
-          container.updateAttemptCount++
-          container.setState('starting')
-          let success = await container.start()
-          if (!success) {
-            if (container.updateAttemptCount < this._updateAttemptsMax) {
-              if (container.pendingChange === null) {
-                this.info(
-                  `Starting failed, but will retry (${
-                    container.updateAttemptCount
-                  }/${this._updateAttemptsMax}).`
-                )
-                container.setPendingChange(pendingChange, pendingUpdateId)
-              } else {
-                this.info('Starting failed, but new change already pending.')
-              }
-              container.updateId = prevUpdateId
-              // Note that setting it back to prevConfig may be a lie as it may
-              // have been 'removed', but it's ok for now to keep things simple.
-              container.setState(prevState)
-            } else {
-              this.info(
-                `Starting failed maximum number of times (${
-                  container.updateAttemptCount
-                })`
-              )
-              container.setState('error')
-            }
-          } else {
-            container.setState('running')
-          }
-          break
-        }
-        case 'stop': {
-          // Save current state so we can revert back to it if required
-          const prevState = container.state
-          const prevUpdateId = container.updateId
-
-          // Apply the update and attempt deploy
-          container.updateId = pendingUpdateId
-          container.updateAttemptCount++
-          container.setState('stopping')
-          let success = await container.stop()
-          if (!success) {
-            if (container.updateAttemptCount < this._updateAttemptsMax) {
-              if (container.pendingChange === null) {
-                this.info(
-                  `Stopping failed, but will retry (${
-                    container.updateAttemptCount
-                  }/${this._updateAttemptsMax}).`
-                )
-                container.setPendingChange(pendingChange, pendingUpdateId)
-              } else {
-                this.info('Stopping failed, but new change already pending.')
-              }
-              container.updateId = prevUpdateId
-              // Note that setting it back to prevConfig may be a lie as it may
-              // have been 'removed', but it's ok for now to keep things simple.
-              container.setState(prevState)
-            } else {
-              this.info(
-                `Stopping failed maximum number of times (${
-                  container.updateAttemptCount
-                })`
-              )
-              container.setState('error')
-            }
-          } else {
-            container.setState('stopped')
-          }
-          break
-        }
-        case 'remove':
-          if (
-            container.state === 'started' ||
-            container.state === 'stopped' ||
-            container.state === 'error'
-          ) {
-            this._setContainerState(container, 'removing')
-            let success = await container.remove()
+          // Remove if already deployed (or deployFail)
+          if (model.state === 'deployed' || model.state === 'deployFail') {
+            this._setModelState(model, 'removing')
+            let success = await model.remove()
             if (!success) {
-              this._setContainerState(container, 'removeFail')
+              this.info('Remove failed, but continuing with deploy...')
+              this._setModelState(model, 'removeFail')
+            }
+          }
+
+          // Apply the update and attempt deploy
+          model.updateId = pendingUpdateId
+          model.config = pendingConfig
+          model.updateAttemptCount++
+          this._setModelState(model, 'deploying')
+          let success = await model.deploy()
+          if (!success) {
+            if (model.updateAttemptCount < this._updateAttemptsMax) {
+              if (model.pendingChange === null) {
+                this.info(
+                  `Deploy failed, but will retry (${model.updateAttemptCount}/${
+                    this._updateAttemptsMax
+                  }).`
+                )
+                model.setPendingChange(
+                  pendingChange,
+                  pendingUpdateId,
+                  pendingConfig
+                )
+              } else {
+                this.info('Deploy failed, but new change already pending.')
+              }
+              model.updateId = prevUpdateId
+              model.config = prevConfig
+              // Note that setting it back to prevConfig may be a lie as it may
+              // have been 'removed', but it's ok for now to keep things simple.
+              this._setModelState(model, prevState)
+            } else {
+              this.info(
+                `Deploy failed maximum number of times (${
+                  model.updateAttemptCount
+                })`
+              )
+              this._setModelState(model, 'deployFail')
+            }
+          } else {
+            this._setModelState(model, 'deployed')
+          }
+          break
+
+        case 'remove':
+          if (model.state === 'deployed' || model.state === 'deployFail') {
+            this._setModelState(model, 'removing')
+            let success = await model.remove()
+            if (!success) {
+              this._setModelState(model, 'removeFail')
               break
             }
           }
-          this._removeContainerReportedState(container.id())
+          this._removeModelReportedState(model.id())
           // The asset may have received a new pendingChange again while we were
           // await'ing, so check for that before we really remove it.
-          if (!container.pendingChange) {
-            this._containers = this._containers.filter(a => {
-              return a !== container
+          if (!model.pendingChange) {
+            this.model = this._models.filter(a => {
+              return a !== model
             })
           }
           break
@@ -580,26 +592,24 @@ export default class DockerManager {
    */
 
   addContainer(container) {
-    this._containers.push(container)
+    this._models.push(container)
   }
 
   async _startContainers() {
-    this.info('Starting containers...')
+    this.info('Starting models...')
     await Promise.all(
-      this._containers.map(async (container, idx) => {
-        const success = await this._wakeContainer(container)
+      this._models.map(async (model, idx) => {
+        const success = await this._wakeContainer(model)
         if (!success) {
-          this.error(`Could not start a container ${container.name()}...`)
+          this.error(`Could not start a model ${model.name()}...`)
         }
       })
     )
   }
 
   removeContainer(key) {
-    this._containers = this._containers.filter(
-      container => container.id() !== key
-    )
-    this._removeContainerReportedState(key)
+    this._models = this._models.filter(container => container.id() !== key)
+    this._removeModelReportedState(key)
   }
 
   getContainer(key) {
@@ -607,28 +617,28 @@ export default class DockerManager {
   }
 
   container(key) {
-    return this._containers.find(container => container.id() === key)
+    return this._models.find(container => container.id() === key)
   }
 
-  async _wakeContainer(container) {
-    if (!container.canStart()) {
+  async _wakeContainer(model) {
+    if (!model.canStart()) {
       return
     }
-    this.debug('Waking up container : ', container.containerId())
+    this.debug('Waking up container : ', model.containerId())
     let success
     // Find and start container
     try {
-      const existingContainer = this.getContainer(container.containerId())
-      container.activate(existingContainer)
-      success = await container.start()
+      const existingContainer = this.getContainer(model.containerId())
+      model.attachContainer(existingContainer)
+      success = await model.container.start()
     } catch (err) {
       success = false
     }
     if (!success) {
       // Recreate container based on existing data
       try {
-        await container.repair()
-        success = await container.start()
+        await model.container.repair()
+        success = await model.container.start()
       } catch (err) {
         success = false
       }
@@ -637,33 +647,11 @@ export default class DockerManager {
   }
 
   async shutDown() {
-    this.info('Shuting down all running containers')
+    this.info('Shuting down all running models')
     try {
-      await Promise.all(this._containers.map(container => container.shutDown()))
+      await Promise.all(this._models.map(model => model.container.shutDown()))
     } catch (err) {
-      this.error('Shuting down containers error', err.message)
-    }
-  }
-
-  async stopContainers() {
-    this.info('Stopping all running containers')
-    try {
-      await Promise.all(
-        this._containers
-          .filter(container => container.state === 'running')
-          .map(container => {
-            this.getContainer(container.containerId())
-              .stop()
-              .catch(err => {
-                if (err.statusCode !== 304) {
-                  this.error(err)
-                }
-              })
-          })
-      )
-      await this._saveDockerState()
-    } catch (err) {
-      this.error('Stopping containers error', err.message)
+      this.error('Shuting down models error', err.message)
     }
   }
 
@@ -711,7 +699,7 @@ export default class DockerManager {
       const container = this.container(modelId)
       return container
     } catch (err) {
-      this.error('Checking containers error', err.message)
+      this.error('Checking models error', err.message)
     }
   }
 
@@ -728,10 +716,9 @@ export default class DockerManager {
     return { exist: false }
   }
 
-  async createNewContainer(createOptions, modelConfig) {
+  async createNewContainer(createOptions) {
     this.info('Creating container')
     const { mounts, ports, imageName, cmd, cores, maxRam } = createOptions
-    const { mountDir, port, handlers, language, id, name } = modelConfig
     // pulling docker image
     await this.pullImage(imageName)
     const config = {
@@ -755,24 +742,8 @@ export default class DockerManager {
         config.ExposedPorts[`${port}/tcp`] = {}
       })
     }
-    this.debug(JSON.stringify(config, null, 2))
-    const dockerContainer = await this._docker.createContainer(config)
+    const container = await this._docker.createContainer(config)
 
-    const newContainer = new Container(id, this)
-    const containerConfig = {
-      name,
-      containerId: dockerContainer.id,
-      mountDir: mountDir,
-      port: port,
-      handlers,
-      language,
-      createOptions
-    }
-    newContainer.config = containerConfig
-
-    this.addContainer(newContainer)
-    newContainer.activate(dockerContainer)
-
-    return newContainer
+    return container
   }
 }

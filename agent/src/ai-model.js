@@ -3,6 +3,7 @@
 import crypto from 'crypto'
 import diskusage from 'diskusage'
 import fs from 'fs'
+import mkdirp from 'mkdirp'
 import path from 'path'
 import request from 'request'
 import progress from 'request-progress'
@@ -10,14 +11,35 @@ import util from 'util'
 import extract from 'extract-zip'
 import Asset from './asset'
 import type DockerManager from './docker-manager'
-import type PortManager from './port-manager'
-import type Container from './container'
+import Container from './container'
+import { delay } from './utils'
 
 export default class AiModel extends Asset {
+  _dockerMan: DockerManager
   _port: string
-  _ports: Array<string>
   _mountDir: string
-  _container: Container
+  container: Container
+  dockerConfig: Object
+  status: Object
+  endpoint: string
+  enabled: Boolean = true
+
+  constructor(type: string, id: string, dockerMan: DockerManager) {
+    super(type, id)
+    this._dockerMan = dockerMan
+  }
+
+  _debug(msg: string, ...args: Array<mixed>) {
+    this._dockerMan.debug(msg, ...args)
+  }
+
+  _info(msg: string, ...args: Array<mixed>) {
+    this._dockerMan.info(msg, ...args)
+  }
+
+  _error(msg: string, ...args: Array<mixed>) {
+    this._dockerMan.error(msg, ...args)
+  }
 
   _fileName(): string {
     return this.config.fileTypeConfig.filename
@@ -31,12 +53,8 @@ export default class AiModel extends Asset {
     return this.config.destPath
   }
 
-  /** @override */
   _destDirPath(): string {
-    if (!this.config.destPath) {
-      return this._assetMan.aiModelDir()
-    }
-    return path.join(this._assetMan.aiModelDir(), this.config.destPath)
+    return path.join(this._dockerMan.aiModelDir(), this.config.destPath)
   }
 
   _fileSubPath(): string {
@@ -50,15 +68,23 @@ export default class AiModel extends Asset {
     return path.join(this._destDirPath(), this.config.fileTypeConfig.filename)
   }
 
-  _mountModelDir(): string {
+  mountModelDir(): string {
     return this.config.destPath
+  }
+
+  port(): string {
+    return this.dockerConfig.port
+  }
+
+  containerId(): string {
+    return this.dockerConfig.containerId
   }
 
   _mountContainerDirPath(): string {
     return path.join(
-      this._assetMan.aiModelDir(),
+      this._dockerMan.aiModelDir(),
       '.mount',
-      this._mountModelDir()
+      this.mountModelDir()
     )
   }
 
@@ -126,12 +152,35 @@ export default class AiModel extends Asset {
     return this.config.wrapperUrl
   }
 
-  _dockerMan(): DockerManager {
-    return this._assetMan._dockerMan
+  canStart(): Boolean {
+    return this.enabled
   }
 
-  _portMan(): PortManager {
-    return this._assetMan._portMan
+  setStatus(status: string) {
+    this.status = status
+    this.changeTs = Date.now()
+    this._dockerMan.sync('status', this)
+  }
+
+  serialize(): {} {
+    return {
+      type: this._type,
+      id: this._id,
+      updateId: this.updateId,
+      state: this.state,
+      status: this.status,
+      enabled: this.enabled,
+      endpoint: this.endpoint,
+      updateAttemptCount: this.updateAttemptCount,
+      lastAttemptedUpdateId: this.lastAttemptedUpdateId,
+      changeTs: this.changeTs,
+      changeErrMsg: this.changeErrMsg,
+      config: this.config,
+      dockerConfig: this.dockerConfig,
+      pendingChange: this.pendingChange,
+      pendingUpdateId: this.pendingUpdateId,
+      pendingConfig: this.pendingConfig
+    }
   }
 
   async _getIntegrity(path: string) {
@@ -149,6 +198,77 @@ export default class AiModel extends Asset {
         reject(err)
       })
     })
+  }
+
+  async deploy(): Promise<boolean> {
+    this._info(`Deploying model '${this.name()}'...`)
+
+    let cleanUpDestDir = true
+
+    try {
+      // Ensure dest directory exists
+      const destDir = this._destDirPath()
+      if (!fs.existsSync(destDir)) {
+        this._debug('Creating directory for model: ' + destDir)
+        mkdirp.sync(destDir)
+      }
+
+      // Acquire
+      try {
+        this._info('Acquiring model...')
+        await this._acquire()
+      } catch (err) {
+        throw new Error('Failed to acquire model: ' + err.message)
+      }
+      this._info('Acquired model')
+
+      // Verify
+      try {
+        this._info('Verifying model...')
+        await this._verify()
+      } catch (err) {
+        throw new Error('Failed to verify model: ' + err.message)
+      }
+      this._info('Verified model')
+
+      // Install
+      try {
+        this._info('Installing model...')
+        await this._install()
+      } catch (err) {
+        throw new Error('Failed to install model: ' + err.message)
+      }
+      this._info('Installed model')
+
+      cleanUpDestDir = false
+
+      // Post-install
+      try {
+        this._info('Running post-install operations...')
+        await this._runPostInstallOps()
+      } catch (err) {
+        throw new Error(
+          'Failed to run post-install operations on model: ' + err.message
+        )
+      }
+      this._info('Ran post-install operations')
+    } catch (err) {
+      this.changeErrMsg = err.message
+      this._error(err.message)
+      if (cleanUpDestDir) {
+        try {
+          await this._delete()
+          this._removeDestDir()
+        } catch (err) {
+          this._error('Failed to clean up model: ' + err.message)
+        }
+      }
+      return false
+    }
+
+    this._info(`Deployed model '${this.name()}'`)
+
+    return true
   }
 
   async _acquire() {
@@ -170,7 +290,7 @@ export default class AiModel extends Asset {
 
     // Get asset file data download URL
     this._debug('Getting file download URL...')
-    const url = await this._assetMan.agentMan.getInternalFileAssetDataUrl(
+    const url = await this._dockerMan.agentMan.getInternalFileAssetDataUrl(
       this._key()
     )
     this._debug('Got file download URL')
@@ -242,14 +362,14 @@ export default class AiModel extends Asset {
     this._info('File installed to: ' + this._fileSubPath())
 
     this._info('Preparing container...')
-    const preparation = await this._dockerMan().prepare({
-      modelId: this.id()
-    })
-    if (preparation.exist) {
-      this._port = preparation.port
-    } else {
-      this._port = await this._portMan().findFreePort()
-    }
+    // const preparation = await this._dockerMan.prepare({
+    //   modelId: this.id()
+    // })
+    // if (preparation.exist) {
+    //   this._port = preparation.port
+    // } else {
+    this._port = await this._dockerMan.portMan.findFreePort()
+    // }
 
     this._info('Using port', this._port)
 
@@ -269,90 +389,66 @@ export default class AiModel extends Asset {
     })
 
     // Downloading wrapper
-    const that = this
-    const onProgress = state => {
-      this._info(
-        util.format(
-          'Download progress: %f%% @ %fKB/s, %fsec',
-          state.percent ? Math.round(state.percent * 100) : 0,
-          state.speed ? Math.round(state.speed / 1024) : 0,
-          state.time.elapsed ? Math.round(state.time.elapsed) : 0
-        )
-      )
-    }
-    const wrapperUrl = await this._assetMan.agentMan.getAiModelWrapperUrl(
-      {
-        ...this.config,
-        Port: this._port
-      },
-      this._dockerMan().isTestMode()
-    )
-    const wrapperPath = this._mountWrapperPath()
-    this._info(`Downloading wrapper to ${wrapperPath} ...`)
-    await new Promise(function(resolve, reject) {
-      const fileStream = fs.createWriteStream(wrapperPath)
-      fileStream.on('error', err => {
-        reject(err)
-      })
-      progress(request(wrapperUrl), {
-        delay: 5000,
-        throttle: 5000
-      })
-        .on('response', response => {
-          that._debug(
-            `Response: ${response.statusCode}: ${response.statusMessage}`
-          )
-          if (response.statusCode >= 400) {
-            reject(
-              new Error(
-                `Error response: ${response.statusCode}: ${
-                  response.statusMessage
-                }`
-              )
-            )
-          }
-        })
-        .on('progress', onProgress)
-        .on('error', err => {
-          reject(err)
-        })
-        .on('end', () => {
-          resolve()
-        })
-        .pipe(fileStream)
-    })
+    // const that = this
+    // const onProgress = state => {
+    //   this._info(
+    //     util.format(
+    //       'Download progress: %f%% @ %fKB/s, %fsec',
+    //       state.percent ? Math.round(state.percent * 100) : 0,
+    //       state.speed ? Math.round(state.speed / 1024) : 0,
+    //       state.time.elapsed ? Math.round(state.time.elapsed) : 0
+    //     )
+    //   )
+    // }
+    // const wrapperUrl = await this._dockerMan.agentMan.getAiModelWrapperUrl(
+    //   {
+    //     ...this.config,
+    //     Port: this._port
+    //   },
+    //   this._dockerMan.isTestMode()
+    // )
+    // const wrapperPath = this._mountWrapperPath()
+    // this._info(`Downloading wrapper to ${wrapperPath} ...`)
+    // await new Promise(function(resolve, reject) {
+    //   const fileStream = fs.createWriteStream(wrapperPath)
+    //   fileStream.on('error', err => {
+    //     reject(err)
+    //   })
+    //   progress(request(wrapperUrl), {
+    //     delay: 5000,
+    //     throttle: 5000
+    //   })
+    //     .on('response', response => {
+    //       that._debug(
+    //         `Response: ${response.statusCode}: ${response.statusMessage}`
+    //       )
+    //       if (response.statusCode >= 400) {
+    //         reject(
+    //           new Error(
+    //             `Error response: ${response.statusCode}: ${
+    //               response.statusMessage
+    //             }`
+    //           )
+    //         )
+    //       }
+    //     })
+    //     .on('progress', onProgress)
+    //     .on('error', err => {
+    //       reject(err)
+    //     })
+    //     .on('end', () => {
+    //       resolve()
+    //     })
+    //     .pipe(fileStream)
+    // })
   }
 
   async _runPostInstallOps() {
-    this._info('Setting docker...')
-    // this._dockerMan().listContainers()
-    this._info(`Using image ${this._dockerImage()}...`)
+    this._info('Configuring  container...')
 
-    const language = this._language() === 'Python3' ? 'python3' : 'python2'
-    const command = `cd ${this._containerWrapperDirPath()} && ${language} wrapper.py`
+    await this.createContainer()
 
-    const container = await this._dockerMan().createNewContainer(
-      {
-        cmd: ['/bin/bash'],
-        command: ['/bin/bash', '-c', command],
-        workDir: this._containerWrapperDirPath(),
-        mounts: [`${this._mountContainerDirPath()}:/mount`],
-        ports: [this._port],
-        imageName: this._dockerImage(),
-        cores: this._cores(),
-        maxRam: this._maxRam() * 1024 * 1024
-      },
-      {
-        id: this.id(),
-        name: this.name(),
-        mountDir: this._mountModelDir(),
-        port: this._port,
-        language,
-        handlers: this._handlers()
-      }
-    )
-
-    await container.start()
+    delay(3000).then(() => this.container.start())
 
     // await container.newExec(
     //   {
@@ -370,11 +466,51 @@ export default class AiModel extends Asset {
     //     Privileged: true
     //   }
     // )
-    // await this._dockerMan().exec(container, {
+    // await this._dockerMan.exec(container, {
     //   Cmd: ['/bin/bash', '-c', command],
     //   AttachStdout: true,
     //   AttachStderr: true
     // })
+  }
+
+  async createContainer() {
+    this._info(`Using image ${this._dockerImage()}...`)
+
+    const language = this._language() === 'Python3' ? 'python3' : 'python2'
+    const command = `cd ${this._containerWrapperDirPath()} && ${language} wrapper.py`
+
+    const config = {
+      cmd: ['/bin/bash'],
+      command: ['/bin/bash', '-c', command],
+      workDir: this._containerWrapperDirPath(),
+      mounts: [`${this._mountContainerDirPath()}:/mount`],
+      ports: [this._port],
+      port: this._port,
+      imageName: this._dockerImage(),
+      cores: this._cores(),
+      maxRam: this._maxRam() * 1024 * 1024
+    }
+
+    const container = await this._dockerMan.createNewContainer(config)
+
+    this.container = new Container(this, this._dockerMan)
+    this.dockerConfig = config
+
+    this.container.activate(container)
+  }
+
+  async attachContainer(container) {
+    this.container = new Container(this, this._dockerMan)
+
+    this.container.activate(container)
+  }
+
+  async updateEndpoint() {
+    const endpoint = `${this._dockerMan.ipAddress()}:${this.port()}`
+    if (this.endpoint !== endpoint) {
+      this.endpoint = endpoint
+      // this._dockerMan.sync('endpoint', this)
+    }
   }
 
   async _delete() {

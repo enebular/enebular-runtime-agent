@@ -2,6 +2,6 @@
   "name": "enebular-agent-dynamic-deps",
   "version": "0.0.1",
   "dependencies": {
-    "enebular-ai-contrib-83acb16d-01b6-4388-b9ea-916c43fd9657": "file:../node-red-enebular-ai-nodes/83acb16d-01b6-4388-b9ea-916c43fd9657"
+    "node-red-contrib-enebular": "file:../../node-red-contrib-enebular"
   }
 }

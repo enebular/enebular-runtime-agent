@@ -3,13 +3,10 @@
 import fs from 'fs'
 import path from 'path'
 import rimraf from 'rimraf'
-import mkdirp from 'mkdirp'
 import stringArgv from 'string-argv'
 import { spawn } from 'child_process'
-import type AssetManager from './asset-manager'
 
 export default class Asset {
-  _assetMan: AssetManager
   _type: string
   _id: string
   updateId: string
@@ -23,30 +20,26 @@ export default class Asset {
   updateAttemptCount: number = 0
   lastAttemptedUpdateId: ?string
 
-  constructor(type: string, id: string, assetMan: AssetManager) {
+  constructor(type: string, id: string) {
     this._type = type
     this._id = id
-    this._assetMan = assetMan
     this.changeTs = Date.now()
   }
 
   _debug(msg: string, ...args: Array<mixed>) {
-    this._assetMan.debug(msg, ...args)
+    throw new Error('Called an abstract function')
   }
 
   _info(msg: string, ...args: Array<mixed>) {
-    this._assetMan.info(msg, ...args)
+    throw new Error('Called an abstract function')
   }
 
   _error(msg: string, ...args: Array<mixed>) {
-    this._assetMan.error(msg, ...args)
+    throw new Error('Called an abstract function')
   }
 
   _destDirPath(): string {
-    if (!this.config.destPath) {
-      return this._assetMan.dataDir()
-    }
-    return path.join(this._assetMan.dataDir(), this.config.destPath)
+    throw new Error('Called an abstract function')
   }
 
   type(): string {
@@ -226,92 +219,7 @@ export default class Asset {
   }
 
   async deploy(): Promise<boolean> {
-    this._info(`Deploying asset '${this.name()}'...`)
-
-    let cleanUpDestDir = true
-
-    try {
-      // Ensure dest directory exists
-      const destDir = this._destDirPath()
-      if (!fs.existsSync(destDir)) {
-        this._debug('Creating directory for asset: ' + destDir)
-        mkdirp.sync(destDir)
-      }
-
-      // Pre-deploy hooks
-      try {
-        this._info('Running pre-deploy hooks...')
-        await this._runHooks('preDeploy')
-      } catch (err) {
-        throw new Error('Failed to run pre-deploy hooks: ' + err.message)
-      }
-      this._info('Ran pre-deploy hooks')
-
-      // Acquire
-      try {
-        this._info('Acquiring asset...')
-        await this._acquire()
-      } catch (err) {
-        throw new Error('Failed to acquire asset: ' + err.message)
-      }
-      this._info('Acquired asset')
-
-      // Verify
-      try {
-        this._info('Verifying asset...')
-        await this._verify()
-      } catch (err) {
-        throw new Error('Failed to verify asset: ' + err.message)
-      }
-      this._info('Verified asset')
-
-      // Install
-      try {
-        this._info('Installing asset...')
-        await this._install()
-      } catch (err) {
-        throw new Error('Failed to install asset: ' + err.message)
-      }
-      this._info('Installed asset')
-
-      cleanUpDestDir = false
-
-      // Post-install
-      try {
-        this._info('Running post-install operations...')
-        await this._runPostInstallOps()
-      } catch (err) {
-        throw new Error(
-          'Failed to run post-install operations on asset: ' + err.message
-        )
-      }
-      this._info('Ran post-install operations')
-
-      // Post-deploy hooks
-      try {
-        this._info('Running post-deploy hooks...')
-        await this._runHooks('postDeploy')
-      } catch (err) {
-        throw new Error('Failed to run post-deploy hooks: ' + err.message)
-      }
-      this._info('Ran post-deploy hooks')
-    } catch (err) {
-      this.changeErrMsg = err.message
-      this._error(err.message)
-      if (cleanUpDestDir) {
-        try {
-          await this._delete()
-          this._removeDestDir()
-        } catch (err) {
-          this._error('Failed to clean up asset: ' + err.message)
-        }
-      }
-      return false
-    }
-
-    this._info(`Deployed asset '${this.name()}'`)
-
-    return true
+    throw new Error('Called an abstract function')
   }
 
   async remove(): Promise<boolean> {

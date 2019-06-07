@@ -1,3 +1,5 @@
+// @flow
+
 import fs from 'fs'
 import portfinder from 'portfinder'
 
