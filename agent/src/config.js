@@ -133,6 +133,11 @@ export default class Config {
         description: '',
         userExpose: false
       },
+      ENEBULAR_NODE_RED_FLOW_START_TIMEOUT: {
+        value: 30 * 1000,
+        description: '',
+        userExpose: false
+      },
 
       // logging
       ENEBULAR_LOG_LEVEL: {

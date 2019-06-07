@@ -214,6 +214,16 @@ export default class ThingCreator {
     return roleArn
   }
 
+  async _thingExists(iot: IoT, thingName: string): Promise<boolean> {
+    try {
+      await iot.describeThing({ thingName: thingName }).promise()
+    } catch (err) {
+      if (err.code === 'ResourceNotFoundException')
+        return false
+    }
+    return true
+  }
+
   async createThing(configSavePath: ?string, thingName: ?string) {
     if (!thingName) {
       throw new Error('thingName is required.')
@@ -228,6 +238,12 @@ export default class ThingCreator {
       secretAccessKey: this._awsSecretAccessKey,
       region: this._awsIotRegion
     })
+
+    if (await this._thingExists(iot, thingName)) {
+      throw new Error(
+        `${thingName} already exists. Please choose another thing name.`
+      )
+    }
 
     let endPoint
     try {
