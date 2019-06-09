@@ -62,7 +62,7 @@ pipelines:
   default: 
     - step: *build-test
   tags:
-    '[0-9]*.[0-9]*.[0-9]**':
+    '[0-9]*.[0-9]*.[0-9]*':
       - step: *build-test
       - step: *pack
       - step:
@@ -70,6 +70,10 @@ pipelines:
           deployment: production
           trigger: manual
           name: Upload (Production)
+    '[0-9]*.[0-9]*.[0-9]*-rc*':
+      - step: *build-test
+      - step: *pack
+      - step: *upload
     'dev-test-*':
       - step: *build-test
       - step: *pack
