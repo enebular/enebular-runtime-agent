@@ -21,7 +21,7 @@ definitions:
           # test
           - (cd agent && npm run test:serial)
           - (cd ports/awsiot
-            && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientId":"thing_name","thingName":"thing_name","caCert":"./certs/root_certificate","clientCert":"./certs/thing_cert","privateKey":"./certs/thing_private_key>","topic":"aws/things/thing_name/shadow/update"}' > ./config.json
+            && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientId":"thing_name","thingName":"thing_name","caCert":"./certs/root_certificate","clientCert":"./certs/thing_cert","privateKey":"./certs/thing_private_key","topic":"aws/things/thing_name/shadow/update"}' > ./config.json
             && npm run test && rm ./config.json)
           - (cd ports/pelion && npm run test)
           - (cd tools/updater && npm run test)
@@ -54,10 +54,24 @@ definitions:
         deployment: test
         script:
           - pip install boto3==1.3.0
-          - cd dist && find *tar.gz -print0 | xargs -t -0 -I {} python ../tools/s3_upload.py ${ENEBULAR_AGENT_S3_BUCKET} {} ${BITBUCKET_TAG}/{}
+          - cp -r dist ${BITBUCKET_TAG}
+          - find ${BITBUCKET_TAG}/*tar.gz -print0 | xargs -t -0 -I {} python tools/s3_upload.py ${ENEBULAR_AGENT_S3_BUCKET} {} {}
         artifacts:
           - dist/**
-
+    - step: &upload-release
+        name: Upload (Production)
+        image: python:3.5.1
+        deployment: production
+        trigger: manual
+        script:
+          - pip install boto3==1.3.0
+          - cp -r dist ${BITBUCKET_TAG}
+          - find ${BITBUCKET_TAG}/*tar.gz -print0 | xargs -t -0 -I {} python tools/s3_upload.py ${ENEBULAR_AGENT_S3_BUCKET} {} {}
+          - LATEST_RELEASE_INFO=latest-release-info
+          - echo {\"version\":\"${BITBUCKET_TAG}\"} | python -mjson.tool > ${LATEST_RELEASE_INFO}
+          - python tools/s3_upload.py ${ENEBULAR_AGENT_S3_BUCKET} ${LATEST_RELEASE_INFO} ${LATEST_RELEASE_INFO}
+        artifacts:
+          - dist/**
 pipelines:
   default: 
     - step: *build-test
@@ -65,11 +79,7 @@ pipelines:
     '[0-9]*.[0-9]*.[0-9]*':
       - step: *build-test
       - step: *pack
-      - step:
-          <<: *upload
-          deployment: production
-          trigger: manual
-          name: Upload (Production)
+      - step: *upload-release
     '[0-9]*.[0-9]*.[0-9]*-rc*':
       - step: *build-test
       - step: *pack
