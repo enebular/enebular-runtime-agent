@@ -535,6 +535,46 @@ ensure_nodejs_version() {
   eval "$1='${NODE_PATH}'"
 }
 
+#args: version, url(out), kind(out)
+get_download_info_github() {
+  local RELEASE_VERSION
+  RELEASE_VERSION="${1-}"
+  if [ -z "${RELEASE_VERSION}" ]; then
+    _err "Missing release version."
+    return 1
+  fi
+  local URL="${2-}"
+  local KIND="${3-}"
+
+  local VERSION_INFO
+  local PREBUILT_URL
+  if [ "${RELEASE_VERSION}" == "latest-release" ]; then
+    VERSION_INFO="$(get_version_info_from_github ${AGENT_DOWNLOAD_PATH}releases/latest)"
+  else
+    VERSION_INFO="$(get_version_info_from_github ${AGENT_DOWNLOAD_PATH}releases/tags/${RELEASE_VERSION})"
+  fi
+  if [ -z "${VERSION_INFO}" ]; then
+    _err "Failed to get version ${RELEASE_VERSION} from github."
+    return 2
+  else
+    VERSION_INFO=($VERSION_INFO)
+    RELEASE_VERSION="${VERSION_INFO[0]}"
+    PREBUILT_URL=${VERSION_INFO[1]}
+  fi
+
+  local _INSTALL_KIND
+  local _DOWNLOAD_URL
+  if [ -z "${PREBUILT_URL}" ]; then
+    _DOWNLOAD_URL="${AGENT_DOWNLOAD_PATH}tarball/${RELEASE_VERSION}"
+    _INSTALL_KIND="source"
+  else
+    _DOWNLOAD_URL="${PREBUILT_URL}"
+    _INSTALL_KIND="prebuilt"
+  fi
+  eval ${KIND}="'${_INSTALL_KIND}'"
+  eval ${URL}="'${_DOWNLOAD_URL}'"
+}
+
 #args: port, user, install_dir, release_version, node_env_path(return value)
 do_install() {
   local PORT
@@ -593,30 +633,14 @@ do_install() {
   _task "Downloading enebular-agent"
   local TEMP_GZ
   TEMP_GZ=`mktemp --dry-run /tmp/enebular-agent.XXXXXXXXX`
-  local VERSION_INFO
-  local PREBUILT_URL
-  if [ "${RELEASE_VERSION}" == "latest-release" ]; then
-    VERSION_INFO="$(get_version_info_from_github ${AGENT_DOWNLOAD_PATH}releases/latest)"
-  else
-    VERSION_INFO="$(get_version_info_from_github ${AGENT_DOWNLOAD_PATH}releases/tags/${RELEASE_VERSION})"
-  fi
-  if [ -z "${VERSION_INFO}" ]; then
-    _err "Failed to get version ${RELEASE_VERSION} from github."
+
+  get_download_info_github ${RELEASE_VERSION} DOWNLOAD_URL INSTALL_KIND
+  EXIT_CODE=$?
+  if [ "$EXIT_CODE" -ne 0 ]; then
     _exit 1
-  else
-    VERSION_INFO=($VERSION_INFO)
-    RELEASE_VERSION="${VERSION_INFO[0]}"
-    PREBUILT_URL=${VERSION_INFO[1]}
   fi
 
-  local INSTALL_KIND
-  if [ -z "${PREBUILT_URL}" ]; then
-    INSTALL_KIND="source"
-    cmd_wrapper download_tarball "${AGENT_DOWNLOAD_PATH}tarball/${RELEASE_VERSION}" "${TEMP_GZ}"
-  else
-    INSTALL_KIND="prebuilt"
-    cmd_wrapper download_tarball "${PREBUILT_URL}" "${TEMP_GZ}"
-  fi
+  cmd_wrapper download_tarball "${DOWNLOAD_URL}" "${TEMP_GZ}"
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
     _err "Can't find available release for ${RELEASE_VERSION}"
