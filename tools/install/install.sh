@@ -170,6 +170,10 @@ get_version_info_from_github() {
   download "${1-}" "-" | grep -e tag_name -e browser_download_url | sed -E 's/.*"([^"]+)".*/\1/' | xargs
 }
 
+get_version_info_from_s3() {
+  download "${1-}" "-" | grep -e version | sed -E 's/.*"([^"]+)".*/\1/' | xargs
+}
+
 #args: install path
 get_enebular_agent_package_version() {
   cat ${1-}/agent/package.json | grep version | sed -E 's/.*"([^"]+)".*/\1/'
@@ -209,18 +213,21 @@ compare_checksum() {
 }
 
 # args: kind, version
-get_node_download_file_name() {
+get_download_file_name() {
+  local NAME
+  NAME="${1-}"
+
   local KIND
-  case "${1-}" in
-    binary | source) KIND="${1}" ;;
+  case "${2-}" in
+    binary | prebuilt | source) KIND="${2}" ;;
     *)
-      _err 'supported kinds: binary, source'
+      _err 'supported kinds: binary, prebuilt, source'
       return 1
     ;;
   esac
 
   local VERSION
-  VERSION="${2-}"
+  VERSION="${3-}"
 
   if [ -z "${VERSION}" ]; then
     _err 'A version number is required.'
@@ -234,13 +241,15 @@ get_node_download_file_name() {
     OS="$(get_os)"
     if [ -z "${OS}" ]; then
       _err 'Unsupported OS.'
-      return 4
+      return 3
     fi
     local ARCH
     ARCH="$(get_arch)"
-    echo "node-${VERSION}-${OS}-${ARCH}.${COMPRESSION}"
+    echo "${NAME}-${VERSION}-${OS}-${ARCH}.${COMPRESSION}"
+  elif [ "${KIND}" = 'prebuilt' ]; then
+    echo "${NAME}-${VERSION}-prebuilt.${COMPRESSION}"
   elif [ "${KIND}" = 'source' ]; then
-    echo "node-${VERSION}.${COMPRESSION}"
+    echo "${NAME}-${VERSION}.${COMPRESSION}"
   fi
 }
 
@@ -468,7 +477,7 @@ install_nodejs() {
   local DOWNLOAD_PATH
   DOWNLOAD_PATH="https://nodejs.org/dist/${VERSION}/"
   local DOWNLOAD_FILE_NAME
-  DOWNLOAD_FILE_NAME="$(get_node_download_file_name "binary" "${VERSION}")"
+  DOWNLOAD_FILE_NAME="$(get_download_file_name "node" "binary" "${VERSION}")"
   local DOWNLOAD_URL
   DOWNLOAD_URL="${DOWNLOAD_PATH}${DOWNLOAD_FILE_NAME}"
   if [ -z "${DOWNLOAD_URL}" ]; then
@@ -535,6 +544,40 @@ ensure_nodejs_version() {
   eval "$1='${NODE_PATH}'"
 }
 
+#args: version, url(out), kind(out), version(out)
+get_download_info_s3() {
+  local RELEASE_VERSION
+  RELEASE_VERSION="${1-}"
+  if [ -z "${RELEASE_VERSION}" ]; then
+    _err "Missing release version."
+    return 1
+  fi
+  local URL="${2-}"
+  local KIND="${3-}"
+  local VERSION="${4-}"
+
+  local VERSION_INFO
+  if [ "${RELEASE_VERSION}" == "latest-release" ]; then
+    VERSION_INFO="$(get_version_info_from_s3 ${AGENT_DOWNLOAD_PATH}/latest-release-info)"
+    if [ -z "${VERSION_INFO}" ]; then
+      _err "Failed to get latest version info."
+      return 2
+    fi
+  else
+    VERSION_INFO=${RELEASE_VERSION}
+  fi
+
+  local DOWNLOAD_FILE_NAME
+  DOWNLOAD_FILE_NAME="$(get_download_file_name "enebular-agent" "prebuilt" "${VERSION_INFO}")"
+  local _DOWNLOAD_URL
+  local _INSTALL_KIND
+  _DOWNLOAD_URL="${AGENT_DOWNLOAD_PATH}/${VERSION_INFO}/${DOWNLOAD_FILE_NAME}"
+  _INSTALL_KIND="prebuilt"
+  eval ${KIND}="'${_INSTALL_KIND}'"
+  eval ${URL}="'${_DOWNLOAD_URL}'"
+  eval ${VERSION}="'${VERSION_INFO}'"
+}
+
 #args: version, url(out), kind(out)
 get_download_info_github() {
   local RELEASE_VERSION
@@ -545,13 +588,14 @@ get_download_info_github() {
   fi
   local URL="${2-}"
   local KIND="${3-}"
+  local VERSION="${4-}"
 
   local VERSION_INFO
   local PREBUILT_URL
   if [ "${RELEASE_VERSION}" == "latest-release" ]; then
-    VERSION_INFO="$(get_version_info_from_github ${AGENT_DOWNLOAD_PATH}releases/latest)"
+    VERSION_INFO="$(get_version_info_from_github ${GITHUB_API_PATH}/releases/latest)"
   else
-    VERSION_INFO="$(get_version_info_from_github ${AGENT_DOWNLOAD_PATH}releases/tags/${RELEASE_VERSION})"
+    VERSION_INFO="$(get_version_info_from_github ${GITHUB_API_PATH}/releases/tags/${RELEASE_VERSION})"
   fi
   if [ -z "${VERSION_INFO}" ]; then
     _err "Failed to get version ${RELEASE_VERSION} from github."
@@ -565,7 +609,7 @@ get_download_info_github() {
   local _INSTALL_KIND
   local _DOWNLOAD_URL
   if [ -z "${PREBUILT_URL}" ]; then
-    _DOWNLOAD_URL="${AGENT_DOWNLOAD_PATH}tarball/${RELEASE_VERSION}"
+    _DOWNLOAD_URL="${GITHUB_API_PATH}/tarball/${RELEASE_VERSION}"
     _INSTALL_KIND="source"
   else
     _DOWNLOAD_URL="${PREBUILT_URL}"
@@ -573,6 +617,7 @@ get_download_info_github() {
   fi
   eval ${KIND}="'${_INSTALL_KIND}'"
   eval ${URL}="'${_DOWNLOAD_URL}'"
+  eval ${VERSION}="'${RELEASE_VERSION}'"
 }
 
 #args: port, user, install_dir, release_version, node_env_path(return value)
@@ -634,12 +679,17 @@ do_install() {
   local TEMP_GZ
   TEMP_GZ=`mktemp --dry-run /tmp/enebular-agent.XXXXXXXXX`
 
-  get_download_info_github ${RELEASE_VERSION} DOWNLOAD_URL INSTALL_KIND
+  if [ ! -z ${DOWNLOAD_AGENT_FROM_GTIHUB} ]; then
+    get_download_info_github ${RELEASE_VERSION} DOWNLOAD_URL INSTALL_KIND ACTUAL_VERSION
+  else
+    get_download_info_s3 ${RELEASE_VERSION} DOWNLOAD_URL INSTALL_KIND ACTUAL_VERSION
+  fi
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
     _exit 1
   fi
 
+  _echo "Agent version to download: ${ACTUAL_VERSION}"
   cmd_wrapper download_tarball "${DOWNLOAD_URL}" "${TEMP_GZ}"
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
@@ -925,7 +975,9 @@ post_install() {
 USER=enebular
 PORT=awsiot
 RELEASE_VERSION="latest-release"
-AGENT_DOWNLOAD_PATH="https://api.github.com/repos/enebular/enebular-runtime-agent/"
+GITHUB_API_PATH="https://api.github.com/repos/enebular/enebular-runtime-agent"
+AGENT_DOWNLOAD_PATH="http://enebular-agent-youxin-release.s3-website-ap-southeast-2.amazonaws.com"
+AGENT_TEST_DOWNLOAD_PATH="http://enebular-agent-youxin-dev-test.s3-website-ap-southeast-2.amazonaws.com"
 SUPPORTED_NODE_VERSION="v9.2.1"
 ENEBULAR_BASE_URL="https://enebular.com/api/v1"
 MBED_CLOUD_MODE=developer
@@ -997,6 +1049,10 @@ case $i in
   MBED_CLOUD_MODE="${i#*=}"
   shift
   ;;
+  --github-api-path=*)
+  GITHUB_API_PATH="${i#*=}"
+  shift
+  ;;
   --agent-download-path=*)
   AGENT_DOWNLOAD_PATH="${i#*=}"
   shift
@@ -1011,6 +1067,10 @@ case $i in
   ;;
   --dev-mode)
   ENEBULAR_DEV_MODE=yes
+  shift
+  ;;
+  --download-agent-from-github)
+  DOWNLOAD_AGENT_FROM_GTIHUB=yes
   shift
   ;;
   *)
