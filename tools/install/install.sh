@@ -557,6 +557,8 @@ get_download_info_s3() {
   local VERSION="${4-}"
 
   local VERSION_INFO
+  local DOWNLOAD_PATH
+  DOWNLOAD_PATH=${AGENT_DOWNLOAD_PATH}
   if [ "${RELEASE_VERSION}" == "latest-release" ]; then
     VERSION_INFO="$(get_version_info_from_s3 ${AGENT_DOWNLOAD_PATH}/latest-release-info)"
     if [ -z "${VERSION_INFO}" ]; then
@@ -564,6 +566,12 @@ get_download_info_s3() {
       return 2
     fi
   else
+    # regexp to match release version xx.xx.xx
+    local RX
+    RX='^([0-9]+\.){0,2}(\*|[0-9]+)$'
+    if ! [[ "${RELEASE_VERSION}" =~ ${RX} ]]; then
+      DOWNLOAD_PATH=${AGENT_TEST_DOWNLOAD_PATH}
+    fi
     VERSION_INFO=${RELEASE_VERSION}
   fi
 
@@ -571,7 +579,7 @@ get_download_info_s3() {
   DOWNLOAD_FILE_NAME="$(get_download_file_name "enebular-agent" "prebuilt" "${VERSION_INFO}")"
   local _DOWNLOAD_URL
   local _INSTALL_KIND
-  _DOWNLOAD_URL="${AGENT_DOWNLOAD_PATH}/${VERSION_INFO}/${DOWNLOAD_FILE_NAME}"
+  _DOWNLOAD_URL="${DOWNLOAD_PATH}/${VERSION_INFO}/${DOWNLOAD_FILE_NAME}"
   _INSTALL_KIND="prebuilt"
   eval ${KIND}="'${_INSTALL_KIND}'"
   eval ${URL}="'${_DOWNLOAD_URL}'"
