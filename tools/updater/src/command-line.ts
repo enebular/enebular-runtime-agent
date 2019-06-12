@@ -25,6 +25,10 @@ export default class CommandLine {
       '--agent-download-path <url>'
     )
     this.addConfigOption(
+      'ENEBULAR_AGENT_TEST_DOWNLOAD_PATH',
+      '--agent-test-download-path <url>'
+    )
+    this.addConfigOption(
       'ENEBULAR_AGENT_GITHUB_API_PATH',
       '--agent-github-api-path <url>'
     )

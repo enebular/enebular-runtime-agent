@@ -1065,6 +1065,10 @@ case $i in
   AGENT_DOWNLOAD_PATH="${i#*=}"
   shift
   ;;
+  --agent-test-download-path=*)
+  AGENT_TEST_DOWNLOAD_PATH="${i#*=}"
+  shift
+  ;;
   --license-key=*)
   LICENSE_KEY="${i#*=}"
   shift
