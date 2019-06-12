@@ -21,11 +21,11 @@ export default class AgentVerion {
     return this._patch
   }
 
-  public static filterInt(value: string) : number {
+  public static filterInt(value: string): number {
     if (/^[-+]?(\d+|Infinity)$/.test(value)) {
-      return Number(value);
+      return Number(value)
     } else {
-      return NaN;
+      return NaN
     }
   }
 
@@ -33,9 +33,12 @@ export default class AgentVerion {
     const versionNumbers = version.split('.')
     if (versionNumbers.length != 3) return undefined
     let major, minor, patch
-    if (isNaN((major = AgentVerion.filterInt(versionNumbers[0])))) return undefined
-    if (isNaN((minor = AgentVerion.filterInt(versionNumbers[1])))) return undefined
-    if (isNaN((patch = AgentVerion.filterInt(versionNumbers[2])))) return undefined
+    if (isNaN((major = AgentVerion.filterInt(versionNumbers[0]))))
+      return undefined
+    if (isNaN((minor = AgentVerion.filterInt(versionNumbers[1]))))
+      return undefined
+    if (isNaN((patch = AgentVerion.filterInt(versionNumbers[2]))))
+      return undefined
 
     return new AgentVerion(major, minor, patch)
   }
