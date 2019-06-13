@@ -85,7 +85,7 @@ get_download_info_s3() {
   local DOWNLOAD_PATH
   DOWNLOAD_PATH=${UPDATER_DOWNLOAD_PATH}
   if [ "${RELEASE_VERSION}" == "latest-release" ]; then
-    VERSION_INFO="$(get_version_info_from_s3 ${UPDATER_DOWNLOAD_PATH}/latest-release-info)"
+    VERSION_INFO="$(get_version_info_from_s3 ${UPDATER_DOWNLOAD_PATH}/latest.info)"
     if [ -z "${VERSION_INFO}" ]; then
       _err "Failed to get latest version info."
       return 2

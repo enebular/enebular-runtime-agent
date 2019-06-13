@@ -591,7 +591,7 @@ export class AgentInstaller implements AgentInstallerIf {
         let info
         try {
           info = await Utils.fetchJSON(
-            `${downloadPath}/latest-release-info`,
+            `${downloadPath}/latest.info`,
             {}
           )
         } catch (err) {
