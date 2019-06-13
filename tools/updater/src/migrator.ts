@@ -77,26 +77,28 @@ export class Migrator implements MigratorIf {
     start: AgentVersion,
     end: AgentVersion
   ): string[] {
-    return migrationFiles.filter(file => {
-      const fileName = path.basename(file)
-      if (path.extname(fileName).toLowerCase() === '.js') {
-        const version = fileName.slice(0, -3)
-        const migrationVersion = AgentVersion.parse(version.split('-')[0])
-        if (migrationVersion) {
-          // We allow same version force update.
-          if (start.equals(end) && migrationVersion.equals(start)) {
-            return true
-          }
-          if (
-            migrationVersion.greaterThan(start) &&
-            migrationVersion.lessThanOrEquals(end)
-          ) {
-            return true
+    return migrationFiles.filter(
+      (file): boolean => {
+        const fileName = path.basename(file)
+        if (path.extname(fileName).toLowerCase() === '.js') {
+          const version = fileName.slice(0, -3)
+          const migrationVersion = AgentVersion.parse(version.split('-')[0])
+          if (migrationVersion) {
+            // We allow same version force update.
+            if (start.equals(end) && migrationVersion.equals(start)) {
+              return true
+            }
+            if (
+              migrationVersion.greaterThan(start) &&
+              migrationVersion.lessThanOrEquals(end)
+            ) {
+              return true
+            }
           }
         }
+        return false
       }
-      return false
-    })
+    )
   }
 
   private async _createMigrationFromFile(
@@ -175,21 +177,28 @@ export class Migrator implements MigratorIf {
         }
         const migrationFilePath = this._config.getString('MIGRATION_FILE_PATH')
         let migrationFiles = fs.readdirSync(migrationFilePath).sort()
-        migrationFiles = migrationFiles.map(file => {
-          return path.resolve(migrationFilePath, file)
-        })
+        migrationFiles = migrationFiles.map(
+          (file): string => {
+            return path.resolve(migrationFilePath, file)
+          }
+        )
 
         migrationFilesToRun = this._getMigrationFilesBetweenTwoVersions(
           migrationFiles,
           agentInfo.version,
           newAgentInfo.version
         )
+        const fileForNewVersion = migrationFilesToRun.filter(
+          (file): boolean =>
+            path.basename(file).startsWith(newAgentInfo.version.toString())
+        )
+        if (fileForNewVersion.length < 1) {
+          throw new Error(
+            `No migration file found for ${newAgentInfo.version}.`
+          )
+        }
       }
     )
-    if (migrationFilesToRun.length < 1) {
-      // No migration is needed.
-      return
-    }
     const port = agentInfo.detectPortType()
     const migrateContext = {
       userInfo: this._userInfo,
