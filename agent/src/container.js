@@ -77,10 +77,6 @@ export default class Container {
     return this._model.dockerConfig
   }
 
-  canStart(): Boolean {
-    return !this.state || this.state !== 'stopped'
-  }
-
   container(): Object {
     return this._container
   }
@@ -121,6 +117,16 @@ export default class Container {
     if (state !== this.state) {
       this.state = state
     }
+  }
+
+  setError(message, state) {
+    this._error(message)
+    if (state) {
+      this.setState(state)
+    } else {
+      this.setState('error')
+    }
+    this._model.setStatusMessage(message)
   }
 
   sync() {
@@ -199,7 +205,7 @@ export default class Container {
       this.setState('running')
       return true
     } catch (err) {
-      this._error(err.message)
+      this.setError(err.message)
     }
     return false
   }
@@ -214,7 +220,7 @@ export default class Container {
       await this.repair()
       await this.start(true)
     } else {
-      this._info(
+      this.setError(
         `Exceeded maximum number of restarts of model '${this.name()}'...`
       )
       await this._crash()
@@ -265,9 +271,7 @@ export default class Container {
         if (err.statusCode === 404) {
           this.deactivate()
         }
-        this._error('Cannot start container', this.name())
-        this._info(err)
-        this.setState('error')
+        this.setError(`Cannot start container ${this.name()}`)
         return false
       }
     }
@@ -283,9 +287,7 @@ export default class Container {
         return true
       }
     } catch (err) {
-      this._error('Cannot start container', this.name())
-      this._info(err)
-      this.setState('error')
+      this.setError(`Cannot start container ${this.name()}`)
       this.sync()
     }
     return false
@@ -298,11 +300,10 @@ export default class Container {
       this._active = false
     } catch (err) {
       if (err.statusCode !== 304) {
-        this._error('Cannot stop container', this.name())
-        this._debug(err)
-        this.setState('error')
+        this.setError(`Cannot stop container ${this.name()} in crashing`)
       }
     }
+    this.sync()
   }
 
   async stop() {
@@ -326,14 +327,14 @@ export default class Container {
       this.setState('stopping')
       await this._container.stop()
       this.setState('stopped')
+      this.sync()
       return true
     } catch (err) {
       if (err.statusCode !== 304) {
-        this._error('Cannot stop container', this.name())
-        this._debug(err)
-        this.setState('error')
+        this.setError(`Cannot stop container ${this.name()}`)
       }
     }
+    this.sync()
     return false
   }
 
@@ -348,9 +349,7 @@ export default class Container {
       return true
     } catch (err) {
       if (err.statusCode !== 304) {
-        this._error('Cannot shut down container', this.name())
-        this._debug(err)
-        this.setState('error')
+        this.setError(`Cannot shut down container ${this.name()}`)
       }
     }
     return false
@@ -400,9 +399,7 @@ export default class Container {
       this.activate(container)
       return true
     } catch (err) {
-      this._error(`Could not repair container '${this.name()}'`)
-      this._debug(err)
-      this.setState('error')
+      this.setError(`Could not repair container '${this.name()}'`)
     }
     return false
   }
@@ -419,12 +416,10 @@ export default class Container {
       this.deactivate()
       if (hard) {
         this.removeMountDir()
-        this._dockerMan.removeContainer(this.id())
       }
       return true
     } catch (err) {
-      this._error(err.message)
-      this.setState('removeFail')
+      this.setError(err.message, 'removeFail')
       return false
     }
   }
@@ -452,8 +447,7 @@ export default class Container {
               this.state !== 'starting' &&
               this.state !== 'removing'
             ) {
-              this._error(`Unexpected stopping of container '${this.name()}'`)
-              this.setState('error')
+              this.setError(`Unexpected stopping of container '${this.name()}'`)
             }
           } else {
             this.setState('down')
@@ -478,7 +472,9 @@ export default class Container {
           this.state !== 'starting' &&
           this.state !== 'removing'
         ) {
-          this._error(`Unexpected stopping of model ${this.name()}`)
+          this._error(
+            `Unexpected stopping of model ${this.name()}... Will try to restart...`
+          )
           setTimeout(() => this._restart(), 1000)
         }
       } else {

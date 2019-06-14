@@ -21,8 +21,10 @@ export default class AiModel extends Asset {
   container: Container
   dockerConfig: Object
   status: Object
+  statusMessage: string
   endpoint: string
-  enabled: Boolean = true
+  enable: Boolean = true
+  pendingEnableRequest: Boolean = false
 
   constructor(type: string, id: string, dockerMan: DockerManager) {
     super(type, id)
@@ -152,14 +154,23 @@ export default class AiModel extends Asset {
     return this.config.wrapperUrl
   }
 
-  canStart(): Boolean {
-    return this.enabled
+  isEnabled(): boolean {
+    return this.enable || this.enable === undefined
+  }
+
+  isRunning(): boolean {
+    return this.status === 'running'
   }
 
   setStatus(status: string) {
     this.status = status
     this.changeTs = Date.now()
     this._dockerMan.sync('status', this)
+  }
+
+  setStatusMessage(message) {
+    this.statusMessage = message
+    this.changeTs = Date.now()
   }
 
   serialize(): {} {
@@ -169,7 +180,8 @@ export default class AiModel extends Asset {
       updateId: this.updateId,
       state: this.state,
       status: this.status,
-      enabled: this.enabled,
+      statusMessage: this.statusMessage,
+      enable: this.enable,
       endpoint: this.endpoint,
       updateAttemptCount: this.updateAttemptCount,
       lastAttemptedUpdateId: this.lastAttemptedUpdateId,
@@ -179,7 +191,8 @@ export default class AiModel extends Asset {
       dockerConfig: this.dockerConfig,
       pendingChange: this.pendingChange,
       pendingUpdateId: this.pendingUpdateId,
-      pendingConfig: this.pendingConfig
+      pendingConfig: this.pendingConfig,
+      pendingEnableRequest: this.pendingEnableRequest
     }
   }
 
@@ -389,58 +402,58 @@ export default class AiModel extends Asset {
     })
 
     // Downloading wrapper
-    // const that = this
-    // const onProgress = state => {
-    //   this._info(
-    //     util.format(
-    //       'Download progress: %f%% @ %fKB/s, %fsec',
-    //       state.percent ? Math.round(state.percent * 100) : 0,
-    //       state.speed ? Math.round(state.speed / 1024) : 0,
-    //       state.time.elapsed ? Math.round(state.time.elapsed) : 0
-    //     )
-    //   )
-    // }
-    // const wrapperUrl = await this._dockerMan.agentMan.getAiModelWrapperUrl(
-    //   {
-    //     ...this.config,
-    //     Port: this._port
-    //   },
-    //   this._dockerMan.isTestMode()
-    // )
-    // const wrapperPath = this._mountWrapperPath()
-    // this._info(`Downloading wrapper to ${wrapperPath} ...`)
-    // await new Promise(function(resolve, reject) {
-    //   const fileStream = fs.createWriteStream(wrapperPath)
-    //   fileStream.on('error', err => {
-    //     reject(err)
-    //   })
-    //   progress(request(wrapperUrl), {
-    //     delay: 5000,
-    //     throttle: 5000
-    //   })
-    //     .on('response', response => {
-    //       that._debug(
-    //         `Response: ${response.statusCode}: ${response.statusMessage}`
-    //       )
-    //       if (response.statusCode >= 400) {
-    //         reject(
-    //           new Error(
-    //             `Error response: ${response.statusCode}: ${
-    //               response.statusMessage
-    //             }`
-    //           )
-    //         )
-    //       }
-    //     })
-    //     .on('progress', onProgress)
-    //     .on('error', err => {
-    //       reject(err)
-    //     })
-    //     .on('end', () => {
-    //       resolve()
-    //     })
-    //     .pipe(fileStream)
-    // })
+    const that = this
+    const onProgress = state => {
+      this._info(
+        util.format(
+          'Download progress: %f%% @ %fKB/s, %fsec',
+          state.percent ? Math.round(state.percent * 100) : 0,
+          state.speed ? Math.round(state.speed / 1024) : 0,
+          state.time.elapsed ? Math.round(state.time.elapsed) : 0
+        )
+      )
+    }
+    const wrapperUrl = await this._dockerMan.agentMan.getAiModelWrapperUrl(
+      {
+        ...this.config,
+        Port: this._port
+      },
+      this._dockerMan.isTestMode()
+    )
+    const wrapperPath = this._mountWrapperPath()
+    this._info(`Downloading wrapper to ${wrapperPath} ...`)
+    await new Promise(function(resolve, reject) {
+      const fileStream = fs.createWriteStream(wrapperPath)
+      fileStream.on('error', err => {
+        reject(err)
+      })
+      progress(request(wrapperUrl), {
+        delay: 5000,
+        throttle: 5000
+      })
+        .on('response', response => {
+          that._debug(
+            `Response: ${response.statusCode}: ${response.statusMessage}`
+          )
+          if (response.statusCode >= 400) {
+            reject(
+              new Error(
+                `Error response: ${response.statusCode}: ${
+                  response.statusMessage
+                }`
+              )
+            )
+          }
+        })
+        .on('progress', onProgress)
+        .on('error', err => {
+          reject(err)
+        })
+        .on('end', () => {
+          resolve()
+        })
+        .pipe(fileStream)
+    })
   }
 
   async _runPostInstallOps() {
@@ -513,11 +526,53 @@ export default class AiModel extends Asset {
     }
   }
 
+  enableRequest() {
+    this._info('ENABLING MODELLLLLLLLLLLLLLL')
+    if (!this.pendingEnableRequest) {
+      this._info('NO PENDING BEFOREEEEEE')
+      this.pendingEnableRequest = true
+    }
+  }
+
+  async attemptDisable() {
+    if (this.isRunning()) {
+      this._info(`Disabling model ${this.name()}...`)
+      if (this.container) {
+        const stopped = await this.container.stop()
+        if (!stopped) {
+          this.setStatus('error')
+          this._error(
+            `Disable model ${this.name()} failed, container failed to stop`
+          )
+        }
+      }
+    }
+  }
+
+  async attemptEnable() {
+    if (!this.isRunning()) {
+      this._info(`Enabling model ${this.name()}...`)
+      if (!this.container) {
+        await this.createContainer()
+      }
+      const started = await this.container.start()
+      if (!started) {
+        this.setStatus('error')
+        this._error(
+          `Enable model ${this.name()} failed, container failed to start`
+        )
+      }
+    }
+  }
+
   async _delete() {
     const filePath = this._filePath()
     if (fs.existsSync(filePath)) {
       this._debug(`Deleting ${filePath}...`)
       fs.unlinkSync(filePath)
+    }
+    if (this.container) {
+      await this.container.remove(true)
     }
   }
 }

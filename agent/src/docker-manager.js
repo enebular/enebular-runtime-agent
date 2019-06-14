@@ -152,7 +152,9 @@ export default class DockerManager {
     model.config = serializedModel.config
     model.dockerConfig = serializedModel.dockerConfig
     model.state = serializedModel.state
+    model.enable = serializedModel.enable
     model.status = serializedModel.status
+    model.statusMessage = serializedModel.statusMessage
     model.endpoint = serializedModel.endpoint
     model.changeTs = serializedModel.changeTs
     model.changeErrMsg = serializedModel.changeErrMsg
@@ -220,7 +222,7 @@ export default class DockerManager {
       return
     }
 
-    this.debug('Docker state change: ' + JSON.stringify(desiredState, null, 2))
+    this.info('Docker state change: ' + JSON.stringify(desiredState, null, 2))
 
     // handle changes for models
     const desiredModels = desiredState.models || {}
@@ -251,6 +253,26 @@ export default class DockerManager {
             )
           }
           found = true
+
+          if (desiredModel.hasOwnProperty('enable')) {
+            this.info('DESIRED HAS ENABLE')
+            this.info('MODEL ENABLE', model.enable)
+            this.info('desiredModel ENABLE', desiredModel.enable)
+            if (model.enable !== desiredModel.enable) {
+              this.info('ENABLE REQUEST')
+              model.enable = desiredModel.enable
+              model.enableRequest()
+            }
+          } else {
+            this.info('DESIRED NO ENABLE')
+            // enable is undefined or false
+            if (!model.enable) {
+              this.info('DEFAULT ENABLE')
+              // the default enable state is true
+              model.enable = true
+              model.enableRequest()
+            }
+          }
           break
         }
       }
@@ -411,6 +433,9 @@ export default class DockerManager {
     if (model.endpoint) {
       newStateObj.endpoint = model.endpoint
     }
+    if (model.hasOwnProperty('enable')) {
+      newStateObj.enable = model.enable
+    }
     newStateObj.updateId =
       model.state === 'notDeployed' ? model.pendingUpdateId : model.updateId
 
@@ -441,7 +466,7 @@ export default class DockerManager {
       return null
     }
     for (let model of this._models) {
-      if (model.pendingChange) {
+      if (model.pendingChange || model.pendingEnableRequest) {
         return model
       }
     }
@@ -469,96 +494,109 @@ export default class DockerManager {
       let pendingChange = model.pendingChange
       let pendingUpdateId = model.pendingUpdateId
       let pendingConfig = model.pendingConfig
+      let pendingEnableRequest = model.pendingEnableRequest
+
       model.pendingChange = null
       model.pendingUpdateId = null
       model.pendingConfig = null
+      model.pendingEnableRequest = null
 
       // Reset update attempt count if this is a different update
       if (pendingUpdateId !== model.lastAttemptedUpdateId) {
         model.lastAttemptedUpdateId = pendingUpdateId
         model.updateAttemptCount = 0
       }
+      if (pendingChange != null) {
+        // Process the change
+        switch (pendingChange) {
+          case 'deploy':
+            // Save current state so we can revert back to it if required
+            const prevState = model.state
+            const prevConfig = model.config
+            const prevUpdateId = model.updateId
 
-      // Process the change
-      switch (pendingChange) {
-        case 'deploy':
-          // Save current state so we can revert back to it if required
-          const prevState = model.state
-          const prevConfig = model.config
-          const prevUpdateId = model.updateId
-
-          // Remove if already deployed (or deployFail)
-          if (model.state === 'deployed' || model.state === 'deployFail') {
-            this._setModelState(model, 'removing')
-            let success = await model.remove()
-            if (!success) {
-              this.info('Remove failed, but continuing with deploy...')
-              this._setModelState(model, 'removeFail')
-            }
-          }
-
-          // Apply the update and attempt deploy
-          model.updateId = pendingUpdateId
-          model.config = pendingConfig
-          model.updateAttemptCount++
-          this._setModelState(model, 'deploying')
-          let success = await model.deploy()
-          if (!success) {
-            if (model.updateAttemptCount < this._updateAttemptsMax) {
-              if (model.pendingChange === null) {
-                this.info(
-                  `Deploy failed, but will retry (${model.updateAttemptCount}/${
-                    this._updateAttemptsMax
-                  }).`
-                )
-                model.setPendingChange(
-                  pendingChange,
-                  pendingUpdateId,
-                  pendingConfig
-                )
-              } else {
-                this.info('Deploy failed, but new change already pending.')
+            // Remove if already deployed (or deployFail)
+            if (model.state === 'deployed' || model.state === 'deployFail') {
+              this._setModelState(model, 'removing')
+              let success = await model.remove()
+              if (!success) {
+                this.info('Remove failed, but continuing with deploy...')
+                this._setModelState(model, 'removeFail')
               }
-              model.updateId = prevUpdateId
-              model.config = prevConfig
-              // Note that setting it back to prevConfig may be a lie as it may
-              // have been 'removed', but it's ok for now to keep things simple.
-              this._setModelState(model, prevState)
-            } else {
-              this.info(
-                `Deploy failed maximum number of times (${
-                  model.updateAttemptCount
-                })`
-              )
-              this._setModelState(model, 'deployFail')
             }
-          } else {
-            this._setModelState(model, 'deployed')
-          }
-          break
 
-        case 'remove':
-          if (model.state === 'deployed' || model.state === 'deployFail') {
-            this._setModelState(model, 'removing')
-            let success = await model.remove()
+            // Apply the update and attempt deploy
+            model.updateId = pendingUpdateId
+            model.config = pendingConfig
+            model.updateAttemptCount++
+            this._setModelState(model, 'deploying')
+            let success = await model.deploy()
             if (!success) {
-              this._setModelState(model, 'removeFail')
-              break
+              if (model.updateAttemptCount < this._updateAttemptsMax) {
+                if (model.pendingChange === null) {
+                  this.info(
+                    `Deploy failed, but will retry (${
+                      model.updateAttemptCount
+                    }/${this._updateAttemptsMax}).`
+                  )
+                  model.setPendingChange(
+                    pendingChange,
+                    pendingUpdateId,
+                    pendingConfig
+                  )
+                } else {
+                  this.info('Deploy failed, but new change already pending.')
+                }
+                model.updateId = prevUpdateId
+                model.config = prevConfig
+                // Note that setting it back to prevConfig may be a lie as it may
+                // have been 'removed', but it's ok for now to keep things simple.
+                this._setModelState(model, prevState)
+              } else {
+                this.info(
+                  `Deploy failed maximum number of times (${
+                    model.updateAttemptCount
+                  })`
+                )
+                this._setModelState(model, 'deployFail')
+              }
+            } else {
+              this._setModelState(model, 'deployed')
             }
-          }
-          this._removeModelReportedState(model.id())
-          // The asset may have received a new pendingChange again while we were
-          // await'ing, so check for that before we really remove it.
-          if (!model.pendingChange) {
-            this.model = this._models.filter(a => {
-              return a !== model
-            })
-          }
-          break
+            break
 
-        default:
-          this.error('Unsupported pending change: ' + pendingChange)
-          break
+          case 'remove':
+            if (model.state === 'deployed' || model.state === 'deployFail') {
+              this._setModelState(model, 'removing')
+              let success = await model.remove()
+              if (!success) {
+                this._setModelState(model, 'removeFail')
+                break
+              }
+            }
+            this._removeModelReportedState(model.id())
+            // The asset may have received a new pendingChange again while we were
+            // await'ing, so check for that before we really remove it.
+            if (!model.pendingChange) {
+              this.model = this._models.filter(a => {
+                return a !== model
+              })
+            }
+            break
+
+          default:
+            this.error('Unsupported pending change: ' + pendingChange)
+            break
+        }
+      }
+
+      if (pendingEnableRequest) {
+        this.info('Processing model enable change')
+        if (model.isEnabled()) {
+          await model.attemptEnable()
+        } else {
+          await model.attemptDisable()
+        }
       }
 
       // Save the changed state
@@ -621,15 +659,17 @@ export default class DockerManager {
   }
 
   async _wakeContainer(model) {
-    if (!model.canStart()) {
-      return
-    }
+    this.info('MODEL ENABLEEEEEEEEEEE,', model.enable)
     this.debug('Waking up container : ', model.containerId())
     let success
     // Find and start container
     try {
       const existingContainer = this.getContainer(model.containerId())
       model.attachContainer(existingContainer)
+      if (!model.isEnabled()) {
+        this.info('CONTAINER IS NOT ENABLEEDDDDDD')
+        return true
+      }
       success = await model.container.start()
     } catch (err) {
       success = false
