@@ -143,7 +143,7 @@ export default class Container {
   }
 
   removeMountDir() {
-    if (!this.config.mountDir) {
+    if (!this.config().mountDir) {
       return
     }
     const mountDir = this.mountDirPath()
