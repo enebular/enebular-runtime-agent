@@ -165,8 +165,11 @@ export default class AiModel extends Asset {
     return this.status === 'running'
   }
 
-  setStatus(status: string) {
+  setStatus(status: string, message: string) {
     this.status = status
+    if (message) {
+      this.statusMessage = message
+    }
     this.changeTs = Date.now()
     this._dockerMan.sync('status', this)
   }

@@ -121,7 +121,7 @@ export default class Container {
 
   setError(message, state) {
     this._error(message)
-    this._model.setStatusMessage(message)
+    this.changeErrMsg = message
     if (state) {
       this.setState(state)
     } else {
@@ -130,7 +130,7 @@ export default class Container {
   }
 
   sync() {
-    this._model.setStatus(this.state)
+    this._model.setStatus(this.state, this.changeErrMsg)
   }
 
   setPendingChange(change: string, updateId: ?string) {
