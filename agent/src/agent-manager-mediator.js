@@ -139,21 +139,19 @@ export default class AgentManagerMediator {
     }
   }
 
-  async getAiModelWrapperUrl(params: Object, test: Boolean) {
+  async getAiModelWrapper(params: Object) {
     if (!this._accessRequirementsConfigured()) {
       throw new Error('Access requirements not configured')
     }
     this.debug('Getting ai model wrapper url...')
-    const url = test
-      ? `${this._baseUrl}/device/assets/get-ai-model-wrapper-url-test`
-      : `${this._baseUrl}/device/assets/get-ai-model-wrapper-url`
+    const url = `${this._baseUrl}/device/assets/generate-ai-wrapper`
     try {
       const res = await postJSON(url, JSON.stringify({ params: params }), {
         headers: {
           Authorization: `Bearer ${this._accessToken}`
         }
       })
-      return res.url
+      return res
     } catch (err) {
       throw new Error('Ai model wrapper url request failed: ' + err.message)
     }

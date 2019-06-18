@@ -430,6 +430,9 @@ export default class DockerManager {
     if (model.status) {
       newStateObj.status = model.status
     }
+    if (model.statusMessage) {
+      newStateObj.statusMessage = model.statusMessage
+    }
     if (model.endpoint) {
       newStateObj.endpoint = model.endpoint
     }
@@ -659,11 +662,11 @@ export default class DockerManager {
   }
 
   async _wakeContainer(model) {
-    this.info('MODEL ENABLEEEEEEEEEEE,', model.enable)
-    this.debug('Waking up container : ', model.containerId())
     let success
     // Find and start container
     try {
+      this.info('MODEL ENABLEEEEEEEEEEE,', model.enable)
+      this.debug('Waking up container : ', model.containerId())
       const existingContainer = this.getContainer(model.containerId())
       model.attachContainer(existingContainer)
       if (!model.isEnabled()) {

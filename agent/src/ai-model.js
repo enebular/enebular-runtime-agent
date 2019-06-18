@@ -79,6 +79,9 @@ export default class AiModel extends Asset {
   }
 
   containerId(): string {
+    if (!this.dockerConfig) {
+      throw new Error('No config for docker exist')
+    }
     return this.dockerConfig.containerId
   }
 
@@ -402,57 +405,23 @@ export default class AiModel extends Asset {
     })
 
     // Downloading wrapper
-    const that = this
-    const onProgress = state => {
-      this._info(
-        util.format(
-          'Download progress: %f%% @ %fKB/s, %fsec',
-          state.percent ? Math.round(state.percent * 100) : 0,
-          state.speed ? Math.round(state.speed / 1024) : 0,
-          state.time.elapsed ? Math.round(state.time.elapsed) : 0
-        )
-      )
-    }
-    const wrapperUrl = await this._dockerMan.agentMan.getAiModelWrapperUrl(
+    const wrapper = await this._dockerMan.agentMan.getAiModelWrapper(
       {
         ...this.config,
-        Port: this._port
+        port: this._port
       },
       this._dockerMan.isTestMode()
     )
-    const wrapperPath = this._mountWrapperPath()
-    this._info(`Downloading wrapper to ${wrapperPath} ...`)
-    await new Promise(function(resolve, reject) {
-      const fileStream = fs.createWriteStream(wrapperPath)
-      fileStream.on('error', err => {
-        reject(err)
-      })
-      progress(request(wrapperUrl), {
-        delay: 5000,
-        throttle: 5000
-      })
-        .on('response', response => {
-          that._debug(
-            `Response: ${response.statusCode}: ${response.statusMessage}`
-          )
-          if (response.statusCode >= 400) {
-            reject(
-              new Error(
-                `Error response: ${response.statusCode}: ${
-                  response.statusMessage
-                }`
-              )
-            )
-          }
-        })
-        .on('progress', onProgress)
-        .on('error', err => {
+
+    await new Promise((resolve, reject) => {
+      const wrapperPath = this._mountWrapperPath()
+      this._info(`Downloading wrapper to ${wrapperPath} ...`)
+      fs.writeFile(wrapperPath, JSON.parse(wrapper), err => {
+        if (err) {
           reject(err)
-        })
-        .on('end', () => {
-          resolve()
-        })
-        .pipe(fileStream)
+        }
+        resolve()
+      })
     })
   }
 
@@ -489,7 +458,7 @@ export default class AiModel extends Asset {
   async createContainer() {
     this._info(`Using image ${this._dockerImage()}...`)
 
-    const language = this._language() === 'Python3' ? 'python3' : 'python2'
+    const language = this._language()
     const command = `cd ${this._containerWrapperDirPath()} && ${language} wrapper.py`
 
     const config = {

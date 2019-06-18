@@ -121,12 +121,12 @@ export default class Container {
 
   setError(message, state) {
     this._error(message)
+    this._model.setStatusMessage(message)
     if (state) {
       this.setState(state)
     } else {
       this.setState('error')
     }
-    this._model.setStatusMessage(message)
   }
 
   sync() {
