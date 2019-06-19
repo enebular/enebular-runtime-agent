@@ -754,6 +754,11 @@ def deploy(config, target_name, skip_update, instructions):
         target.fetch_elements()
     target.patch_elements()
 
+    # enebular-agent patching
+    PATCH = os.path.join(PAL_PLATFORM_ROOT, '../../patch/patch.sh')
+    PROJECT_ROOT = os.path.join(PAL_PLATFORM_ROOT, '..')
+    check_cmd_and_raise([PATCH, PROJECT_ROOT])
+
     instructions_file = os.path.join(PAL_PLATFORM_ROOT, target.name + '.txt')
     with open(instructions_file, 'wt') as fh:
         target.write_elements(fh)
