@@ -2,7 +2,7 @@ import * as path from 'path'
 import * as fs from 'fs'
 import * as rimraf from 'rimraf'
 
-import Utils from './utils'
+import { UserInfo, Utils } from './utils'
 import Log from './log'
 
 export interface SystemIf {
@@ -41,7 +41,7 @@ export interface SystemIf {
     nodejsVersion: string
   }
   installDebianPackages(packages: string[]): Promise<void>
-  installPythonPackages(packages: string[]): Promise<void>
+  installPythonPackages(packages: string[], userInfo: UserInfo): Promise<void>
   updateNodeJSVersionInSystemd(
     user: string,
     version: string,
@@ -52,6 +52,7 @@ export interface SystemIf {
 
 export class System implements SystemIf {
   private _log: Log
+  private _pipRetryCount: number = 0
 
   public constructor(log: Log) {
     this._log = log
@@ -297,16 +298,43 @@ export class System implements SystemIf {
     }
   }
 
-  public async installPythonPackages(packages: string[]): Promise<void> {
-    let options = ['install']
-    options = options.concat(packages)
-    try {
-      await Utils.spawn('pip', options, this._log)
-    } catch (err) {
-      throw new Error(
-        `Failed to install python ${packages.join(' ')}: ${err.message}`
-      )
-    }
+  public async installPythonPackages(packages: string[], userInfo: UserInfo): Promise<void> {
+    return new Promise(
+      async (resolve, reject): Promise<void> => {
+        let options = ['install']
+        options = options.concat(packages)
+        options.push("--user")
+        try {
+          await Utils.spawn('pip', options, this._log, {
+            uid: userInfo.uid,
+            gid: userInfo.gid
+          })
+          this._pipRetryCount = 0
+          resolve()
+        } catch (err) {
+          this._pipRetryCount++
+          if (this._pipRetryCount <= 5) {
+            this._log.debug(
+              `Failed to install python dependencies, retry in 1 second ... ${err.message}`
+            )
+            setTimeout(async (): Promise<void> => {
+              try {
+                await this.installPythonPackages(packages, userInfo)
+                resolve()
+              }
+              catch (err) {
+                reject(err)
+              }
+            }, 1000)
+          } else {
+            this._pipRetryCount = 0
+            reject(new Error(
+              `Failed to install python ${packages.join(' ')}: ${err.message}`
+            ))
+          }
+        }
+      }
+    )
   }
 }
 
