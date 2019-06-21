@@ -313,6 +313,7 @@ export default class Container {
     this._info('Recreating container...')
     try {
       const { mounts, ports, imageName, cmd, cores, maxRam } = this.config()
+      await this._dockerMan.pullImage(imageName)
       const config = {
         HostConfig: {
           Binds: mounts,
