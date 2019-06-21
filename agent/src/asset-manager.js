@@ -310,15 +310,6 @@ export default class AssetManager {
               desiredAsset.config
             )
             break
-          case 'ai':
-            asset = new AiModel(desiredAsset.config.type, desiredAssetId, this)
-            asset.state = 'notDeployed'
-            asset.setPendingChange(
-              'deploy',
-              desiredAsset.updateId,
-              desiredAsset.config
-            )
-            break
           default:
             this.error('Unsupported asset type: ' + desiredAsset.config.type)
             break

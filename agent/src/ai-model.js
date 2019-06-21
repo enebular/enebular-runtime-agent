@@ -380,15 +380,11 @@ export default class AiModel extends Asset {
     fs.chmodSync(this._filePath(), 0o740)
     this._info('File installed to: ' + this._fileSubPath())
 
-    this._info('Preparing container...')
-    // const preparation = await this._dockerMan.prepare({
-    //   modelId: this.id()
-    // })
-    // if (preparation.exist) {
-    //   this._port = preparation.port
-    // } else {
-    this._port = await this._dockerMan.portMan.findFreePort()
-    // }
+    if (this.port()) {
+      this._port = this.port()
+    } else {
+      this._port = await this._dockerMan.portMan.findFreePort()
+    }
 
     this._info('Using port', this._port)
 

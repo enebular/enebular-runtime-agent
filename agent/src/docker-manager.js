@@ -117,7 +117,7 @@ export default class DockerManager {
   async _init() {
     await this._loadDocker()
     await this._updateDockerFromDesiredState()
-    await this._startContainers()
+    await this._startModels()
     await this._updateDockerReportedState()
   }
 
@@ -255,19 +255,13 @@ export default class DockerManager {
           found = true
 
           if (desiredModel.hasOwnProperty('enable')) {
-            this.info('DESIRED HAS ENABLE')
-            this.info('MODEL ENABLE', model.enable)
-            this.info('desiredModel ENABLE', desiredModel.enable)
             if (model.enable !== desiredModel.enable) {
-              this.info('ENABLE REQUEST')
               model.enable = desiredModel.enable
               model.enableRequest()
             }
           } else {
-            this.info('DESIRED NO ENABLE')
             // enable is undefined or false
             if (!model.enable) {
-              this.info('DEFAULT ENABLE')
               // the default enable state is true
               model.enable = true
               model.enableRequest()
@@ -632,15 +626,11 @@ export default class DockerManager {
    * DOCKER MANAGEMENT
    */
 
-  addContainer(container) {
-    this._models.push(container)
-  }
-
-  async _startContainers() {
+  async _startModels() {
     this.info('Starting models...')
     await Promise.all(
       this._models.map(async (model, idx) => {
-        const success = await this._wakeContainer(model)
+        const success = await this._wakeModel(model)
         if (!success) {
           this.error(`Could not start a model ${model.name()}...`)
         }
@@ -648,29 +638,18 @@ export default class DockerManager {
     )
   }
 
-  removeContainer(key) {
-    this._models = this._models.filter(container => container.id() !== key)
-    this._removeModelReportedState(key)
-  }
-
   getContainer(key) {
     return this._docker.getContainer(key)
   }
 
-  container(key) {
-    return this._models.find(container => container.id() === key)
-  }
-
-  async _wakeContainer(model) {
+  async _wakeModel(model) {
     let success
     // Find and start container
     try {
-      this.info('MODEL ENABLEEEEEEEEEEE,', model.enable)
       this.debug('Waking up container : ', model.containerId())
       const existingContainer = this.getContainer(model.containerId())
       model.attachContainer(existingContainer)
       if (!model.isEnabled()) {
-        this.info('CONTAINER IS NOT ENABLEEDDDDDD')
         return true
       }
       success = await model.container.start()
@@ -698,7 +677,7 @@ export default class DockerManager {
     }
   }
 
-  async pullImage(repoTag, options) {
+  async pullImage(repoTag) {
     return new Promise((resolve, reject) => {
       this.info('Pulling image: ', repoTag)
       this._docker.pull(repoTag, (err, stream) => {
@@ -734,29 +713,6 @@ export default class DockerManager {
 
   async createContainer(config) {
     return this._docker.createContainer(config)
-  }
-
-  _checkExistingContainer(modelId) {
-    this.info('Checking if model is already running...')
-    try {
-      const container = this.container(modelId)
-      return container
-    } catch (err) {
-      this.error('Checking models error', err.message)
-    }
-  }
-
-  async prepare(config) {
-    const { modelId } = config
-
-    const existingContainer = this._checkExistingContainer(modelId)
-    if (existingContainer) {
-      this.info('Same container found... Removing')
-      await existingContainer.remove(true)
-      this.removeContainer(modelId)
-      return { exist: true, port: existingContainer.port() }
-    }
-    return { exist: false }
   }
 
   async createNewContainer(createOptions) {

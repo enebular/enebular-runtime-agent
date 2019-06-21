@@ -16,13 +16,7 @@ export default class Container {
   _id: string
   _restartCount: number = 0
   state: string
-  changeTs: number
   changeErrMsg: ?string
-  pendingUpdateId: ?string
-  pendingChange: ?string // (deploy|remove)
-  pendingConfig: ?Object
-  updateAttemptCount: number = 0
-  lastAttemptedUpdateId: ?string
 
   constructor(model: AiModel, dockerMan: DockerManager) {
     this._model = model
@@ -61,14 +55,6 @@ export default class Container {
     return this._model.endpoint
   }
 
-  isActive(): boolean {
-    return this._active
-  }
-
-  port(): string {
-    return this.config.port
-  }
-
   handlers() {
     return this._model.config.handlers
   }
@@ -97,22 +83,6 @@ export default class Container {
     return path.join(this._dockerMan.mountDir(), this._model.config.destPath)
   }
 
-  serialize(): {} {
-    return {
-      id: this._id,
-      updateId: this.updateId,
-      state: this.state,
-      updateAttemptCount: this.updateAttemptCount,
-      lastAttemptedUpdateId: this.lastAttemptedUpdateId,
-      changeTs: this.changeTs,
-      changeErrMsg: this.changeErrMsg,
-      config: this.config,
-      pendingChange: this.pendingChange,
-      pendingUpdateId: this.pendingUpdateId,
-      pendingConfig: this.pendingConfig
-    }
-  }
-
   setState(state: string) {
     if (state !== this.state) {
       this.state = state
@@ -133,15 +103,6 @@ export default class Container {
     this._model.setStatus(this.state, this.changeErrMsg)
   }
 
-  setPendingChange(change: string, updateId: ?string) {
-    this._info(`Container '${this.name()}' now pending '${change}'`)
-
-    this.pendingChange = change
-    this.pendingUpdateId = updateId
-    this.changeErrMsg = null
-    this.changeTs = Date.now()
-  }
-
   removeMountDir() {
     if (!this.config().mountDir) {
       return
@@ -153,21 +114,6 @@ export default class Container {
       )
       rimraf.sync(mountDir)
     }
-  }
-
-  transfer(newId: string) {
-    this.config.containerId = newId
-  }
-
-  async _inspect() {
-    return new Promise((resolve, reject) => {
-      this._container.inspect((err, data) => {
-        if (err) {
-          reject(err)
-        }
-        resolve(data)
-      })
-    })
   }
 
   async _showEndpoints() {
@@ -307,10 +253,6 @@ export default class Container {
   }
 
   async stop() {
-    this._info(
-      'HMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMmmmmmmmmmmmmmmmmmmmm',
-      this.state
-    )
     if (!this._container) {
       return
     }
