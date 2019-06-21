@@ -86,13 +86,4 @@ export default class PortManager {
       this.error(err.message)
     }
   }
-
-  async findFreePorts(count) {
-    const ports = []
-    for (let i = 0; i < count; i++) {
-      const newPort = await this.findFreePort()
-      ports.push(newPort)
-    }
-    return ports
-  }
 }

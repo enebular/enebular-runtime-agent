@@ -6,9 +6,7 @@ import { spawn, type ChildProcess } from 'child_process'
 import fetch from 'isomorphic-fetch'
 import rimraf from 'rimraf'
 import objectHash from 'object-hash'
-import type { Logger } from 'winston'
 import ProcessUtil, { type RetryInfo } from './process-util'
-import type LogManager from './log-manager'
 import {
   encryptCredential,
   delay,
@@ -17,6 +15,8 @@ import {
   mkdirAsync,
   createNodeDefinition
 } from './utils'
+import type { Logger } from 'winston'
+import type LogManager from './log-manager'
 import type DeviceStateManager from './device-state-manager'
 import type ConnectorMessenger from './connector-messenger'
 import type Config from './config'

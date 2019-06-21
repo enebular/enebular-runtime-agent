@@ -65,38 +65,52 @@ export class AgentInstaller implements AgentInstallerIf {
       )
     }
     this._log.debug(`Downloading ${url} to ${path} `)
-    return new Promise((resolve, reject) => {
-      const fileStream = fs.createWriteStream(path)
-      fileStream.on('error', err => {
-        reject(err)
-      })
-      progress(request(url), {
-        delay: 5000,
-        throttle: 5000
-      })
-        .on('response', response => {
-          this._log.debug(
-            `Response: ${response.statusCode}: ${response.statusMessage}`
-          )
-          if (response.statusCode >= 400) {
-            reject(
-              new Error(
-                `Error response: ${response.statusCode}: ${
-                  response.statusMessage
-                }`
-              )
-            )
+    return new Promise(
+      (resolve, reject): void => {
+        const fileStream = fs.createWriteStream(path)
+        fileStream.on(
+          'error',
+          (err): void => {
+            reject(err)
           }
+        )
+        progress(request(url), {
+          delay: 5000,
+          throttle: 5000
         })
-        .on('progress', onProgress)
-        .on('error', err => {
-          reject(err)
-        })
-        .on('end', () => {
-          resolve()
-        })
-        .pipe(fileStream)
-    })
+          .on(
+            'response',
+            (response): void => {
+              this._log.debug(
+                `Response: ${response.statusCode}: ${response.statusMessage}`
+              )
+              if (response.statusCode >= 400) {
+                reject(
+                  new Error(
+                    `Error response: ${response.statusCode}: ${
+                      response.statusMessage
+                    }`
+                  )
+                )
+              }
+            }
+          )
+          .on('progress', onProgress)
+          .on(
+            'error',
+            (err): void => {
+              reject(err)
+            }
+          )
+          .on(
+            'end',
+            (): void => {
+              resolve()
+            }
+          )
+          .pipe(fileStream)
+      }
+    )
   }
 
   private async _fetch(
@@ -150,31 +164,33 @@ export class AgentInstaller implements AgentInstallerIf {
     path: string,
     userInfo: UserInfo
   ): Promise<boolean> {
-    return new Promise(async resolve => {
-      try {
-        await this._fetch(url, path, userInfo)
-        this._fetchRetryCount = 0
-        resolve(true)
-      } catch (err) {
-        this._fetchRetryCount++
-        if (this._fetchRetryCount <= this._maxFetchRetryCount) {
-          this._log.debug(
-            `Failed to fetch agent, retry in 1 second ... ${err.message}`
-          )
-          setTimeout(async () => {
-            resolve(await this._fetchWithRetry(url, path, userInfo))
-          }, 1000)
-        } else {
+    return new Promise(
+      async (resolve): Promise<void> => {
+        try {
+          await this._fetch(url, path, userInfo)
           this._fetchRetryCount = 0
-          this._log.error(
-            `Failed to to fetch agent, retry count(${
-              this._maxFetchRetryCount
-            }) reaches max ${err.message}`
-          )
-          resolve(false)
+          resolve(true)
+        } catch (err) {
+          this._fetchRetryCount++
+          if (this._fetchRetryCount <= this._maxFetchRetryCount) {
+            this._log.debug(
+              `Failed to fetch agent, retry in 1 second ... ${err.message}`
+            )
+            setTimeout(async (): Promise<void> => {
+              resolve(await this._fetchWithRetry(url, path, userInfo))
+            }, 1000)
+          } else {
+            this._fetchRetryCount = 0
+            this._log.error(
+              `Failed to to fetch agent, retry count(${
+                this._maxFetchRetryCount
+              }) reaches max ${err.message}`
+            )
+            resolve(false)
+          }
         }
       }
-    })
+    )
   }
 
   private _extract(
@@ -344,7 +360,12 @@ export class AgentInstaller implements AgentInstallerIf {
       'Deploying mbed-cloud-connector',
       this._log,
       async (): Promise<void> => {
-        return this._buildConnector(connectorPath, 'mbed', ['deploy', '-v'], userInfo)
+        return this._buildConnector(
+          connectorPath,
+          'mbed',
+          ['deploy', '-v'],
+          userInfo
+        )
       }
     )
 
@@ -495,7 +516,8 @@ export class AgentInstaller implements AgentInstallerIf {
               'mbed-cli',
               'click',
               'requests'
-            ])
+            ],
+            userInfo)
           }
         )
 
@@ -505,6 +527,35 @@ export class AgentInstaller implements AgentInstallerIf {
           userInfo
         )
 
+        /*
+         * The package list here comes from mbed-os/requirements.txt. In order to avoid
+         * mbed deploy install packages using root permission, we install them using
+         * user permission in prior to mbed deploy.
+         */
+        await Utils.taskAsync(
+          'Checking dependencies for mbed-cloud-connector-fcc',
+          this._log,
+          async (): Promise<void> => {
+            return this._system.installPythonPackages([
+              'colorama',
+              'PySerial',
+              'PrettyTable',
+              'Jinja2',
+              'IntelHex',
+              'junit-xml',
+              'pyYAML',
+              'requests',
+              'mbed-ls',
+              'mbed-host-tests',
+              'mbed-greentea',
+              'fuzzywuzzy',
+              'pyelftools',
+              'jsonschema',
+              'future'
+            ],
+            userInfo)
+          }
+        )
         await this._buildMbedCloudConnectorFCC(installPath, userInfo)
       }
     }

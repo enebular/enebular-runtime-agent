@@ -2,7 +2,7 @@ import { Migration, MigrateContext } from '../migrator'
 import Helper from '../migration-ops/helper'
 
 module.exports = {
-  up: (context: MigrateContext, migration: Migration) => {
+  up: (context: MigrateContext, migration: Migration): void => {
     Helper.addFileCopy(
       migration,
       'enebular-agent config file',
@@ -61,5 +61,5 @@ module.exports = {
       )
     }
   },
-  down: () => {}
+  down: (): void => {}
 }
