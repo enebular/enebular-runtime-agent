@@ -1,0 +1,23 @@
+<script type="text/javascript">RED.nodes.registerType('enebular-ai-node',
+    {
+      category: 'function',
+      color: '#F0F0F0 ',
+      defaults: {
+        name: {
+          value: ''
+        }
+      },
+      inputs: 1,
+      outputs: 1,
+      icon: 'ai-node.png',
+      label: function () {
+        return this.name || 'enebular-ai-node'
+      },
+      paletteLabel: 'enebular AI node',
+      labelStyle: function () {
+        return this.name ? 'node_label_italic' : '';
+      }
+    });
+</script>
+<script type="text/x-red"
+  data-help-name="enebular-ai-node"><p>enebular AI node to work with enebular AI models<br/></p></script>

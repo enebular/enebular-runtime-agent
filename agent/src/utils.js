@@ -154,36 +154,112 @@ export function decryptCredential(key, credential) {
   return decrypted
 }
 
-export async function createNodeDefinition(node, aiNodeDir, endpoint) {
-  const htmlFile = `<script type="text/javascript">RED.nodes.registerType('${
-    node.id
-  }',{category:'Enebular AI',color:'#F0F0F0 ',defaults:{name:{value:''},handlerFunc:{value:'${
-    node.handlerFunc
-  }'},enebularAi:{value:true},modelId:{value:'${
-    node.assetId
-  }'},url:{value:'http://${endpoint}/${
-    node.id
-  }'}},inputs:1,outputs:1,icon:'icon.svg',label:function(){return this.name||'${
-    node.nodeTitle
-  }'},paletteLabel:'${
-    node.nodeTitle
-  }'});</script><script type="text/x-red" data-template-name="${
-    node.id
-  }"><div class="form-row"><label for="node-input-name"><i class="icon-tag"></i>Name</label><input type="text" id="node-input-name" placeholder="Name"><label for="node-input-url"><i class="icon-tag"></i>URL</label><input type="text" id="node-input-url"></div></script><script type="text/x-red" data-help-name="${
-    node.id
-  }"><p>${node.nodeDesc}<br/></p></script>`
+export async function createNodeDefinition(nodes, aiNodeDir) {
+  let htmlFile = `<script type="text/javascript">RED.nodes.registerType('enebular-ai-node',
+  {
+    category: 'function',
+    color: '#F0F0F0 ',
+    defaults: {
+      name: {
+        value:''
+      },
+      aiModel: {
+        value: '',
+        required: true
+      },
+      handlerFunc: {
+        value:'',
+        required: true
+      }
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: 'ai-node.png',
+    label: function() {
+      return this.name||'enebular-ai-node'
+    },
+    paletteLabel: 'enebular AI node', 
+    labelStyle: function () {
+      return this.name ? 'node_label_italic' : '';
+    },
+    oneditprepare: function () {
+      $("#node-input-aiModel").change(function () {
+        var id = $("#node-input-aiModel option:selected").val();
+        if (id) {
+          $(".input-handlerFunc").show();
+          $("#select-handlerFunc option").remove();
+          var config = $("#ai-config").val();
+          config = JSON.parse(config);
+          var aiModel = config[id];
+          $("<option disabled></option>").val('').text('select handler function').appendTo("#select-handlerFunc");
+          var already = $("#node-input-handlerFunc").val()
+          var exist = false
+          aiModel.handlers.forEach(handler => {
+            $("<option></option>").val(handler.id).text(handler.title).appendTo("#select-handlerFunc");
+            if (already === handler.id) {
+              exist = true
+            }
+          });
+          if (exist) {
+            $("#select-handlerFunc").val(already)
+          } else {
+            $("#select-handlerFunc").val('')
+            $("#node-input-handlerFunc").val('')
+          }
+        }
+      });
+      $("#select-handlerFunc").change(function () {
+        var id = $("#select-handlerFunc option:selected").val();
+        $("#node-input-handlerFunc").val(id)
+      })
+    }
+  });
+  </script>
+  <script type="text/x-red" data-template-name="enebular-ai-node">
+    <div class="form-row">
+    <label for="node-input-aiModel"><i class="fa fa-wrench"></i>AI Model</label>
+    <select type="text" id="node-input-aiModel"><option value="" disabled>select AI Model</option>`
+  Object.keys(nodes).forEach(nodeId => {
+    htmlFile += `<option value="${nodeId}">${nodes[nodeId].title}</option>`
+  })
+  htmlFile += `
+    </select>
+    <input type="hidden" id="ai-config" value='${JSON.stringify(nodes)}' />
+  </div>
+  <div class="form-row input-handlerFunc hidden">
+    <label for="select-handlerFunc"><i class="fa fa-wrench"></i>Handler Function</label>
+    <select type="text" id="select-handlerFunc">  
+    </select>
+    <input type="hidden" id="node-input-handlerFunc" />
+  </div>
+  </script>  
+  <script type="text/x-red"
+  data-help-name="enebular-ai-node"><p>enebular AI node to work with enebular AI models<br/></p></script>`
   await fsWriteFileAsync(
-    path.resolve(aiNodeDir, 'nodes', `${node.id}.html`),
+    path.resolve(aiNodeDir, 'nodes', `enebular-ai-node.html`),
     htmlFile
   )
 
-  const jsFile = `var request = require('request')
-
+  const jsFile = `
 module.exports = function(RED) {
+  var request = require('request')
+
+  var endpointConfig = ${JSON.stringify(nodes)} 
+
   function main(config) {
     RED.nodes.createNode(this, config)
     var node = this
-    var nodeUrl = config.url || 'http://${endpoint}/${node.id}'
+    var aiModel = config.aiModel
+    var handlerId = config.handlerFunc  
+    if(!endpointConfig) { 
+       node.status({
+        fill: 'red',
+        shape: 'ring',
+        text: 'no config'
+      })
+      return
+    }
+    
     this.on('input', function(msg) {
       var preRequestTimestamp = process.hrtime()
       node.status({
@@ -191,15 +267,34 @@ module.exports = function(RED) {
         shape: 'dot',
         text: 'requesting'
       })
-      if (!nodeUrl) {
-        node.error('no url', msg)
+      if (!aiModel) {
         node.status({
           fill: 'red',
           shape: 'ring',
-          text: 'no url'
+          text: 'no ai model'
+        })
+        node.error('Please select AI Model', msg)          
+        return
+      }
+      if (!handlerId) {
+        node.status({
+          fill: 'red',
+          shape: 'ring',
+          text: 'no handler function'
+        })
+        node.error('Please select handler function', msg)          
+        return
+      }
+      if(!endpointConfig[aiModel].endpoint) {
+        node.error('No endpoint data for this AI Model. Please make sure that this AI Model is deployed and running and redepoy the flow.', msg)
+        node.status({
+          fill: 'red',
+          shape: 'ring',
+          text: 'no endpoint'
         })
         return
       }
+      var nodeUrl = 'http://' + endpointConfig[aiModel].endpoint + '/' + handlerId
       var options = {
         method: 'POST',
         url: nodeUrl,
@@ -272,10 +367,10 @@ module.exports = function(RED) {
       })
     })
   }
-  RED.nodes.registerType('${node.id}', main)
+  RED.nodes.registerType('enebular-ai-node', main)
 }`
   await fsWriteFileAsync(
-    path.resolve(aiNodeDir, 'nodes', `${node.id}.js`),
+    path.resolve(aiNodeDir, 'nodes', `enebular-ai-node.js`),
     jsFile
   )
 }

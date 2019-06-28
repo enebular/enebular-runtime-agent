@@ -75,7 +75,7 @@ export default class AiModel extends Asset {
   }
 
   port(): string {
-    return this.dockerConfig.port
+    return this.dockerConfig && this.dockerConfig.port
   }
 
   containerId(): string {

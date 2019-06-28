@@ -6,4 +6,5 @@ flows_cred.json
 
 .flows.json.backup
 
-node-red-enebular-ai-nodes/
+node-red-enebular-ai-nodes/nodes/*
+!node-red-enebular-ai-nodes/nodes/*/
