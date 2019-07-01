@@ -176,7 +176,7 @@ export async function createNodeDefinition(nodes, aiNodeDir) {
     outputs: 1,
     icon: 'ai-node.png',
     label: function() {
-      return this.name||'enebular-ai-node'
+      return this.name||'enebular AI node'
     },
     paletteLabel: 'enebular AI node', 
     labelStyle: function () {
@@ -198,26 +198,45 @@ export async function createNodeDefinition(nodes, aiNodeDir) {
             $("<option></option>").val(handler.id).text(handler.title).appendTo("#select-handlerFunc");
             if (already === handler.id) {
               exist = true
+              if (handler.description) {
+                $(".div-handlerDesc").show();
+                $('<div id="text-description"></div>').text(handler.description).appendTo(".div-handlerDesc")
+              } else {
+                $(".div-handlerDesc").hide();
+              }
             }
           });
           if (exist) {
-            $("#select-handlerFunc").val(already)
+            $("#select-handlerFunc").val(already)           
           } else {
             $("#select-handlerFunc").val('')
             $("#node-input-handlerFunc").val('')
+            $(".div-handlerDesc").hide();
           }
         }
       });
       $("#select-handlerFunc").change(function () {
         var id = $("#select-handlerFunc option:selected").val();
         $("#node-input-handlerFunc").val(id)
+        var config = $("#ai-config").val();
+        config = JSON.parse(config);
+        var modelId = $("#node-input-aiModel option:selected").val();
+        var aiModel = config[modelId];
+        var handler = aiModel.handlers.find(handler => handler.id === id)
+        if (handler.description) {
+          $(".div-handlerDesc").show();
+          $("#text-description").remove()
+          $('<div id="text-description"></div>').text(handler.description).appendTo(".div-handlerDesc")
+        } else {
+          $(".div-handlerDesc").hide();
+        }
       })
     }
   });
   </script>
   <script type="text/x-red" data-template-name="enebular-ai-node">
     <div class="form-row">
-    <label for="node-input-aiModel"><i class="fa fa-wrench"></i>AI Model</label>
+    <label for="node-input-aiModel"><i class="fa fa-wrench"></i> AI Model</label>
     <select type="text" id="node-input-aiModel"><option value="" disabled>select AI Model</option>`
   Object.keys(nodes).forEach(nodeId => {
     htmlFile += `<option value="${nodeId}">${nodes[nodeId].title}</option>`
@@ -227,11 +246,13 @@ export async function createNodeDefinition(nodes, aiNodeDir) {
     <input type="hidden" id="ai-config" value='${JSON.stringify(nodes)}' />
   </div>
   <div class="form-row input-handlerFunc hidden">
-    <label for="select-handlerFunc"><i class="fa fa-wrench"></i>Handler Function</label>
+    <label for="select-handlerFunc"><i class="fa fa-wrench"></i> Handler Function</label>
     <select type="text" id="select-handlerFunc">  
     </select>
     <input type="hidden" id="node-input-handlerFunc" />
   </div>
+  <div class="form-row div-handlerDesc hidden">
+  <label for="text-handlerFunc"><i class="fa fa-info"></i> Description</label></div>
   </script>  
   <script type="text/x-red"
   data-help-name="enebular-ai-node"><p>enebular AI node to work with enebular AI models<br/></p></script>`

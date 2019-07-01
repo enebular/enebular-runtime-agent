@@ -1,9 +1,6 @@
-/** @flow */
+/* @flow */
 
-import fs from 'fs'
 import stream from 'stream'
-import path from 'path'
-import rimraf from 'rimraf'
 import type AiModel from './ai-model'
 import { delay } from './utils'
 
@@ -15,6 +12,7 @@ export default class Container {
   _exec: Object
   _id: string
   _restartCount: number = 0
+  _restartAttemptsMax: number = 1
   state: string
   changeErrMsg: ?string
 
@@ -51,11 +49,11 @@ export default class Container {
     return this._model.mountModelDir()
   }
 
-  endpoint() {
+  endpoint(): string {
     return this._model.endpoint
   }
 
-  handlers() {
+  handlers(): Object {
     return this._model.config.handlers
   }
 
@@ -79,17 +77,13 @@ export default class Container {
     this._model.dockerConfig.containerId = null
   }
 
-  mountDirPath(): string {
-    return path.join(this._dockerMan.mountDir(), this._model.config.destPath)
-  }
-
   setState(state: string) {
     if (state !== this.state) {
       this.state = state
     }
   }
 
-  setError(message, state) {
+  setError(message: string, state: string) {
     this._error(message)
     this.changeErrMsg = message
     if (state) {
@@ -101,19 +95,6 @@ export default class Container {
 
   sync() {
     this._model.setStatus(this.state, this.changeErrMsg)
-  }
-
-  removeMountDir() {
-    if (!this.config().mountDir) {
-      return
-    }
-    const mountDir = this.mountDirPath()
-    if (fs.existsSync(mountDir)) {
-      this._debug(
-        `Removing container ${this.name()} mount directory: ${mountDir}`
-      )
-      rimraf.sync(mountDir)
-    }
   }
 
   async _showEndpoints() {
@@ -135,7 +116,7 @@ export default class Container {
     })
   }
 
-  async _execModel() {
+  async _execModel(): Promise<boolean> {
     this._info(`Executing model '${this.name()}'...`)
     try {
       const { command } = this.config()
@@ -160,7 +141,7 @@ export default class Container {
     if (!this._active) {
       return
     }
-    if (this._restartCount < 1) {
+    if (this._restartCount < this._restartAttemptsMax) {
       this._restartCount++
       this._info(`Restart #${this._restartCount} of model '${this.name()}'...`)
       await this.repair()
@@ -173,7 +154,7 @@ export default class Container {
     }
   }
 
-  async start(noRestart) {
+  async start(noRestart: boolean): Promise<boolean> {
     if (!this._container) {
       this._info(
         `No actual docker container attached to model '${this.name()}'...`
@@ -252,7 +233,7 @@ export default class Container {
     this.sync()
   }
 
-  async stop() {
+  async stop(): Promise<boolean> {
     if (!this._container) {
       return
     }
@@ -280,7 +261,7 @@ export default class Container {
     return false
   }
 
-  async shutDown() {
+  async shutDown(): Promise<boolean> {
     if (!this._container || this.state !== 'running') {
       return
     }
@@ -297,7 +278,7 @@ export default class Container {
     return false
   }
 
-  async repair() {
+  async repair(): Promise<boolean> {
     this._info(`Repairing container '${this.name()}'...`)
     // Searching if container is already running and removing it if it is
     if (this._container) {
@@ -348,18 +329,21 @@ export default class Container {
   }
 
   async _remove() {
-    return this._container.remove({ force: true })
+    if (this._container) {
+      await this._container.remove({ force: true })
+    } else if (this.containerId()) {
+      await this._dockerMan.removeContainer(this.containerId())
+    } else {
+      this.info(`Nothing to remove for model ${this.name()}`)
+    }
   }
 
-  async remove(hard): Promise<boolean> {
+  async remove(): Promise<boolean> {
     this._info(`Removing container '${this.name()}'...`)
     try {
       this.setState('removing')
       await this._remove()
       this.deactivate()
-      if (hard) {
-        this.removeMountDir()
-      }
       return true
     } catch (err) {
       this.setError(err.message, 'removeFail')

@@ -18,11 +18,6 @@ export default class Config {
         description: 'Run in developer mode',
         userExpose: true
       },
-      ENEBULAR_DOCKER_MODE: {
-        value: false,
-        description: 'Start docker',
-        userExpose: true
-      },
       ENEBULAR_DAEMON_MODE: {
         value: false,
         description: 'Run as daemon',
@@ -116,11 +111,6 @@ export default class Config {
       ENEBULAR_DOCKER_STATE_PATH: {
         value: p.resolve(portBasePath, '.enebular-docker.json'),
         description: 'Docker state file path',
-        userExpose: true
-      },
-      ENEBULAR_PORT_STATE_PATH: {
-        value: p.resolve(portBasePath, '.enebular-port.json'),
-        description: 'Ports state file path',
         userExpose: true
       },
       ENEBULAR_FLOW_STATE_PATH: {

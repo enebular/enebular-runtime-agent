@@ -1,16 +1,15 @@
 /* @flow */
 
 import fs from 'fs'
+import path from 'path'
 import mkdirp from 'mkdirp'
 import objectHash from 'object-hash'
-import path from 'path'
-import type { Logger } from 'winston'
-import AiModel from './ai-model'
 import Asset from './asset'
 import FileAsset from './file-asset'
 import { delay } from './utils'
 import type DeviceStateManager from './device-state-manager'
 import type AgentManagerMediator from './agent-manager-mediator'
+import type { Logger } from 'winston'
 import type Config from './config'
 
 const moduleName = 'asset-man'
@@ -181,14 +180,14 @@ export default class AssetManager {
   }
 
   _deserializeAsset(serializedAsset: Object): Asset {
-    let asset
     switch (serializedAsset.type) {
       case 'file':
-        asset = new FileAsset(serializedAsset.type, serializedAsset.id, this)
         break
       default:
         throw new Error('Unsupported asset type: ' + serializedAsset.type)
     }
+
+    let asset = new FileAsset(serializedAsset.type, serializedAsset.id, this)
 
     asset.updateId = serializedAsset.updateId
     asset.config = serializedAsset.config

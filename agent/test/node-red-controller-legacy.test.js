@@ -75,7 +75,9 @@ async function createAgentRunningWithTestNodeRedSettings(
     path.join(
       __dirname,
       'data',
-      withCredentialSecretFileName || 'node-red-test-settings'
+      withCredentialSecretFileName
+        ? withCredentialSecretFileName
+        : 'node-red-test-settings'
     ),
     tmpNodeRedDataDir + '/settings.js'
   )

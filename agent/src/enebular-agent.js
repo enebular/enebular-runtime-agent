@@ -16,7 +16,6 @@ import Config from './config'
 import DockerManager from './docker-manager'
 import LogManager from './log-manager'
 import NodeREDController from './node-red-controller'
-import PortManager from './port-manager'
 
 export type EnebularAgentConfig = {
   NODE_RED_DIR: string,
@@ -204,13 +203,10 @@ export default class EnebularAgent extends EventEmitter {
       this._log
     )
 
-    this._portManager = new PortManager(this._config, this._log)
-
     this._dockerManager = new DockerManager(
       this._deviceStateManager,
       this._agentMan,
       this._agentInfoManager,
-      this._portManager,
       this._config,
       this._log
     )
@@ -344,7 +340,6 @@ export default class EnebularAgent extends EventEmitter {
     await this._agentInfoManager.setup()
     await this._assetManager.setup()
     await this._dockerManager.setup()
-    await this._portManager.setup()
     await this._nodeRed.setup()
     this._nodeRed.activate(true)
 
@@ -354,11 +349,7 @@ export default class EnebularAgent extends EventEmitter {
       await this._connector.init()
     }
 
-    try {
-      await this._nodeRed.startService()
-    } catch (err) {
-      this._log.error('Node-RED service start failed: ' + err.message)
-    }
+    await this._nodeRed.startService()
 
     return true
   }

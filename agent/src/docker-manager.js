@@ -4,20 +4,151 @@ import fs from 'fs'
 import objectHash from 'object-hash'
 import path from 'path'
 import Docker from 'dockerode'
+import portfinder from 'portfinder'
 import type { Logger } from 'winston'
 import { delay } from './utils'
-import Container from './container'
 import AiModel from './ai-model'
 import type AgentInfoManager from './agent-info-manager'
 import type AgentManagerMediator from './agent-manager-mediator'
 import type DeviceStateManager from './device-state-manager'
-import type PortManager from './port-manager'
 import type Config from './config'
 
 const moduleName = 'docker-man'
+/**
+ * AI Asset 'State & Status' Management and Representation
+ *
+ * Consist of 2 main parts:
+ *  - Deploying of AI Model (state)
+ *  - Managing Docker Container associated with deployed AI Model (status)
+ *
+ * * State Management (Deployment)
+ *
+ * Mechanism of deployment is the same as with File Asset, but there is a key difference:
+ *
+ * After Asset is deployed, it will proceed to extract itself to a `mount` folder,
+ * which will be mounted into an actual Docker Container.
+ *
+ * After extracting free port to use is found and ai wrapper is downloaded to extracted folder.
+ *
+ * After it Docker Container is created and extracted folder is mounted in it.
+ *
+ * Deployment procedure will end only after Docker Container is successfully created.
+ *
+ * The state of a single asset is chiefly managed through two properties:
+ *
+ *   - Its current acutal state (asset.state)
+ *   - Its current pending change (asset.pendingChange)
+ *
+ * On top of that, those two properties are then combined into a single overall
+ * current 'state' for use in the 'reported' device state.
+ *
+ * An asset's configuration details are maintained in the following two
+ * properties:
+ *
+ *   - Its current config (asset.config)
+ *   - Its pending config (asset.pendingConfig)
+ *
+ * The asset 'current actual' states are:
+ *
+ *   - notDeployed - Asset is not deployed (is new / never been deployed before)
+ *   - deployed -  Asset is fully / successfully deployed
+ *   - deploying -  Asset is being deployed
+ *   - deployFail -  Asset deploy failed
+ *   - removing -  Asset is being removed
+ *   - removeFail - Asset remove failed
+ *
+ * Note that the initial state of a newly added (deployed for the first time)
+ * asset will be 'notDeployed'. However, on removal, after the asset has been
+ * successfully removed it is just cleared from the state completely, and so
+ * doesn't go back to the 'notDeployed' state.
+ *
+ * The asset 'pending change' types are:
+ *
+ *   - deploy - Asset will be (re)deployed
+ *   - remove - Asset will be removed
+ *
+ * The overall 'combined' asset states (as used in 'reported') are:
+ *
+ *   - deployPending - Asset will be (re)deployed
+ *     - config: Current config if asset.state is not 'notDeployed'
+ *     - pendingConfig: Config to be deployed
+ *     - config in 'reported': if asset.state is 'notDeployed' it is
+ *       pendingConfig, otherwise it is config.
+ *
+ *   - deploying - Asset is being deployed
+ *     - config: Config being deployed
+ *     - pendingConfig: null
+ *     - config in 'reported': config
+ *
+ *   - deployed - Asset is fully / successfully deployed
+ *     - config: Config deployed
+ *     - pendingConfig: null
+ *     - config in 'reported': config
+ *
+ *   - deployFail - Asset deploy failed
+ *     - config: Config for the deploy that failed
+ *     - pendingConfig: null
+ *     - config in 'reported': config
+ *
+ *   - removePending - Asset will be removed
+ *     - config: Config deployed
+ *     - pendingConfig: null
+ *     - config in 'reported': config
+ *
+ *   - removing - Asset is being removed
+ *     - config: Config deployed
+ *     - pendingConfig: null
+ *     - config in 'reported': config
+ *
+ *   - removeFail - Asset remove failed
+ *     - config: Config deployed (before remove failure)
+ *     - pendingConfig: null
+ *     - config in 'reported': config
+ *
+ * * Status Management (Docker Container)
+ *
+ * Each successfully deployed Asset has Docker Container attached to it.
+ *
+ * Docker Container represented by `container` property of asset.
+ * This `Container` stores all information about current status of Container.
+ * and information needed to recreate it if necessary.
+ *
+ *  The status of a single asset is chiefly managed through these properties:
+ *
+ *   - Current acutal status of asset (asset.status)
+ *   - Current acutal status of container (container.status)
+ *   - If this container is allowed to start (asset.enable)
+ *   - Pending starting/stopping of container (asset.pendingEnableRequest)
+ *
+ * On top of that, those properties are then combined into a single overall
+ * current 'status' for use in the 'reported' device state.
+ *
+ * An asset's Docker Container configuration details are maintained in the following
+ * property:
+ *
+ *   - Its current Docker config (asset.dockerConfig)
+ *
+ * The asset 'current actual' statuses are:
+ *
+ *   - running - Asset is running
+ *   - stopped -  Asset is stopped and is not allowed to run
+ *   - error -  There was an error in a runtime of Asset
+ *
+ * The container 'current actual' statuses are:
+ *
+ *   - starting - Container is trying to start
+ *   - running - Container is running
+ *   - stopping - Container is trying to stop
+ *   - stopped -  Container is stopped and is not allowed to run
+ *   - removing - Container is trying to remove itself
+ *   - down - Container is shutdown (while stopping runtime agent)
+ *   - error -  There was an error in a runtime of Container
+ *
+ * Based on Asset's `enable` property actual Docker Container is allowed to run on runtime agent startup.
+ *
+ */
 
 export default class DockerManager {
-  _test: boolean = false
   _deviceStateMan: DeviceStateManager
   _agentInfoMan: AgentInfoManager
   _log: Logger
@@ -29,13 +160,11 @@ export default class DockerManager {
   _stateDockerPath: string
   _updateAttemptsMax: number = 1
   agentMan: AgentManagerMediator
-  portMan: PortManager
 
   constructor(
     deviceStateMan: DeviceStateManager,
     agentMan: AgentManagerMediator,
     agentInfoMan: AgentInfoManager,
-    portMan: PortManager,
     config: Config,
     log: Logger
   ) {
@@ -49,12 +178,8 @@ export default class DockerManager {
     this._deviceStateMan = deviceStateMan
     this._agentInfoMan = agentInfoMan
     this.agentMan = agentMan
-    this.portMan = portMan
     this._log = log
 
-    if (config.get('ENEBULAR_DOCKER_MODE')) {
-      this._test = true
-    }
     this._deviceStateMan.on('stateChange', params =>
       this._handleDeviceStateChange(params)
     )
@@ -68,16 +193,8 @@ export default class DockerManager {
     return path.join(this._aiModelDir, '.mount')
   }
 
-  docker(): Docker {
-    return this._docker
-  }
-
   ipAddress() {
     return this._agentInfoMan.ip()
-  }
-
-  isTestMode() {
-    return this._test
   }
 
   debug(msg: string, ...args: Array<mixed>) {
@@ -104,7 +221,8 @@ export default class DockerManager {
       this._docker = new Docker()
     } catch (err) {
       this.debug(err)
-      return this.info('Docker not installed')
+      this.error('Docker not installed')
+      return
     }
 
     this.debug('Docker state path: ' + this._stateDockerPath)
@@ -139,15 +257,16 @@ export default class DockerManager {
     }
   }
 
-  _deserializeModel(serializedModel: Object): Container {
-    let model
+  _deserializeModel(serializedModel: Object): AiModel {
     switch (serializedModel.type) {
       case 'ai':
-        model = new AiModel(serializedModel.type, serializedModel.id, this)
         break
       default:
         throw new Error('Unsupported model type: ' + serializedModel.type)
     }
+
+    let model = new AiModel(serializedModel.type, serializedModel.id, this)
+
     model.updateId = serializedModel.updateId
     model.config = serializedModel.config
     model.dockerConfig = serializedModel.dockerConfig
@@ -458,7 +577,7 @@ export default class DockerManager {
     )
   }
 
-  _getFirstPendingChangeModel(): ?Container {
+  _getFirstPendingChangeModel(): ?AiModel {
     if (this._models.length < 1) {
       return null
     }
@@ -626,6 +745,22 @@ export default class DockerManager {
    * DOCKER MANAGEMENT
    */
 
+  async findFreePort() {
+    const maxUsedPort = Math.max(
+      49151,
+      ...this._models.reduce((accum, model) => {
+        if (model.dockerConfig && model.dockerConfig.port) {
+          accum.push(model.dockerConfig.port)
+        }
+        return accum
+      }, [])
+    )
+    const port = await portfinder.getPortPromise({
+      port: maxUsedPort + 1
+    })
+    return port
+  }
+
   async _startModels() {
     this.info('Starting models...')
     await Promise.all(
@@ -638,11 +773,11 @@ export default class DockerManager {
     )
   }
 
-  getContainer(key) {
+  getContainer(key: string): Docker.Container {
     return this._docker.getContainer(key)
   }
 
-  async _wakeModel(model) {
+  async _wakeModel(model: AiModel) {
     let success
     // Find and start container
     try {
@@ -654,6 +789,7 @@ export default class DockerManager {
       }
       success = await model.container.start()
     } catch (err) {
+      this.debug(err)
       success = false
     }
     if (!success) {
@@ -671,13 +807,13 @@ export default class DockerManager {
   async shutDown() {
     this.info('Shuting down all running models')
     try {
-      await Promise.all(this._models.map(model => model.container.shutDown()))
+      await Promise.all(this._models.map(model => model.shutDown()))
     } catch (err) {
       this.error('Shuting down models error', err.message)
     }
   }
 
-  async pullImage(repoTag) {
+  async pullImage(repoTag: string) {
     return new Promise((resolve, reject) => {
       this.info('Pulling image: ', repoTag)
       this._docker.pull(repoTag, (err, stream) => {
@@ -711,11 +847,26 @@ export default class DockerManager {
     })
   }
 
-  async createContainer(config) {
+  async createContainer(config: Object): Docker.Container {
     return this._docker.createContainer(config)
   }
 
-  async createNewContainer(createOptions) {
+  async removeContainer(containerId: string): Promise<boolean> {
+    try {
+      const container = this._docker.getContainer(containerId)
+      await container.remove({ force: true })
+      return true
+    } catch (err) {
+      if (err.statusCode === 404) {
+        this.error(`Container  ${containerId} does not exist`)
+      } else {
+        this.error(`Error while removing container ${containerId}`)
+      }
+    }
+    return false
+  }
+
+  async createNewContainer(createOptions: Object): Docker.Container {
     this.info('Creating container')
     const { mounts, ports, imageName, cmd, cores, maxRam } = createOptions
     // pulling docker image

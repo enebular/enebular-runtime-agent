@@ -135,10 +135,14 @@ test.serial(
     await t.notThrowsAsync(agent.startup())
 
     // wait for 2 second for creating log file
-    await polling(() => {}, 2000, 0, 0)
+    await polling(()=>{}, 2000, 0, 0)
 
     const log = fs.readFileSync(tmpLogPath, 'utf8')
-    t.true(log.includes('Node-RED failed to start'))
+    t.true(
+      log.includes(
+        "Node-RED failed to start"
+      )
+    )
     fs.unlinkSync(tmpLogPath)
   }
 )

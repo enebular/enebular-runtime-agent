@@ -298,19 +298,19 @@ export class System implements SystemIf {
     }
   }
 
-  public async installPythonPackages(
-    packages: string[],
-    userInfo: UserInfo
-  ): Promise<void> {
+  public async installPythonPackages(packages: string[], userInfo: UserInfo): Promise<void> {
     return new Promise(
       async (resolve, reject): Promise<void> => {
+        let pipEnv: NodeJS.ProcessEnv = {}
         let options = ['install']
         options = options.concat(packages)
-        options.push('--user')
+        options.push("--user")
         try {
           await Utils.spawn('pip', options, this._log, {
             uid: userInfo.uid,
-            gid: userInfo.gid
+            gid: userInfo.gid,
+            // clear all the env by passing an empty env
+            env: pipEnv
           })
           this._pipRetryCount = 0
           resolve()
@@ -318,25 +318,22 @@ export class System implements SystemIf {
           this._pipRetryCount++
           if (this._pipRetryCount <= 5) {
             this._log.debug(
-              `Failed to install python dependencies, retry in 1 second ... ${
-                err.message
-              }`
+              `Failed to install python dependencies, retry in 1 second ... ${err.message}`
             )
             setTimeout(async (): Promise<void> => {
               try {
                 await this.installPythonPackages(packages, userInfo)
                 resolve()
-              } catch (err) {
+              }
+              catch (err) {
                 reject(err)
               }
             }, 1000)
           } else {
             this._pipRetryCount = 0
-            reject(
-              new Error(
-                `Failed to install python ${packages.join(' ')}: ${err.message}`
-              )
-            )
+            reject(new Error(
+              `Failed to install python ${packages.join(' ')}: ${err.message}`
+            ))
           }
         }
       }

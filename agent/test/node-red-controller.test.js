@@ -395,35 +395,6 @@ test.serial(
       state: desiredState.state.flow.flow
     })
 
-    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
-      ENEBULAR_FLOW_STATE_PATH: '/tmp/enebular-flow-' + Utils.randomString(),
-    })
-
-    const updateRequests = ctrlMsgHandler.getUpdateRequest()
-    const reportedStates = ctrlMsgHandler.getReportedStates()
-    t.true(await polling(() => { return true }, 5 * 1000, 0, 5 * 1000))
-
-    ctrlMsgHandler.flowURLTimeout = false
-    const assetId2 = Utils.randomString()
-    const updateId2 = Utils.randomString()
-    const rawDesiredState = {}
-    objectPath.set(rawDesiredState, 'flow.flow', {
-        assetId: assetId2,
-        updateId: updateId2
-    })
-    const desiredState = Utils.getDummyState('desired', rawDesiredState)
-    connector.sendMessage('deviceStateChange', {
-      type: 'desired',
-      op: 'set',
-      path: 'flow.flow',
-      meta: desiredState.meta,
-      state: desiredState.state.flow.flow
-    })
-
-    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler)
-    t.true(await nodeRedIsAlive(NodeRedPort))
-
-    const reportedStates = ctrlMsgHandler.getReportedStates()
     const callback = async () => {
       if (reportedStates && reportedStates.state
           && reportedStates.state.flow && reportedStates.state.flow.flow
@@ -477,7 +448,6 @@ test.serial(
     t.false(fs.existsSync(tmpNodeRedDataDir + '/flows_cred.json'))
   }
 )
-*/
 
 test.serial(
   'NodeRedController.6: Agent handles multiple re-deploy requests via ctrl-msg',
@@ -653,10 +623,6 @@ test.serial(
       return false
     }
     t.true(await polling(callback, 2000, 500, 30000))
-    // reported: flow.enable == true
-    t.true(await reportedFlowEnableIs(reportedStates, true))
-    // status: flow.state == running
-    t.true(await statusFlowStateIs(statusStates, 'running'))
   }
 )
 

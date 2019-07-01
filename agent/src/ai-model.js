@@ -2,6 +2,7 @@
 
 import crypto from 'crypto'
 import diskusage from 'diskusage'
+import rimraf from 'rimraf'
 import fs from 'fs'
 import mkdirp from 'mkdirp'
 import path from 'path'
@@ -10,6 +11,7 @@ import progress from 'request-progress'
 import util from 'util'
 import extract from 'extract-zip'
 import Asset from './asset'
+import type Docker from 'dockerode'
 import type DockerManager from './docker-manager'
 import Container from './container'
 import { delay } from './utils'
@@ -17,7 +19,6 @@ import { delay } from './utils'
 export default class AiModel extends Asset {
   _dockerMan: DockerManager
   _port: string
-  _mountDir: string
   container: Container
   dockerConfig: Object
   status: Object
@@ -86,11 +87,7 @@ export default class AiModel extends Asset {
   }
 
   _mountContainerDirPath(): string {
-    return path.join(
-      this._dockerMan.aiModelDir(),
-      '.mount',
-      this.mountModelDir()
-    )
+    return path.join(this._dockerMan.mountDir(), this.mountModelDir())
   }
 
   _wrapperSubPath(): string {
@@ -121,20 +118,12 @@ export default class AiModel extends Asset {
     return this.config.handlers
   }
 
-  _isExistingContainerFlag(): boolean {
-    return this.config.existingContainer
-  }
-
   _cores(): number {
     return this.config.cores
   }
 
   _maxRam(): number {
     return this.config.maxRam
-  }
-
-  _cacheSize(): number {
-    return this.config.cacheSize
   }
 
   _dockerImage(): string {
@@ -147,14 +136,6 @@ export default class AiModel extends Asset {
 
   _language(): string {
     return this.config.language
-  }
-
-  _inputType(): boolean {
-    return this.config.inputType
-  }
-
-  _wrapperUrl(): string {
-    return this.config.wrapperUrl
   }
 
   isEnabled(): boolean {
@@ -383,7 +364,7 @@ export default class AiModel extends Asset {
     if (this.port()) {
       this._port = this.port()
     } else {
-      this._port = await this._dockerMan.portMan.findFreePort()
+      this._port = await this._dockerMan.findFreePort()
     }
 
     this._info('Using port', this._port)
@@ -404,13 +385,10 @@ export default class AiModel extends Asset {
     })
 
     // Downloading wrapper
-    const wrapper = await this._dockerMan.agentMan.getAiModelWrapper(
-      {
-        ...this.config,
-        port: this._port
-      },
-      this._dockerMan.isTestMode()
-    )
+    const wrapper = await this._dockerMan.agentMan.getAiModelWrapper({
+      ...this.config,
+      port: this._port
+    })
 
     await new Promise((resolve, reject) => {
       const wrapperPath = this._mountWrapperPath()
@@ -430,28 +408,6 @@ export default class AiModel extends Asset {
     await this.createContainer()
 
     delay(3000).then(() => this.container.start())
-
-    // await container.newExec(
-    //   {
-    //     id: this.id(),
-    //     name: this.name(),
-    //     mountDir: this._destDir(),
-    //     port: this._port,
-    //     language: language,
-    //     handlers: this._handlers()
-    //   },
-    //   {
-    //     Cmd: ['/bin/bash', '-c', command],
-    //     AttachStdout: true,
-    //     AttachStderr: true,
-    //     Privileged: true
-    //   }
-    // )
-    // await this._dockerMan.exec(container, {
-    //   Cmd: ['/bin/bash', '-c', command],
-    //   AttachStdout: true,
-    //   AttachStderr: true
-    // })
   }
 
   async createContainer() {
@@ -480,7 +436,7 @@ export default class AiModel extends Asset {
     this.container.activate(container)
   }
 
-  async attachContainer(container) {
+  async attachContainer(container: Docker.Container) {
     this.container = new Container(this, this._dockerMan)
 
     this.container.activate(container)
@@ -490,14 +446,11 @@ export default class AiModel extends Asset {
     const endpoint = `${this._dockerMan.ipAddress()}:${this.port()}`
     if (this.endpoint !== endpoint) {
       this.endpoint = endpoint
-      // this._dockerMan.sync('endpoint', this)
     }
   }
 
   enableRequest() {
-    this._info('ENABLING MODELLLLLLLLLLLLLLL')
     if (!this.pendingEnableRequest) {
-      this._info('NO PENDING BEFOREEEEEE')
       this.pendingEnableRequest = true
     }
   }
@@ -533,14 +486,25 @@ export default class AiModel extends Asset {
     }
   }
 
+  async shutDown() {
+    if (this.container) {
+      await this.container.shutDown()
+    }
+  }
+
   async _delete() {
-    const filePath = this._filePath()
-    if (fs.existsSync(filePath)) {
-      this._debug(`Deleting ${filePath}...`)
-      fs.unlinkSync(filePath)
+    const destPath = this._destDirPath()
+    if (fs.existsSync(destPath)) {
+      this._debug(`Deleting ${destPath}...`)
+      rimraf.sync(destPath)
     }
     if (this.container) {
-      await this.container.remove(true)
+      await this.container.remove()
+    }
+    const mountPath = this._mountContainerDirPath()
+    if (fs.existsSync(mountPath)) {
+      this._debug(`Deleting ${mountPath}...`)
+      rimraf.sync(mountPath)
     }
   }
 }

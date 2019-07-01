@@ -10,7 +10,7 @@ export default class DummyCtrlMsgHandler {
   _reportedStates: Object
   _desiredStates: Object
   _statusStates: Object
-  flowURLAttemptCount = 0
+  flowURLAttemptCount =  0
   flowURLTimeout = false
   ctrlMsgRequestTimeout = false
 
@@ -56,7 +56,8 @@ export default class DummyCtrlMsgHandler {
   }
 
   ctrlMsgCallback(connector, msg) {
-    if (this.ctrlMsgRequestTimeout) return
+    if (this.ctrlMsgRequestTimeout)
+      return
     let deviceStates = Utils.getEmptyDeviceState()
     if (msg.topic == 'deviceState/device/get') {
       this._getRequests.push(msg)
@@ -65,8 +66,8 @@ export default class DummyCtrlMsgHandler {
       }
       if (this._flowAssetsId) {
         objectPath.set(this._desiredStates, 'flow.flow', {
-          assetId: this._flowAssetsId,
-          updateId: this._flowUpdateId
+            assetId: this._flowAssetsId,
+            updateId: this._flowUpdateId
         })
       }
       const desiredState = Utils.getDummyState('desired', this._desiredStates)
@@ -79,22 +80,15 @@ export default class DummyCtrlMsgHandler {
           states: deviceStates
         }
       })
-    } else if (msg.topic == 'deviceState/device/update') {
+    }
+    else if (msg.topic == 'deviceState/device/update') {
       const result = msg.body.updates.map(update => {
         this._updateRequests.push(update)
         if (update.op === 'set') {
           if (update.type === 'reported')
-            objectPath.set(
-              this._reportedStates,
-              'state.' + update.path,
-              update.state
-            )
+            objectPath.set(this._reportedStates, 'state.' + update.path, update.state)
           if (update.type === 'status')
-            objectPath.set(
-              this._statusStates,
-              'state.' + update.path,
-              update.state
-            )
+            objectPath.set(this._statusStates, 'state.' + update.path, update.state)
         } else if (update.op === 'remove') {
           objectPath.del(this._reportedStates, 'state.' + update.path)
         }
@@ -111,9 +105,11 @@ export default class DummyCtrlMsgHandler {
           updates: result
         }
       })
-    } else if (msg.topic == 'flow/device/getFlowDataUrl') {
+    }
+    else if (msg.topic == 'flow/device/getFlowDataUrl') {
       this.flowURLAttemptCount++
-      if (this.flowURLTimeout) return
+      if (this.flowURLTimeout)
+        return
       if (this._flowURL) {
         connector.sendCtrlMessage({
           type: 'res',
@@ -123,7 +119,8 @@ export default class DummyCtrlMsgHandler {
             url: this._flowURL
           }
         })
-      } else {
+      }
+      else {
         connector.sendCtrlMessage({
           type: 'res',
           id: msg.id,
