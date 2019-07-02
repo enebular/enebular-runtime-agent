@@ -4,10 +4,10 @@ import EventEmitter from 'events'
 import path from 'path'
 import { spawn, type ChildProcess } from 'child_process'
 import fetch from 'isomorphic-fetch'
-import rimraf from 'rimraf'
 import objectHash from 'object-hash'
 import ProcessUtil, { type RetryInfo } from './process-util'
-import { encryptCredential, delay, createNodeDefinition } from './utils'
+import { encryptCredential, delay } from './utils'
+import { createAiNodeDefinition } from './createAiNodeDefinition'
 import type { Logger } from 'winston'
 import type LogManager from './log-manager'
 import type DeviceStateManager from './device-state-manager'
@@ -804,7 +804,7 @@ export default class NodeREDController {
       updates.push(
         new Promise(async (resolve, reject) => {
           const aiNodesDir = this._getAiNodesDir()
-          createNodeDefinition(flowPackage.handlers, aiNodesDir)
+          createAiNodeDefinition(flowPackage.handlers, aiNodesDir)
             .then(() => resolve())
             .catch(err => reject(err))
         })
@@ -1014,7 +1014,6 @@ export default class NodeREDController {
           let shouldRetry = ProcessUtil.shouldRetryOnCrash(this._retryInfo)
           clearTimeout(startTimeout)
           if (shouldRetry) {
-            clearTimeout(startTimeout)
             this.info(
               'Unexpected exit, restarting service in 1 second. Retry count:' +
                 this._retryInfo.retryCount

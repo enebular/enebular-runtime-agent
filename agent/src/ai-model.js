@@ -1,6 +1,5 @@
 /* @flow */
 
-import crypto from 'crypto'
 import diskusage from 'diskusage'
 import rimraf from 'rimraf'
 import fs from 'fs'
@@ -12,44 +11,44 @@ import util from 'util'
 import extract from 'extract-zip'
 import Asset from './asset'
 import type Docker from 'dockerode'
-import type DockerManager from './docker-manager'
+import type AiModelManager from './ai-model-manager'
 import Container from './container'
 import { delay } from './utils'
 
-export default class AiModel extends Asset {
-  _dockerMan: DockerManager
+export default class AiModelAsset extends Asset {
+  _aiModelMan: AiModelManager
   _port: string
   container: Container
   dockerConfig: Object
   status: Object
   statusMessage: string
   endpoint: string
-  enable: Boolean = true
-  pendingEnableRequest: Boolean = false
+  enable: boolean = true
+  pendingEnableRequest: boolean = false
 
-  constructor(type: string, id: string, dockerMan: DockerManager) {
+  constructor(type: string, id: string, dockerMan: AiModelManager) {
     super(type, id)
-    this._dockerMan = dockerMan
+    this._aiModelMan = dockerMan
   }
 
   _debug(msg: string, ...args: Array<mixed>) {
-    this._dockerMan.debug(msg, ...args)
+    this._aiModelMan.debug(msg, ...args)
   }
 
   _info(msg: string, ...args: Array<mixed>) {
-    this._dockerMan.info(msg, ...args)
+    this._aiModelMan.info(msg, ...args)
   }
 
   _error(msg: string, ...args: Array<mixed>) {
-    this._dockerMan.error(msg, ...args)
+    this._aiModelMan.error(msg, ...args)
   }
 
   _fileName(): string {
-    return this.config.fileTypeConfig.filename
+    return this.config.aiModelTypeConfig.filename
   }
 
   _size(): string {
-    return this.config.fileTypeConfig.size
+    return this.config.aiModelTypeConfig.size
   }
 
   _destDir(): string {
@@ -57,26 +56,39 @@ export default class AiModel extends Asset {
   }
 
   _destDirPath(): string {
-    return path.join(this._dockerMan.aiModelDir(), this.config.destPath)
+    return path.join(this._aiModelMan.aiModelDir(), this.config.destPath)
   }
 
   _fileSubPath(): string {
     if (!this.config.destPath) {
-      return this.config.fileTypeConfig.filename
+      return this.config.aiModelTypeConfig.filename
     }
-    return path.join(this.config.destPath, this.config.fileTypeConfig.filename)
+    return path.join(
+      this.config.destPath,
+      this.config.aiModelTypeConfig.filename
+    )
   }
 
   _filePath(): string {
-    return path.join(this._destDirPath(), this.config.fileTypeConfig.filename)
+    return path.join(
+      this._destDirPath(),
+      this.config.aiModelTypeConfig.filename
+    )
   }
 
-  mountModelDir(): string {
+  modelDir(): string {
     return this.config.destPath
   }
 
-  port(): string {
-    return this.dockerConfig && this.dockerConfig.port
+  async port(): Promise<string> {
+    if (!this._port) {
+      if (this.dockerConfig && this.dockerConfig.port) {
+        this._port = this.dockerConfig.port
+      } else {
+        this._port = await this._aiModelMan.findFreePort()
+      }
+    }
+    return this._port
   }
 
   containerId(): string {
@@ -86,15 +98,16 @@ export default class AiModel extends Asset {
     return this.dockerConfig.containerId
   }
 
-  _mountContainerDirPath(): string {
-    return path.join(this._dockerMan.mountDir(), this.mountModelDir())
+  _containerMountPointPath(): string {
+    return path.join(this._aiModelMan.mountDir(), this.modelDir())
   }
 
   _wrapperSubPath(): string {
     let mainFileDir = this._mainFilePath().split('.')
-    if (mainFileDir.length > 1) {
-      mainFileDir = mainFileDir.slice(0, -1)
+    if (mainFileDir.length <= 1) {
+      return ''
     }
+    mainFileDir = mainFileDir.slice(0, -1)
     return path.join(...mainFileDir)
   }
 
@@ -102,16 +115,20 @@ export default class AiModel extends Asset {
     return path.join('/mount', this._wrapperSubPath())
   }
 
-  _mountWrapperPath(): string {
+  _mainFileDir(): string {
+    return path.join(this._containerMountPointPath(), this._wrapperSubPath())
+  }
+
+  _mountPointWrapperPath(): string {
     return path.join(
-      this._mountContainerDirPath(),
+      this._containerMountPointPath(),
       this._wrapperSubPath(),
       'wrapper.py'
     )
   }
 
   _key(): string {
-    return this.config.fileTypeConfig.internalSrcConfig.key
+    return this.config.aiModelTypeConfig.internalSrcConfig.key
   }
 
   _handlers(): Array<Object> {
@@ -152,12 +169,7 @@ export default class AiModel extends Asset {
       this.statusMessage = message
     }
     this.changeTs = Date.now()
-    this._dockerMan.sync('status', this)
-  }
-
-  setStatusMessage(message) {
-    this.statusMessage = message
-    this.changeTs = Date.now()
+    this._aiModelMan.sync('status', this)
   }
 
   serialize(): {} {
@@ -181,23 +193,6 @@ export default class AiModel extends Asset {
       pendingConfig: this.pendingConfig,
       pendingEnableRequest: this.pendingEnableRequest
     }
-  }
-
-  async _getIntegrity(path: string) {
-    return new Promise((resolve, reject) => {
-      const hash = crypto.createHash('sha256')
-      const file = fs.createReadStream(path)
-      file.on('data', data => {
-        hash.update(data)
-      })
-      file.on('end', () => {
-        const digest = hash.digest('base64')
-        resolve(digest)
-      })
-      file.on('error', err => {
-        reject(err)
-      })
-    })
   }
 
   async deploy(): Promise<boolean> {
@@ -252,6 +247,8 @@ export default class AiModel extends Asset {
         )
       }
       this._info('Ran post-install operations')
+
+      delay(3000).then(() => this.container.start())
     } catch (err) {
       this.changeErrMsg = err.message
       this._error(err.message)
@@ -290,7 +287,7 @@ export default class AiModel extends Asset {
 
     // Get asset file data download URL
     this._debug('Getting file download URL...')
-    const url = await this._dockerMan.agentMan.getInternalFileAssetDataUrl(
+    const url = await this._aiModelMan.agentMan.getInternalFileAssetDataUrl(
       this._key()
     )
     this._debug('Got file download URL')
@@ -325,9 +322,7 @@ export default class AiModel extends Asset {
           if (response.statusCode >= 400) {
             reject(
               new Error(
-                `Error response: ${response.statusCode}: ${
-                  response.statusMessage
-                }`
+                `Error response: ${response.statusCode}: ${response.statusMessage}`
               )
             )
           }
@@ -346,10 +341,10 @@ export default class AiModel extends Asset {
   async _verify() {
     this._debug('Checking file integrity...')
     const integrity = await this._getIntegrity(this._filePath())
-    if (integrity !== this.config.fileTypeConfig.integrity) {
+    if (integrity !== this.config.aiModelTypeConfig.integrity) {
       throw new Error(
         'File integrity mismatch: expected:' +
-          this.config.fileTypeConfig.integrity +
+          this.config.aiModelTypeConfig.integrity +
           ', calculated:' +
           integrity
       )
@@ -361,17 +356,13 @@ export default class AiModel extends Asset {
     fs.chmodSync(this._filePath(), 0o740)
     this._info('File installed to: ' + this._fileSubPath())
 
-    if (this.port()) {
-      this._port = this.port()
-    } else {
-      this._port = await this._dockerMan.findFreePort()
-    }
+    const port = await this.port()
 
-    this._info('Using port', this._port)
+    this._info('Using port', port)
 
     // Extract archived model
     const path = this._filePath()
-    const dest = this._mountContainerDirPath()
+    const dest = this._containerMountPointPath()
     await new Promise((resolve, reject) => {
       this._info(`Extracting model ${this._fileName()} to ${dest}...`)
       extract(path, { dir: dest }, err => {
@@ -385,13 +376,17 @@ export default class AiModel extends Asset {
     })
 
     // Downloading wrapper
-    const wrapper = await this._dockerMan.agentMan.getAiModelWrapper({
+    if (!fs.existsSync(this._mainFileDir())) {
+      throw new Error('Path to main file is invalid')
+    }
+
+    const wrapper = await this._aiModelMan.agentMan.getAiModelWrapper({
       ...this.config,
-      port: this._port
+      port
     })
 
     await new Promise((resolve, reject) => {
-      const wrapperPath = this._mountWrapperPath()
+      const wrapperPath = this._mountPointWrapperPath()
       this._info(`Downloading wrapper to ${wrapperPath} ...`)
       fs.writeFile(wrapperPath, JSON.parse(wrapper), err => {
         if (err) {
@@ -403,11 +398,9 @@ export default class AiModel extends Asset {
   }
 
   async _runPostInstallOps() {
-    this._info('Configuring  container...')
+    this._info('Configuring Docker container...')
 
     await this.createContainer()
-
-    delay(3000).then(() => this.container.start())
   }
 
   async createContainer() {
@@ -415,35 +408,37 @@ export default class AiModel extends Asset {
 
     const language = this._language()
     const command = `cd ${this._containerWrapperDirPath()} && ${language} wrapper.py`
+    const port = await this.port()
 
     const config = {
       cmd: ['/bin/bash'],
       command: ['/bin/bash', '-c', command],
       workDir: this._containerWrapperDirPath(),
-      mounts: [`${this._mountContainerDirPath()}:/mount`],
-      ports: [this._port],
-      port: this._port,
+      mounts: [`${this._containerMountPointPath()}:/mount`],
+      ports: [port],
+      port: port,
       imageName: this._dockerImage(),
       cores: this._cores(),
       maxRam: this._maxRam() * 1024 * 1024
     }
 
-    const container = await this._dockerMan.createNewContainer(config)
+    const container = await this._aiModelMan.createNewContainer(config)
 
-    this.container = new Container(this, this._dockerMan)
+    this.container = new Container(this, this._aiModelMan)
     this.dockerConfig = config
 
     this.container.activate(container)
   }
 
   async attachContainer(container: Docker.Container) {
-    this.container = new Container(this, this._dockerMan)
+    this.container = new Container(this, this._aiModelMan)
 
     this.container.activate(container)
   }
 
   async updateEndpoint() {
-    const endpoint = `${this._dockerMan.ipAddress()}:${this.port()}`
+    const port = await this.port()
+    const endpoint = `${this._aiModelMan.ipAddress()}:${port}`
     if (this.endpoint !== endpoint) {
       this.endpoint = endpoint
     }
@@ -459,13 +454,7 @@ export default class AiModel extends Asset {
     if (this.isRunning()) {
       this._info(`Disabling model ${this.name()}...`)
       if (this.container) {
-        const stopped = await this.container.stop()
-        if (!stopped) {
-          this.setStatus('error')
-          this._error(
-            `Disable model ${this.name()} failed, container failed to stop`
-          )
-        }
+        await this.container.stop()
       }
     }
   }
@@ -476,13 +465,7 @@ export default class AiModel extends Asset {
       if (!this.container) {
         await this.createContainer()
       }
-      const started = await this.container.start()
-      if (!started) {
-        this.setStatus('error')
-        this._error(
-          `Enable model ${this.name()} failed, container failed to start`
-        )
-      }
+      await this.container.start()
     }
   }
 
@@ -501,7 +484,7 @@ export default class AiModel extends Asset {
     if (this.container) {
       await this.container.remove()
     }
-    const mountPath = this._mountContainerDirPath()
+    const mountPath = this._containerMountPointPath()
     if (fs.existsSync(mountPath)) {
       this._debug(`Deleting ${mountPath}...`)
       rimraf.sync(mountPath)

@@ -13,7 +13,7 @@ import AgentInfoManager from './agent-info-manager'
 import AssetManager from './asset-manager'
 import CommandLine from './command-line'
 import Config from './config'
-import DockerManager from './docker-manager'
+import AiModelManager from './ai-model-manager'
 import LogManager from './log-manager'
 import NodeREDController from './node-red-controller'
 
@@ -91,7 +91,7 @@ export default class EnebularAgent extends EventEmitter {
   _deviceStateManager: DeviceStateManager
   _agentInfoManager: AgentInfoManager
   _assetManager: AssetManager
-  _dockerManager: DockerManager
+  _aiModelManager: AiModelManager
 
   _connectionId: ?string
   _deviceId: ?string
@@ -203,7 +203,7 @@ export default class EnebularAgent extends EventEmitter {
       this._log
     )
 
-    this._dockerManager = new DockerManager(
+    this._aiModelManager = new AiModelManager(
       this._deviceStateManager,
       this._agentMan,
       this._agentInfoManager,
@@ -339,7 +339,7 @@ export default class EnebularAgent extends EventEmitter {
 
     await this._agentInfoManager.setup()
     await this._assetManager.setup()
-    await this._dockerManager.setup()
+    await this._aiModelManager.setup()
     await this._nodeRed.setup()
     this._nodeRed.activate(true)
 
@@ -360,7 +360,7 @@ export default class EnebularAgent extends EventEmitter {
     this._nodeRed.activate(false)
     this._assetManager.activate(false)
     this._deviceStateManager.activate(false)
-    this._dockerManager.activate(false)
+    this._aiModelManager.activate(false)
     await this._logManager.shutdown()
     this._monitoringShutdown = true
     this._updateMonitoringActiveState()
@@ -587,7 +587,7 @@ export default class EnebularAgent extends EventEmitter {
         break
       case 'authenticated':
         this._assetManager.activate(true)
-        this._dockerManager.activate(true)
+        this._aiModelManager.activate(true)
         setTimeout(() => {
           this._updateMonitoringActiveState()
         }, 10 * 1000)

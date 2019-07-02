@@ -7,13 +7,13 @@ import Docker from 'dockerode'
 import portfinder from 'portfinder'
 import type { Logger } from 'winston'
 import { delay } from './utils'
-import AiModel from './ai-model'
+import AiModelAsset from './ai-model'
 import type AgentInfoManager from './agent-info-manager'
 import type AgentManagerMediator from './agent-manager-mediator'
 import type DeviceStateManager from './device-state-manager'
 import type Config from './config'
 
-const moduleName = 'docker-man'
+const moduleName = 'ai-model-man'
 /**
  * AI Asset 'State & Status' Management and Representation
  *
@@ -148,13 +148,13 @@ const moduleName = 'docker-man'
  *
  */
 
-export default class DockerManager {
+export default class AiModelManager {
   _deviceStateMan: DeviceStateManager
   _agentInfoMan: AgentInfoManager
   _log: Logger
   _docker: Docker
   _aiModelDir: string
-  _models: Array<AiModel> = []
+  _models: Array<AiModelAsset> = []
   _inited: boolean = false
   _active: boolean = false
   _stateDockerPath: string
@@ -172,7 +172,7 @@ export default class DockerManager {
     this._aiModelDir = path.resolve(config.get('ENEBULAR_AI_MODELS_DATA_PATH'))
 
     if (!this._stateDockerPath || !this._aiModelDir) {
-      throw new Error('Missing docker-man configuration')
+      throw new Error('Missing ai-model-man configuration')
     }
 
     this._deviceStateMan = deviceStateMan
@@ -233,21 +233,21 @@ export default class DockerManager {
   }
 
   async _init() {
-    await this._loadDocker()
-    await this._updateDockerFromDesiredState()
+    await this._loadModels()
+    await this._updateModelsFromDesiredState()
     await this._startModels()
-    await this._updateDockerReportedState()
+    await this._updateModelsReportedState()
   }
 
   /**
    * STATE MANAGEMENT
    */
-  async _loadDocker() {
+  async _loadModels() {
     if (!fs.existsSync(this._stateDockerPath)) {
       return
     }
 
-    this.info('Loading docker state: ' + this._stateDockerPath)
+    this.info('Loading ai models state: ' + this._stateDockerPath)
 
     const data = fs.readFileSync(this._stateDockerPath, 'utf8')
     const serializedModels = JSON.parse(data)
@@ -257,7 +257,7 @@ export default class DockerManager {
     }
   }
 
-  _deserializeModel(serializedModel: Object): AiModel {
+  _deserializeModel(serializedModel: Object): AiModelAsset {
     switch (serializedModel.type) {
       case 'ai':
         break
@@ -265,7 +265,7 @@ export default class DockerManager {
         throw new Error('Unsupported model type: ' + serializedModel.type)
     }
 
-    let model = new AiModel(serializedModel.type, serializedModel.id, this)
+    let model = new AiModelAsset(serializedModel.type, serializedModel.id, this)
 
     model.updateId = serializedModel.updateId
     model.config = serializedModel.config
@@ -286,8 +286,8 @@ export default class DockerManager {
     return model
   }
 
-  _saveDockerState() {
-    this.debug('Saving docker state...')
+  _saveModelsState() {
+    this.debug('Saving ai models state...')
 
     let serializedModels = []
     for (let model of this._models) {
@@ -319,24 +319,24 @@ export default class DockerManager {
       return
     }
 
-    if (params.path && !params.path.startsWith('docker')) {
+    if (params.path && !params.path.startsWith('aiModels')) {
       return
     }
 
     switch (params.type) {
       case 'desired':
-        this._updateDockerFromDesiredState()
+        this._updateModelsFromDesiredState()
         break
       case 'reported':
-        this._updateDockerReportedState()
+        this._updateModelsReportedState()
         break
       default:
         break
     }
   }
 
-  async _updateDockerFromDesiredState() {
-    const desiredState = this._deviceStateMan.getState('desired', 'docker')
+  async _updateModelsFromDesiredState() {
+    const desiredState = this._deviceStateMan.getState('desired', 'aiModels')
     if (!desiredState) {
       return
     }
@@ -344,7 +344,7 @@ export default class DockerManager {
     this.info('Docker state change: ' + JSON.stringify(desiredState, null, 2))
 
     // handle changes for models
-    const desiredModels = desiredState.models || {}
+    const desiredModels = desiredState.aiModels || {}
 
     // Determine models requiring a 'deploy' change
     let newModels = []
@@ -395,7 +395,11 @@ export default class DockerManager {
         let model = null
         switch (desiredModel.config.type) {
           case 'ai':
-            model = new AiModel(desiredModel.config.type, desiredModelId, this)
+            model = new AiModelAsset(
+              desiredModel.config.type,
+              desiredModelId,
+              this
+            )
             model.state = 'notDeployed'
             model.setPendingChange(
               'deploy',
@@ -423,12 +427,12 @@ export default class DockerManager {
     // Append 'new' models
     this._models = this._models.concat(newModels)
 
-    this._updateDockerReportedState()
+    this._updateModelsReportedState()
     this._processPendingChanges()
   }
 
-  _updateDockerReportedState() {
-    const reportedState = this._deviceStateMan.getState('reported', 'docker')
+  _updateModelsReportedState() {
+    const reportedState = this._deviceStateMan.getState('reported', 'aiModels')
     if (!reportedState) {
       return
     }
@@ -437,10 +441,10 @@ export default class DockerManager {
       'Docker reported state: ' + JSON.stringify(reportedState, null, 2)
     )
 
-    if (reportedState.models) {
+    if (reportedState.aiModels) {
       // Remove reported models that no longer exist
-      for (const reportedModelId in reportedState.models) {
-        if (!reportedState.models.hasOwnProperty(reportedModelId)) {
+      for (const reportedModelId in reportedState.aiModels) {
+        if (!reportedState.aiModels.hasOwnProperty(reportedModelId)) {
           continue
         }
         let found = false
@@ -471,20 +475,20 @@ export default class DockerManager {
     this._deviceStateMan.updateState(
       'reported',
       'remove',
-      'docker.models.' + modelId
+      'aiModels.aiModels.' + modelId
     )
   }
 
   _getReportedModelState(modelId: string): ?Object {
-    const reportedState = this._deviceStateMan.getState('reported', 'docker')
-    if (!reportedState || !reportedState.models) {
+    const reportedState = this._deviceStateMan.getState('reported', 'aiModels')
+    if (!reportedState || !reportedState.aiModels) {
       return null
     }
 
-    return reportedState.models[modelId]
+    return reportedState.aiModels[modelId]
   }
 
-  async sync(type, item) {
+  async sync(type: string, item: AiModelAsset) {
     switch (type) {
       case 'status':
         this._updateModelReportedState(item)
@@ -493,11 +497,11 @@ export default class DockerManager {
         return
     }
 
-    await this._saveDockerState()
+    await this._saveModelsState()
   }
 
   // Only updates the reported state if required (if there is a difference)
-  _updateModelReportedState(model: AiModel) {
+  _updateModelReportedState(model: AiModelAsset) {
     if (!this._deviceStateMan.canUpdateState('reported')) {
       return
     }
@@ -572,12 +576,12 @@ export default class DockerManager {
     this._deviceStateMan.updateState(
       'reported',
       'set',
-      'docker.models.' + model.id(),
+      'aiModels.aiModels.' + model.id(),
       newStateObj
     )
   }
 
-  _getFirstPendingChangeModel(): ?AiModel {
+  _getFirstPendingChangeModel(): ?AiModelAsset {
     if (this._models.length < 1) {
       return null
     }
@@ -589,7 +593,7 @@ export default class DockerManager {
     return null
   }
 
-  _setModelState(model: Model, state: string) {
+  _setModelState(model: AiModelAsset, state: string) {
     model.setState(state)
     this._updateModelReportedState(model)
   }
@@ -651,9 +655,7 @@ export default class DockerManager {
               if (model.updateAttemptCount < this._updateAttemptsMax) {
                 if (model.pendingChange === null) {
                   this.info(
-                    `Deploy failed, but will retry (${
-                      model.updateAttemptCount
-                    }/${this._updateAttemptsMax}).`
+                    `Deploy failed, but will retry (${model.updateAttemptCount}/${this._updateAttemptsMax}).`
                   )
                   model.setPendingChange(
                     pendingChange,
@@ -670,9 +672,7 @@ export default class DockerManager {
                 this._setModelState(model, prevState)
               } else {
                 this.info(
-                  `Deploy failed maximum number of times (${
-                    model.updateAttemptCount
-                  })`
+                  `Deploy failed maximum number of times (${model.updateAttemptCount})`
                 )
                 this._setModelState(model, 'deployFail')
               }
@@ -694,9 +694,7 @@ export default class DockerManager {
             // The asset may have received a new pendingChange again while we were
             // await'ing, so check for that before we really remove it.
             if (!model.pendingChange) {
-              this.model = this._models.filter(a => {
-                return a !== model
-              })
+              this._models = this._models.filter(m => m !== model)
             }
             break
 
@@ -716,7 +714,7 @@ export default class DockerManager {
       }
 
       // Save the changed state
-      this._saveDockerState()
+      this._saveModelsState()
 
       // A small delay to guard against becoming a heavy duty busy loop
       await delay(1 * 1000)
@@ -730,7 +728,7 @@ export default class DockerManager {
       return
     }
     if (active && !this._inited) {
-      this.error('Attempted to activate docker-man when not initialized')
+      this.error('Attempted to activate ai-model-man when not initialized')
       return
     }
     this._active = active
@@ -777,7 +775,7 @@ export default class DockerManager {
     return this._docker.getContainer(key)
   }
 
-  async _wakeModel(model: AiModel) {
+  async _wakeModel(model: AiModelAsset) {
     let success
     // Find and start container
     try {
@@ -869,13 +867,14 @@ export default class DockerManager {
   async createNewContainer(createOptions: Object): Docker.Container {
     this.info('Creating container')
     const { mounts, ports, imageName, cmd, cores, maxRam } = createOptions
+    const cpus = cores > 1 ? '0' : `0-${cores - 1}`
     // pulling docker image
     await this.pullImage(imageName)
     const config = {
       HostConfig: {
         Binds: mounts,
         Memory: maxRam,
-        CpuShares: cores,
+        CpusetCpus: cpus,
         Privileged: true
       },
       Image: imageName,
