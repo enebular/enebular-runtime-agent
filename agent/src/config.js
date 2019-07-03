@@ -108,9 +108,9 @@ export default class Config {
         description: 'Assets state file path',
         userExpose: true
       },
-      ENEBULAR_DOCKER_STATE_PATH: {
+      ENEBULAR_AI_MODELS_STATE_PATH: {
         value: p.resolve(portBasePath, '.enebular-docker.json'),
-        description: 'Docker state file path',
+        description: 'Ai Models state file path',
         userExpose: true
       },
       ENEBULAR_FLOW_STATE_PATH: {

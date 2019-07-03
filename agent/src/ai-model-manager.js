@@ -1,6 +1,7 @@
 /* @flow */
 
 import fs from 'fs'
+import ip from 'ip'
 import objectHash from 'object-hash'
 import path from 'path'
 import Docker from 'dockerode'
@@ -157,7 +158,7 @@ export default class AiModelManager {
   _models: Array<AiModelAsset> = []
   _inited: boolean = false
   _active: boolean = false
-  _stateDockerPath: string
+  _stateAiModelsPath: string
   _updateAttemptsMax: number = 1
   agentMan: AgentManagerMediator
 
@@ -168,10 +169,10 @@ export default class AiModelManager {
     config: Config,
     log: Logger
   ) {
-    this._stateDockerPath = config.get('ENEBULAR_DOCKER_STATE_PATH')
+    this._stateAiModelsPath = config.get('ENEBULAR_AI_MODELS_STATE_PATH')
     this._aiModelDir = path.resolve(config.get('ENEBULAR_AI_MODELS_DATA_PATH'))
 
-    if (!this._stateDockerPath || !this._aiModelDir) {
+    if (!this._stateAiModelsPath || !this._aiModelDir) {
       throw new Error('Missing ai-model-man configuration')
     }
 
@@ -194,7 +195,7 @@ export default class AiModelManager {
   }
 
   ipAddress() {
-    return this._agentInfoMan.ip()
+    return ip.address()
   }
 
   debug(msg: string, ...args: Array<mixed>) {
@@ -221,11 +222,11 @@ export default class AiModelManager {
       this._docker = new Docker()
     } catch (err) {
       this.debug(err)
-      this.error('Docker not installed')
+      this.error('Docker is not installed')
       return
     }
 
-    this.debug('Docker state path: ' + this._stateDockerPath)
+    this.debug('Ai Models path: ' + this._stateAiModelsPath)
 
     await this._init()
 
@@ -243,13 +244,13 @@ export default class AiModelManager {
    * STATE MANAGEMENT
    */
   async _loadModels() {
-    if (!fs.existsSync(this._stateDockerPath)) {
+    if (!fs.existsSync(this._stateAiModelsPath)) {
       return
     }
 
-    this.info('Loading ai models state: ' + this._stateDockerPath)
+    this.info('Loading ai models state: ' + this._stateAiModelsPath)
 
-    const data = fs.readFileSync(this._stateDockerPath, 'utf8')
+    const data = fs.readFileSync(this._stateAiModelsPath, 'utf8')
     const serializedModels = JSON.parse(data)
     for (const serializedModel of serializedModels) {
       const container = this._deserializeModel(serializedModel)
@@ -305,7 +306,7 @@ export default class AiModelManager {
     this.debug('Model state: ' + JSON.stringify(serializedModels, null, 2))
     try {
       fs.writeFileSync(
-        this._stateDockerPath,
+        this._stateAiModelsPath,
         JSON.stringify(serializedModels),
         'utf8'
       )
@@ -341,7 +342,7 @@ export default class AiModelManager {
       return
     }
 
-    this.info('Docker state change: ' + JSON.stringify(desiredState, null, 2))
+    this.debug('Ai Models change: ' + JSON.stringify(desiredState, null, 2))
 
     // handle changes for models
     const desiredModels = desiredState.aiModels || {}
@@ -540,9 +541,6 @@ export default class AiModelManager {
       newStateObj.config = model.config
     } else if (model.state === 'notDeployed' && model.pendingConfig) {
       newStateObj.config = model.pendingConfig
-    }
-    if (model.dockerConfig) {
-      newStateObj.dockerConfig = model.dockerConfig
     }
     if (model.status) {
       newStateObj.status = model.status

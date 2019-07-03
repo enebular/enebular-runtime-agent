@@ -137,7 +137,6 @@ export default class Container {
         `Exceeded maximum number of restarts of model '${this.name()}'...`
       )
       try {
-        this._active = false
         await this._dockerContainer.stop()
       } catch (err) {
         if (err.statusCode !== 304) {
@@ -151,6 +150,9 @@ export default class Container {
   }
 
   async start(noRestart?: boolean): Promise<boolean> {
+    if (!this._active) {
+      return false
+    }
     if (!this._dockerContainer) {
       this._info(
         `No actual docker container attached to model '${this.name()}'...`
@@ -163,7 +165,7 @@ export default class Container {
     this._info(`Starting container '${this.name()}'...`)
     try {
       this.setState('starting')
-      this._model.updateEndpoint()
+      await this._model.updateEndpoint()
       await this._dockerContainer.start()
     } catch (err) {
       if (err.statusCode === 304) {
@@ -195,6 +197,7 @@ export default class Container {
           this.deactivate()
         }
         this.setErrorMessage(`Cannot start container ${this.name()}`)
+        this.sync()
         return false
       }
     }
