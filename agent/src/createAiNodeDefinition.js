@@ -158,7 +158,7 @@ module.exports = function(RED) {
         node.error('Please select handler function', msg)          
         return
       }
-      if(!endpointConfig[aiModel].endpoint) {
+      if(!endpointConfig[aiModel] || !endpointConfig[aiModel].endpoint) {
         node.error('No endpoint data for this AI Model. Please make sure that this AI Model is deployed and running and redepoy the flow.', msg)
         node.status({
           fill: 'red',

@@ -1,24 +1,43 @@
 /* @flow */
 
 import stream from 'stream'
-import type AiModelAsset from './ai-model'
+import type AiModelAsset from './ai-model-asset'
 import type AiModelManager from './ai-model-manager'
 import { delay } from './utils'
+
+export type ContainerConfig = {
+  cmd: Array<string>,
+  command: Array<string>,
+  workDir: string,
+  mounts: Array<string>,
+  ports: Array<number>,
+  port: number,
+  imageName: string,
+  cores: number,
+  maxRam: number,
+  containerId: string
+}
 
 export default class Container {
   _active: boolean = false
   _model: AiModelAsset
   _aiModelMan: AiModelManager
   _dockerContainer: Object
+  config: ContainerConfig
   _exec: Object
   _restartCount: number = 0
   _restartAttemptsMax: number = 1
   state: string
   message: ?string
 
-  constructor(model: AiModelAsset, dockerMan: AiModelManager) {
+  constructor(
+    model: AiModelAsset,
+    aiModelMan: AiModelManager,
+    config: ContainerConfig
+  ) {
     this._model = model
-    this._aiModelMan = dockerMan
+    this._aiModelMan = aiModelMan
+    this.config = config
   }
 
   _debug(msg: string, ...args: Array<mixed>) {
@@ -33,12 +52,15 @@ export default class Container {
     this._aiModelMan.error(msg, ...args)
   }
 
-  id(): string {
-    return this._model.id()
+  containerId(): string {
+    return this.config.containerId
   }
 
-  containerId(): string {
-    return this._model.dockerConfig.containerId
+  port(): number | null {
+    if (this.config) {
+      return this.config.port
+    }
+    return null
   }
 
   name(): string {
@@ -53,29 +75,25 @@ export default class Container {
     return this._model.config.handlers
   }
 
-  config(): Object {
-    return this._model.dockerConfig
-  }
-
-  activate(container: Object) {
+  activate(container: Docker.Container) {
     this._active = true
     this._dockerContainer = container
-    this._model.dockerConfig.containerId = container.id
+    this.config.containerId = container.id
   }
 
   deactivate() {
     this._active = false
     this._dockerContainer = null
-    this._model.dockerConfig.containerId = null
+    this.config.containerId = null
   }
 
   setState(state: string) {
     this.state = state
   }
 
-  setErrorMessage(message: string) {
-    this._error(message)
-    this.message = message
+  setErrorMessage(...args: Array<mixed>) {
+    this._error(...args)
+    this.message = args.join('\n')
     this.setState('error')
   }
 
@@ -84,11 +102,20 @@ export default class Container {
   }
 
   async _showHandlersEndpoints() {
-    let message = `Model's ${this.name()} endpoint(s):\n`
+    let message = `Model's ${this.name()} handler functions endpoint(s):\n`
     this.handlers().forEach(handler => {
-      message += `'${handler.nodeTitle}' at ${this.endpoint()}/${handler.id}\n`
+      message += `'${handler.handlerFunc}' at ${this.endpoint()}/${
+        handler.id
+      }\n`
     })
     this._info(message)
+  }
+
+  async init(dockerContainer?: Docker.Container) {
+    if (!dockerContainer) {
+      dockerContainer = await this._aiModelMan.createContainer(this.config)
+    }
+    this.activate(dockerContainer)
   }
 
   async _startExec() {
@@ -102,10 +129,10 @@ export default class Container {
     })
   }
 
-  async _execModel(): Promise<boolean> {
-    this._info(`Executing model '${this.name()}'...`)
+  async _startServer(): Promise<boolean> {
+    this._info(`Starting server for Model '${this.name()}'...`)
     try {
-      const { command } = this.config()
+      const { command } = this.config
       const options = {
         Cmd: command,
         AttachStdout: true,
@@ -141,7 +168,8 @@ export default class Container {
       } catch (err) {
         if (err.statusCode !== 304) {
           this.setErrorMessage(
-            `Cannot stop container ${this.name()} in crashing`
+            `Cannot stop container ${this.name()} in crashing`,
+            err.message
           )
         }
       }
@@ -176,9 +204,10 @@ export default class Container {
           .stop()
           .then(() => true)
           .catch(err => {
-            if (err === 304) {
+            if (err.statusCode === 304) {
               return true
             }
+            this._error('Cannot stop a container', err.message)
             return false
           })
         if (!stopped) {
@@ -188,7 +217,10 @@ export default class Container {
         const started = await this._dockerContainer
           .start()
           .then(() => true)
-          .catch(() => false)
+          .catch(err => {
+            this._error(err.message)
+            return false
+          })
         if (!started) {
           return false
         }
@@ -196,7 +228,10 @@ export default class Container {
         if (err.statusCode === 404) {
           this.deactivate()
         }
-        this.setErrorMessage(`Cannot start container ${this.name()}`)
+        this.setErrorMessage(
+          `Cannot start container ${this.name()}`,
+          err.message
+        )
         this.sync()
         return false
       }
@@ -206,14 +241,14 @@ export default class Container {
         this._restartCount = 0
       }
       this._attachLogsToContainer()
-      const executed = await this._execModel()
+      const executed = await this._startServer()
       if (executed) {
         this._showHandlersEndpoints()
         this.sync()
         return true
       }
     } catch (err) {
-      this.setErrorMessage(`Cannot start container ${this.name()}`)
+      this.setErrorMessage(`Cannot start container ${this.name()}`, err.message)
       this.sync()
     }
     return false
@@ -240,7 +275,10 @@ export default class Container {
       return true
     } catch (err) {
       if (err.statusCode !== 304) {
-        this.setErrorMessage(`Cannot stop container ${this.name()}`)
+        this.setErrorMessage(
+          `Cannot stop container ${this.name()}`,
+          err.message
+        )
       }
     }
     this.sync()
@@ -258,7 +296,10 @@ export default class Container {
       return true
     } catch (err) {
       if (err.statusCode !== 304) {
-        this.setErrorMessage(`Cannot shut down container ${this.name()}`)
+        this.setErrorMessage(
+          `Cannot shut down container ${this.name()}`,
+          err.message
+        )
       }
     }
     return false
@@ -279,11 +320,13 @@ export default class Container {
     }
     this._info('Recreating container...')
     try {
-      const container = await this._aiModelMan.createNewContainer(this.config())
-      this.activate(container)
+      await this.init()
       return true
     } catch (err) {
-      this.setErrorMessage(`Could not repair container '${this.name()}'`)
+      this.setErrorMessage(
+        `Could not repair container '${this.name()}'`,
+        err.message
+      )
     }
     return false
   }

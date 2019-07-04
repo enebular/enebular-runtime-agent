@@ -10,25 +10,24 @@ import progress from 'request-progress'
 import util from 'util'
 import extract from 'extract-zip'
 import Asset from './asset'
-import type Docker from 'dockerode'
 import type AiModelManager from './ai-model-manager'
 import Container from './container'
+import type { ContainerConfig } from './container'
 import { delay } from './utils'
 
 export default class AiModelAsset extends Asset {
   _aiModelMan: AiModelManager
   _port: string
   container: Container
-  dockerConfig: Object
   status: Object
   statusMessage: string
   endpoint: string
   enable: boolean = true
   pendingEnableRequest: boolean = false
 
-  constructor(type: string, id: string, dockerMan: AiModelManager) {
+  constructor(type: string, id: string, aiModelMan: AiModelManager) {
     super(type, id)
-    this._aiModelMan = dockerMan
+    this._aiModelMan = aiModelMan
   }
 
   _debug(msg: string, ...args: Array<mixed>) {
@@ -80,10 +79,17 @@ export default class AiModelAsset extends Asset {
     return this.config.destPath
   }
 
-  async port(): Promise<string> {
+  dockerContainerId(): string | null {
+    if (this.container) {
+      return this.container.containerId()
+    }
+    return null
+  }
+
+  async getInstallationPort(): Promise<number> {
     if (!this._port) {
-      if (this.dockerConfig && this.dockerConfig.port) {
-        this._port = this.dockerConfig.port
+      if (this.getContainerPort()) {
+        this._port = this.getContainerPort()
       } else {
         this._port = await this._aiModelMan.findFreePort()
       }
@@ -91,11 +97,11 @@ export default class AiModelAsset extends Asset {
     return this._port
   }
 
-  containerId(): string {
-    if (!this.dockerConfig) {
-      throw new Error('No config for docker exist')
+  getContainerPort(): number | null {
+    if (this.container && this.container.port()) {
+      return this.container.port()
     }
-    return this.dockerConfig.containerId
+    return null
   }
 
   _containerMountPointPath(): string {
@@ -173,7 +179,7 @@ export default class AiModelAsset extends Asset {
   }
 
   serialize(): {} {
-    return {
+    const serializedModel = {
       type: this._type,
       id: this._id,
       updateId: this.updateId,
@@ -187,12 +193,15 @@ export default class AiModelAsset extends Asset {
       changeTs: this.changeTs,
       changeErrMsg: this.changeErrMsg,
       config: this.config,
-      dockerConfig: this.dockerConfig,
       pendingChange: this.pendingChange,
       pendingUpdateId: this.pendingUpdateId,
       pendingConfig: this.pendingConfig,
       pendingEnableRequest: this.pendingEnableRequest
     }
+    if (this.container && this.container.config) {
+      serializedModel.containerConfig = this.container.config
+    }
+    return serializedModel
   }
 
   async deploy(): Promise<boolean> {
@@ -356,7 +365,7 @@ export default class AiModelAsset extends Asset {
     fs.chmodSync(this._filePath(), 0o740)
     this._info('File installed to: ' + this._fileSubPath())
 
-    const port = await this.port()
+    const port = await this.getInstallationPort()
 
     this._info('Using port', port)
 
@@ -364,14 +373,14 @@ export default class AiModelAsset extends Asset {
     const path = this._filePath()
     const dest = this._containerMountPointPath()
     await new Promise((resolve, reject) => {
-      this._info(`Extracting model ${this._fileName()} to ${dest}...`)
+      this._info(`Extracting archive ${this._fileName()} to ${dest}...`)
       extract(path, { dir: dest }, err => {
         if (err) {
-          this._error('Extraction failed')
-          reject(err)
+          this._error('Extraction failed', err.message)
+          return reject(err)
         }
         this._info('Extraction complete')
-        resolve()
+        return resolve()
       })
     })
 
@@ -390,9 +399,9 @@ export default class AiModelAsset extends Asset {
       this._info(`Downloading wrapper to ${wrapperPath} ...`)
       fs.writeFile(wrapperPath, JSON.parse(wrapper), err => {
         if (err) {
-          reject(err)
+          return reject(err)
         }
-        resolve()
+        return resolve()
       })
     })
   }
@@ -400,15 +409,13 @@ export default class AiModelAsset extends Asset {
   async _runPostInstallOps() {
     this._info('Configuring Docker container...')
 
-    await this.createContainer()
+    await this.initContainer()
   }
 
-  async createContainer() {
-    this._info(`Using image ${this._dockerImage()}...`)
-
+  async initContainer() {
     const language = this._language()
     const command = `cd ${this._containerWrapperDirPath()} && ${language} wrapper.py`
-    const port = await this.port()
+    const port = await this.getInstallationPort()
 
     const config = {
       cmd: ['/bin/bash'],
@@ -422,22 +429,16 @@ export default class AiModelAsset extends Asset {
       maxRam: this._maxRam() * 1024 * 1024
     }
 
-    const container = await this._aiModelMan.createNewContainer(config)
-
-    this.container = new Container(this, this._aiModelMan)
-    this.dockerConfig = config
-
-    this.container.activate(container)
+    this.createContainerFromConfig(config)
+    await this.container.init()
   }
 
-  async attachContainer(container: Docker.Container) {
-    this.container = new Container(this, this._aiModelMan)
-
-    this.container.activate(container)
+  createContainerFromConfig(containerConfig: ContainerConfig) {
+    this.container = new Container(this, this._aiModelMan, containerConfig)
   }
 
   async updateEndpoint() {
-    const port = await this.port()
+    const port = this.getContainerPort()
     const endpoint = `${this._aiModelMan.ipAddress()}:${port}`
     if (this.endpoint !== endpoint) {
       this.endpoint = endpoint
@@ -463,7 +464,7 @@ export default class AiModelAsset extends Asset {
     if (!this.isRunning()) {
       this._info(`Enabling model ${this.name()}...`)
       if (!this.container) {
-        await this.createContainer()
+        await this.initContainer()
       }
       await this.container.start()
     }

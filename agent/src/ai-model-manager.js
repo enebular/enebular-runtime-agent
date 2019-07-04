@@ -8,11 +8,11 @@ import Docker from 'dockerode'
 import portfinder from 'portfinder'
 import type { Logger } from 'winston'
 import { delay } from './utils'
-import AiModelAsset from './ai-model'
-import type AgentInfoManager from './agent-info-manager'
+import AiModelAsset from './ai-model-asset'
 import type AgentManagerMediator from './agent-manager-mediator'
 import type DeviceStateManager from './device-state-manager'
 import type Config from './config'
+import type { ContainerConfig } from './container'
 
 const moduleName = 'ai-model-man'
 /**
@@ -127,7 +127,7 @@ const moduleName = 'ai-model-man'
  * An asset's Docker Container configuration details are maintained in the following
  * property:
  *
- *   - Its current Docker config (asset.dockerConfig)
+ *   - Its current Docker container config (asset.container.config)
  *
  * The asset 'current actual' statuses are:
  *
@@ -151,7 +151,6 @@ const moduleName = 'ai-model-man'
 
 export default class AiModelManager {
   _deviceStateMan: DeviceStateManager
-  _agentInfoMan: AgentInfoManager
   _log: Logger
   _docker: Docker
   _aiModelDir: string
@@ -165,7 +164,6 @@ export default class AiModelManager {
   constructor(
     deviceStateMan: DeviceStateManager,
     agentMan: AgentManagerMediator,
-    agentInfoMan: AgentInfoManager,
     config: Config,
     log: Logger
   ) {
@@ -177,7 +175,6 @@ export default class AiModelManager {
     }
 
     this._deviceStateMan = deviceStateMan
-    this._agentInfoMan = agentInfoMan
     this.agentMan = agentMan
     this._log = log
 
@@ -221,8 +218,7 @@ export default class AiModelManager {
     try {
       this._docker = new Docker()
     } catch (err) {
-      this.debug(err)
-      this.error('Docker is not installed')
+      this.error('Could not find Docker API', err.message)
       return
     }
 
@@ -253,8 +249,8 @@ export default class AiModelManager {
     const data = fs.readFileSync(this._stateAiModelsPath, 'utf8')
     const serializedModels = JSON.parse(data)
     for (const serializedModel of serializedModels) {
-      const container = this._deserializeModel(serializedModel)
-      this._models.push(container)
+      const model = this._deserializeModel(serializedModel)
+      this._models.push(model)
     }
   }
 
@@ -270,7 +266,6 @@ export default class AiModelManager {
 
     model.updateId = serializedModel.updateId
     model.config = serializedModel.config
-    model.dockerConfig = serializedModel.dockerConfig
     model.state = serializedModel.state
     model.enable = serializedModel.enable
     model.status = serializedModel.status
@@ -283,6 +278,9 @@ export default class AiModelManager {
     model.pendingConfig = serializedModel.pendingConfig
     model.updateAttemptCount = serializedModel.updateAttemptCount
     model.lastAttemptedUpdateId = serializedModel.lastAttemptedUpdateId
+    if (serializedModel.containerConfig) {
+      model.createContainerFromConfig(serializedModel.containerConfig)
+    }
 
     return model
   }
@@ -742,15 +740,12 @@ export default class AiModelManager {
    */
 
   async findFreePort() {
-    const maxUsedPort = Math.max(
-      49151,
-      ...this._models.reduce((accum, model) => {
-        if (model.dockerConfig && model.dockerConfig.port) {
-          accum.push(model.dockerConfig.port)
-        }
-        return accum
-      }, [])
-    )
+    let maxUsedPort = 49151
+    this._models.forEach(model => {
+      if (model.getContainerPort() > maxUsedPort) {
+        maxUsedPort = model.getContainerPort()
+      }
+    })
     const port = await portfinder.getPortPromise({
       port: maxUsedPort + 1
     })
@@ -760,7 +755,7 @@ export default class AiModelManager {
   async _startModels() {
     this.info('Starting models...')
     await Promise.all(
-      this._models.map(async (model, idx) => {
+      this._models.map(async model => {
         const success = await this._wakeModel(model)
         if (!success) {
           this.error(`Could not start a model ${model.name()}...`)
@@ -769,23 +764,34 @@ export default class AiModelManager {
     )
   }
 
-  getContainer(key: string): Docker.Container {
+  getDockerContainer(key: string): Docker.Container {
     return this._docker.getContainer(key)
   }
 
   async _wakeModel(model: AiModelAsset) {
+    if (model.state !== 'deployed') {
+      return true
+    }
     let success
     // Find and start container
     try {
-      this.debug('Waking up container : ', model.containerId())
-      const existingContainer = this.getContainer(model.containerId())
-      model.attachContainer(existingContainer)
-      if (!model.isEnabled()) {
-        return true
+      const containerId = model.dockerContainerId()
+      if (containerId) {
+        this.debug('Waking up container : ', containerId)
+        const existingDockerContainer = this.getDockerContainer(containerId)
+        model.container.init(existingDockerContainer)
+        if (!model.isEnabled()) {
+          return true
+        }
+        success = await model.container.start()
+      } else {
+        success = false
       }
-      success = await model.container.start()
     } catch (err) {
-      this.debug(err)
+      this.error(
+        'Could not find an existing docker container info',
+        err.message
+      )
       success = false
     }
     if (!success) {
@@ -794,6 +800,7 @@ export default class AiModelManager {
         await model.container.repair()
         success = await model.container.start()
       } catch (err) {
+        this.error('Could not repair an existing container', err.message)
         success = false
       }
     }
@@ -819,7 +826,7 @@ export default class AiModelManager {
         }
         const onFinished = (err, output) => {
           if (err) {
-            this._log.info(err)
+            this.error(err)
             reject(err)
           }
 
@@ -833,7 +840,6 @@ export default class AiModelManager {
             if (progress) {
               this.info(progress)
             }
-            count = 1
           } else {
             count++
           }
@@ -843,36 +849,34 @@ export default class AiModelManager {
     })
   }
 
-  async createContainer(config: Object): Docker.Container {
-    return this._docker.createContainer(config)
-  }
-
   async removeContainer(containerId: string): Promise<boolean> {
     try {
-      const container = this._docker.getContainer(containerId)
+      const container = this.getDockerContainer(containerId)
       await container.remove({ force: true })
       return true
     } catch (err) {
       if (err.statusCode === 404) {
-        this.error(`Container  ${containerId} does not exist`)
+        this.error(`Container ${containerId} does not exist`, err.message)
       } else {
-        this.error(`Error while removing container ${containerId}`)
+        this.error(`Error while removing container ${containerId}`, err.message)
       }
     }
     return false
   }
 
-  async createNewContainer(createOptions: Object): Docker.Container {
+  async createContainer(createOptions: ContainerConfig): Docker.Container {
     this.info('Creating container')
     const { mounts, ports, imageName, cmd, cores, maxRam } = createOptions
-    const cpus = cores > 1 ? '0' : `0-${cores - 1}`
+    const cpuPeriod = 100000
+    const quota = cores * cpuPeriod
     // pulling docker image
     await this.pullImage(imageName)
     const config = {
       HostConfig: {
         Binds: mounts,
         Memory: maxRam,
-        CpusetCpus: cpus,
+        CpuPeriod: cpuPeriod,
+        CpuQuota: quota,
         Privileged: true
       },
       Image: imageName,
@@ -889,6 +893,7 @@ export default class AiModelManager {
         config.ExposedPorts[`${port}/tcp`] = {}
       })
     }
+    this.debug(`Docker Container config`, config)
     const container = await this._docker.createContainer(config)
 
     return container

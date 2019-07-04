@@ -206,7 +206,6 @@ export default class EnebularAgent extends EventEmitter {
     this._aiModelManager = new AiModelManager(
       this._deviceStateManager,
       this._agentMan,
-      this._agentInfoManager,
       this._config,
       this._log
     )
