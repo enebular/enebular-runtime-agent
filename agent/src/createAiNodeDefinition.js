@@ -105,9 +105,14 @@ export async function createAiNodeDefinition(nodes, aiNodeDir) {
   </div>
   <div class="form-row div-handlerDesc hidden">
   <label for="text-handlerFunc"><i class="fa fa-info"></i> Description</label></div>
+  <div class="form-row">
+    <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="Name">
+  </div>
   </script>  
-  <script type="text/x-red"
-  data-help-name="enebular-ai-node"><p>enebular AI node to work with enebular AI Models<br/></p></script>`
+  <script type="text/x-red" data-help-name="enebular-ai-node">
+    <p>enebular AI node to work with enebular AI Models<br/></p>
+  </script>`
   await fsWriteFileAsync(
     path.resolve(aiNodeDir, 'nodes', `enebular-ai-node.html`),
     htmlFile
