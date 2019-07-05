@@ -107,7 +107,7 @@ export async function createAiNodeDefinition(nodes, aiNodeDir) {
   <label for="text-handlerFunc"><i class="fa fa-info"></i> Description</label></div>
   </script>  
   <script type="text/x-red"
-  data-help-name="enebular-ai-node"><p>enebular AI node to work with enebular AI models<br/></p></script>`
+  data-help-name="enebular-ai-node"><p>enebular AI node to work with enebular AI Models<br/></p></script>`
   await fsWriteFileAsync(
     path.resolve(aiNodeDir, 'nodes', `enebular-ai-node.html`),
     htmlFile

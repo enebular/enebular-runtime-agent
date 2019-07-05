@@ -17,7 +17,7 @@ import { delay } from './utils'
 
 export default class AiModelAsset extends Asset {
   _aiModelMan: AiModelManager
-  _port: string
+  _port: number | null
   container: Container
   status: Object
   statusMessage: string
@@ -273,6 +273,7 @@ export default class AiModelAsset extends Asset {
     }
 
     this._info(`Deployed model '${this.name()}'`)
+    this._port = null
 
     return true
   }

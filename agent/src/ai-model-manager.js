@@ -740,15 +740,28 @@ export default class AiModelManager {
    */
 
   async findFreePort() {
-    let maxUsedPort = 49151
+    let usedPorts = [49151]
     this._models.forEach(model => {
-      if (model.getContainerPort() > maxUsedPort) {
-        maxUsedPort = model.getContainerPort()
+      if (model.getContainerPort()) {
+        usedPorts.push(model.getContainerPort())
       }
     })
-    const port = await portfinder.getPortPromise({
-      port: maxUsedPort + 1
-    })
+    let filteredPorts
+    if (usedPorts.length > 1) {
+      usedPorts = usedPorts.sort((e1, e2) => (e1 > e2 ? 1 : -1))
+      filteredPorts = usedPorts.filter((e, i) => e + 1 !== usedPorts[i + 1])
+    } else {
+      filteredPorts = usedPorts
+    }
+    let port
+    for (let i = 0; i < filteredPorts.length; i++) {
+      port = await portfinder.getPortPromise({
+        port: filteredPorts[i] + 1
+      })
+      if (!usedPorts.includes(port)) {
+        break
+      }
+    }
     return port
   }
 
@@ -840,9 +853,8 @@ export default class AiModelManager {
             if (progress) {
               this.info(progress)
             }
-          } else {
-            count++
           }
+          count++
         }
         this._docker.modem.followProgress(stream, onFinished, onProgress)
       })
