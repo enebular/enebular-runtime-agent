@@ -7,6 +7,7 @@ import fetch from 'isomorphic-fetch'
 import objectHash from 'object-hash'
 import ProcessUtil, { type RetryInfo } from './process-util'
 import { encryptCredential, delay } from './utils'
+import { createAiNodeDefinition } from './createAiNodeDefinition'
 import type { Logger } from 'winston'
 import type LogManager from './log-manager'
 import type DeviceStateManager from './device-state-manager'
@@ -19,6 +20,7 @@ import type Config from './config'
 export type NodeREDConfig = {
   dir: string,
   dataDir: string,
+  aiNodesDir: string,
   command: string,
   killSignal: string,
   pidFile: string,
@@ -60,6 +62,7 @@ export default class NodeREDController {
   _flowStateProcessingChanges: boolean = false
   _dir: string
   _dataDir: string
+  _aiNodesDir: string
   _command: string
   _killSignal: string
   _pidFile: string
@@ -97,6 +100,7 @@ export default class NodeREDController {
     this._connectorMessenger = connectorMessenger
     this._dir = nodeRedConfig.dir
     this._dataDir = nodeRedConfig.dataDir
+    this._aiNodesDir = nodeRedConfig.aiNodesDir
     this._command = nodeRedConfig.command
     this._killSignal = nodeRedConfig.killSignal
     this._pidFile = nodeRedConfig.pidFile
@@ -546,8 +550,7 @@ export default class NodeREDController {
               await this.fetchAndUpdateFlow(downloadUrl)
               if (this._isFlowEnabled()) {
                 await this._restartService()
-              }
-              else {
+              } else {
                 this.info('Skipped Node-RED restart since flow is disabled')
               }
               this.info(`Deployed flow '${pendingAssetId}'`)
@@ -629,6 +632,10 @@ export default class NodeREDController {
 
   _getDataDir() {
     return this._dataDir
+  }
+
+  _getAiNodesDir() {
+    return this._aiNodesDir
   }
 
   _isFlowEnabled(): boolean {
@@ -793,6 +800,50 @@ export default class NodeREDController {
         })
       )
     }
+    if (flowPackage.handlers) {
+      updates.push(
+        new Promise(async (resolve, reject) => {
+          const aiNodesDir = this._getAiNodesDir()
+          createAiNodeDefinition(flowPackage.handlers, aiNodesDir)
+            .then(() => resolve())
+            .catch(err => reject(err))
+        })
+      )
+    }
+    updates.push(
+      new Promise(async (resolve, reject) => {
+        const aiPackageJSONFilePath = path.join(
+          this._getDataDir(),
+          'node-red-enebular-ai-nodes',
+          'package.json'
+        )
+        let nodeType = 'default'
+        if (flowPackage.handlers) {
+          nodeType = 'nodes'
+        }
+        const aiPackageJSON = JSON.stringify(
+          {
+            name: 'enebular-ai-contrib',
+            version: '0.0.1',
+            description: 'A node to work with enebular AI Models',
+            dependencies: {
+              request: '^2.88.0'
+            },
+            keywords: ['node-red'],
+            'node-red': {
+              nodes: {
+                'enebular-ai-node': `./${nodeType}/enebular-ai-node.js`
+              }
+            }
+          },
+          null,
+          2
+        )
+        fs.writeFile(aiPackageJSONFilePath, aiPackageJSON, err =>
+          err ? reject(err) : resolve()
+        )
+      })
+    )
     if (flowPackage.packages) {
       updates.push(
         new Promise((resolve, reject) => {
@@ -809,6 +860,12 @@ export default class NodeREDController {
             flowPackage.packages['node-red-contrib-enebular'] =
               'file:../../node-red-contrib-enebular'
           }
+          if (
+            Object.keys(flowPackage.packages).includes('enebular-ai-contrib')
+          ) {
+            delete flowPackage.packages['enebular-ai-contrib']
+          }
+
           const packageJSON = JSON.stringify(
             {
               name: 'enebular-agent-dynamic-deps',

@@ -1,8 +1,8 @@
 /* @flow */
-import fs from 'fs'
 import FormData from 'form-data'
-import { fetchJSON, postJSON } from './utils'
+import fs from 'fs'
 import type { Logger } from 'winston'
+import { fetchJSON, postJSON } from './utils'
 
 const moduleName = 'agent-man'
 
@@ -134,6 +134,24 @@ export default class AgentManagerMediator {
       return res.url
     } catch (err) {
       throw new Error('Internal file data url request failed: ' + err.message)
+    }
+  }
+
+  async getAiModelWrapper(params: Object) {
+    if (!this._accessRequirementsConfigured()) {
+      throw new Error('Access requirements not configured')
+    }
+    this.debug('Getting ai model wrapper url...')
+    const url = `${this._baseUrl}/device/assets/generate-ai-wrapper`
+    try {
+      const res = await postJSON(url, JSON.stringify({ params: params }), {
+        headers: {
+          Authorization: `Bearer ${this._accessToken}`
+        }
+      })
+      return res
+    } catch (err) {
+      throw new Error('Ai model wrapper url request failed: ' + err.message)
     }
   }
 }
