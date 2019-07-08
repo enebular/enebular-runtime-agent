@@ -53,16 +53,9 @@ module.exports = {
     )
     Helper.addFileCopy(
       migration,
-      'enebular-agent docker data file',
-      `${context['portBasePath']}/.enebular-docker.json`,
-      `${context['newPortBasePath']}/.enebular-docker.json`,
-      true // might not be created yet
-    )
-    Helper.addFileCopy(
-      migration,
-      'enebular-agent port data file',
-      `${context['portBasePath']}/.enebular-port.json`,
-      `${context['newPortBasePath']}/.enebular-port.json`,
+      'enebular-agent AI Models data file',
+      `${context['portBasePath']}/.enebular-ai-models.json`,
+      `${context['newPortBasePath']}/.enebular-ai-models.json`,
       true // might not be created yet
     )
     if (context.port == 'awsiot') {

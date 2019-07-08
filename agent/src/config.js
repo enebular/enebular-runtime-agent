@@ -109,7 +109,7 @@ export default class Config {
         userExpose: true
       },
       ENEBULAR_AI_MODELS_STATE_PATH: {
-        value: p.resolve(portBasePath, '.enebular-docker.json'),
+        value: p.resolve(portBasePath, '.enebular-ai-models.json'),
         description: 'Ai Models state file path',
         userExpose: true
       },
