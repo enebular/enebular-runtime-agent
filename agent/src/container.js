@@ -8,7 +8,6 @@ import { delay } from './utils'
 export type ContainerConfig = {
   cmd: Array<string>,
   command: Array<string>,
-  workDir: string,
   mounts: Array<string>,
   ports: Array<number>,
   port: number,

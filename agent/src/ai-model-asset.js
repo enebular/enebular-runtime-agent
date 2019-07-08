@@ -421,7 +421,6 @@ export default class AiModelAsset extends Asset {
     const config = {
       cmd: ['/bin/bash'],
       command: ['/bin/bash', '-c', command],
-      workDir: this._containerWrapperDirPath(),
       mounts: [`${this._containerMountPointPath()}:/mount`],
       ports: [port],
       port: port,
