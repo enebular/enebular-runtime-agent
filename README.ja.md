@@ -10,6 +10,7 @@ enebular-agent には次の主要機能があります。
 - Node-RED インスタンスの管理と enebular からデプロイされたフローの実行
 - enebular からのファイルデプロイと実行
 - enebular へのステータス通知およびログ送信
+- enebular editor のサポート
 
 enebular は、サードパーティの IoT プラットフォーム接続を介して enebular-agent と通信します。
 
@@ -61,8 +62,17 @@ enebular-agent を利用するには、利用する外部サービスに合わ�
 現在、以下のポートがあります。
 
 - **AWS IoT** - AWS IoT と連携して利用します
-- **Local** - ローカルにある他のプログラムと併せて利用します
-  - enebular-agent を Pelion Device Management と連携して利用する場合に[enebular-agent Mbed Cloud Connector](https://github.com/enebular/enebular-runtime-agent-mbed-cloud-connector)と併せて利用します。
+- **Pelion** - Arm Pelion と連携して利用します
+
+## enebular editor との連携利用
+
+enebular-agent を enebular editor と連携して利用するには、`--dev-mode`オプションを指定して enebular-agent を開発者用モードで起動する必要があります。このオプションは、下記「クイックセットアップ」の項で説明されているインストール用のスクリプトを利用する場合にも、 enebular-agent を手動で起動する場合にも指定することができます。
+
+## アップデート
+
+enebular-agentのアップデート方法の詳細情報については、アップデータの readme ファイルを参照してください。
+
+- [Updater README](tools/updater/README.ja.md)
 
 ## クイックセットアップ
 
@@ -83,6 +93,11 @@ enebular-agent を AWS IoT と一緒に使用して、新しいモノを自動�
 - AWS IoT のリージョン
 - 追加するモノの名前
 
+enebular-agent を Arm Pelion と一緒に使用する場合、以下のいずれかが必要になります。
+
+- Pelionの開発者用認証情報ファイル
+- Pelionのファクトリー用認証情報palディレクトリ
+
 ### 基本的な利用方法
 
 インストールスクリプトは、次のコマンドで開発用の PC 上の SSH を使用してリモートのデバイスで実行します。
@@ -99,7 +114,13 @@ ssh -t <user>@<device-ip-address> "wget -qO- https://enebular.com/agent-install 
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s"
 ```
 
-上記のコマンドで enebular-agent の AWS IoT ポートがインストールされますが、必要な接続情報がまだ設定されていないため、起動することが出来ません。 新しい AWS IoT の*モノ*を自動的に追加して利用したい場合は、上記のコマンドの代わりに下記の「AWS IoT の Thing 自動作成とセットアップ」の説明に従ってください。
+AWS IoT以外のポートをインストールするには、`--port`オプションを指定します。Pelionのポートをインストールする場合のコマンドは次のようになります。
+
+```sh
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion"
+```
+
+上記のコマンドで enebular-agent がインストールされますが、必要な接続情報がまだ設定されていないため、起動することが出来ません。 新しい AWS IoT の*モノ*を自動的に追加して利用したい場合は、上記のコマンドの代わりに下記の「AWS IoT の Thing 自動作成とセットアップ」の説明に従ってください。また、 enebular-agent の Pelion ポートを利用して必要となる認証情報をインストールしたい場合は、下記の「Pelion の認証情報インストール」の説明に従ってください。
 
 手動で接続情報を設定したい場合、ポートに必要なファイルを適切な場所と正しいユーザー権限で追加してから、enebular-agent を再起動しないといけません。詳細については、下記の「手動セットアップ」の項を参照してください。
 
@@ -120,26 +141,54 @@ enebular-agent の AWS IoT ポートをインストールし、新しい AWS IoT
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
 ```
 
+インストールスクリプトに以下の AWS サービスのアクセス権限が必要になります。
+
+- **IoT Core** - モノとその関連の証明書や、ポリシー、ルールの追加のために利用します
+- **IAM** - ルールのアクションで使用されるロールの追加のために利用します
+
+### Pelion の接続モード選択と認証情報インストール
+
+enebular-agent の Pelion ポートをインストールするには、`--port`オプションで`pelion`を設定する必要があります。
+
+Pelion の接続モードがデフォルトで開発者用モードになります。ファクトリーモードは`--mbed-cloud-mode`オプションで`factory`を設定して選択することができます。
+
+Pelion ポートで必要となる認証情報を先にデバイスに転送してから、転送先を以下のオプションのいずれかで設定する必要があります。
+
+```sh
+--mbed-cloud-dev-cred=<Pelionの開発者用認証情報ファイルのパス>
+--mbed-cloud-pal=<Pelionのファクトリー用認証情報palディレクトリのパス>
+```
+
+Pelionの接続モードに開発者用モードを選択した場合に`--mbed-cloud-dev-cred`オプションで開発者用の認証情報のパス、ファクトリーモードを選択した場合に`--mbed-cloud-pal`オプションでファクトリー用の認証情報（palディレクトリ）のパスを設定します。
+
+例えば、`pi` ユーザと `192.168.1.125` の IP アドレスを持つ Raspberry Pi デバイスに Pelion の enebular-agent ポートを開発者用の認証情報と一緒にインストールする場合のコマンドは次のようになります。
+
+```sh
+scp mbed_cloud_dev_credentials.c pi@192.168.1.125:/tmp/
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-dev-cred=/tmp/mbed_cloud_dev_credentials.c"
+```
+
 ### 確認方法
 
 スクリプトが正常に完了すると、次のように処理結果のレポートが表示されます。
 
 ```
  enebular-agent has been successfully installed ✔
- Version: <version>
- Location: <directory>
- User: enebular
- AWS IoT Thing <thing-name> has been created.
+   - Version: <version>
+   - Location: <directory>
+   - User: enebular
+   - Service name: enebular-agent-enebular
+
  enebular-agent is running as a system service.
  To check the status of agent, run the following command on the target device:
-   sudo journalctl -ex -u enebular-agent-<user>.service
+   sudo journalctl -ex -u enebular-agent-enebular.service
 ```
 
 ### 詳細情報
 
 上記以外のオプションなどの詳細情報については、インストールスクリプトの readme ファイルを参照してください。
 
-- [インストールスクリプトの README](tools/install/README.md)
+- [インストールスクリプトの README](tools/install/README.ja.md)
 
 ## 手動セットアップ
 
@@ -152,7 +201,7 @@ enebular-agent を実行するには、利用する IoT プラットフォーム
 必要なモジュールと接続情報は、各 IoT プラットフォームのポートによって異なります。enebular-agent の設定と実行の詳細については、各ポートの readme ファイルを参照してください。
 
 - [AWS IoT ポートの README](ports/awsiot/README.ja.md)
-- [Local ポートの README](ports/local/README.ja.md)
+- [Pelion ポートの README](ports/pelion/README.ja.md)
 
 ### 設定方法
 

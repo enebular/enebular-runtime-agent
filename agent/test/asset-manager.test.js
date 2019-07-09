@@ -97,12 +97,6 @@ test.serial(
     await waitAssetProcessing(agent, 0, 10000)
 
     console.log(JSON.stringify(updateReq, null, 4))
-    // should correctly send 5 reported state since it will retry twice.
-    t.is(updateReq[1].state.state, 'deployPending')
-    t.is(updateReq[2].state.state, 'deploying')
-    t.is(updateReq[3].state.state, 'deployPending')
-    t.is(updateReq[4].state.state, 'deploying')
-    t.is(updateReq[5].state.state, 'deployFail')
 
     const state = JSON.parse(fs.readFileSync(tmpAssetStatePath, 'utf8'))
     // console.log(JSON.stringify(state, null, 4))
@@ -149,13 +143,6 @@ test.serial(
     agent = ret.agent
 
     await waitAssetProcessing(agent, 0, 10000)
-
-    // should correctly send 5 reported state since it will retry twice.
-    t.is(updateReq[1].state.state, 'deployPending')
-    t.is(updateReq[2].state.state, 'deploying')
-    t.is(updateReq[3].state.state, 'deployPending')
-    t.is(updateReq[4].state.state, 'deploying')
-    t.is(updateReq[5].state.state, 'deployFail')
 
     const state = JSON.parse(fs.readFileSync(tmpAssetStatePath, 'utf8'))
     console.log(JSON.stringify(state, null, 4))
@@ -262,11 +249,11 @@ test.serial(
 
     await waitAssetProcessing(agent, 2000, 5000)
 
-    t.is(ret.updateRequests[0].state.state, 'deployPending')
-    t.is(ret.updateRequests[1].state.state, 'removing')
-    t.is(ret.updateRequests[2].state.state, 'deploying')
-    t.is(ret.updateRequests[3].state.state, 'deployed')
-    t.true(fs.existsSync(ret.assetDataPath + '/dst/' + newAssetName))
+    t.is(ret.reportedStates.state.assets.assets[newAssetId].state, 'deployed')
+    t.is(
+      ret.reportedStates.state.assets.assets[newAssetId].updateId,
+      updateId
+    )
     const state = JSON.parse(fs.readFileSync(ret.assetStatePath, 'utf8'))
     t.is(state[0].id, newAssetId)
     t.is(state[0].state, 'deployed')
@@ -306,9 +293,7 @@ test.serial(
 
     await waitAssetProcessing(agent, 2000, 5000)
 
-    t.is(ret.updateRequests[0].state.state, 'removePending')
-    t.is(ret.updateRequests[1].state.state, 'removing')
-    t.is(ret.updateRequests[2].op, 'remove')
+    t.is(ret.reportedStates.state.assets.assets[ret.assets[0].id], undefined)
     t.false(fs.existsSync(ret.assetDataPath + '/dst/' + newAssetName))
     const state = JSON.parse(fs.readFileSync(ret.assetStatePath, 'utf8'))
     t.true(state.length === 0)
@@ -349,12 +334,9 @@ test.serial('AssetManager.8: Agent handles removing asset failure', async t => {
 
   await waitAssetProcessing(agent, 2000, 5000)
 
-  t.is(ret.updateRequests[0].state.state, 'removePending')
-  t.is(ret.updateRequests[1].state.state, 'removing')
-  t.is(ret.updateRequests[2].state.state, 'removeFail')
+  t.is(ret.reportedStates.state.assets.assets[ret.assets[0].id].state, 'removeFail')
   t.true(fs.existsSync(newAssetPath))
   const state = JSON.parse(fs.readFileSync(ret.assetStatePath, 'utf8'))
-  // console.log(JSON.stringify(state, null, 2))
   t.is(state[0].id, newAssetId)
   t.is(state[0].state, 'removeFail')
 
@@ -386,8 +368,6 @@ test.serial(
       type: 'desired',
       op: 'remove',
       path: 'assets.assets.nonexistent',
-      meta: desiredState.meta,
-      state: desiredState.state.assets.assets[newAssetId]
     })
 
     await waitAssetProcessing(agent, 1000, 5000)

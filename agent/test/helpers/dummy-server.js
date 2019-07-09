@@ -45,7 +45,7 @@ export default class DummyServer extends EventEmitter {
     app.post(DummyServerConfig.authenticationURL, (req, res) => {
       server.emit('authRequest', req.body)
       console.log('auth request', req.body)
-      res.sendStatus(req.body.connectionId === 'return_bad_request' ? 400 : 200)
+      res.status(req.body.connectionId === 'return_bad_request' ? 400 : 200).send({})
     })
     app.post(
       DummyServerConfig.recordLogsURL,
@@ -53,12 +53,12 @@ export default class DummyServer extends EventEmitter {
       (req, res) => {
         // console.log("log:", req.file);
         server.emit('recordLogs', req.file)
-        res.sendStatus(this._logReturnBadRequest ? 400 : 200)
+        res.status(this._logReturnBadRequest ? 400 : 200).send({})
       }
     )
     app.post(DummyServerConfig.notifyStatusURL, (req, res) => {
       server.emit('notifyStatus', req.body)
-      res.sendStatus(200)
+      res.status(200).send({})
     })
     app.post(DummyServerConfig.deviceStateGetURL, (req, res) => {
       server.emit('deviceStateGet', req.body)
@@ -117,7 +117,12 @@ export default class DummyServer extends EventEmitter {
         creds: cred,
         packages: req.query.dependencies
           ? { 'node-red-node-pi-gpiod': '0.0.10' }
-          : {}
+          : {},
+        editSession: req.query.edit 
+        ? {
+          ipAddress: '0.0.0.0',
+          sessionToken: 'token'
+        } : {}
       })
     })
     app.get(DummyServerConfig.credsURL, (req, res) => {

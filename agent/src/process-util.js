@@ -1,6 +1,14 @@
 /* @flow */
 import fs from 'fs'
 
+const maxRetryCount = 5
+const maxRetryCountResetInterval = 20
+
+export type RetryInfo = {
+  retryCount: number,
+  lastRetryTimestamp: number
+}
+
 export default class ProcessUtil {
   static processIsAlive(pid: number) {
     try {
@@ -53,5 +61,16 @@ export default class ProcessUtil {
       console.error(err)
     }
     return ret
+  }
+
+  static shouldRetryOnCrash(retryInfo: RetryInfo): boolean {
+    const now = Date.now()
+    /* Detect continuous crashes (exceptions happen within maxRetryCountResetInterval seconds). */
+    retryInfo.retryCount =
+      retryInfo.lastRetryTimestamp + maxRetryCountResetInterval * 1000 > now
+        ? retryInfo.retryCount + 1
+        : 0
+    retryInfo.lastRetryTimestamp = now
+    return retryInfo.retryCount <= maxRetryCount
   }
 }

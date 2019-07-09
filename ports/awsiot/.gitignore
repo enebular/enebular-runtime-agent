@@ -16,6 +16,9 @@ results
 
 /lib
 assets/
+ai-models/
+certs/
+config.json
 
 npm-debug.log
 node_modules
@@ -24,4 +27,8 @@ node_modules
 .DS_Store
 .enebular-config.json
 .enebular-assets.json
+.enebular-ai-models.json
+.enebular-port.json
+.enebular-flow.json
+
 

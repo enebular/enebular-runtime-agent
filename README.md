@@ -10,6 +10,7 @@ enebular-agent has the following key functionality.
 - Management of a Node-RED instance, and deployment and execution of flows sent from enebular to that.
 - Deployment and execution of files sent from enebular.
 - Status and log reporting to enebular.
+- Support for the enebular editor.
 
 enebular communicates with enebular-agent via a third-party IoT platform connection.
 
@@ -61,8 +62,17 @@ To use enebular-agent you select the appropriate port for the IoT platform conne
 The current ports are:
 
 - **AWS IoT** - For use with AWS IoT
-- **Local** - For use together other local programs
-  - This is used together with the [enebular-agent Mbed Cloud Connector](https://github.com/enebular/enebular-runtime-agent-mbed-cloud-connector) when using enebular-agent with Pelion Device Management
+- **Pelion** - For use with Arm Pelion
+
+## Using with enebular editor
+
+To use enebular-agent with the enebular editor, enebular-agent must be started in developer mode by specifying the `--dev-mode` option. This option can be specified both when using the install script in the "Quick Setup" section and when starting enebular-agent manually.
+
+## Updating
+
+For information on updating enebular-agent to a newer version, please refer to the updater readme file.
+
+- [Updater README](tools/updater/README.md)
 
 ## Quick Setup
 
@@ -83,6 +93,11 @@ If you are using enebular-agent with AWS IoT and you'd like to automatically add
 - Your AWS IoT region
 - A name for the new _thing_
 
+If you are using enebular-agent with Arm Pelion, you'll also need to have one of the following.
+
+- Pelion developer credentials c file
+- Pelion factory pal directory
+
 ### Basic Usage
 
 The install script can be run on a remote device by using SSH on your development PC with the following command pattern.
@@ -99,7 +114,13 @@ For example, to run the script on a remote Raspberry Pi with the default `pi` us
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s"
 ```
 
-This will install the AWS IoT enebular-agent port, but as it will be missing the required connection info it will not actually run. If you'd like to automatically add a new AWS IoT _thing_ to use, then follow the instructions in the "Automatic AWS IoT Thing Creation and Setup" section below instead.
+To install a port other than AWS IoT specify the `--port` option. If installing the Pelion port, the command would be as follows.
+
+```sh
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion"
+```
+
+This will install enebular-agent, but as it will be missing the required connection info it will not actually run. If you'd like to automatically add a new AWS IoT _thing_ to use, then follow the instructions in the "Automatic AWS IoT Thing Creation and Setup" section below instead. If you're using the Pelion enebular-agent port and you'd like to install the required credentials, then follow the instructions in the "Pelion Credentials Install" section.
 
 If you'd like to set up the connection info manually, you'll need to add the required files for the port (in the correct location and with the correct user permissions) as specified in the port's readme file and then restart enebular-agent. See the "Manual Setup" section further below for more details on this.
 
@@ -120,19 +141,47 @@ For example, to install the AWS IoT port and create an AWS IoT thing named `rasp
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --aws-iot-thing-name=raspberry-pi --aws-access-key-id=<my-key-id> --aws-secret-access-key=<my-access-key> --aws-iot-region=<my-region>"
 ```
 
+The install script requires access to the following AWS services.
+
+- **IoT Core** - for adding the Thing and associated certificates, policies and rules
+- **IAM** - for the creation of roles used with rule actions
+
+### Pelion Connection Mode Selection and Credentials Install
+
+To install the Pelion enebular-agent port, the `--port` option must be set to `pelion`.
+
+By default developer mode is selected for the connection mode. Factory mode can be selected by setting the `--mbed-cloud-mode` option to `factory`.
+
+The required Pelion credentials must be copied to the device first and then their location specified with one of the two following options.
+
+```sh
+--mbed-cloud-dev-cred=<Path of the Pelion developer credentials c file>
+--mbed-cloud-pal=<Path of the Pelion factory pal directory>
+```
+
+Use `--mbed-cloud-dev-cred` to specify the developer credentials in developer mode and `--mbed-cloud-pal` to specify the pal directory in factory mode.
+
+For example, to install the Pelion port with developer credentials on a Raspberry Pi device (with the `pi` user and IP address of `192.168.1.125`), the commands would be similar to the following.
+
+```sh
+scp mbed_cloud_dev_credentials.c pi@192.168.1.125:/tmp/
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-dev-cred=/tmp/mbed_cloud_dev_credentials.c"
+```
+
 ### Confirmation
 
 Once the script has completed successfully, it will display a report similar to the following.
 
 ```
  enebular-agent has been successfully installed ✔
- Version: <version>
- Location: <directory>
- User: enebular
- AWS IoT Thing <thing-name> has been created.
+   - Version: <version>
+   - Location: <directory>
+   - User: enebular
+   - Service name: enebular-agent-enebular
+
  enebular-agent is running as a system service.
  To check the status of agent, run the following command on the target device:
-   sudo journalctl -ex -u enebular-agent-<user>.service
+   sudo journalctl -ex -u enebular-agent-enebular.service
 ```
 
 ### More Details
@@ -152,7 +201,7 @@ To run enebular-agent you need to install the Node.js modules required by the Io
 The required modules and connection configuration differs for each IoT platform port. Please see the readme files of each port for details on how to set up and run the enebular-agent.
 
 - [AWS IoT Port README](ports/awsiot/README.md)
-- [Local Port README](ports/local/README.md)
+- [Pelion Port README](ports/pelion/README.md)
 
 ### Configuration
 

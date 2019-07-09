@@ -1,0 +1,16 @@
+{
+  "name": "enebular-ai-contrib",
+  "version": "0.0.1",
+  "description": "A node to work with enebular AI Models",
+  "dependencies": {
+    "request": "^2.88.0"
+  },
+  "keywords": [
+    "node-red"
+  ],
+  "node-red": {
+    "nodes": {
+      "enebular-ai-node": "./default/enebular-ai-node.js"
+    }
+  }
+}

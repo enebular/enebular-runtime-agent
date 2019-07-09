@@ -15,6 +15,9 @@ let canRegisterThingShadow: boolean = false
 let thingShadowRegistered: boolean = false
 let awsIotConnected: boolean = false
 let operationResultHandlers = {}
+let initRetryInterval = 2 * 1000
+let updateRequestIndex = 0
+let shutdownRequested = false
 
 function log(level: string, msg: string, ...args: Array<mixed>) {
   args.push({ module: MODULE_NAME })
@@ -72,22 +75,58 @@ function createThingShadowReportedAgentInfo(info) {
   })
 }
 
-async function updateThingShadow(state) {
+async function _updateThingShadow(state, retryInterval, index) {
+  const disableRetry = retryInterval === 0
+  retryInterval = Math.min(retryInterval, 4 * 60 * 60 * 1000)
   return new Promise((resolve, reject) => {
-    let token = thingShadow.update(thingName, state)
+    const _state = Object.assign({}, state)
+    let token = thingShadow.update(thingName, _state)
     if (token === null) {
-      error('Shadow update request failed')
-      resolve()
+      if (shutdownRequested || disableRetry) {
+        error(`Shadow update request failed`)
+        resolve()
+      } else {
+        error(
+          `Shadow update request failed, retrying update ${index} (in ${retryInterval /
+            1000}sec)...`
+        )
+        setTimeout(async () => {
+          await _updateThingShadow(state, retryInterval * 2, index)
+          resolve()
+        }, retryInterval)
+      }
     } else {
       debug(`Shadow update requested (${token})`)
       operationResultHandlers[token] = (timeout, stat) => {
+        info('Shadow update result, timeout:' + timeout + ' state:' + stat)
         if (timeout || stat !== 'accepted') {
-          error('Shadow update failed')
+          if (shutdownRequested || disableRetry) {
+            error(`Shadow update failed`)
+            resolve()
+          } else {
+            error(
+              `Shadow update failed, retrying update ${index} (in ${retryInterval /
+                1000}sec)...`
+            )
+            setTimeout(async () => {
+              await _updateThingShadow(state, retryInterval * 2, index)
+              resolve()
+            }, retryInterval)
+          }
+        } else {
+          resolve()
         }
-        resolve()
       }
     }
   })
+}
+
+async function updateThingShadow(state) {
+  return _updateThingShadow(state, 0, updateRequestIndex++)
+}
+
+async function updateThingShadowRetry(state) {
+  return _updateThingShadow(state, initRetryInterval, updateRequestIndex++)
 }
 
 async function updateThingShadowReportedRoot(reportedState) {
@@ -102,7 +141,7 @@ async function updateThingShadowReportedAwsIotConnectedState(
       connected ? 'connected' : 'disconnected'
     }`
   )
-  return updateThingShadow(
+  return updateThingShadowRetry(
     createThingShadowReportedAwsIotConnectedState(connected)
   )
 }
@@ -112,7 +151,7 @@ async function updateThingShadowReportedAgentInfo() {
     type: 'enebular-agent',
     v: agentVer
   }
-  return updateThingShadow(createThingShadowReportedAgentInfo(info))
+  return updateThingShadowRetry(createThingShadowReportedAgentInfo(info))
 }
 
 function handleThingShadowRegisterStateChange(registered: boolean) {
@@ -173,6 +212,9 @@ function setupThingShadow(config: AWSIoTConfig) {
     payload: JSON.stringify(willPayload)
   }
   const shadow = awsIot.thingShadow(config)
+  const toDeviceTopic = `enebular/things/${thingName}/msg/to_device`
+
+  shadow.subscribe(toDeviceTopic)
 
   shadow.on('connect', () => {
     info('Connected to AWS IoT')
@@ -231,7 +273,11 @@ function setupThingShadow(config: AWSIoTConfig) {
   })
 
   shadow.on('message', (topic, payload) => {
-    debug('AWS IoT message', topic, payload)
+    if (topic === toDeviceTopic) {
+      connector.sendCtrlMessage(JSON.parse(payload))
+    } else {
+      debug('AWS IoT message', topic, payload)
+    }
   })
 
   shadow.on('delta', async (thingName, stateObject) => {
@@ -309,6 +355,16 @@ function onConnectorInit() {
     updateThingShadowRegisterState()
   })
 
+  agent.on('connectorCtrlMessageSend', msg => {
+    thingShadow.publish(
+      `enebular/things/${thingName}/msg/from_device`,
+      JSON.stringify(msg),
+      {
+        qos: 1
+      }
+    )
+  })
+
   connector.updateActiveState(true)
   connector.updateRegistrationState(true, thingName)
 
@@ -322,10 +378,11 @@ async function startup() {
     connector: connector
   })
 
-  await agent.startup()
+  return agent.startup()
 }
 
 async function shutdown() {
+  shutdownRequested = true
   await agent.shutdown()
   if (awsIotConnected) {
     canRegisterThingShadow = false
@@ -340,17 +397,23 @@ async function exit() {
 }
 
 if (require.main === module) {
-  startup()
   process.on('SIGINT', () => {
     exit()
   })
   process.on('SIGTERM', () => {
     exit()
   })
-  process.on('uncaughtException', err => {
-    console.error(`Uncaught exception: ${err.stack}`)
-    process.exit(1)
-  })
+
+  startup()
+    .then(ret => {
+      if (!ret) {
+        process.exit(1)
+      }
+    })
+    .catch(err => {
+      console.error(`Agent startup failed: ${err}`)
+      process.exit(1)
+    })
 }
 
 export { startup, shutdown }

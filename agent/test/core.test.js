@@ -1,6 +1,6 @@
 /* @flow */
 import test from 'ava'
-import fs from 'fs'
+import fs from 'fs-extra'
 import path from 'path'
 import jwt from 'jsonwebtoken'
 import { Server } from 'net'
@@ -27,7 +27,7 @@ let http: Server
 
 test.before(async t => {
   process.env.ENEBULAR_TEST = true
-  process.env.DEBUG = 'info'
+  process.env.DEBUG = 'debug'
   server = new DummyServer()
   http = await server.start(DummyServerPort)
 })
@@ -39,7 +39,6 @@ test.after(t => {
 test.afterEach.always('cleanup listener', t => {
   server.removeAllListeners('authRequest')
   server.removeAllListeners('recordLogs')
-  server.removeAllListeners('notifyStatus')
 })
 
 test.afterEach.always('cleanup', async t => {
@@ -183,48 +182,10 @@ test.serial(
 )
 
 test.serial(
-  'Core.5: Agent reports status when status changed to authenticated',
-  async t => {
-    let notifyStatusReceived = false
-    server.on('notifyStatus', req => {
-      notifyStatusReceived = true
-    })
-
-    const ret = await createAuthenticatedAgent(
-      t,
-      server,
-      Utils.addNodeRedPortToConfig({}, NodeRedPort),
-      DummyServerPort
-    )
-    agent = ret.agent
-
-    t.true(
-      await polling(
-        () => {
-          return agent._monitoringActive
-        },
-        MonitoringActiveDelay,
-        500,
-        3000
-      )
-    )
-    t.true(
-      await polling(
-        () => {
-          return notifyStatusReceived
-        },
-        0,
-        500,
-        5000
-      )
-    )
-  }
-)
-
-test.serial(
-  'Core.6: Agent enables sending log when status changed to authenticated',
+  'Core.5: Agent enables sending log when status changed to authenticated',
   async t => {
     let recordLogsReceived = false
+    let tmpLogCacheDir = '/tmp/enebular-log-cache-' + Utils.randomString()
     server.on('recordLogs', () => {
       console.log('recordLogs received.')
       recordLogsReceived = true
@@ -233,7 +194,9 @@ test.serial(
     const ret = await createAuthenticatedAgent(
       t,
       server,
-      Utils.addNodeRedPortToConfig({}, NodeRedPort),
+      Utils.addNodeRedPortToConfig({
+        ENEBULAR_ENEBULAR_LOG_CACHE_PATH: tmpLogCacheDir
+      }, NodeRedPort),
       DummyServerPort
     )
     agent = ret.agent
@@ -262,15 +225,17 @@ test.serial(
         5000
       )
     )
+    fs.removeSync(tmpLogCacheDir)
   }
 )
 
 test.serial(
-  'Core.7: Agent receives status notification periodically - fast',
+  'Core.6: Agent sends log periodically - fast',
   async t => {
-    let notifyStatusReceived = 0
-    server.on('notifyStatus', req => {
-      notifyStatusReceived++
+    let recordLogReceived = 0
+    let tmpLogCacheDir = '/tmp/enebular-log-cache-' + Utils.randomString()
+    server.on('recordLogs', req => {
+      recordLogReceived++
     })
 
     const ret = await createAuthenticatedAgent(
@@ -278,6 +243,7 @@ test.serial(
       server,
       Utils.addNodeRedPortToConfig(
         {
+          ENEBULAR_ENEBULAR_LOG_CACHE_PATH: tmpLogCacheDir,
           ENEBULAR_MONITOR_INTERVAL_FAST: 1,
           ENEBULAR_MONITOR_INTERVAL_FAST_PERIOD: 5
         },
@@ -299,82 +265,31 @@ test.serial(
     )
 
     const tolerance = 500
-    notifyStatusReceived = 0
-    t.true(
-      await polling(
-        () => {
-          return notifyStatusReceived === 1
-        },
-        0,
-        100,
-        1000 + tolerance
+    for (let i = 0; i < 4; i++) {
+      recordLogReceived = 0
+      t.true(
+        await polling(
+          () => {
+            return recordLogReceived === 1
+          },
+          0,
+          100,
+          1000 + tolerance
+        )
       )
-    )
-    notifyStatusReceived = 0
-    t.true(
-      await polling(
-        () => {
-          return notifyStatusReceived === 1
-        },
-        0,
-        100,
-        1000 + tolerance
-      )
-    )
-    notifyStatusReceived = 0
-    t.true(
-      await polling(
-        () => {
-          return notifyStatusReceived === 1
-        },
-        0,
-        100,
-        1000 + tolerance
-      )
-    )
-    notifyStatusReceived = 0
-    t.true(
-      await polling(
-        () => {
-          return notifyStatusReceived === 1
-        },
-        0,
-        100,
-        1000 + tolerance
-      )
-    )
-    notifyStatusReceived = 0
-    t.true(
-      await polling(
-        () => {
-          return notifyStatusReceived === 1
-        },
-        0,
-        100,
-        1000 + tolerance
-      )
-    )
-    notifyStatusReceived = 0
-    t.true(
-      await polling(
-        () => {
-          return notifyStatusReceived === 0
-        },
-        2000,
-        100,
-        1000
-      )
-    )
+    }
+    fs.removeSync(tmpLogCacheDir)
   }
 )
 
 test.serial(
-  'Core.8: Agent receives status notification periodically - normal',
+  'Core.7: Agent sends log periodically - normal',
   async t => {
-    let notifyStatusReceived = 0
+    let recordLogReceived = 0
     let lastNotifyTime
-    server.on('notifyStatus', req => {
-      notifyStatusReceived++
+    let tmpLogCacheDir = '/tmp/enebular-log-cache-' + Utils.randomString()
+    server.on('recordLogs', req => {
+      recordLogReceived++
       if (lastNotifyTime)
         console.log('interval to last notify: ' + (Date.now() - lastNotifyTime))
       lastNotifyTime = Date.now()
@@ -385,8 +300,9 @@ test.serial(
       server,
       Utils.addNodeRedPortToConfig(
         {
+          ENEBULAR_ENEBULAR_LOG_CACHE_PATH: tmpLogCacheDir,
           ENEBULAR_MONITOR_INTERVAL_FAST: 2,
-          ENEBULAR_MONITOR_INTERVAL_FAST_PERIOD: 4,
+          ENEBULAR_MONITOR_INTERVAL_FAST_PERIOD: 3,
           ENEBULAR_MONITOR_INTERVAL_NORMAL: 6
         },
         NodeRedPort
@@ -406,12 +322,12 @@ test.serial(
       )
     )
 
-    notifyStatusReceived = 0
-    const tolerance = 1000
+    recordLogReceived = 0
+    let tolerance = 1000
     t.true(
       await polling(
         () => {
-          return notifyStatusReceived === 1
+          return recordLogReceived === 1
         },
         0,
         100,
@@ -419,51 +335,32 @@ test.serial(
       )
     )
 
-    notifyStatusReceived = 0
-    t.true(
-      await polling(
-        () => {
-          return notifyStatusReceived === 1
-        },
-        0,
-        100,
-        2000 + tolerance
+    tolerance = 2000
+    for (let i = 0; i < 2; i++) {
+      recordLogReceived = 0
+      t.true(
+        await polling(
+          () => {
+            return recordLogReceived === 1
+          },
+          0,
+          100,
+          6000 + tolerance
+        )
       )
-    )
-
-    notifyStatusReceived = 0
-    t.true(
-      await polling(
-        () => {
-          return notifyStatusReceived === 1
-        },
-        0,
-        100,
-        6000 + tolerance
-      )
-    )
-
-    notifyStatusReceived = 0
-    t.true(
-      await polling(
-        () => {
-          return notifyStatusReceived === 1
-        },
-        0,
-        100,
-        6000 + tolerance
-      )
-    )
+    }
+    fs.removeSync(tmpLogCacheDir)
   }
 )
 
 test.serial(
-  'Core.9: Agent stops sending status notification when it is unauthenticated',
+  'Core.8: Agent stops sending log when it is unauthenticated',
   async t => {
     let authRequestReceived = false
-    let notifyStatusReceived = 0
-    server.on('notifyStatus', req => {
-      notifyStatusReceived++
+    let recordLogReceived = 0
+    let tmpLogCacheDir = '/tmp/enebular-log-cache-' + Utils.randomString()
+    server.on('recordLogs', req => {
+      recordLogReceived++
     })
 
     const ret = await createAuthenticatedAgent(
@@ -471,6 +368,7 @@ test.serial(
       server,
       Utils.addNodeRedPortToConfig(
         {
+          ENEBULAR_ENEBULAR_LOG_CACHE_PATH: tmpLogCacheDir,
           ENEBULAR_MONITOR_INTERVAL_FAST: 1
         },
         NodeRedPort
@@ -505,7 +403,7 @@ test.serial(
 
     await polling(
       () => {
-        return notifyStatusReceived >= 4
+        return recordLogReceived >= 4
       },
       0,
       500,
@@ -519,11 +417,11 @@ test.serial(
       state: '-'
     })
 
-    notifyStatusReceived = 0
+    recordLogReceived = 0
     t.false(
       await polling(
         () => {
-          return notifyStatusReceived
+          return recordLogReceived
         },
         1000,
         500,
@@ -534,5 +432,6 @@ test.serial(
     server.removeListener('authRequest', authCallback)
     t.true(authRequestReceived)
     t.is(agent._agentState, 'unauthenticated')
+    fs.removeSync(tmpLogCacheDir)
   }
 )

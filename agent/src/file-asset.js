@@ -3,7 +3,6 @@
 import fs from 'fs'
 import path from 'path'
 import util from 'util'
-import crypto from 'crypto'
 import { spawn } from 'child_process'
 import request from 'request'
 import progress from 'request-progress'
@@ -11,6 +10,32 @@ import diskusage from 'diskusage'
 import Asset from './asset'
 
 export default class FileAsset extends Asset {
+  _assetMan: AssetManager
+
+  constructor(type: string, id: string, assetMan: AssetManager) {
+    super(type, id)
+    this._assetMan = assetMan
+  }
+
+  _debug(msg: string, ...args: Array<mixed>) {
+    this._assetMan.debug(msg, ...args)
+  }
+
+  _info(msg: string, ...args: Array<mixed>) {
+    this._assetMan.info(msg, ...args)
+  }
+
+  _error(msg: string, ...args: Array<mixed>) {
+    this._assetMan.error(msg, ...args)
+  }
+
+  _destDirPath(): string {
+    if (!this.config.destPath) {
+      return this._assetMan.dataDir()
+    }
+    return path.join(this._assetMan.dataDir(), this.config.destPath)
+  }
+
   _fileName(): string {
     return this.config.fileTypeConfig.filename
   }
@@ -44,23 +69,6 @@ export default class FileAsset extends Asset {
 
   _execMaxTime() {
     return this.config.fileTypeConfig.execConfig.maxTime
-  }
-
-  async _getIntegrity(path: string) {
-    return new Promise((resolve, reject) => {
-      const hash = crypto.createHash('sha256')
-      const file = fs.createReadStream(path)
-      file.on('data', data => {
-        hash.update(data)
-      })
-      file.on('end', () => {
-        const digest = hash.digest('base64')
-        resolve(digest)
-      })
-      file.on('error', err => {
-        reject(err)
-      })
-    })
   }
 
   async _acquire() {

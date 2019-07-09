@@ -1,18 +1,21 @@
 /* @flow */
-import fs from 'fs'
 import EventEmitter from 'events'
+import fs from 'fs'
+import type { Logger } from 'winston'
+import { version as agentVer } from '../package.json'
 import ConnectorService from './connector-service'
+import ConnectorMessenger from './connector-messenger'
 import EnebularActivator from './enebular-activator'
 import DeviceAuthMediator from './device-auth-mediator'
 import AgentManagerMediator from './agent-manager-mediator'
 import DeviceStateManager from './device-state-manager'
 import AgentInfoManager from './agent-info-manager'
 import AssetManager from './asset-manager'
-import NodeREDController from './node-red-controller'
-import LogManager from './log-manager'
 import CommandLine from './command-line'
 import Config from './config'
-import type { Logger } from 'winston'
+import AiModelManager from './ai-model-manager'
+import LogManager from './log-manager'
+import NodeREDController from './node-red-controller'
 
 export type EnebularAgentConfig = {
   NODE_RED_DIR: string,
@@ -74,6 +77,7 @@ function isPossibleStateTransition(state: AgentState, nextState: AgentState) {
 
 export default class EnebularAgent extends EventEmitter {
   _connector: ConnectorService
+  _connectorMessenger: ConnectorMessenger
   _activator: EnebularActivator
   _configFile: string
   _config: Config
@@ -87,6 +91,7 @@ export default class EnebularAgent extends EventEmitter {
   _deviceStateManager: DeviceStateManager
   _agentInfoManager: AgentInfoManager
   _assetManager: AssetManager
+  _aiModelManager: AiModelManager
 
   _connectionId: ?string
   _deviceId: ?string
@@ -106,9 +111,6 @@ export default class EnebularAgent extends EventEmitter {
   _monitorIntervalFast: number
   _monitorIntervalFastPeriod: number
   _monitorIntervalNormal: number
-  _notifyStatusActivated: boolean = false
-  _notifyStatusInterval: number
-  _notifyStatusIntervalID: ?number
 
   constructor(options: EnebularAgentOptions) {
     super()
@@ -124,6 +126,9 @@ export default class EnebularAgent extends EventEmitter {
       this._onConnectorConnectionChange()
     )
     this._connector.on('message', params => this._onConnectorMessage(params))
+    this._connector.on('ctrlMessage', params =>
+      this._onConnectorCtrlMessage(params)
+    )
   }
 
   _init() {
@@ -134,13 +139,12 @@ export default class EnebularAgent extends EventEmitter {
       })
     }
 
+    const devMode = this._config.get('ENEBULAR_DEV_MODE')
     const nodeRedDir = this._config.get('NODE_RED_DIR')
     const nodeRedDataDir = this._config.get('NODE_RED_DATA_DIR')
+    const nodeRedAiNodesDir = this._config.get('NODE_RED_AI_NODES_DIR')
     const defaultNodeRedCommand =
-      './node_modules/.bin/node-red -s .node-red-config/' +
-      (process.env.ENEBULAR_EDITOR_URL
-        ? 'enebular-editor-settings.js'
-        : 'settings.js')
+      './node_modules/.bin/node-red -s .node-red-config/settings.js'
     const nodeRedCommand =
       this._config.get('NODE_RED_COMMAND') || defaultNodeRedCommand
     const configFile = this._config.get('ENEBULAR_CONFIG_PATH')
@@ -157,10 +161,23 @@ export default class EnebularAgent extends EventEmitter {
 
     this._initLogging()
 
+    this._log.info('enebular-agent version: ' + agentVer)
+    if (devMode) {
+      this._log.info('Running in Developer Mode')
+    }
     this._log.info('Node-RED dir: ' + nodeRedDir)
     this._log.info('Node-RED data dir: ' + nodeRedDataDir)
     this._log.info('Node-RED command: ' + nodeRedCommand)
     this._log.info('Enebular config file: ' + configFile)
+
+    this._connectorMessenger = new ConnectorMessenger(
+      this._connector,
+      this._log,
+      this._config.get('ENEBULAR_CONNECTOR_MESSENGER_REQ_RETYR_TIMEOUT')
+    )
+    this._connectorMessenger.on('requestConnectorCtrlMessageSend', msg =>
+      this._onRequestConnectorCtrlMessageSend(msg)
+    )
 
     this._activator = new EnebularActivator(
       this._config.get('ACTIVATOR_CONFIG_PATH')
@@ -172,7 +189,7 @@ export default class EnebularAgent extends EventEmitter {
     this._messageEmitter = new EventEmitter()
 
     this._deviceStateManager = new DeviceStateManager(
-      this._agentMan,
+      this._connectorMessenger,
       this._messageEmitter,
       this._config,
       this._log
@@ -186,6 +203,13 @@ export default class EnebularAgent extends EventEmitter {
       this._log
     )
 
+    this._aiModelManager = new AiModelManager(
+      this._deviceStateManager,
+      this._agentMan,
+      this._config,
+      this._log
+    )
+
     this._assetManager = new AssetManager(
       this._deviceStateManager,
       this._agentMan,
@@ -194,16 +218,21 @@ export default class EnebularAgent extends EventEmitter {
     )
 
     this._nodeRed = new NodeREDController(
+      this._deviceStateManager,
+      this._connectorMessenger,
       this._messageEmitter,
+      this._config,
       this._log,
       this._logManager,
       {
         dir: nodeRedDir,
         dataDir: nodeRedDataDir,
+        aiNodesDir: nodeRedAiNodesDir,
         command: nodeRedCommand,
         killSignal: this._config.get('NODE_RED_KILL_SIGNAL'),
         pidFile: this._config.get('ENEBULAR_NODE_RED_PID_FILE'),
-        assetsDataPath: this._config.get('ENEBULAR_ASSETS_DATA_PATH')
+        assetsDataPath: this._config.get('ENEBULAR_ASSETS_DATA_PATH'),
+        allowEditSessions: devMode
       }
     )
 
@@ -214,9 +243,15 @@ export default class EnebularAgent extends EventEmitter {
     this._deviceAuth.on('accessTokenClear', () => this._onAccessTokenClear())
 
     this._configFile = configFile
-    this._notifyStatusInterval = this._monitorIntervalNormal
-    this._notifyStatusActivated = false
     this._agentState = 'init'
+  }
+
+  _logMetrics() {
+    const memUsage = process.memoryUsage()
+    this._log.info('metrics.mem.rss: ' + memUsage.rss)
+    this._log.info('metrics.mem.heapTotal: ' + memUsage.heapTotal)
+    this._log.info('metrics.mem.heapUsed: ' + memUsage.heapUsed)
+    this._log.info('metrics.mem.external: ' + memUsage.external)
   }
 
   _initLogging() {
@@ -231,6 +266,11 @@ export default class EnebularAgent extends EventEmitter {
       'file',
       'syslog'
     ])
+
+    if (this._config.get('ENEBULAR_LOG_METRICS_ENABLE')) {
+      const interval = this._config.get('ENEBULAR_LOG_METRICS_INTERVAL')
+      setInterval(() => this._logMetrics(), interval * 1000)
+    }
   }
 
   get log(): Logger {
@@ -279,7 +319,7 @@ export default class EnebularAgent extends EventEmitter {
 
   async startup() {
     if (this._connector.registerConfig) {
-      this._connector.registerConfig()
+      await this._connector.registerConfig()
     }
     this._config.importEnvironmentVariables()
     this._commandLine.parse()
@@ -298,23 +338,28 @@ export default class EnebularAgent extends EventEmitter {
 
     await this._agentInfoManager.setup()
     await this._assetManager.setup()
+    await this._aiModelManager.setup()
+    await this._nodeRed.setup()
+    this._nodeRed.activate(true)
 
     this._updateMonitoringFromDesiredState()
 
     if (this._connector.init) {
-      this._connector.init()
+      await this._connector.init()
     }
-    return this._nodeRed.startService()
+
+    await this._nodeRed.startService()
+
+    return true
   }
 
   async shutdown() {
     this._deviceAuth.endAuthAttempt()
-    if (this._monitoringActive) {
-      await this._agentMan.notifyStatus('disconnected')
-    }
     await this._nodeRed.shutdownService()
+    this._nodeRed.activate(false)
     this._assetManager.activate(false)
     this._deviceStateManager.activate(false)
+    this._aiModelManager.activate(false)
     await this._logManager.shutdown()
     this._monitoringShutdown = true
     this._updateMonitoringActiveState()
@@ -393,7 +438,6 @@ export default class EnebularAgent extends EventEmitter {
     }
 
     this._logManager.activateEnebular(this._monitoringActive)
-    this._activateStatusNotification(this._monitoringActive)
   }
 
   _refreshMonitoringInterval() {
@@ -414,30 +458,6 @@ export default class EnebularAgent extends EventEmitter {
     this._logManager.configureEnebular({
       sendInterval: interval
     })
-    this._setStatusNotificationInterval(interval)
-  }
-
-  _updateStatusNotificationInterval() {
-    if (this._notifyStatusIntervalID) {
-      clearInterval(this._notifyStatusIntervalID)
-      this._notifyStatusIntervalID = null
-    }
-    if (this._notifyStatusActivated) {
-      this._agentMan.notifyStatus(this._nodeRed.getStatus())
-      this._notifyStatusIntervalID = setInterval(() => {
-        this._agentMan.notifyStatus(this._nodeRed.getStatus())
-      }, this._notifyStatusInterval * 1000)
-    }
-  }
-
-  _setStatusNotificationInterval(interval: number) {
-    this._notifyStatusInterval = interval
-    this._updateStatusNotificationInterval()
-  }
-
-  _activateStatusNotification(active: boolean) {
-    this._notifyStatusActivated = active
-    this._updateStatusNotificationInterval()
   }
 
   _loadAgentConfig() {
@@ -547,6 +567,9 @@ export default class EnebularAgent extends EventEmitter {
     this._deviceStateManager.setFqDeviceId(
       `${this._connectionId}::${this._deviceId}`
     )
+    if (this._connector.connected) {
+      this._deviceStateManager.activate(true)
+    }
   }
 
   async _onChangeState() {
@@ -562,8 +585,8 @@ export default class EnebularAgent extends EventEmitter {
       case 'unregistered':
         break
       case 'authenticated':
-        this._deviceStateManager.activate(true)
         this._assetManager.activate(true)
+        this._aiModelManager.activate(true)
         setTimeout(() => {
           this._updateMonitoringActiveState()
         }, 10 * 1000)
@@ -674,6 +697,7 @@ export default class EnebularAgent extends EventEmitter {
       `Connector: ${this._connector.connected ? 'connected' : 'disconnected'}`
     )
     if (this._connector.connected) {
+      this._deviceStateManager.activate(true)
       if (
         this._agentState === 'registered' ||
         this._agentState === 'unauthenticated'
@@ -723,5 +747,13 @@ export default class EnebularAgent extends EventEmitter {
         break
     }
     this._messageEmitter.emit(params.messageType, params.message)
+  }
+
+  async _onConnectorCtrlMessage(message: any) {
+    this._connectorMessenger.handleReceivedMessage(message)
+  }
+
+  _onRequestConnectorCtrlMessageSend(msg) {
+    this.emit('connectorCtrlMessageSend', msg)
   }
 }

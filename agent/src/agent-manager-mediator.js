@@ -1,8 +1,8 @@
 /* @flow */
-import fetch from 'isomorphic-fetch'
-import fs from 'fs'
 import FormData from 'form-data'
+import fs from 'fs'
 import type { Logger } from 'winston'
+import { fetchJSON, postJSON } from './utils'
 
 const moduleName = 'agent-man'
 
@@ -44,29 +44,6 @@ export default class AgentManagerMediator {
     return !!this._baseUrl && !!this._accessToken
   }
 
-  async notifyStatus(status: string) {
-    if (!this._accessRequirementsConfigured()) {
-      throw new Error('Access requirements not configured')
-    }
-
-    this.debug(`Notifying status (${status})...`)
-
-    const res = await fetch(`${this._baseUrl}/notify-status`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this._accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ status })
-    })
-    if (!res.ok) {
-      const resText = await res.text()
-      this.debug('Failed to notify status: ' + resText)
-    } else {
-      this.debug('Status Notified')
-    }
-  }
-
   async sendLog(filename: string) {
     if (!this._accessRequirementsConfigured()) {
       throw new Error('Access requirements not configured')
@@ -76,18 +53,18 @@ export default class AgentManagerMediator {
 
     const form = new FormData()
     form.append('events', fs.createReadStream(filename))
-    const res = await fetch(`${this._baseUrl}/record-logs`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this._accessToken}`
-      },
-      body: form
-    })
-    if (!res.ok) {
-      const resText = await res.text()
-      throw new Error('Failed to send log: ' + resText)
-    } else {
+
+    try {
+      await fetchJSON(`${this._baseUrl}/record-logs`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this._accessToken}`
+        },
+        body: form
+      })
       this.debug('Log sent')
+    } catch (err) {
+      throw new Error('Failed to send log: ' + err.message)
     }
   }
 
@@ -98,24 +75,20 @@ export default class AgentManagerMediator {
 
     this.debug('Getting device state...')
 
-    const res = await fetch(`${this._baseUrl}/device/device-state/get`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this._accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ states: states })
-    })
-    const resJson = await res.json()
-    if (!res.ok) {
-      let errType = res.status + ' - ' + res.statusText
-      let msg = 'Failed to fetch device state: ' + errType
-      if (resJson.message) {
-        msg += ' (' + resJson.message + ')'
-      }
-      throw new Error(msg)
+    try {
+      const res = await postJSON(
+        `${this._baseUrl}/device/device-state/get`,
+        JSON.stringify({ states: states }),
+        {
+          headers: {
+            Authorization: `Bearer ${this._accessToken}`
+          }
+        }
+      )
+      return res.states
+    } catch (err) {
+      throw new Error('Device state get request failed: ' + err.message)
     }
-    return resJson.states
   }
 
   async updateDeviceState(updates: Array<DeviceStateStateUpdates>) {
@@ -125,24 +98,20 @@ export default class AgentManagerMediator {
 
     this.debug('Updating device state...')
 
-    const res = await fetch(`${this._baseUrl}/device/device-state/update`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this._accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ updates: updates })
-    })
-    const resJson = await res.json()
-    if (!res.ok) {
-      let errType = res.status + ' - ' + res.statusText
-      let msg = 'Failed to fetch device state update: ' + errType
-      if (resJson.message) {
-        msg += ' (' + resJson.message + ')'
-      }
-      throw new Error(msg)
+    try {
+      const res = await postJSON(
+        `${this._baseUrl}/device/device-state/update`,
+        JSON.stringify({ updates: updates }),
+        {
+          headers: {
+            Authorization: `Bearer ${this._accessToken}`
+          }
+        }
+      )
+      return res.updates
+    } catch (err) {
+      throw new Error('Device state update request failed: ' + err.message)
     }
-    return resJson.updates
   }
 
   async getInternalFileAssetDataUrl(key: string) {
@@ -152,26 +121,37 @@ export default class AgentManagerMediator {
 
     this.debug('Getting internal file data url...')
 
-    const res = await fetch(
-      `${this._baseUrl}/device/assets/get-internal-file-data-url`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this._accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ key: key })
-      }
-    )
-    const resJson = await res.json()
-    if (!res.ok) {
-      let errType = res.status + ' - ' + res.statusText
-      let msg = 'Failed to fetch internal file data url: ' + errType
-      if (resJson.message) {
-        msg += ' (' + resJson.message + ')'
-      }
-      throw new Error(msg)
+    try {
+      const res = await postJSON(
+        `${this._baseUrl}/device/assets/get-internal-file-data-url`,
+        JSON.stringify({ key: key }),
+        {
+          headers: {
+            Authorization: `Bearer ${this._accessToken}`
+          }
+        }
+      )
+      return res.url
+    } catch (err) {
+      throw new Error('Internal file data url request failed: ' + err.message)
     }
-    return resJson.url
+  }
+
+  async getAiModelWrapper(params: Object) {
+    if (!this._accessRequirementsConfigured()) {
+      throw new Error('Access requirements not configured')
+    }
+    this.debug('Getting ai model wrapper url...')
+    const url = `${this._baseUrl}/device/assets/generate-ai-wrapper`
+    try {
+      const res = await postJSON(url, JSON.stringify({ params: params }), {
+        headers: {
+          Authorization: `Bearer ${this._accessToken}`
+        }
+      })
+      return res
+    } catch (err) {
+      throw new Error('Ai model wrapper url request failed: ' + err.message)
+    }
   }
 }

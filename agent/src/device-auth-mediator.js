@@ -1,8 +1,8 @@
 /* @flow */
 import EventEmitter from 'events'
-import fetch from 'isomorphic-fetch'
 import crypto from 'crypto'
 import jwt from 'jsonwebtoken'
+import { postJSON } from './utils'
 import type { Logger } from 'winston'
 
 /**
@@ -124,26 +124,20 @@ export default class DeviceAuthMediator extends EventEmitter {
     this._seq++
     const state = `req-${this._seq}`
     const waitTokens = this._waitForTokenUpdate()
+    waitTokens.catch(err => {
+      this.debug('Auth request: ' + err.message)
+    })
+
     try {
-      const res = await fetch(this._requestUrl, {
-        method: 'POST',
-        body: JSON.stringify({
+      await postJSON(
+        this._requestUrl,
+        JSON.stringify({
           connectionId: this._connectionId,
           deviceId: this._deviceId,
           nonce,
           state
-        }),
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-      if (!res.ok) {
-        this.debug(
-          `Auth request returned failed response (${res.status} ${
-            res.statusText
-          })`
-        )
-      }
+        })
+      )
     } catch (err) {
       this.debug('Auth request failed: ' + err.message)
     }
@@ -157,7 +151,7 @@ export default class DeviceAuthMediator extends EventEmitter {
         resolve()
       })
       setTimeout(() => {
-        reject(new Error('Device authentication timeout'))
+        reject(new Error('Tokens did not arrive'))
       }, AUTH_TOKEN_TIMEOUT)
     })
   }

@@ -1,8 +1,8 @@
 /* @flow */
 import EventEmitter from 'events'
 
-export type ConnectorInit = () => void
-export type ConnectorRegisterConfig = () => void
+export type ConnectorInit = () => Promise<void>
+export type ConnectorRegisterConfig = () => Promise<void>
 
 export default class ConnectorService extends EventEmitter {
   _active: boolean = false
@@ -58,5 +58,9 @@ export default class ConnectorService extends EventEmitter {
 
   sendMessage(messageType: string, message: any) {
     this.emit('message', { messageType: messageType, message: message })
+  }
+
+  sendCtrlMessage(message: any) {
+    this.emit('ctrlMessage', message)
   }
 }

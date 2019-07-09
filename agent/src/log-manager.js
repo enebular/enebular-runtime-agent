@@ -40,7 +40,25 @@ export default class LogManager {
             output += options.message
             // output += ' (' + options.level + ')';
             if (options.meta && Object.keys(options.meta).length > 0) {
-              output += ' ' + JSON.stringify(options.meta)
+              // If meta carries unhandled exception data serialize the stack nicely
+              if (
+                Object.keys(options.meta).length >= 5 &&
+                options.meta.hasOwnProperty('date') &&
+                options.meta.hasOwnProperty('process') &&
+                options.meta.hasOwnProperty('os') &&
+                options.meta.hasOwnProperty('trace') &&
+                options.meta.hasOwnProperty('stack')
+              ) {
+                var stack = options.meta.stack
+                delete options.meta.stack
+                delete options.meta.trace
+                output += ' ' + JSON.stringify(options.meta, null, 4)
+                if (stack) {
+                  output += '\n' + stack.join('\n')
+                }
+              } else {
+                output += ' ' + JSON.stringify(options.meta)
+              }
             }
             return output
           }

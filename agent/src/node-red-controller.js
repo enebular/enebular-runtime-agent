@@ -3,58 +3,110 @@ import fs from 'fs'
 import EventEmitter from 'events'
 import path from 'path'
 import { spawn, type ChildProcess } from 'child_process'
-import ProcessUtil from './process-util'
 import fetch from 'isomorphic-fetch'
+import objectHash from 'object-hash'
+import ProcessUtil, { type RetryInfo } from './process-util'
+import { encryptCredential, delay } from './utils'
+import { createAiNodeDefinition } from './createAiNodeDefinition'
 import type { Logger } from 'winston'
 import type LogManager from './log-manager'
+import type DeviceStateManager from './device-state-manager'
+import type ConnectorMessenger from './connector-messenger'
+import type Config from './config'
+
+// TODO:
+//   - Improved this._flowState.changeErrMsg
 
 export type NodeREDConfig = {
   dir: string,
   dataDir: string,
+  aiNodesDir: string,
   command: string,
   killSignal: string,
   pidFile: string,
-  assetsDataPath: string
+  assetsDataPath: string,
+  allowEditSessions: boolean
+}
+
+export type NodeREDAction = {
+  promiseFunction: () => Promise<any>,
+  resolve: (ret: any) => void,
+  reject: () => void
 }
 
 const moduleName = 'node-red'
-const maxRetryCount = 5
-const maxRetryCountResetInterval = 5
+
+type EditSession = {
+  ipAddress: string,
+  sessionToken: string
+}
 
 type NodeRedFlowPackage = {
   flows: Object[],
   creds: Object,
-  packages: Object
+  packages: Object,
+  editSession?: EditSession
+}
+
+type FlowStatus = {
+  state: string,
+  messenge?: string
 }
 
 export default class NodeREDController {
+  _deviceStateMan: DeviceStateManager
+  _connectorMessenger: ConnectorMessenger
+  _flowStateFilePath: string
+  _flowStartTimeout: number
+  _flowState: Object
+  _flowStateProcessingChanges: boolean = false
   _dir: string
   _dataDir: string
+  _aiNodesDir: string
   _command: string
   _killSignal: string
   _pidFile: string
   _assetsDataPath: string
   _cproc: ?ChildProcess = null
-  _actions: Array<() => Promise<any>> = []
-  _isProcessing: ?Promise<void> = null
+  _actions: Array<NodeREDAction> = []
+  _currentAction: ?NodeREDAction = null
   _log: Logger
   _logManager: LogManager
   _nodeRedLog: Logger
-  _exceptionRetryCount: number = 0
-  _lastRetryTimestamp: number = Date.now()
+  _retryInfo: RetryInfo
+  _allowEditSessions: boolean = false
+  _inited: boolean = false
+  _active: boolean = false
+  _shutdownRequested: boolean = false
+  _flowStatus: FlowStatus = { state: 'stopped' }
+  _pendingEnableRequest: boolean = false
 
   constructor(
+    deviceStateMan: DeviceStateManager,
+    connectorMessenger: ConnectorMessenger,
     emitter: EventEmitter,
+    config: Config,
     log: Logger,
     logManager: LogManager,
-    config: NodeREDConfig
+    nodeRedConfig: NodeREDConfig
   ) {
-    this._dir = config.dir
-    this._dataDir = config.dataDir
-    this._command = config.command
-    this._killSignal = config.killSignal
-    this._pidFile = config.pidFile
-    this._assetsDataPath = config.assetsDataPath
+    this._flowStartTimeout = config.get('ENEBULAR_NODE_RED_FLOW_START_TIMEOUT')
+    this._flowStateFilePath = config.get('ENEBULAR_FLOW_STATE_PATH')
+    if (!this._flowStateFilePath) {
+      throw new Error('Missing node-red controller configuration')
+    }
+
+    this._deviceStateMan = deviceStateMan
+    this._connectorMessenger = connectorMessenger
+    this._dir = nodeRedConfig.dir
+    this._dataDir = nodeRedConfig.dataDir
+    this._aiNodesDir = nodeRedConfig.aiNodesDir
+    this._command = nodeRedConfig.command
+    this._killSignal = nodeRedConfig.killSignal
+    this._pidFile = nodeRedConfig.pidFile
+    this._assetsDataPath = nodeRedConfig.assetsDataPath
+    this._allowEditSessions = nodeRedConfig.allowEditSessions
+    this._retryInfo = { retryCount: 0, lastRetryTimestamp: Date.now() }
 
     if (!fs.existsSync(this._dir)) {
       throw new Error(`The Node-RED directory was not found: ${this._dir}`)
@@ -64,6 +116,10 @@ export default class NodeREDController {
         `The Node-RED data directory was not found: ${this._getDataDir()}`
       )
     }
+
+    this._deviceStateMan.on('stateChange', params =>
+      this._handleDeviceStateChange(params)
+    )
 
     this._registerHandler(emitter)
 
@@ -87,60 +143,597 @@ export default class NodeREDController {
     this._log.info(msg, ...args)
   }
 
+  error(msg: string, ...args: Array<mixed>) {
+    args.push({ module: moduleName })
+    this._log.error(msg, ...args)
+  }
+
+  activate(active: boolean) {
+    if (active === this._active) {
+      return
+    }
+    if (active && !this._inited) {
+      throw new Error('Attempted to activate node-red-con when not initialized')
+    }
+    this._active = active
+    if (this._active) {
+      this._processPendingFlowChanges()
+    }
+  }
+
+  async setup() {
+    if (this._inited) {
+      return
+    }
+
+    this.debug('Flow state file path: ' + this._flowStateFilePath)
+
+    this._initDeviceState()
+
+    this._inited = true
+  }
+
+  _initDeviceState() {
+    this._loadFlowState()
+    this._updateFlowFromDesiredState()
+    this._updateFlowReportedState()
+  }
+
+  _loadFlowState() {
+    if (!fs.existsSync(this._flowStateFilePath)) {
+      this._flowState = {}
+      return
+    }
+
+    this.info('Loading flow state: ' + this._flowStateFilePath)
+
+    const data = fs.readFileSync(this._flowStateFilePath, 'utf8')
+    this._flowState = JSON.parse(data)
+  }
+
+  _saveFlowState() {
+    if (!this._flowState) {
+      return
+    }
+
+    let flowState = Object.assign({}, this._flowState)
+
+    // For in-progress type states, save their pre in-progress states
+    switch (flowState.state) {
+      case 'deploying':
+        this.error('Attempted to save flow state while deploying')
+        // TODO: do we really need notDeployed?
+        flowState.state = 'notDeployed'
+        break
+      case 'removing':
+        this.error('Attempted to save flow state while removing')
+        flowState.state = 'deployed'
+        break
+      default:
+        break
+    }
+
+    this.debug('Saving flow state: ' + JSON.stringify(flowState, null, 2))
+
+    try {
+      fs.writeFileSync(
+        this._flowStateFilePath,
+        JSON.stringify(flowState),
+        'utf8'
+      )
+    } catch (err) {
+      this.error('Failed to save flow state: ' + err.message)
+    }
+  }
+
+  async _handleDeviceStateChange(params: { type: string, path: ?string }) {
+    if (!this._inited) {
+      return
+    }
+
+    if (params.path && !params.path.startsWith('flow')) {
+      return
+    }
+
+    switch (params.type) {
+      case 'desired':
+        this._updateFlowFromDesiredState()
+        break
+      case 'reported':
+        this._updateFlowReportedState()
+        break
+      case 'status':
+        this._updateFlowStatusState()
+        break
+      default:
+        break
+    }
+  }
+
+  _updateFlowFromDesiredState() {
+    const desiredState = this._deviceStateMan.getState('desired', 'flow')
+    if (!desiredState) {
+      return
+    }
+
+    const desiredFlow = desiredState.flow || {}
+
+    this.debug('Desired state change: ' + JSON.stringify(desiredState, null, 2))
+
+    let change = false
+
+    if (!desiredFlow.hasOwnProperty('assetId')) {
+      if (
+        this._flowState.assetId &&
+        this._flowState.pendingChange !== 'remove' &&
+        this._flowState.state !== 'removing' &&
+        this._flowState.state !== 'removeFail'
+      ) {
+        this.info(`Flow '${this._flowState.assetId}' now pending 'remove'`)
+        this._flowState.pendingChange = 'remove'
+        this._flowState.changeErrMsg = null
+        this._flowState.changeTs = Date.now()
+        change = true
+      }
+    } else {
+      let deploy = false
+      if (!this._flowState.pendingChange) {
+        if (
+          desiredFlow.assetId !== this._flowState.assetId ||
+          desiredFlow.updateId !== this._flowState.updateId
+        ) {
+          deploy = true
+        }
+      } else {
+        if (
+          desiredFlow.assetId !== this._flowState.pendingAssetId ||
+          desiredFlow.updateId !== this._flowState.pendingUpdateId
+        ) {
+          deploy = true
+        }
+      }
+      if (deploy) {
+        this.info(`Flow '${desiredFlow.assetId}' now pending 'deploy'`)
+        this._flowState.pendingChange = 'deploy'
+        this._flowState.pendingAssetId = desiredFlow.assetId
+        this._flowState.pendingUpdateId = desiredFlow.updateId
+        this._flowState.changeErrMsg = null
+        this._flowState.changeTs = Date.now()
+        change = true
+      } else if (this._flowState.pendingChange === 'remove') {
+        this._flowState.pendingChange = null
+        this._flowState.changeErrMsg = null
+        this._flowState.changeTs = Date.now()
+        change = true
+      }
+    }
+
+    if (desiredState.hasOwnProperty('enable')) {
+      if (this._flowState.enable !== desiredState.enable) {
+        this._flowState.enable = desiredState.enable
+        this._enableRequest()
+        change = true
+      }
+    } else {
+      // enable is undefined or false
+      if (!this._flowState.enable) {
+        // the default enable state is true
+        this._flowState.enable = true
+        this._enableRequest()
+        change = true
+      }
+    }
+
+    this.debug('Flow state: ' + JSON.stringify(this._flowState, null, 2))
+
+    if (change) {
+      this._flowState.controlSrc = 'deviceState'
+      this._updateFlowStatusState()
+      this._updateFlowReportedState()
+      this._processPendingFlowChanges()
+    }
+  }
+
+  // Only updates the reported state if required (if there is a difference)
+  _updateFlowReportedState() {
+    if (!this._deviceStateMan.canUpdateState('reported')) {
+      return
+    }
+
+    let reportedState = this._deviceStateMan.getState('reported', 'flow')
+    if (!reportedState) {
+      reportedState = {}
+    }
+
+    // Handle flow.enable
+    if (this._flowState.enable !== reportedState.enable) {
+      this.debug(
+        `Updating reported flow enable ${reportedState.enable} => ${
+          this._flowState.enable
+        }`
+      )
+      this._deviceStateMan.updateState(
+        'reported',
+        'set',
+        'flow.enable',
+        this._flowState.enable
+      )
+    }
+
+    // Handle flow.flow
+    if (
+      !this._flowState.assetId &&
+      !this._flowState.pendingChange &&
+      reportedState.flow
+    ) {
+      this.debug('Removing reported flow state...')
+      this._deviceStateMan.updateState('reported', 'remove', 'flow.flow')
+    } else if (this._flowState.assetId || this._flowState.pendingChange) {
+      let state = {
+        assetId: this._flowState.assetId,
+        updateId: this._flowState.updateId,
+        state: this._flowState.state,
+        ts: this._flowState.changeTs
+      }
+      if (this._flowState.pendingChange) {
+        switch (this._flowState.pendingChange) {
+          case 'deploy':
+            state.state = 'deployPending'
+            state.assetId = this._flowState.pendingAssetId
+            state.updateId = this._flowState.pendingUpdateId
+            break
+          case 'remove':
+            state.state = 'removePending'
+            break
+          default:
+            state.state = 'unknown'
+            break
+        }
+      }
+      if (this._flowState.changeErrMsg) {
+        state.message = this._flowState.changeErrMsg
+      }
+      if (
+        !reportedState.flow ||
+        objectHash(state) !== objectHash(reportedState.flow)
+      ) {
+        this.debug('Updating reported flow state...')
+        this.debug(
+          'Current state: ' + JSON.stringify(reportedState.flow, null, 2)
+        )
+        this.debug('New state: ' + JSON.stringify(state, null, 2))
+        this._deviceStateMan.updateState('reported', 'set', 'flow.flow', state)
+      }
+    }
+  }
+
+  _setFlowState(state: ?string, msg: ?string) {
+    this._flowState.state = state
+    this._flowState.changeErrMsg = msg
+    this._flowState.changeTs = Date.now()
+    this._updateFlowReportedState()
+  }
+
+  _updateFlowStatusState() {
+    if (!this._deviceStateMan.canUpdateState('status')) {
+      return
+    }
+
+    let flowStatusState = this._deviceStateMan.getState('status', 'flow')
+    if (!flowStatusState) {
+      flowStatusState = {}
+    }
+
+    if (
+      flowStatusState.state !== this._flowStatus.state ||
+      flowStatusState.message !== this._flowStatus.message ||
+      flowStatusState.controlSrc !== this._flowState.controlSrc
+    ) {
+      const state = {
+        state: this._flowStatus.state,
+        message: this._flowStatus.message,
+        controlSrc: this._flowState.controlSrc
+      }
+
+      this.debug('Update flow status:' + JSON.stringify(state, null, 2))
+      this._deviceStateMan.updateState('status', 'set', 'flow', state)
+    }
+  }
+
+  _setFlowStatus(state: string, msg: ?string) {
+    this._flowStatus.state = state
+    this._flowStatus.message = msg
+    this._updateFlowStatusState()
+  }
+
+  _enableRequest() {
+    if (!this._pendingEnableRequest) {
+      this._pendingEnableRequest = true
+    }
+  }
+
+  async _attemptEnableFlow() {
+    if (!this._serviceIsRunning()) {
+      this.info('Enabling flow')
+      try {
+        await this._startService()
+      } catch (err) {
+        this.error(
+          'Enable flow failed, Node-RED failed to start: ' + err.message
+        )
+      }
+    }
+  }
+
+  async _attemptDisableFlow() {
+    if (this._serviceIsRunning()) {
+      this.info('Disabling flow')
+      try {
+        await this._shutdownService()
+      } catch (err) {
+        this.error(
+          'Disable flow failed, Node-RED failed to shutdown: ' + err.message
+        )
+      }
+    }
+  }
+
+  async _processPendingFlowChanges() {
+    if (this._flowStateProcessingChanges) {
+      return
+    }
+    this._flowStateProcessingChanges = true
+
+    while (this._active) {
+      if (
+        this._flowState.pendingChange == null &&
+        !this._pendingEnableRequest
+      ) {
+        break
+      }
+
+      // Dequeue the pending change
+      let pendingChange = this._flowState.pendingChange
+      let pendingAssetId = this._flowState.pendingAssetId
+      let pendingUpdateId = this._flowState.pendingUpdateId
+      let pendingEnableRequest = this._pendingEnableRequest
+      this._flowState.pendingChange = null
+      this._flowState.pendingAssetId = null
+      this._flowState.pendingUpdateId = null
+      this._pendingEnableRequest = false
+
+      // Process the change
+      if (pendingChange != null) {
+        switch (pendingChange) {
+          case 'deploy':
+            // Update attempt count handling
+            if (
+              pendingAssetId !== this._flowState.lastAttemptedAssetId ||
+              pendingUpdateId !== this._flowState.lastAttemptedUpdateId
+            ) {
+              this._flowState.lastAttemptedAssetId = pendingAssetId
+              this._flowState.lastAttemptedUpdateId = pendingUpdateId
+              this._flowState.updateAttemptCount = 0
+            }
+            this._flowState.updateAttemptCount++
+            this._saveFlowState()
+
+            // Make the pending update the current one
+            this._flowState.assetId = pendingAssetId
+            this._flowState.updateId = pendingUpdateId
+
+            // Handle too many attempts
+            if (this._flowState.updateAttemptCount > 3) {
+              this.info(`Deploy failed maximum number of times (3)`)
+              this._flowState.updateAttemptCount = 0
+              // TODO: better actual error message capture and reporting
+              this._setFlowState('deployFail', 'Too many update attempts')
+              break
+            }
+
+            // report deploying
+            this._setFlowState('deploying', null)
+
+            try {
+              await this.removeFlow()
+            } catch (err) {
+              this.info('Existing flow remove failed: ' + err.message)
+            }
+
+            // deploy
+            this.info(`Deploying flow '${pendingAssetId}'...`)
+            try {
+              const downloadUrl = await this._getFlowDataUrl(
+                this._flowState.assetId,
+                this._flowState.updateId
+              )
+              await this.fetchAndUpdateFlow(downloadUrl)
+              if (this._isFlowEnabled()) {
+                await this._restartService()
+              } else {
+                this.info('Skipped Node-RED restart since flow is disabled')
+              }
+              this.info(`Deployed flow '${pendingAssetId}'`)
+              this._flowState.updateAttemptCount = 0
+              this._setFlowState('deployed', null)
+            } catch (err) {
+              this.error('Error occured during deploy: ' + err.message)
+              if (this._flowState.pendingChange === null) {
+                // TODO: handle too many attempts here too, not just above
+                this.info(
+                  `Deploy failed, but will retry (${
+                    this._flowState.updateAttemptCount
+                  }/3).`
+                )
+                this._flowState.assetId = null
+                this._flowState.updateId = null
+                this._flowState.pendingChange = 'deploy'
+                this._flowState.pendingAssetId = pendingAssetId
+                this._flowState.pendingUpdateId = pendingUpdateId
+                this._setFlowState(null, null)
+              } else {
+                this.info('Deploy failed, but new change already pending.')
+              }
+            }
+            break
+
+          case 'remove':
+            this.info(`Removing flow '${this._flowState.assetId}'...`)
+            this._setFlowState('removing')
+            try {
+              await this.removeFlow()
+              await this.restartService()
+              this.info(`Removed flow '${this._flowState.assetId}'`)
+              this._flowState.assetId = null
+              this._flowState.updateId = null
+              this._setFlowState(null, null)
+            } catch (err) {
+              this.info('Remove failed: ' + err.message)
+              this._setFlowState('removeFail', 'Remove failed: ' + err.message)
+            }
+            break
+
+          default:
+            this.error('Unsupported pending change: ' + pendingChange)
+            break
+        }
+      }
+
+      if (pendingEnableRequest) {
+        this.info('Processing flow enable change')
+        if (this._isFlowEnabled()) {
+          await this._attemptEnableFlow()
+        } else {
+          await this._attemptDisableFlow()
+        }
+      }
+
+      // Save the changed state
+      this._saveFlowState()
+
+      // A small delay to guard against becoming a heavy duty busy loop
+      await delay(1 * 1000)
+    }
+
+    this._flowStateProcessingChanges = false
+  }
+
+  async _getFlowDataUrl(assetId: string, updateId: string) {
+    this.info('Obtaining flow download URL...')
+    const res = await this._connectorMessenger.sendRequest(
+      'flow/device/getFlowDataUrl',
+      {
+        assetId,
+        updateId
+      }
+    )
+    return res.url
+  }
+
   _getDataDir() {
     return this._dataDir
   }
 
+  _getAiNodesDir() {
+    return this._aiNodesDir
+  }
+
+  _isFlowEnabled(): boolean {
+    return this._flowState.enable || this._flowState.enable === undefined
+  }
+
   _registerHandler(emitter: EventEmitter) {
-    emitter.on('update-flow', params => this.fetchAndUpdateFlow(params))
-    emitter.on('deploy', params => this.fetchAndUpdateFlow(params))
-    emitter.on('start', () => this.startService())
-    emitter.on('restart', () => this.restartService())
-    emitter.on('shutdown', () => {
-      this.shutdownService()
+    emitter.on('update-flow', params => this.cmdFetchAndUpdateFlow(params))
+    emitter.on('deploy', params => this.cmdFetchAndUpdateFlow(params))
+  }
+
+  async _queueAction(promiseFunction: () => Promise<any>) {
+    return new Promise((resolve, reject) => {
+      this.debug('Queuing action')
+      this._actions.push({
+        promiseFunction: promiseFunction,
+        resolve: resolve,
+        reject: reject
+      })
+
+      if (!this._currentAction) {
+        this._processNextAction()
+      }
     })
   }
 
-  async _queueAction(fn: () => Promise<any>) {
-    this.debug('Queuing action')
-    this._actions.push(fn)
-    if (this._isProcessing) {
-      await this._isProcessing
-    } else {
-      await this._processActions()
+  async _processNextAction() {
+    this._currentAction = this._actions.shift()
+    if (!this._currentAction) {
+      return false
     }
+
+    this.debug('Pending promises count:', this._actions.length + 1)
+
+    try {
+      const ret = await this._currentAction.promiseFunction()
+      this._currentAction.resolve(ret)
+      this._processNextAction()
+    } catch (err) {
+      this._currentAction.reject(err)
+      this._processNextAction()
+    }
+    return true
   }
 
-  async _processActions() {
-    this.debug('Processing actions:', this._actions.length)
-    this._isProcessing = (async () => {
-      while (this._actions.length > 0) {
-        const action = this._actions.shift()
-        await action()
+  async cmdFetchAndUpdateFlow(params: { downloadUrl: string }) {
+    this._flowState.controlSrc = 'cmd'
+    try {
+      const flowPackage = await this.fetchAndUpdateFlow(params.downloadUrl)
+      if (this._flowPackageContainsEditSession(flowPackage)) {
+        await this._restartInEditorMode(flowPackage.editSession)
+      } else {
+        await this._restartService()
       }
-    })()
-    await this._isProcessing
-    this._isProcessing = null
+    } catch (err) {
+      this.error('Update flow failed: ' + err.message)
+    }
+    this._updateFlowStatusState()
+    this._saveFlowState()
   }
 
-  async fetchAndUpdateFlow(params: { downloadUrl: string }) {
-    return this._queueAction(() => this._fetchAndUpdateFlow(params))
+  async fetchAndUpdateFlow(downloadUrl: string) {
+    return this._queueAction(() => this._fetchAndUpdateFlow(downloadUrl))
   }
 
-  async _fetchAndUpdateFlow(params: { downloadUrl: string }) {
+  async _fetchAndUpdateFlow(downloadUrl: string): Promise<Object> {
     this.info('Updating flow')
-    await this._downloadAndUpdatePackage(params.downloadUrl)
-    await this._restartService()
+
+    const flowPackage = await this._downloadPackage(downloadUrl)
+    let editSessionRequested = this._flowPackageContainsEditSession(flowPackage)
+    if (editSessionRequested && !this._allowEditSessions) {
+      this.info('Edit session flow deploy requested but not allowed')
+      throw new Error('Start agent in --dev-mode to allow edit session.')
+    }
+
+    await this._updatePackage(flowPackage)
+    return flowPackage
   }
 
-  async _downloadAndUpdatePackage(downloadUrl: string) {
+  _flowPackageContainsEditSession(flowPackage: NodeRedFlowPackage) {
+    if (
+      flowPackage &&
+      flowPackage.editSession &&
+      flowPackage.editSession.ipAddress &&
+      flowPackage.editSession.sessionToken
+    ) {
+      return true
+    }
+    return false
+  }
+
+  async _downloadPackage(downloadUrl: string): NodeRedFlowPackage {
     this.info('Downloading flow:', downloadUrl)
     const res = await fetch(downloadUrl)
-    if (res.status >= 400) {
-      throw new Error('invalid url')
+    if (!res.ok) {
+      throw new Error(`Failed response (${res.status} ${res.statusText})`)
     }
-    const body = await res.json()
-    return this._updatePackage(body)
+    return res.json()
   }
 
   async _updatePackage(flowPackage: NodeRedFlowPackage) {
@@ -151,27 +744,106 @@ export default class NodeREDController {
       updates.push(
         new Promise((resolve, reject) => {
           const flowFilePath = path.join(this._getDataDir(), 'flows.json')
-          fs.writeFile(
-            flowFilePath,
-            JSON.stringify(flows),
-            err => (err ? reject(err) : resolve())
+          fs.writeFile(flowFilePath, JSON.stringify(flows), err =>
+            err ? reject(err) : resolve()
           )
         })
       )
     }
     if (flowPackage.cred || flowPackage.creds) {
-      const creds = flowPackage.cred || flowPackage.creds
+      let creds = flowPackage.cred || flowPackage.creds
       updates.push(
         new Promise((resolve, reject) => {
           const credFilePath = path.join(this._getDataDir(), 'flows_cred.json')
-          fs.writeFile(
-            credFilePath,
-            JSON.stringify(creds),
-            err => (err ? reject(err) : resolve())
+          const editSessionRequested = this._flowPackageContainsEditSession(
+            flowPackage
+          )
+
+          let settings
+          if (editSessionRequested) {
+            // enebular-editor remote deploy
+            settings = require(path.join(
+              this._getDataDir(),
+              'enebular-editor-settings.js'
+            ))
+          } else {
+            settings = require(path.join(this._getDataDir(), 'settings.js'))
+          }
+          if (settings.credentialSecret === false) {
+            this.info('skip credential encryption')
+          } else {
+            this.info('credential encryption')
+            try {
+              const dotconfig = fs.readFileSync(
+                path.join(this._getDataDir(), '.config.json'),
+                'utf8'
+              )
+
+              // enebular-node-red dont see credentialSecret in settings.js
+              // const defaultKey =
+              //  settings.credentialSecret ||
+              //  JSON.parse(dotconfig)._credentialSecret
+              const defaultKey = JSON.parse(dotconfig)._credentialSecret
+
+              creds = { $: encryptCredential(defaultKey, creds) }
+            } catch (err) {
+              throw new Error(
+                'encrypt credential and create flows_cred.json failed',
+                err
+              )
+            }
+          }
+
+          fs.writeFile(credFilePath, JSON.stringify(creds), err =>
+            err ? reject(err) : resolve()
           )
         })
       )
     }
+    if (flowPackage.handlers) {
+      updates.push(
+        new Promise(async (resolve, reject) => {
+          const aiNodesDir = this._getAiNodesDir()
+          createAiNodeDefinition(flowPackage.handlers, aiNodesDir)
+            .then(() => resolve())
+            .catch(err => reject(err))
+        })
+      )
+    }
+    updates.push(
+      new Promise(async (resolve, reject) => {
+        const aiPackageJSONFilePath = path.join(
+          this._getDataDir(),
+          'node-red-enebular-ai-nodes',
+          'package.json'
+        )
+        let nodeType = 'default'
+        if (flowPackage.handlers) {
+          nodeType = 'nodes'
+        }
+        const aiPackageJSON = JSON.stringify(
+          {
+            name: 'enebular-ai-contrib',
+            version: '0.0.1',
+            description: 'A node to work with enebular AI Models',
+            dependencies: {
+              request: '^2.88.0'
+            },
+            keywords: ['node-red'],
+            'node-red': {
+              nodes: {
+                'enebular-ai-node': `./${nodeType}/enebular-ai-node.js`
+              }
+            }
+          },
+          null,
+          2
+        )
+        fs.writeFile(aiPackageJSONFilePath, aiPackageJSON, err =>
+          err ? reject(err) : resolve()
+        )
+      })
+    )
     if (flowPackage.packages) {
       updates.push(
         new Promise((resolve, reject) => {
@@ -180,6 +852,20 @@ export default class NodeREDController {
             'enebular-agent-dynamic-deps',
             'package.json'
           )
+          if (
+            Object.keys(flowPackage.packages).includes(
+              'node-red-contrib-enebular'
+            )
+          ) {
+            flowPackage.packages['node-red-contrib-enebular'] =
+              'file:../../node-red-contrib-enebular'
+          }
+          if (
+            Object.keys(flowPackage.packages).includes('enebular-ai-contrib')
+          ) {
+            delete flowPackage.packages['enebular-ai-contrib']
+          }
+
           const packageJSON = JSON.stringify(
             {
               name: 'enebular-agent-dynamic-deps',
@@ -189,10 +875,8 @@ export default class NodeREDController {
             null,
             2
           )
-          fs.writeFile(
-            packageJSONFilePath,
-            packageJSON,
-            err => (err ? reject(err) : resolve())
+          fs.writeFile(packageJSONFilePath, packageJSON, err =>
+            err ? reject(err) : resolve()
           )
         })
       )
@@ -230,76 +914,147 @@ export default class NodeREDController {
     }
   }
 
-  async startService() {
-    return this._queueAction(() => this._startService())
+  async removeFlow() {
+    return this._queueAction(() => this._removeFlow())
   }
 
-  async _startService() {
-    this.info('Staring service...')
+  async _removeFlow() {
+    this.info('Removing flow...')
+    const flowFilePath = path.join(this._getDataDir(), 'flows.json')
+    const credFilePath = path.join(this._getDataDir(), 'flows_cred.json')
+    if (fs.existsSync(flowFilePath)) {
+      this.debug(`Deleting ${flowFilePath}...`)
+      fs.unlinkSync(flowFilePath)
+    }
+    if (fs.existsSync(credFilePath)) {
+      this.debug(`Deleting ${credFilePath}...`)
+      fs.unlinkSync(credFilePath)
+    }
+  }
+
+  _serviceIsRunning() {
+    return this._cproc !== null
+  }
+
+  async startService(editSession: EditSession) {
+    if (!this._isFlowEnabled()) {
+      this.info('Skipped Node-RED start since flow is disabled')
+      return
+    }
+
+    this._enableRequest()
+    this._processPendingFlowChanges()
+  }
+
+  async _startService(editSession: EditSession) {
+    if (editSession) {
+      this.info('Starting service (editor mode)...')
+    } else {
+      this.info('Starting service...')
+    }
+
+    let signaledSuccess = false
     return new Promise((resolve, reject) => {
+      if (this._shutdownRequested) {
+        const errorMsg = 'Start service failed since shutdown is requested.'
+        reject(new Error(errorMsg))
+        this._setFlowStatus('error', errorMsg)
+        return
+      }
       if (fs.existsSync(this._pidFile)) {
         ProcessUtil.killProcessByPIDFile(this._pidFile)
       }
-
-      const [command, ...args] = this._command.split(/\s+/)
+      let [command, ...args] = this._command.split(/\s+/)
+      let env = Object.assign(process.env, {
+        ENEBULAR_ASSETS_DATA_PATH: this._assetsDataPath
+      })
+      if (editSession) {
+        args = ['-s', '.node-red-config/enebular-editor-settings.js']
+        env['ENEBULAR_EDITOR_URL'] = `http://${editSession.ipAddress}:9017`
+        env['ENEBULAR_EDITOR_SESSION_TOKEN'] = editSession.sessionToken
+      }
       const cproc = spawn(command, args, {
         stdio: 'pipe',
         cwd: this._dir,
-        env: Object.assign(process.env, {
-          ENEBULAR_ASSETS_DATA_PATH: this._assetsDataPath
-        })
+        env: env
       })
+      const startTimeout = setTimeout(() => {
+        const errorMsg = 'Flow start timed out'
+        reject(new Error(errorMsg))
+        this._setFlowStatus('error', errorMsg)
+      }, this._flowStartTimeout)
       cproc.stdout.on('data', data => {
         let str = data.toString().replace(/(\n|\r)+$/, '')
         this._nodeRedLog.info(str)
+        if (!signaledSuccess && str.includes('Started flows')) {
+          signaledSuccess = true
+          clearTimeout(startTimeout)
+          if (editSession) {
+            this._nodeRedLog.info('Pinging enebular editor...')
+            this._sendEditorAgentIPAddress(editSession)
+          }
+          this._setFlowStatus('running', null)
+          resolve()
+        }
       })
       cproc.stderr.on('data', data => {
         let str = data.toString().replace(/(\n|\r)+$/, '')
         this._nodeRedLog.error(str)
       })
       cproc.once('exit', (code, signal) => {
-        this.info(`Service exited (${code !== null ? code : signal})`)
+        const message =
+          code !== null
+            ? `Service exited, code ${code}`
+            : `Service killed by signal ${signal}`
+        this.info(message)
         this._cproc = null
         /* Restart automatically on an abnormal exit. */
         if (code !== 0) {
-          const now = Date.now()
-          /* Detect continuous crashes (exceptions happen within 5 seconds). */
-          this._exceptionRetryCount =
-            this._lastRetryTimestamp + maxRetryCountResetInterval * 1000 > now
-              ? this._exceptionRetryCount + 1
-              : 0
-          this._lastRetryTimestamp = now
-          if (this._exceptionRetryCount < maxRetryCount) {
+          this._setFlowStatus('error', message)
+          let shouldRetry = ProcessUtil.shouldRetryOnCrash(this._retryInfo)
+          clearTimeout(startTimeout)
+          if (shouldRetry) {
             this.info(
               'Unexpected exit, restarting service in 1 second. Retry count:' +
-                this._exceptionRetryCount
+                this._retryInfo.retryCount
             )
-            setTimeout(() => {
-              this.startService()
+            setTimeout(async () => {
+              try {
+                await this._startService(editSession)
+                resolve()
+              } catch (err) {
+                reject(err)
+              }
             }, 1000)
           } else {
             this.info(
               `Unexpected exit, but retry count(${
-                this._exceptionRetryCount
+                this._retryInfo.retryCount
               }) exceed max.`
             )
+            reject(new Error('Too many retry to start Node-RED service'))
             /* Other restart strategies (change port, etc.) could be tried here. */
           }
+        } else {
+          this._setFlowStatus('stopped', null)
         }
         this._removePIDFile()
       })
       cproc.once('error', err => {
         this._cproc = null
+        this._setFlowStatus('error', err.message)
         reject(err)
       })
       this._cproc = cproc
       if (this._cproc.pid) this._createPIDFile(this._cproc.pid.toString())
-      setTimeout(() => resolve(), 1000)
     })
   }
 
   async shutdownService() {
-    return this._queueAction(() => this._shutdownService())
+    this._shutdownRequested = true
+    // clear all the previous actions, but wait for the last one if have
+    this._actions = []
+    return this._queueAction(async () => this._shutdownService())
   }
 
   async _shutdownService() {
@@ -309,6 +1064,7 @@ export default class NodeREDController {
         this.info('Shutting down service...')
         cproc.once('exit', () => {
           this.info('Service ended')
+          this._shutdownRequested = false
           this._cproc = null
           resolve()
         })
@@ -320,21 +1076,40 @@ export default class NodeREDController {
     })
   }
 
+  async _sendEditorAgentIPAddress(editSession: EditSession) {
+    const { ipAddress, sessionToken } = editSession
+    try {
+      const res = await fetch(
+        `http://${ipAddress}:9017/api/v1/agent-editor/ping`,
+        {
+          method: 'POST',
+          headers: {
+            'x-ee-session': sessionToken
+          }
+        }
+      )
+      if (!res.ok) {
+        throw new Error(`Failed response (${res.status} ${res.statusText})`)
+      }
+    } catch (err) {
+      this.error('Failed to ping editor: ' + err.message)
+    }
+  }
+
   async restartService() {
     return this._queueAction(() => this._restartService())
+  }
+
+  async _restartInEditorMode(editSession: EditSession) {
+    this.info('Restarting service (editor mode)...')
+    this.info(`enebular editor IP Address: ${editSession.ipAddress}`)
+    await this._shutdownService()
+    await this._startService(editSession)
   }
 
   async _restartService() {
     this.info('Restarting service...')
     await this._shutdownService()
     await this._startService()
-  }
-
-  getStatus() {
-    if (this._cproc) {
-      return 'connected'
-    } else {
-      return 'disconnected'
-    }
   }
 }

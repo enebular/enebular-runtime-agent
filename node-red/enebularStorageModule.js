@@ -1,14 +1,36 @@
 const axios = require('axios')
 const fs = require('fs')
 const path = require('path')
+const crypto = require('crypto')
 const RED = require('@uhuru/enebular-node-red')
 
 const ENEBULAR_EDITOR_URL =
   process.env.ENEBULAR_EDITOR_URL || 'http://localhost:9017'
 
+const SESSION_TOKEN = process.env.ENEBULAR_EDITOR_SESSION_TOKEN
+
 function getLibraryEntry(type, path) {
   return new Promise((resolve, reject) => resolve([]))
 }
+
+function decryptCredential(key, credential) {
+  const encryptionKey = crypto
+    .createHash('sha256')
+    .update(key)
+    .digest()
+  const initVector = new Buffer(credential.substring(0, 32), 'hex')
+  const encryptedCredentials = credential.substring(32)
+  const decipher = crypto.createDecipheriv(
+    'aes-256-ctr',
+    encryptionKey,
+    initVector
+  )
+  const decrypted =
+    decipher.update(encryptedCredentials, 'base64', 'utf8') +
+    decipher.final('utf8')
+  return decrypted
+}
+
 function loadConfig(fileName) {
   return new Promise(function(resolve, reject) {
     const userdir = path.resolve(__dirname, '.node-red-config')
@@ -19,7 +41,16 @@ function loadConfig(fileName) {
         if (!data) {
           resolve({})
         } else {
-          resolve(JSON.parse(data))
+          let result = JSON.parse(data)
+          if (fileName === 'flows_cred.json' && result.$) {
+            const dotconfig = fs.readFileSync(
+              path.join(userdir, '.config.json'),
+              'utf8'
+            )
+            const key = JSON.parse(dotconfig)._credentialSecret
+            result = JSON.parse(decryptCredential(key, result.$))
+          }
+          resolve(result)
         }
       }
     })
@@ -48,7 +79,20 @@ function getPackages(flows) {
 }
 
 function getSettings() {
-  return new Promise((resolve, reject) => resolve({}))
+  return new Promise(function(resolve, reject) {
+    const userdir = path.resolve(__dirname, '.node-red-config')
+    const globalSettingsFile = path.join(userdir, '.config.json')
+    fs.readFile(globalSettingsFile, 'utf8', function(err, data) {
+      if (err) {
+        reject(err)
+      } else {
+        if (!data) {
+          resolve({})
+        }
+        return resolve(JSON.parse(data))
+      }
+    })
+  })
 }
 
 function saveSettings(settings) {
@@ -73,7 +117,11 @@ function saveEnebularFlow(params) {
   const saveFlowUrl = `${ENEBULAR_EDITOR_URL}/api/v1/agent-editor/flow`
   return new Promise((resolve, reject) => {
     return axios
-      .post(saveFlowUrl, params)
+      .post(saveFlowUrl, params, {
+        headers: {
+          'x-ee-session': SESSION_TOKEN
+        }
+      })
       .then(response => {
         resolve()
       })
@@ -85,6 +133,16 @@ function saveEnebularFlow(params) {
 
 function saveFlows(flows, credentials, screenshot) {
   let credentialIds = []
+  if (credentials.$) {
+    const userdir = path.resolve(__dirname, '.node-red-config')
+    const dotconfig = fs.readFileSync(
+      path.join(userdir, '.config.json'),
+      'utf8'
+    )
+    const key = JSON.parse(dotconfig)._credentialSecret
+    credentials = JSON.parse(decryptCredential(key, credentials.$))
+  }
+
   if (credentials) {
     credentialIds = credentialIds.concat(Object.keys(credentials))
   }
@@ -98,9 +156,22 @@ function saveFlows(flows, credentials, screenshot) {
 
 function saveCredentials(credentials, flows) {
   const saveCredUrl = `${ENEBULAR_EDITOR_URL}/api/v1/agent-editor/credential`
+  if (credentials.$) {
+    const userdir = path.resolve(__dirname, '.node-red-config')
+    const dotconfig = fs.readFileSync(
+      path.join(userdir, '.config.json'),
+      'utf8'
+    )
+    const key = JSON.parse(dotconfig)._credentialSecret
+    credentials = JSON.parse(decryptCredential(key, credentials.$))
+  }
   return new Promise((resolve, reject) => {
     return axios
-      .post(saveCredUrl, [credentials, flows])
+      .post(saveCredUrl, [credentials, flows], {
+        headers: {
+          'x-ee-session': SESSION_TOKEN
+        }
+      })
       .then(response => {
         resolve()
       })

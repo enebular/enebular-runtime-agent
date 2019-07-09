@@ -2,7 +2,7 @@
 import p from 'path'
 
 export type ConfigItem = {
-  value?: string,
+  value?: any,
   description: string,
   override?: boolean,
   userExpose?: boolean
@@ -13,6 +13,11 @@ export default class Config {
 
   constructor(portBasePath: string) {
     this._items = {
+      ENEBULAR_DEV_MODE: {
+        value: false,
+        description: 'Run in developer mode',
+        userExpose: true
+      },
       ENEBULAR_DAEMON_MODE: {
         value: false,
         description: 'Run as daemon',
@@ -41,6 +46,16 @@ export default class Config {
       NODE_RED_DATA_DIR: {
         value: p.resolve(portBasePath, '../../node-red/', '.node-red-config'),
         description: 'Node-RED data path',
+        userExpose: true
+      },
+      NODE_RED_AI_NODES_DIR: {
+        value: p.resolve(
+          portBasePath,
+          '../../node-red/',
+          '.node-red-config',
+          'node-red-enebular-ai-nodes'
+        ),
+        description: 'Node-RED Ai Nodes path',
         userExpose: true
       },
       NODE_RED_COMMAND: {
@@ -83,16 +98,51 @@ export default class Config {
         description: 'Assets data directory path',
         userExpose: true
       },
+      ENEBULAR_AI_MODELS_DATA_PATH: {
+        value: p.resolve(portBasePath, 'ai-models'),
+        description: 'Ai Model data directory path',
+        userExpose: true
+      },
       ENEBULAR_ASSETS_STATE_PATH: {
         value: p.resolve(portBasePath, '.enebular-assets.json'),
         description: 'Assets state file path',
         userExpose: true
+      },
+      ENEBULAR_AI_MODELS_STATE_PATH: {
+        value: p.resolve(portBasePath, '.enebular-ai-models.json'),
+        description: 'Ai Models state file path',
+        userExpose: true
+      },
+      ENEBULAR_FLOW_STATE_PATH: {
+        value: p.resolve(portBasePath, '.enebular-flow.json'),
+        description: 'Flow state file path',
+        userExpose: true
+      },
+      ENEBULAR_CONNECTOR_MESSENGER_REQ_RETYR_TIMEOUT: {
+        value: 30 * 1000,
+        description: '',
+        userExpose: false
+      },
+      ENEBULAR_NODE_RED_FLOW_START_TIMEOUT: {
+        value: 30 * 1000,
+        description: '',
+        userExpose: false
       },
 
       // logging
       ENEBULAR_LOG_LEVEL: {
         value: 'info',
         description: 'Logging level',
+        userExpose: true
+      },
+      ENEBULAR_LOG_METRICS_ENABLE: {
+        value: false,
+        description: 'Enable metrics logging',
+        userExpose: true
+      },
+      ENEBULAR_LOG_METRICS_INTERVAL: {
+        value: 30,
+        description: 'Metrics logging interval (seconds)',
         userExpose: true
       },
       ENEBULAR_ENABLE_CONSOLE_LOG: {
@@ -162,7 +212,20 @@ export default class Config {
       } else {
         this._items[key] = {}
       }
-      this._items[key].value = value
+
+      if (
+        typeof value === 'string' &&
+        typeof this._items[key].value === 'boolean'
+      ) {
+        this._items[key].value = value == 'true'
+      } else if (
+        typeof value === 'string' &&
+        typeof this._items[key].value === 'number'
+      ) {
+        this._items[key].value = parseInt(value)
+      } else {
+        this._items[key].value = value
+      }
     }
   }
 

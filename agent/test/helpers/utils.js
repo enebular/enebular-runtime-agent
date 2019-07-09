@@ -212,4 +212,8 @@ export default class Utils {
     )
     return Utils.getDummyState('desired', desiredState.state)
   }
+
+  static jsonEquals(a, b) {
+    return JSON.stringify(a) === JSON.stringify(b);
+  }
 }

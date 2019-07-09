@@ -1,0 +1,10 @@
+{
+    "host": "a3scb1tvm38e7l.iot.ap-southeast-2.amazonaws.com",
+    "port": 8883,
+    "clientId": "new-thing",
+    "thingName": "new-thing",
+    "caCert": "./certs/ca-cert",
+    "clientCert": "./certs/client-cert",
+    "privateKey": "./certs/private-key",
+    "topic": "aws/things/new-thing/shadow/update"
+}

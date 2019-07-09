@@ -78,7 +78,7 @@ export default class Startup {
       appendEnvs = Startup._appendEnvironment(
         appendEnvs,
         key,
-        overriddenItems[key]
+        overriddenItems[key].toString()
       )
     })
 
@@ -119,7 +119,7 @@ export default class Startup {
   ): boolean {
     if (!fs.existsSync(Startup._getServiceFilePath(serviceName))) {
       console.error('No startup service has been registered.')
-      return true
+      return false
     }
 
     if (process.getuid() !== 0) {
