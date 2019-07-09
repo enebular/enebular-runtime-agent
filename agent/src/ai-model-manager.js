@@ -830,35 +830,41 @@ export default class AiModelManager {
   }
 
   async pullImage(repoTag: string) {
-    return new Promise((resolve, reject) => {
-      this.info('Pulling image: ', repoTag)
-      this._docker.pull(repoTag, (err, stream) => {
-        if (err) {
-          this.error(err)
-          reject(err)
-        }
-        const onFinished = (err, output) => {
-          if (err) {
+    try {
+      const output = await new Promise((resolve, reject) => {
+        this.info('Pulling image: ', repoTag)
+        this._docker.pull(repoTag, (err, stream) => {
+          if (err || !stream) {
             this.error(err)
-            reject(err)
+            return reject(err)
           }
-
-          this.info('Finished pulling image: ', repoTag)
-          resolve(output)
-        }
-        let count = 0
-        const onProgress = ({ status, progress }) => {
-          if (count % 15 === 0) {
-            this.info(status)
-            if (progress) {
-              this.info(progress)
+          const onFinished = (err, output) => {
+            if (err) {
+              this.error(err)
+              return reject(err)
             }
+
+            this.info('Finished pulling image: ', repoTag)
+            return resolve(output)
           }
-          count++
-        }
-        this._docker.modem.followProgress(stream, onFinished, onProgress)
+          let count = 0
+          const onProgress = ({ status, progress }) => {
+            if (count % 15 === 0) {
+              this.info(status)
+              if (progress) {
+                this.info(progress)
+              }
+            }
+            count++
+          }
+          this._docker.modem.followProgress(stream, onFinished, onProgress)
+        })
       })
-    })
+      return output
+    } catch (err) {
+      this.error(err)
+      throw new Error(`Could not pull docker image: ${err.message}`)
+    }
   }
 
   async removeContainer(containerId: string): Promise<boolean> {
