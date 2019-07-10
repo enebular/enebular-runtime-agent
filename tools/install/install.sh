@@ -72,38 +72,6 @@ run_as_user() {
   sudo -H -u $1 env $3 /bin/bash -c "$2"
 }
 
-#args: retry times, command
-retry() {
-  local RETRIES=$1
-  shift
-
-  local COUNT=0
-  until "$@"; do
-    EXIT=$?
-    COUNT=$(($COUNT + 1))
-    if [ $COUNT -ge $RETRIES ]; then
-      return $EXIT
-    fi
-  done
-  return 0
-}
-
-pip_user_install() {
-  cmd_wrapper run_as_user ${USER} "(pip install $1 --user)"
-}
-
-pip_install_packages() {
-  FCC_PYTHON_PACKAGES=("$@")
-  for p in "${FCC_PYTHON_PACKAGES[@]}"
-  do
-    retry 5 pip_user_install ${p}
-    if [ "$?" -ne 0 ]; then
-      return 1
-    fi
-  done
-  return 0
-}
-
 get_os() {
   local UNAME
   UNAME="$(uname -a)"
@@ -663,9 +631,7 @@ do_install() {
     _echo_g "OK"
 
     _task "Checking python dependencies for mbed-cloud-connector"
-    local PYTHON_PACKAGES
-    PYTHON_PACKAGES=( "mbed-cli" "click" "requests" )
-    pip_install_packages "${PYTHON_PACKAGES[@]}"
+    cmd_wrapper pip install mbed-cli click requests
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
       _err "Python dependencies install failed."
@@ -680,35 +646,6 @@ do_install() {
       _exit 1
     fi
     if [ -d "${INSTALL_DIR}/tools/mbed-cloud-connector-fcc" ] && [ ! -z ${MBED_CLOUD_BUILD_FCC} ]; then
-      _task "Checking python dependencies for mbed-cloud-connector-fcc"
-      # The package list here comes from mbed-os/requirements.txt. In order to avoid `mbed deploy` install packages using
-      # root permission, we'd like to install them using user permission in prior to `mbed deploy`.
-      local FCC_PYTHON_PACKAGES
-      FCC_PYTHON_PACKAGES=(
-          'colorama'
-          'PySerial'
-          'PrettyTable'
-          'Jinja2'
-          'IntelHex'
-          'junit-xml'
-          'pyYAML'
-          'requests'
-          'mbed-ls'
-          'mbed-host-tests'
-          'mbed-greentea'
-          'fuzzywuzzy'
-          'pyelftools'
-          'jsonschema'
-          'future'
-      )
-      pip_install_packages "${FCC_PYTHON_PACKAGES[@]}"
-      EXIT_CODE=$?
-      if [ "$EXIT_CODE" -ne 0 ]; then
-        _err "Python dependencies install failed."
-        _exit 1
-      fi
-      _echo_g "OK"
-
       setup_mbed_cloud_connector_fcc
       EXIT_CODE=$?
       if [ "$EXIT_CODE" -ne 0 ]; then
@@ -723,17 +660,24 @@ do_install() {
 
 setup_mbed_cloud_connector_fcc() {
   _task "Deploying mbed project"
+  local FCC_PATH=${INSTALL_DIR}/tools/mbed-cloud-connector-fcc
   local LOCAL_BIN_ENV
   LOCAL_BIN_ENV="PATH=/home/${USER}/.local/bin:${PATH}"
-  cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector-fcc \
-    && mbed config root . && mbed deploy -v)" ${LOCAL_BIN_ENV}
+  cmd_wrapper bash -c "(cd ${FCC_PATH} && mbed config root . && mbed deploy -v)"
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
     _err "mbed deploy failed."
     _exit 1
   fi
 
-  cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector-fcc \
+  cmd_wrapper chown -R ${USER}:${USER} ${FCC_PATH}
+  EXIT_CODE=$?
+  if [ "$EXIT_CODE" -ne 0 ]; then
+    _err "Failed to change mbed cloud connector fcc permission."
+    _exit 1
+  fi
+
+  cmd_wrapper run_as_user ${USER} "(cd ${FCC_PATH} \
     && python pal-platform/pal-platform.py -v deploy --target=x86_x64_NativeLinux_mbedtls generate)" ${LOCAL_BIN_ENV}
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
@@ -745,7 +689,7 @@ setup_mbed_cloud_connector_fcc() {
   apply_patches_if_available
 
   _task "Building mbed-cloud-connector-fcc (It may take a few minutes)"
-  cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector-fcc && ./build-linux-release.sh)"
+  cmd_wrapper run_as_user ${USER} "(cd ${FCC_PATH} && ./build-linux-release.sh)"
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
     _err "Failed to build mbed-cloud-connector-fcc."
@@ -754,7 +698,7 @@ setup_mbed_cloud_connector_fcc() {
   _echo_g "OK"
 
   _task "Verifying mbed-cloud-connector-fcc"
-  if [ ! -f "${INSTALL_DIR}/tools/mbed-cloud-connector-fcc/__x86_x64_NativeLinux_mbedtls/Release/factory-configurator-client-enebular.elf" ]; then
+  if [ ! -f "${FCC_PATH}/__x86_x64_NativeLinux_mbedtls/Release/factory-configurator-client-enebular.elf" ]; then
     _err "Can't find mbed-cloud-connector-fcc binary."
     _exit 1
   fi
