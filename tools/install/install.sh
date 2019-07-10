@@ -72,38 +72,6 @@ run_as_user() {
   sudo -H -u $1 env $3 /bin/bash -c "$2"
 }
 
-#args: retry times, command
-retry() {
-  local RETRIES=$1
-  shift
-
-  local COUNT=0
-  until "$@"; do
-    EXIT=$?
-    COUNT=$(($COUNT + 1))
-    if [ $COUNT -ge $RETRIES ]; then
-      return $EXIT
-    fi
-  done
-  return 0
-}
-
-pip_user_install() {
-  cmd_wrapper run_as_user ${USER} "(pip install $1 --user)"
-}
-
-pip_install_packages() {
-  FCC_PYTHON_PACKAGES=("$@")
-  for p in "${FCC_PYTHON_PACKAGES[@]}"
-  do
-    retry 5 pip_user_install ${p}
-    if [ "$?" -ne 0 ]; then
-      return 1
-    fi
-  done
-  return 0
-}
-
 get_os() {
   local UNAME
   UNAME="$(uname -a)"
@@ -663,9 +631,7 @@ do_install() {
     _echo_g "OK"
 
     _task "Checking python dependencies for mbed-cloud-connector"
-    local PYTHON_PACKAGES
-    PYTHON_PACKAGES=( "mbed-cli" "click" "requests" )
-    pip_install_packages "${PYTHON_PACKAGES[@]}"
+    cmd_wrapper run_as_user ${USER} "(pip install mbed-cli click requests --user)"
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
       _err "Python dependencies install failed."
@@ -680,35 +646,6 @@ do_install() {
       _exit 1
     fi
     if [ -d "${INSTALL_DIR}/tools/mbed-cloud-connector-fcc" ] && [ ! -z ${MBED_CLOUD_BUILD_FCC} ]; then
-      _task "Checking python dependencies for mbed-cloud-connector-fcc"
-      # The package list here comes from mbed-os/requirements.txt. In order to avoid `mbed deploy` install packages using
-      # root permission, we'd like to install them using user permission in prior to `mbed deploy`.
-      local FCC_PYTHON_PACKAGES
-      FCC_PYTHON_PACKAGES=(
-          'colorama'
-          'PySerial'
-          'PrettyTable'
-          'Jinja2'
-          'IntelHex'
-          'junit-xml'
-          'pyYAML'
-          'requests'
-          'mbed-ls'
-          'mbed-host-tests'
-          'mbed-greentea'
-          'fuzzywuzzy'
-          'pyelftools'
-          'jsonschema'
-          'future'
-      )
-      pip_install_packages "${FCC_PYTHON_PACKAGES[@]}"
-      EXIT_CODE=$?
-      if [ "$EXIT_CODE" -ne 0 ]; then
-        _err "Python dependencies install failed."
-        _exit 1
-      fi
-      _echo_g "OK"
-
       setup_mbed_cloud_connector_fcc
       EXIT_CODE=$?
       if [ "$EXIT_CODE" -ne 0 ]; then
