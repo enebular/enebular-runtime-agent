@@ -80,6 +80,7 @@ export default class NodeREDController {
   _shutdownRequested: boolean = false
   _flowStatus: FlowStatus = { state: 'stopped' }
   _pendingEnableRequest: boolean = false
+  _stateAiModelsPath: string
 
   constructor(
     deviceStateMan: DeviceStateManager,
@@ -92,6 +93,7 @@ export default class NodeREDController {
   ) {
     this._flowStartTimeout = config.get('ENEBULAR_NODE_RED_FLOW_START_TIMEOUT')
     this._flowStateFilePath = config.get('ENEBULAR_FLOW_STATE_PATH')
+    this._stateAiModelsPath = config.get('ENEBULAR_AI_MODELS_STATE_PATH')
     if (!this._flowStateFilePath) {
       throw new Error('Missing node-red controller configuration')
     }
@@ -348,9 +350,7 @@ export default class NodeREDController {
     // Handle flow.enable
     if (this._flowState.enable !== reportedState.enable) {
       this.debug(
-        `Updating reported flow enable ${reportedState.enable} => ${
-          this._flowState.enable
-        }`
+        `Updating reported flow enable ${reportedState.enable} => ${this._flowState.enable}`
       )
       this._deviceStateMan.updateState(
         'reported',
@@ -561,9 +561,7 @@ export default class NodeREDController {
               if (this._flowState.pendingChange === null) {
                 // TODO: handle too many attempts here too, not just above
                 this.info(
-                  `Deploy failed, but will retry (${
-                    this._flowState.updateAttemptCount
-                  }/3).`
+                  `Deploy failed, but will retry (${this._flowState.updateAttemptCount}/3).`
                 )
                 this._flowState.assetId = null
                 this._flowState.updateId = null
@@ -804,7 +802,11 @@ export default class NodeREDController {
       updates.push(
         new Promise(async (resolve, reject) => {
           const aiNodesDir = this._getAiNodesDir()
-          createAiNodeDefinition(flowPackage.handlers, aiNodesDir)
+          createAiNodeDefinition(
+            flowPackage.handlers,
+            aiNodesDir,
+            this._stateAiModelsPath
+          )
             .then(() => resolve())
             .catch(err => reject(err))
         })
@@ -1028,9 +1030,7 @@ export default class NodeREDController {
             }, 1000)
           } else {
             this.info(
-              `Unexpected exit, but retry count(${
-                this._retryInfo.retryCount
-              }) exceed max.`
+              `Unexpected exit, but retry count(${this._retryInfo.retryCount}) exceed max.`
             )
             reject(new Error('Too many retry to start Node-RED service'))
             /* Other restart strategies (change port, etc.) could be tried here. */
