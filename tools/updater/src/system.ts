@@ -301,13 +301,17 @@ export class System implements SystemIf {
   public async installPythonPackages(packages: string[], userInfo: UserInfo): Promise<void> {
     return new Promise(
       async (resolve, reject): Promise<void> => {
+        let pipEnv: NodeJS.ProcessEnv = {}
+        pipEnv['PYTHONUSERBASE'] = `/home/${userInfo.user}/.local`
+        pipEnv['PYTHONPATH'] = `/usr/lib/python2.7`
         let options = ['install']
         options = options.concat(packages)
         options.push("--user")
         try {
           await Utils.spawn('pip', options, this._log, {
             uid: userInfo.uid,
-            gid: userInfo.gid
+            gid: userInfo.gid,
+            env: pipEnv
           })
           this._pipRetryCount = 0
           resolve()
