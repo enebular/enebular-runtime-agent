@@ -550,6 +550,7 @@ export class AgentInstaller implements AgentInstallerIf {
               'mbed-ls',
               'mbed-host-tests',
               'mbed-greentea',
+              'beautifulsoup4',
               'fuzzywuzzy',
               'pyelftools',
               'jsonschema',
