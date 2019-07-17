@@ -755,13 +755,7 @@ do_install() {
     fi
     _echo_g "OK"
 
-    setup_mbed_cloud_connector
-    EXIT_CODE=$?
-    if [ "$EXIT_CODE" -ne 0 ]; then
-      _err "Setup mbed-cloud-connector failed."
-      _exit 1
-    fi
-    if [ -d "${INSTALL_DIR}/tools/mbed-cloud-connector-fcc" ] && [ ! -z ${MBED_CLOUD_BUILD_FCC} ]; then
+    if [ -d "${INSTALL_DIR}/tools/mbed-cloud-connector-fcc" ] && [ ! -z ${MBED_CLOUD_BUNDLE} ]; then
       _task "Checking python dependencies for mbed-cloud-connector-fcc"
       # The package list here comes from mbed-os/requirements.txt. In order to avoid `mbed deploy` install packages using
       # root permission, we'd like to install them using user permission in prior to `mbed deploy`.
@@ -798,6 +792,13 @@ do_install() {
         _err "Setup mbed-cloud-connector-fcc failed."
         _exit 1
       fi
+    fi
+
+    setup_mbed_cloud_connector
+    EXIT_CODE=$?
+    if [ "$EXIT_CODE" -ne 0 ]; then
+      _err "Setup mbed-cloud-connector failed."
+      _exit 1
     fi
   fi
 
@@ -870,26 +871,20 @@ setup_mbed_cloud_connector() {
     _echo_g "OK"
   fi
 
-  if [ ! -z ${MBED_CLOUD_PAL} ]; then
-    _task "Copying mbed cloud credentials"
+  if [ ! -z ${MBED_CLOUD_BUNDLE} ]; then
+    _task "Generating mbed cloud credentials"
     local PAL_PATH
     PAL_PATH=${INSTALL_DIR}/ports/pelion/.pelion-connector
-    cmd_wrapper mkdir -p ${PAL_PATH}
+    cmd_wrapper run_as_user ${USER} "mkdir -p ${PAL_PATH}"
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
       _err "Failed to create pal directory."
       _exit 1
     fi
-    cmd_wrapper cp -RT ${MBED_CLOUD_PAL} ${PAL_PATH}/pal
+    cmd_wrapper run_as_user ${USER} "(cd ${PAL_PATH} && ${INSTALL_DIR}/tools/mbed-cloud-connector-fcc/__x86_x64_NativeLinux_mbedtls/Release/factory-configurator-client-enebular.elf ${MBED_CLOUD_BUNDLE})"
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
-      _err "Failed to copy mbed cloud credentials."
-      _exit 1
-    fi
-    cmd_wrapper chown -R ${USER}:${USER} ${PAL_PATH}
-    EXIT_CODE=$?
-    if [ "$EXIT_CODE" -ne 0 ]; then
-      _err "Failed to change mbed cloud credentials permission."
+      _err "Failed to generate mbed cloud credentials from bundle file."
       _exit 1
     fi
     _echo_g "OK"
@@ -1046,12 +1041,8 @@ case $i in
   MBED_CLOUD_DEV_CRED="${i#*=}"
   shift
   ;;
-  --mbed-cloud-pal=*)
-  MBED_CLOUD_PAL="${i#*=}"
-  shift
-  ;;
-  --mbed-cloud-build-fcc)
-  MBED_CLOUD_BUILD_FCC=yes
+  --mbed-cloud-bundle=*)
+  MBED_CLOUD_BUNDLE="${i#*=}"
   shift
   ;;
   --mbed-cloud-mode=*)
@@ -1123,6 +1114,10 @@ case "${PORT}" in
     _err 'Must specify --mbed-cloud-dev-cred in pelion developer mode'
     _exit 1
   fi
+  if [ -z "${MBED_CLOUD_BUNDLE}" ] && [ ${MBED_CLOUD_MODE} == 'factory' ]; then
+    _err 'Must specify --mbed-cloud-bundle in pelion factory mode'
+    _exit 1
+  fi
   ;;
   *)
     _err 'Unknown port, supported ports: awsiot, pelion'
@@ -1135,8 +1130,8 @@ if [ ! -z ${MBED_CLOUD_DEV_CRED} ] && [ ! -f ${MBED_CLOUD_DEV_CRED} ]; then
   _exit 1
 fi
 
-if [ ! -z ${MBED_CLOUD_PAL} ] && [ ! -d ${MBED_CLOUD_PAL} ]; then
-  _err "${MBED_CLOUD_PAL} doesn't exist."
+if [ ! -z ${MBED_CLOUD_BUNDLE} ] && [ ! -f ${MBED_CLOUD_BUNDLE} ]; then
+  _err "${MBED_CLOUD_BUNDLE} doesn't exist."
   _exit 1
 fi
 
