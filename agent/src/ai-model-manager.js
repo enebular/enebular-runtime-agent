@@ -1,7 +1,7 @@
 /* @flow */
 
 import fs from 'fs'
-import ip from 'ip'
+// import ip from 'ip'
 import objectHash from 'object-hash'
 import path from 'path'
 import Docker from 'dockerode'
@@ -192,7 +192,8 @@ export default class AiModelManager {
   }
 
   ipAddress() {
-    return ip.address()
+    // return ip.address()
+    return 'localhost'
   }
 
   debug(msg: string, ...args: Array<mixed>) {

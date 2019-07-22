@@ -501,6 +501,8 @@ export class AgentInstaller implements AgentInstallerIf {
       this._binBuildEnv['PATH'] = `/home/${userInfo.user}/.local/bin:${
         process.env['PATH']
       }`
+      this._binBuildEnv['PYTHONUSERBASE'] = `/home/${userInfo.user}/.local`
+      this._binBuildEnv['PYTHONPATH'] = `/usr/lib/python2.7`
 
       if (newAgentInfo.version.greaterThan(new AgentVersion(2, 3, 0))) {
         await Utils.taskAsync(
@@ -548,6 +550,7 @@ export class AgentInstaller implements AgentInstallerIf {
               'mbed-ls',
               'mbed-host-tests',
               'mbed-greentea',
+              'beautifulsoup4',
               'fuzzywuzzy',
               'pyelftools',
               'jsonschema',

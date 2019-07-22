@@ -5,8 +5,26 @@ import fs from 'fs'
 import { promisify } from 'util'
 
 const fsWriteFileAsync = promisify(fs.writeFile)
+const fsReadFileAsync = promisify(fs.readFile)
 
-export async function createAiNodeDefinition(nodes, aiNodeDir) {
+export async function createAiNodeDefinition(nodes, aiNodeDir, statePath) {
+  let aiModelsState
+  if (fs.existsSync(statePath)) {
+    aiModelsState = await fsReadFileAsync(statePath)
+      .then(state => JSON.parse(state))
+      .then(states =>
+        states.reduce((accum, state) => {
+          if (state.endpoint) {
+            accum[state.id] = { endpoint: state.endpoint }
+          }
+          return accum
+        }, {})
+      )
+
+      .catch(() => ({}))
+  } else {
+    aiModelsState = {}
+  }
   let htmlFile = `<script type="text/javascript">RED.nodes.registerType('enebular-ai-node',
   {
     category: 'function',
@@ -122,7 +140,7 @@ export async function createAiNodeDefinition(nodes, aiNodeDir) {
 module.exports = function(RED) {
   var request = require('request')
 
-  var endpointConfig = ${JSON.stringify(nodes)} 
+  var endpointConfig = ${JSON.stringify(aiModelsState)} 
 
   function main(config) {
     RED.nodes.createNode(this, config)
