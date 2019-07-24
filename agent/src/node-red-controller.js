@@ -863,7 +863,9 @@ export default class NodeREDController {
               'file:../../node-red-contrib-enebular'
           }
           if (
-            Object.keys(flowPackage.packages).includes('enebular-ai-contrib')
+            Object.keys(flowPackage.packages).includes(
+              '@uhuru/enebular-ai-contrib'
+            )
           ) {
             delete flowPackage.packages['@uhuru/enebular-ai-contrib']
           }
