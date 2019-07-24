@@ -1,5 +1,5 @@
 {
-  "name": "enebular-ai-contrib",
+  "name": "@uhuru/enebular-ai-contrib",
   "version": "0.0.1",
   "description": "A node to work with enebular AI Models",
   "dependencies": {
