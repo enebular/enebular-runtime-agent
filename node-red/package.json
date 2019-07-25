@@ -9,11 +9,11 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@uhuru/enebular-ai-contrib": "file:.node-red-config/node-red-enebular-ai-nodes",
     "@uhuru/enebular-node-red": "^0.18.6-alpha.10",
     "axios": "^0.18.0",
     "enebular-agent-dynamic-deps": "file:.node-red-config/enebular-agent-dynamic-deps",
     "node-red-contrib-enebular": "file:.node-red-config/node-red-contrib-enebular",
-    "enebular-ai-contrib": "file:.node-red-config/node-red-enebular-ai-nodes",
     "node-red-contrib-milkcocoa": "0.0.7"
   }
 }

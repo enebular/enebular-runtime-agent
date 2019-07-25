@@ -825,7 +825,7 @@ export default class NodeREDController {
         }
         const aiPackageJSON = JSON.stringify(
           {
-            name: 'enebular-ai-contrib',
+            name: '@uhuru/enebular-ai-contrib',
             version: '0.0.1',
             description: 'A node to work with enebular AI Models',
             dependencies: {
@@ -863,9 +863,11 @@ export default class NodeREDController {
               'file:../../node-red-contrib-enebular'
           }
           if (
-            Object.keys(flowPackage.packages).includes('enebular-ai-contrib')
+            Object.keys(flowPackage.packages).includes(
+              '@uhuru/enebular-ai-contrib'
+            )
           ) {
-            delete flowPackage.packages['enebular-ai-contrib']
+            delete flowPackage.packages['@uhuru/enebular-ai-contrib']
           }
 
           const packageJSON = JSON.stringify(
