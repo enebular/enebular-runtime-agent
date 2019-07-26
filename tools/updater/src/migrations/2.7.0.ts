@@ -39,9 +39,23 @@ module.exports = {
     )
     Helper.addFileCopy(
       migration,
+      'AI Models data directory',
+      `${context['portBasePath']}/ai-models`,
+      `${context['newPortBasePath']}/ai-models`,
+      true // might not be created yet
+    )
+    Helper.addFileCopy(
+      migration,
       'enebular-agent flow data file',
       `${context['portBasePath']}/.enebular-flow.json`,
       `${context['newPortBasePath']}/.enebular-flow.json`,
+      true // might not be created yet
+    )
+    Helper.addFileCopy(
+      migration,
+      'enebular-agent AI Models data file',
+      `${context['portBasePath']}/.enebular-ai-models.json`,
+      `${context['newPortBasePath']}/.enebular-ai-models.json`,
       true // might not be created yet
     )
     if (context.port == 'awsiot') {

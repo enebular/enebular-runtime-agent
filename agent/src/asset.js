@@ -2,14 +2,13 @@
 
 import fs from 'fs'
 import path from 'path'
-import rimraf from 'rimraf'
+import crypto from 'crypto'
 import mkdirp from 'mkdirp'
+import rimraf from 'rimraf'
 import stringArgv from 'string-argv'
 import { spawn } from 'child_process'
-import type AssetManager from './asset-manager'
 
 export default class Asset {
-  _assetMan: AssetManager
   _type: string
   _id: string
   updateId: string
@@ -23,30 +22,26 @@ export default class Asset {
   updateAttemptCount: number = 0
   lastAttemptedUpdateId: ?string
 
-  constructor(type: string, id: string, assetMan: AssetManager) {
+  constructor(type: string, id: string) {
     this._type = type
     this._id = id
-    this._assetMan = assetMan
     this.changeTs = Date.now()
   }
 
   _debug(msg: string, ...args: Array<mixed>) {
-    this._assetMan.debug(msg, ...args)
+    throw new Error('Called an abstract function')
   }
 
   _info(msg: string, ...args: Array<mixed>) {
-    this._assetMan.info(msg, ...args)
+    throw new Error('Called an abstract function')
   }
 
   _error(msg: string, ...args: Array<mixed>) {
-    this._assetMan.error(msg, ...args)
+    throw new Error('Called an abstract function')
   }
 
   _destDirPath(): string {
-    if (!this.config.destPath) {
-      return this._assetMan.dataDir()
-    }
-    return path.join(this._assetMan.dataDir(), this.config.destPath)
+    throw new Error('Called an abstract function')
   }
 
   type(): string {
@@ -338,6 +333,23 @@ export default class Asset {
     this._info(`Removed asset '${this.name()}'`)
 
     return true
+  }
+
+  async _getIntegrity(path: string) {
+    return new Promise((resolve, reject) => {
+      const hash = crypto.createHash('sha256')
+      const file = fs.createReadStream(path)
+      file.on('data', data => {
+        hash.update(data)
+      })
+      file.on('end', () => {
+        const digest = hash.digest('base64')
+        resolve(digest)
+      })
+      file.on('error', err => {
+        reject(err)
+      })
+    })
   }
 
   async _acquire() {

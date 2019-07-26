@@ -54,12 +54,14 @@ export default class CommandLine {
 
   public getConfigOptions(): ConfigAnyTypes {
     let options: ConfigAnyTypes = {}
-    Object.keys(this._configOptionMap).forEach(configName => {
-      const optionName = this._configOptionMap[configName]
-      if (this._commander[optionName]) {
-        options[configName] = this._commander[optionName]
+    Object.keys(this._configOptionMap).forEach(
+      (configName): void => {
+        const optionName = this._configOptionMap[configName]
+        if (this._commander[optionName]) {
+          options[configName] = this._commander[optionName]
+        }
       }
-    })
+    )
     return options
   }
 

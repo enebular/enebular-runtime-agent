@@ -1,6 +1,8 @@
 /* @flow */
-import fs from 'fs'
 import EventEmitter from 'events'
+import fs from 'fs'
+import type { Logger } from 'winston'
+import { version as agentVer } from '../package.json'
 import ConnectorService from './connector-service'
 import ConnectorMessenger from './connector-messenger'
 import EnebularActivator from './enebular-activator'
@@ -9,12 +11,11 @@ import AgentManagerMediator from './agent-manager-mediator'
 import DeviceStateManager from './device-state-manager'
 import AgentInfoManager from './agent-info-manager'
 import AssetManager from './asset-manager'
-import NodeREDController from './node-red-controller'
-import LogManager from './log-manager'
 import CommandLine from './command-line'
 import Config from './config'
-import type { Logger } from 'winston'
-import { version as agentVer } from '../package.json'
+import AiModelManager from './ai-model-manager'
+import LogManager from './log-manager'
+import NodeREDController from './node-red-controller'
 
 export type EnebularAgentConfig = {
   NODE_RED_DIR: string,
@@ -90,6 +91,7 @@ export default class EnebularAgent extends EventEmitter {
   _deviceStateManager: DeviceStateManager
   _agentInfoManager: AgentInfoManager
   _assetManager: AssetManager
+  _aiModelManager: AiModelManager
 
   _connectionId: ?string
   _deviceId: ?string
@@ -140,6 +142,7 @@ export default class EnebularAgent extends EventEmitter {
     const devMode = this._config.get('ENEBULAR_DEV_MODE')
     const nodeRedDir = this._config.get('NODE_RED_DIR')
     const nodeRedDataDir = this._config.get('NODE_RED_DATA_DIR')
+    const nodeRedAiNodesDir = this._config.get('NODE_RED_AI_NODES_DIR')
     const defaultNodeRedCommand =
       './node_modules/.bin/node-red -s .node-red-config/settings.js'
     const nodeRedCommand =
@@ -200,6 +203,13 @@ export default class EnebularAgent extends EventEmitter {
       this._log
     )
 
+    this._aiModelManager = new AiModelManager(
+      this._deviceStateManager,
+      this._agentMan,
+      this._config,
+      this._log
+    )
+
     this._assetManager = new AssetManager(
       this._deviceStateManager,
       this._agentMan,
@@ -217,6 +227,7 @@ export default class EnebularAgent extends EventEmitter {
       {
         dir: nodeRedDir,
         dataDir: nodeRedDataDir,
+        aiNodesDir: nodeRedAiNodesDir,
         command: nodeRedCommand,
         killSignal: this._config.get('NODE_RED_KILL_SIGNAL'),
         pidFile: this._config.get('ENEBULAR_NODE_RED_PID_FILE'),
@@ -327,6 +338,7 @@ export default class EnebularAgent extends EventEmitter {
 
     await this._agentInfoManager.setup()
     await this._assetManager.setup()
+    await this._aiModelManager.setup()
     await this._nodeRed.setup()
     this._nodeRed.activate(true)
 
@@ -337,6 +349,7 @@ export default class EnebularAgent extends EventEmitter {
     }
 
     await this._nodeRed.startService()
+
     return true
   }
 
@@ -346,6 +359,7 @@ export default class EnebularAgent extends EventEmitter {
     this._nodeRed.activate(false)
     this._assetManager.activate(false)
     this._deviceStateManager.activate(false)
+    this._aiModelManager.activate(false)
     await this._logManager.shutdown()
     this._monitoringShutdown = true
     this._updateMonitoringActiveState()
@@ -572,6 +586,7 @@ export default class EnebularAgent extends EventEmitter {
         break
       case 'authenticated':
         this._assetManager.activate(true)
+        this._aiModelManager.activate(true)
         setTimeout(() => {
           this._updateMonitoringActiveState()
         }, 10 * 1000)
