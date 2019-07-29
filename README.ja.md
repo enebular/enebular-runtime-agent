@@ -18,12 +18,8 @@ enebular は、サードパーティの IoT プラットフォーム接続を介
 
 ### アクティベーションと登録、認証
 
-enebular-agent が enebular と通信するには、認証のための登録情報を取得する必要があります。この登録情報の取得には２つの方法が用意されています。
-
-- enebular が IoT プラットフォーム接続経由で登録情報を自動的に enebular-agent に送信する
-- enebular-agent が enebular に「アクティベーション」を直接に要求した時のレスポンスとして受信する
-
-基本的に前者で登録情報を取得します。また、後者のアクティベーションについては[activation の readme ファイル](README-activation.ja.md)に更なる詳細情報が記載されています。
+enebular-agent が enebular と通信するには、認証のための登録情報を取得する必要があります。
+登録情報の取得は、enebular が IoT プラットフォーム接続経由で登録情報を自動的に enebular-agent に送信することで行います。
 
 ロギングやステータス通知のようにデバイスの有償デバイス化が必要となっている機能の利用を enebular-agent に許可を与えるために、enebular は enebular-agent の認証情報を必要に応じて更新します。
 
