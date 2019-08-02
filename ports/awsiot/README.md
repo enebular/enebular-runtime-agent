@@ -43,13 +43,6 @@ npm install
 
 6 . Obtain the AWS IoT thing connection details for the device (from the AWS console etc) and update the example's `config.json` file with those details (including the correct paths of the cert files).
 
-7 . To allow enebular to detect if the agent unexpectedly disconnects from AWS IoT, add the following 'rule' on AWS IoT. This step is optional.
-
-- Rule query statement: `SELECT * FROM 'enebular/things/+/shadow/update'`
-- Action:
-  - Type: Republish messages to an AWS IoT topic (AWS IOT REPUBLISH)
-  - Topic: `$$aws/things/${topic(3)}/shadow/update`
-
 ## Running
 
 Once the above setup has been completed, enebular-agent can be started from the example directory with the `npm run start` command. By default enebular-agent will not log to the console, however this can be enabled by setting the `DEBUG` environment variable to either `info` or `debug`.
