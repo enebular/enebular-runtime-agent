@@ -1,0 +1,25 @@
+From 4a9a4f60e74d35ee4078f4dca58741fe865965cb Mon Sep 17 00:00:00 2001
+From: Youxin Su <suyouxin@sporelab.io>
+Date: Wed, 30 Jan 2019 11:55:35 +1300
+Subject: [PATCH] replace random use urandom
+
+---
+ .../Linux/Board_Specific/TARGET_x86_x64/pal_plat_x86_x64.c      | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mbed-cloud-client/mbed-client-pal/Source/Port/Reference-Impl/OS_Specific/Linux/Board_Specific/TARGET_x86_x64/pal_plat_x86_x64.c b/mbed-cloud-client/mbed-client-pal/Source/Port/Reference-Impl/OS_Specific/Linux/Board_Specific/TARGET_x86_x64/pal_plat_x86_x64.c
+index c1ed697..91c06de 100644
+--- a/mbed-cloud-client/mbed-client-pal/Source/Port/Reference-Impl/OS_Specific/Linux/Board_Specific/TARGET_x86_x64/pal_plat_x86_x64.c
++++ b/mbed-cloud-client/mbed-client-pal/Source/Port/Reference-Impl/OS_Specific/Linux/Board_Specific/TARGET_x86_x64/pal_plat_x86_x64.c
+@@ -25,7 +25,7 @@ palStatus_t pal_plat_getRandomBufferFromHW(uint8_t *randomBuf, size_t bufSizeByt
+ 	FILE *fp;
+ 	size_t actualRead = 0;
+ 
+-	fp = fopen("/dev/random", "r");
++	fp = fopen("/dev/urandom", "r");
+ 	if (NULL != fp)
+ 	{
+ 		actualRead = fread(randomBuf, 1, bufSizeBytes, fp);
+-- 
+2.17.1
+

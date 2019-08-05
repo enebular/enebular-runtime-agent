@@ -7,6 +7,7 @@ import fetch from 'isomorphic-fetch'
 import objectHash from 'object-hash'
 import ProcessUtil, { type RetryInfo } from './process-util'
 import { encryptCredential, delay } from './utils'
+import { createAiNodeDefinition } from './createAiNodeDefinition'
 import type { Logger } from 'winston'
 import type LogManager from './log-manager'
 import type DeviceStateManager from './device-state-manager'
@@ -19,6 +20,7 @@ import type Config from './config'
 export type NodeREDConfig = {
   dir: string,
   dataDir: string,
+  aiNodesDir: string,
   command: string,
   killSignal: string,
   pidFile: string,
@@ -60,6 +62,7 @@ export default class NodeREDController {
   _flowStateProcessingChanges: boolean = false
   _dir: string
   _dataDir: string
+  _aiNodesDir: string
   _command: string
   _killSignal: string
   _pidFile: string
@@ -77,6 +80,7 @@ export default class NodeREDController {
   _shutdownRequested: boolean = false
   _flowStatus: FlowStatus = { state: 'stopped' }
   _pendingEnableRequest: boolean = false
+  _stateAiModelsPath: string
 
   constructor(
     deviceStateMan: DeviceStateManager,
@@ -89,6 +93,7 @@ export default class NodeREDController {
   ) {
     this._flowStartTimeout = config.get('ENEBULAR_NODE_RED_FLOW_START_TIMEOUT')
     this._flowStateFilePath = config.get('ENEBULAR_FLOW_STATE_PATH')
+    this._stateAiModelsPath = config.get('ENEBULAR_AI_MODELS_STATE_PATH')
     if (!this._flowStateFilePath) {
       throw new Error('Missing node-red controller configuration')
     }
@@ -97,6 +102,7 @@ export default class NodeREDController {
     this._connectorMessenger = connectorMessenger
     this._dir = nodeRedConfig.dir
     this._dataDir = nodeRedConfig.dataDir
+    this._aiNodesDir = nodeRedConfig.aiNodesDir
     this._command = nodeRedConfig.command
     this._killSignal = nodeRedConfig.killSignal
     this._pidFile = nodeRedConfig.pidFile
@@ -344,9 +350,7 @@ export default class NodeREDController {
     // Handle flow.enable
     if (this._flowState.enable !== reportedState.enable) {
       this.debug(
-        `Updating reported flow enable ${reportedState.enable} => ${
-          this._flowState.enable
-        }`
+        `Updating reported flow enable ${reportedState.enable} => ${this._flowState.enable}`
       )
       this._deviceStateMan.updateState(
         'reported',
@@ -546,8 +550,7 @@ export default class NodeREDController {
               await this.fetchAndUpdateFlow(downloadUrl)
               if (this._isFlowEnabled()) {
                 await this._restartService()
-              }
-              else {
+              } else {
                 this.info('Skipped Node-RED restart since flow is disabled')
               }
               this.info(`Deployed flow '${pendingAssetId}'`)
@@ -558,9 +561,7 @@ export default class NodeREDController {
               if (this._flowState.pendingChange === null) {
                 // TODO: handle too many attempts here too, not just above
                 this.info(
-                  `Deploy failed, but will retry (${
-                    this._flowState.updateAttemptCount
-                  }/3).`
+                  `Deploy failed, but will retry (${this._flowState.updateAttemptCount}/3).`
                 )
                 this._flowState.assetId = null
                 this._flowState.updateId = null
@@ -629,6 +630,10 @@ export default class NodeREDController {
 
   _getDataDir() {
     return this._dataDir
+  }
+
+  _getAiNodesDir() {
+    return this._aiNodesDir
   }
 
   _isFlowEnabled(): boolean {
@@ -793,6 +798,54 @@ export default class NodeREDController {
         })
       )
     }
+    if (flowPackage.handlers) {
+      updates.push(
+        new Promise(async (resolve, reject) => {
+          const aiNodesDir = this._getAiNodesDir()
+          createAiNodeDefinition(
+            flowPackage.handlers,
+            aiNodesDir,
+            this._stateAiModelsPath
+          )
+            .then(() => resolve())
+            .catch(err => reject(err))
+        })
+      )
+    }
+    updates.push(
+      new Promise(async (resolve, reject) => {
+        const aiPackageJSONFilePath = path.join(
+          this._getDataDir(),
+          'node-red-enebular-ai-nodes',
+          'package.json'
+        )
+        let nodeType = 'default'
+        if (flowPackage.handlers) {
+          nodeType = 'nodes'
+        }
+        const aiPackageJSON = JSON.stringify(
+          {
+            name: '@uhuru/enebular-ai-contrib',
+            version: '0.0.1',
+            description: 'A node to work with enebular AI Models',
+            dependencies: {
+              request: '^2.88.0'
+            },
+            keywords: ['node-red'],
+            'node-red': {
+              nodes: {
+                'enebular-ai-node': `./${nodeType}/enebular-ai-node.js`
+              }
+            }
+          },
+          null,
+          2
+        )
+        fs.writeFile(aiPackageJSONFilePath, aiPackageJSON, err =>
+          err ? reject(err) : resolve()
+        )
+      })
+    )
     if (flowPackage.packages) {
       updates.push(
         new Promise((resolve, reject) => {
@@ -809,6 +862,14 @@ export default class NodeREDController {
             flowPackage.packages['node-red-contrib-enebular'] =
               'file:../../node-red-contrib-enebular'
           }
+          if (
+            Object.keys(flowPackage.packages).includes(
+              '@uhuru/enebular-ai-contrib'
+            )
+          ) {
+            delete flowPackage.packages['@uhuru/enebular-ai-contrib']
+          }
+
           const packageJSON = JSON.stringify(
             {
               name: 'enebular-agent-dynamic-deps',
@@ -971,9 +1032,7 @@ export default class NodeREDController {
             }, 1000)
           } else {
             this.info(
-              `Unexpected exit, but retry count(${
-                this._retryInfo.retryCount
-              }) exceed max.`
+              `Unexpected exit, but retry count(${this._retryInfo.retryCount}) exceed max.`
             )
             reject(new Error('Too many retry to start Node-RED service'))
             /* Other restart strategies (change port, etc.) could be tried here. */

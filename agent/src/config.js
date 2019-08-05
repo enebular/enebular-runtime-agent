@@ -48,6 +48,16 @@ export default class Config {
         description: 'Node-RED data path',
         userExpose: true
       },
+      NODE_RED_AI_NODES_DIR: {
+        value: p.resolve(
+          portBasePath,
+          '../../node-red/',
+          '.node-red-config',
+          'node-red-enebular-ai-nodes'
+        ),
+        description: 'Node-RED Ai Nodes path',
+        userExpose: true
+      },
       NODE_RED_COMMAND: {
         description: 'Node-RED startup command',
         userExpose: true
@@ -88,9 +98,19 @@ export default class Config {
         description: 'Assets data directory path',
         userExpose: true
       },
+      ENEBULAR_AI_MODELS_DATA_PATH: {
+        value: p.resolve(portBasePath, 'ai-models'),
+        description: 'Ai Model data directory path',
+        userExpose: true
+      },
       ENEBULAR_ASSETS_STATE_PATH: {
         value: p.resolve(portBasePath, '.enebular-assets.json'),
         description: 'Assets state file path',
+        userExpose: true
+      },
+      ENEBULAR_AI_MODELS_STATE_PATH: {
+        value: p.resolve(portBasePath, '.enebular-ai-models.json'),
+        description: 'Ai Models state file path',
         userExpose: true
       },
       ENEBULAR_FLOW_STATE_PATH: {

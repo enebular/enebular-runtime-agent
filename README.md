@@ -16,14 +16,9 @@ enebular communicates with enebular-agent via a third-party IoT platform connect
 
 ## Features
 
-### Activation, Registration and Authentication
+### Registration and Authentication
 
-To communicate with enebular, enebular-agent needs to receive its required device 'registration' information. This can occur in one of two supported ways.
-
-- enebular automatically sends it to enebular-agent via the IoT platform connection
-- enebular-agent receives it in response to it directly requesting 'activation' with enebular.
-
-In most cases the first method is used. For more information on using activation, see the [activation readme](README-activation.md).
+To communicate with enebular, enebular-agent needs to receive its required device 'registration' information. enebular automatically sends this information to enebular-agent via the IoT platform connection.
 
 enebular will also automatically update the enebular-agent's authentication information when required to allow it to use 'paid' device features (i.e logging and status reporting).
 
