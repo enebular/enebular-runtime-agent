@@ -173,7 +173,7 @@ export default class DeviceStateManager extends EventEmitter {
       // Get and apply states
       const states = await this._connectorMessenger.sendRequest(
         'deviceState/device/get',
-        { states: getStates }
+        { states: getStates, ref: true }
       )
       for (let state of states.states) {
         /**
@@ -209,7 +209,8 @@ export default class DeviceStateManager extends EventEmitter {
     op: string,
     path: ?string,
     state: ?Object,
-    meta: ?Object
+    meta: ?Object,
+    extRef: ?Object
   ): Object {
     if (op !== 'set' && op !== 'remove') {
       throw new Error('Unsupported operation type: ' + op)
@@ -227,6 +228,7 @@ export default class DeviceStateManager extends EventEmitter {
       meta: meta
     }
 
+    // State
     if (op === 'set') {
       if (path) {
         newState.state = currentState ? currentState.state : {}
@@ -243,13 +245,32 @@ export default class DeviceStateManager extends EventEmitter {
       }
     }
 
+    // Ref
+    let newRef = currentState && currentState.ref ? currentState.ref : {}
+    // '-' signifies root
+    let refPath = path || '-'
+    if (meta) {
+      let refContent = {
+        uId: meta.uId
+      }
+      if (extRef) {
+        refContent['ext'] = extRef
+      }
+      newRef[refPath] = refContent
+    } else {
+      if (newRef[refPath]) {
+        delete newRef[refPath]
+      }
+    }
+    newState['ref'] = newRef
+
     return newState
   }
 
   _handleDeviceStateChange(params: Object) {
     this._debug('State change: ' + JSON.stringify(params, null, 2))
 
-    const { type, op, path, state, meta } = params
+    const { type, op, path, state, meta, extRef } = params
 
     if (!this._isSupportedStateType(type)) {
       this._info('Unsupported state type: ' + type)
@@ -258,7 +279,7 @@ export default class DeviceStateManager extends EventEmitter {
 
     let newState = null
     try {
-      newState = this._newStateWithChanges(type, op, path, state, meta)
+      newState = this._newStateWithChanges(type, op, path, state, meta, extRef)
     } catch (err) {
       this._info('Failed to apply state changes: ' + err.message)
     }
@@ -307,7 +328,8 @@ export default class DeviceStateManager extends EventEmitter {
           type: update.type,
           op: update.op,
           path: update.path,
-          state: update.state
+          state: update.state,
+          extRef: update.extRef
         }))
         let updateResults = await this._connectorMessenger.sendRequest(
           'deviceState/device/update',
@@ -345,7 +367,13 @@ export default class DeviceStateManager extends EventEmitter {
     return this._isFunctional() && this._stateForTypeExists(type)
   }
 
-  updateState(type: string, op: string, path: ?string, state: ?Object) {
+  updateState(
+    type: string,
+    op: string,
+    path: ?string,
+    state: ?Object,
+    extRef: ?Object
+  ) {
     if (!this._isWritableStateType(type)) {
       throw new Error('Attempted to update unwritable state type: ' + type)
     }
@@ -370,7 +398,8 @@ export default class DeviceStateManager extends EventEmitter {
       type: type,
       op: op,
       path: path,
-      state: state
+      state: state,
+      extRef: extRef
     })
     this._sendStateUpdates()
   }
