@@ -104,6 +104,7 @@ export default class EnebularAgent extends EventEmitter {
   _log: Logger
 
   _connectorRegisteringForActivation: boolean
+  _monitoringDesiredRef: Object
   _monitoringEnabled: boolean = true
   _monitoringShutdown: boolean = false
   _monitoringActive: boolean = false
@@ -392,6 +393,10 @@ export default class EnebularAgent extends EventEmitter {
     )
 
     if (desiredState && desiredState.hasOwnProperty('enable')) {
+      this._monitoringDesiredRef = this._deviceStateManager.getRef(
+        'desired',
+        'monitoring.enable'
+      )
       this._monitoringEnabled = desiredState.enable
       this._updateMonitoringActiveState()
       this._updateMonitoringReportedState()
@@ -409,9 +414,17 @@ export default class EnebularAgent extends EventEmitter {
     )
 
     if (!reportedState || reportedState.enable !== this._monitoringEnabled) {
-      this._deviceStateManager.updateState('reported', 'set', 'monitoring', {
-        enable: this._monitoringEnabled
-      })
+      this._deviceStateManager.updateState(
+        'reported',
+        'set',
+        'monitoring',
+        {
+          enable: this._monitoringEnabled
+        },
+        {
+          desired: this._monitoringDesiredRef
+        }
+      )
     }
   }
 

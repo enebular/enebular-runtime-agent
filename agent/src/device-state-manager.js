@@ -412,6 +412,25 @@ export default class DeviceStateManager extends EventEmitter {
     return state
   }
 
+  getRef(type: string, path: string): ?Object {
+    const state = this._getStateForType(type)
+    if (!state || !state.ref) {
+      return null
+    }
+    if (path) {
+      const pathComps = path.split('.')
+      while (pathComps.length > 0) {
+        const p = pathComps.join('.')
+        console.log('trying:', p)
+        if (state.ref[p]) {
+          return state.ref[p]
+        }
+        pathComps.pop()
+      }
+    }
+    return state.ref['-']
+  }
+
   activate(active: boolean) {
     if (active === this._active) {
       return
