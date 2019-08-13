@@ -118,6 +118,11 @@ export default class Config {
         description: 'Flow state file path',
         userExpose: true
       },
+      ENEBULAR_MONITOR_STATE_PATH: {
+        value: p.resolve(portBasePath, '.enebular-monitor.json'),
+        description: 'Monitor state file path',
+        userExpose: true
+      },
       ENEBULAR_CONNECTOR_MESSENGER_REQ_RETYR_TIMEOUT: {
         value: 30 * 1000,
         description: '',
