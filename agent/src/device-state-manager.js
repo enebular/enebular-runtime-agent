@@ -421,7 +421,6 @@ export default class DeviceStateManager extends EventEmitter {
       const pathComps = path.split('.')
       while (pathComps.length > 0) {
         const p = pathComps.join('.')
-        console.log('trying:', p)
         if (state.ref[p]) {
           return state.ref[p]
         }
