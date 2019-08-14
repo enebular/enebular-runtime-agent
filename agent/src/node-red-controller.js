@@ -310,20 +310,27 @@ export default class NodeREDController {
       }
     }
 
+    let enableRequest = false
     if (desiredState.hasOwnProperty('enable')) {
       if (this._flowState.enable !== desiredState.enable) {
         this._flowState.enable = desiredState.enable
-        this._enableRequest()
-        change = true
+        enableRequest = true
       }
     } else {
       // enable is undefined or false
       if (!this._flowState.enable) {
         // the default enable state is true
         this._flowState.enable = true
-        this._enableRequest()
-        change = true
+        enableRequest = true
       }
+    }
+    if (enableRequest) {
+      this._flowState.enableDesiredStateRef = this._deviceStateMan.getRef(
+        'desired',
+        'flow.enable'
+      )
+      this._enableRequest()
+      change = true
     }
 
     this.debug('Flow state: ' + JSON.stringify(this._flowState, null, 2))
@@ -356,7 +363,10 @@ export default class NodeREDController {
         'reported',
         'set',
         'flow.enable',
-        this._flowState.enable
+        this._flowState.enable,
+        {
+          desired: this._flowState.enableDesiredStateRef
+        }
       )
     }
 
