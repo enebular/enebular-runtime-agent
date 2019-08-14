@@ -129,10 +129,8 @@ export default class MonitorManager {
       this._deviceStateManager.updateState(
         'reported',
         'set',
-        'monitoring',
-        {
-          enable: this._enabled
-        },
+        'monitoring.enable',
+        this._enabled,
         this._desiredStateRef
           ? {
               desired: this._desiredStateRef
