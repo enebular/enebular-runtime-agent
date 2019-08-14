@@ -246,23 +246,15 @@ export default class DeviceStateManager extends EventEmitter {
     }
 
     // Ref
-    let newRef = currentState && currentState.ref ? currentState.ref : {}
-    // '-' signifies root
-    let refPath = path || '-'
-    if (meta) {
-      let refContent = {
-        uId: meta.uId
+    if (extRef) {
+      let newRef = currentState && currentState.ref ? currentState.ref : {}
+      // '-' signifies root
+      let refPath = path || '-'
+      newRef[refPath] = {
+        ext: extRef
       }
-      if (extRef) {
-        refContent['ext'] = extRef
-      }
-      newRef[refPath] = refContent
-    } else {
-      if (newRef[refPath]) {
-        delete newRef[refPath]
-      }
+      newState['ref'] = newRef
     }
-    newState['ref'] = newRef
 
     return newState
   }

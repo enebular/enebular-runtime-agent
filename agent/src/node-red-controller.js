@@ -364,9 +364,11 @@ export default class NodeREDController {
         'set',
         'flow.enable',
         this._flowState.enable,
-        {
-          desired: this._flowState.enableDesiredStateRef
-        }
+        this._flowState.enableDesiredStateRef
+          ? {
+              desired: this._flowState.enableDesiredStateRef
+            }
+          : null
       )
     }
 

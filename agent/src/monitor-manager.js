@@ -133,9 +133,11 @@ export default class MonitorManager {
         {
           enable: this._enabled
         },
-        {
-          desired: this._desiredStateRef
-        }
+        this._desiredStateRef
+          ? {
+              desired: this._desiredStateRef
+            }
+          : null
       )
     }
   }
