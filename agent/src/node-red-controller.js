@@ -838,7 +838,7 @@ export default class NodeREDController {
         const aiPackageJSON = JSON.stringify(
           {
             name: '@uhuru/enebular-ai-contrib',
-            version: '0.0.1',
+            version: '0.0.2',
             description: 'A node to work with enebular AI Models',
             dependencies: {
               request: '^2.88.0'
