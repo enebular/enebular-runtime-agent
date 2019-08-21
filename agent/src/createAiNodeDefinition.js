@@ -194,7 +194,8 @@ module.exports = function(RED) {
       var options = {
         method: 'POST',
         url: nodeUrl,
-        timeout: 120000
+        timeout: 120000,
+        headers: {}
       }
       if (msg.payload) {
         if (typeof msg.payload === 'string' || Buffer.isBuffer(msg.payload)) {
@@ -203,9 +204,7 @@ module.exports = function(RED) {
           options.body = msg.payload + ''
         } else {
           options.body = JSON.stringify(msg.payload)
-          if (options.headers['content-type'] == null) {
-            options.headers['content-type'] = 'application/json'
-          }
+          options.headers['content-type'] = 'application/json'
         }
       }
 
