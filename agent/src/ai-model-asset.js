@@ -23,6 +23,7 @@ export default class AiModelAsset extends Asset {
   statusMessage: string
   endpoint: string
   enable: boolean = true
+  enableDesiredStateRef: Object
   pendingEnableRequest: boolean = false
 
   constructor(type: string, id: string, aiModelMan: AiModelManager) {
@@ -196,7 +197,8 @@ export default class AiModelAsset extends Asset {
       pendingChange: this.pendingChange,
       pendingUpdateId: this.pendingUpdateId,
       pendingConfig: this.pendingConfig,
-      pendingEnableRequest: this.pendingEnableRequest
+      pendingEnableRequest: this.pendingEnableRequest,
+      enableDesiredStateRef: this.enableDesiredStateRef
     }
     if (this.container && this.container.config) {
       serializedModel.containerConfig = this.container.config

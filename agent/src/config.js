@@ -88,6 +88,11 @@ export default class Config {
         description: '',
         userExpose: false
       },
+      ENEBULAR_MONITOR_STATE_PATH: {
+        value: p.resolve(portBasePath, '.enebular-monitor.json'),
+        description: 'Monitor state file path',
+        userExpose: true
+      },
       ENEBULAR_DEVICE_STATE_REFRESH_INTERVAL: {
         value: 60 * 60 * 12,
         description: 'Device state refresh interval',

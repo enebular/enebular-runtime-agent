@@ -356,6 +356,7 @@ export default class AiModelManager {
 
       // Updates to existing models
       let found = false
+      let enableRequest = false
       for (let model of this._models) {
         if (model.id() === desiredModelId) {
           if (
@@ -376,16 +377,24 @@ export default class AiModelManager {
           if (desiredModel.hasOwnProperty('enable')) {
             if (model.enable !== desiredModel.enable) {
               model.enable = desiredModel.enable
-              model.enableRequest()
+              enableRequest = true
             }
           } else {
             // enable is undefined or false
             if (!model.enable) {
               // the default enable state is true
               model.enable = true
-              model.enableRequest()
+              enableRequest = true
             }
           }
+          if (enableRequest) {
+            model.enableDesiredStateRef = this._deviceStateMan.getRef(
+              'desired',
+              `aiModels.aiModels.${model.id()}.enable`
+            )
+            model.enableRequest()
+          }
+
           break
         }
       }
@@ -574,7 +583,12 @@ export default class AiModelManager {
       'reported',
       'set',
       'aiModels.aiModels.' + model.id(),
-      newStateObj
+      newStateObj,
+      model.enableDesiredStateRef
+        ? {
+            desired: model.enableDesiredStateRef
+          }
+        : null
     )
   }
 
