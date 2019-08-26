@@ -274,8 +274,8 @@ ensure_nodejs_version() {
   eval "$1='${NODE_PATH}'"
 }
 
-UPDATER_DOWNLOAD_PATH="https://tmp-enebular-agent-release.s3-ap-northeast-1.amazonaws.com/enebular-agent"
-UPDATER_TEST_DOWNLOAD_PATH="https://tmp-enebular-agent-release.s3-ap-northeast-1.amazonaws.com/enebular-agent-staging"
+UPDATER_DOWNLOAD_PATH="https://s3-ap-northeast-1.amazonaws.com/download.enebular.com/enebular-agent"
+UPDATER_TEST_DOWNLOAD_PATH="https://s3-ap-northeast-1.amazonaws.com/download.enebular.com/enebular-agent-staging"
 UPDATER_VERSION=latest-release
 USER=enebular
 
