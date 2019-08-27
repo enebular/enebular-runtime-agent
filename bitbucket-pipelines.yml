@@ -2,43 +2,30 @@ image:
   name: node:9.2.1
   run-as-user: 1000
 
-pipelines:
-  default: 
-    - step:
+definitions: 
+  steps:
+    - step: &build-test
         name: Build and test
-        caches:
-        - node
         script:
-        - (node -v | xargs echo nodejs version:)
-        - (npm -v | xargs echo npm version:)
-        - echo 'if ((`git diff package-lock.json | wc -l` != 0)); then echo "package-lock.file is required to be committed" && (exit 1); fi;' > /tmp/check_lock_file.sh
-# TODO: change npm i to npm ci once ci is available
-        - (cd node-red && npm i)
-        - (cd agent && npm i && . /tmp/check_lock_file.sh && npm run test:serial)
-        - (cd ports/awsiot && npm i && . /tmp/check_lock_file.sh
-          && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientId":"thing_name","thingName":"thing_name","caCert":"./certs/root_certificate","clientCert":"./certs/thing_cert","privateKey":"./certs/thing_private_key>","topic":"aws/things/thing_name/shadow/update"}' > ./config.json
-          && npm run test && rm ./config.json)
-        - (cd ports/pelion && npm i && . /tmp/check_lock_file.sh && npm run test)
-        - (cd tools/awsiot-thing-creator && npm i && . /tmp/check_lock_file.sh)
-        - (cd tools/updater && npm i && . /tmp/check_lock_file.sh && npm run test)
-  tags:
-    '*':
-      - step:
-          name: Build, Test and Package
-          script:
           - (node -v | xargs echo nodejs version:)
           - (npm -v | xargs echo npm version:)
-          - (echo ${BITBUCKET_TAG} | xargs echo release tag:)
-          # build & test
+          - echo 'if ((`git diff package-lock.json | wc -l` != 0)); then echo "package-lock.file is required to be committed" && (exit 1); fi;' > /tmp/check_lock_file.sh
+          # build
+# TODO: change npm i to npm ci once ci is available
           - (cd node-red && npm i)
-          - (cd agent && npm i && npm run test:serial)
-          - (cd ports/awsiot && npm i
-            && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientId":"thing_name","thingName":"thing_name","caCert":"./certs/root_certificate","clientCert":"./certs/thing_cert","privateKey":"./certs/thing_private_key>","topic":"aws/things/thing_name/shadow/update"}' > ./config.json
+          - (cd agent && npm i && . /tmp/check_lock_file.sh)
+          - (cd ports/awsiot && npm i && . /tmp/check_lock_file.sh)
+          - (cd ports/pelion && npm i && . /tmp/check_lock_file.sh)
+          - (cd tools/awsiot-thing-creator && npm i && . /tmp/check_lock_file.sh)
+          - (cd tools/updater && npm i && . /tmp/check_lock_file.sh)
+          # test
+          - (cd agent && npm run test:serial)
+          - (cd ports/awsiot
+            && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientId":"thing_name","thingName":"thing_name","caCert":"./certs/root_certificate","clientCert":"./certs/thing_cert","privateKey":"./certs/thing_private_key","topic":"aws/things/thing_name/shadow/update"}' > ./config.json
             && npm run test && rm ./config.json)
-          - (cd ports/pelion && npm i && npm run test)
-          - (cd tools/awsiot-thing-creator && npm i)
-          - (cd tools/updater && npm i && npm run test)
-          # package
+          - (cd ports/pelion && npm run test)
+          - (cd tools/updater && npm run test)
+          # clean up
           - (cd node-red && rm -rf node_modules)
           - (cd agent && rm -rf node_modules)
           - (cd ports/awsiot && rm -rf node_modules)
@@ -46,19 +33,58 @@ pipelines:
           - (cd tools/awsiot-thing-creator && rm -rf node_modules)
           - (cd tools/updater && rm -rf node_modules)
           - rm -rf .git
-          - tar --transform "s,^\.,${BITBUCKET_TAG}," -czf /tmp/${BITBUCKET_TAG}-prebuilt.tar.gz .
+        artifacts:
+          - '**'
+    - step: &pack
+        name: Pack
+        script:
+          - rm -rf .git
           - mkdir -p dist
-          - mv /tmp/${BITBUCKET_TAG}-prebuilt.tar.gz dist/
+          - AGENT_NAME=enebular-agent-${BITBUCKET_TAG}
+          - tar --transform "s,^\.,${AGENT_NAME}," -czf /tmp/${AGENT_NAME}-prebuilt.tar.gz .
+          - mv /tmp/${AGENT_NAME}-prebuilt.tar.gz dist/
           - UPDATER_NAME=enebular-agent-updater-${BITBUCKET_TAG}
           - (cd tools/updater && npm i --production && tar --transform "s,^\.,${UPDATER_NAME}," -czf /tmp/${UPDATER_NAME}.tar.gz .)
           - mv /tmp/${UPDATER_NAME}.tar.gz dist/
-          artifacts:
+        artifacts:
           - dist/**
-#      - step:
-#          name: Upload to S3
-#          image: python:3.5.1
-#          script:
-#          - pip install boto3==1.3.0 # required for s3_upload.py
-#          - S3_BUCKET=enebular-release
-#          - python tools/s3_upload.py ${S3_BUCKET} "is_folder" "${BITBUCKET_TAG}/"
-#          - (cd dist && find * -exec python ../s3_upload.py ${S3_BUCKET} {} ${BITBUCKET_TAG}/{} \;)
+    - step: &upload
+        name: Upload (Test)
+        image: python:3.5.1
+        deployment: test
+        script:
+          - pip install boto3==1.3.0
+          - cp -r dist ${BITBUCKET_TAG}
+          - find ${BITBUCKET_TAG}/*tar.gz -print0 | xargs -t -0 -I {} python tools/s3_upload.py ${ENEBULAR_AGENT_S3_BUCKET} {} ${ENEBULAR_AGENT_S3_DIR}/{}
+        artifacts:
+          - dist/**
+    - step: &upload-release
+        name: Upload (Production)
+        image: python:3.5.1
+        deployment: production
+        trigger: manual
+        script:
+          - pip install boto3==1.3.0
+          - cp -r dist ${BITBUCKET_TAG}
+          - find ${BITBUCKET_TAG}/*tar.gz -print0 | xargs -t -0 -I {} python tools/s3_upload.py ${ENEBULAR_AGENT_S3_BUCKET} {} ${ENEBULAR_AGENT_S3_DIR}/{}
+          - LATEST_RELEASE_INFO=latest.info
+          - echo {\"version\":\"${BITBUCKET_TAG}\"} | python -mjson.tool > ${LATEST_RELEASE_INFO}
+          - python tools/s3_upload.py ${ENEBULAR_AGENT_S3_BUCKET} ${LATEST_RELEASE_INFO} ${ENEBULAR_AGENT_S3_DIR}/${LATEST_RELEASE_INFO}
+        artifacts:
+          - dist/**
+pipelines:
+  default: 
+    - step: *build-test
+  tags:
+    '[0-9]*.[0-9]*.[0-9]*':
+      - step: *build-test
+      - step: *pack
+      - step: *upload-release
+    '[0-9]*.[0-9]*.[0-9]*-rc*':
+      - step: *build-test
+      - step: *pack
+      - step: *upload
+    'dev-test-*':
+      - step: *build-test
+      - step: *pack
+      - step: *upload

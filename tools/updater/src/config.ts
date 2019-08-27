@@ -41,8 +41,14 @@ export default class Config {
       },
       ENEBULAR_AGENT_DOWNLOAD_PATH: {
         value:
-          'http://enebular-agent-update-youxin-test.s3-website-ap-southeast-2.amazonaws.com',
+          'https://s3-ap-northeast-1.amazonaws.com/download.enebular.com/enebular-agent',
         description: 'the URL PATH to download enebular-agent',
+        userExpose: true
+      },
+      ENEBULAR_AGENT_TEST_DOWNLOAD_PATH: {
+        value:
+          'https://s3-ap-northeast-1.amazonaws.com/download.enebular.com/enebular-agent-staging',
+        description: 'the URL PATH to download test enebular-agent',
         userExpose: true
       },
       ENEBULAR_AGENT_GITHUB_API_PATH: {
@@ -51,7 +57,7 @@ export default class Config {
         userExpose: true
       },
       ENEBULAR_AGENT_DOWNLOAD_FROM_GITHUB: {
-        value: true,
+        value: false,
         description: 'download enebular-agent from github',
         userExpose: true
       },

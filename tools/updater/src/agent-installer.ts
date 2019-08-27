@@ -37,6 +37,10 @@ interface GithubVersionRsp {
   assets: GithubVersionAssets
 }
 
+interface LatestReleaseInfo {
+  version: string
+}
+
 export class AgentInstaller implements AgentInstallerIf {
   private _config: Config
   private _minimumRequiredDiskSpace: number = 400 * 1024 * 1024 // 400 MiB
@@ -564,6 +568,15 @@ export class AgentInstaller implements AgentInstallerIf {
     }
   }
 
+  private _getAgentName(version: string, kind: string): string {
+    if (kind === 'binary') {
+      const arch = os.arch() == 'x32' ? 'x86' : os.arch()
+      const platform = os.platform()
+      return `enebular-agent-${version}-${platform}-${arch}.tar.gz`
+    }
+    return `enebular-agent-${version}-prebuilt.tar.gz`
+  }
+
   public async download(
     installPath: string,
     userInfo: UserInfo
@@ -605,11 +618,28 @@ export class AgentInstaller implements AgentInstallerIf {
         }
       )
     } else {
-      url = `${this._config.getString(
-        'ENEBULAR_AGENT_DOWNLOAD_PATH'
-      )}/enebular-agent-${this._config.getString(
-        'ENEBULAR_AGENT_VERSION'
-      )}-prebuilt.tar.gz`
+      let version = this._config.getString('ENEBULAR_AGENT_VERSION')
+      let downloadPath = this._config.getString('ENEBULAR_AGENT_DOWNLOAD_PATH')
+      if (version === 'latest') {
+        let info
+        try {
+          info = await Utils.fetchJSON(
+            `${downloadPath}/latest.info`,
+            {}
+          )
+        } catch (err) {
+          throw new Error(`Failed to get latest version info from s3`)
+        }
+        version = (info as LatestReleaseInfo).version
+      } else {
+        if (AgentVersion.parse(version) == undefined) {
+          downloadPath = this._config.getString(
+            'ENEBULAR_AGENT_TEST_DOWNLOAD_PATH'
+          )
+        }
+      }
+      const fileName = this._getAgentName(version, 'prebuilt')
+      url = `${downloadPath}/${version}/${fileName}`
     }
 
     await this._downloadAndExtract(

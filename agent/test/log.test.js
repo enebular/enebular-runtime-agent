@@ -119,7 +119,7 @@ test.serial('Log.2: Log is sent to server periodically', async t => {
   t.true(
     await polling(
       () => {
-        return agent._monitoringActive
+        return agent._monitorManager._active
       },
       0,
       100,
@@ -205,7 +205,7 @@ test.serial('Log.3: Log level is handled correctly', async t => {
   t.true(
     await polling(
       () => {
-        return agent._monitoringActive
+        return agent._monitorManager._active
       },
       MonitoringActiveDelay,
       500,

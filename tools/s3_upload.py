@@ -20,10 +20,19 @@ import argparse
 import boto3
 from botocore.exceptions import ClientError
 
-def upload_to_s3(bucket, artefact, bucket_key):
+def upload_to_s3(bucket_location, artefact, bucket_key):
     """
     Uploads an artefact to Amazon S3
     """
+    bucket_path = os.path.normpath(bucket_location)
+    paths = bucket_path.split(os.sep)
+
+    bucket = paths[0]
+    if len(paths) > 1:
+      paths.pop(0)
+      paths.append(bucket_key)
+      bucket_key = os.sep.join(paths)
+
     try:
         client = boto3.client('s3')
     except ClientError as err:
@@ -47,7 +56,7 @@ def upload_to_s3(bucket, artefact, bucket_key):
 def main():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("bucket", help="Name of the existing S3 bucket")
+    parser.add_argument("bucket", help="Name of the existing S3 bucket location")
     parser.add_argument("artefact", help="Name of the artefact to be uploaded to S3")
     parser.add_argument("bucket_key", help="Name of the S3 Bucket key")
     args = parser.parse_args()

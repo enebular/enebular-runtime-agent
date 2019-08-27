@@ -66,6 +66,50 @@ get_node_checksum() {
   download "${1-}" "-" | command awk "{ if (\"${2-}\" == \$2) print \$1}"
 }
 
+get_version_info_from_s3() {
+  download "${1-}" "-" | grep -e version | sed -E 's/.*"([^"]+)".*/\1/' | xargs
+}
+
+#args: version, url(out), kind(out), version(out)
+get_download_info_s3() {
+  local RELEASE_VERSION
+  RELEASE_VERSION="${1-}"
+  if [ -z "${RELEASE_VERSION}" ]; then
+    _err "Missing release version."
+    return 1
+  fi
+  local URL="${2-}"
+  local VERSION="${3-}"
+
+  local VERSION_INFO
+  local DOWNLOAD_PATH
+  DOWNLOAD_PATH=${UPDATER_DOWNLOAD_PATH}
+  if [ "${RELEASE_VERSION}" == "latest-release" ]; then
+    VERSION_INFO="$(get_version_info_from_s3 ${UPDATER_DOWNLOAD_PATH}/latest.info)"
+    if [ -z "${VERSION_INFO}" ]; then
+      _err "Failed to get latest version info."
+      return 2
+    fi
+  else
+    # regexp to match release version xx.xx.xx
+    local RX
+    RX='^([0-9]+\.){0,2}(\*|[0-9]+)$'
+    if ! [[ "${RELEASE_VERSION}" =~ ${RX} ]]; then
+      DOWNLOAD_PATH=${UPDATER_TEST_DOWNLOAD_PATH}
+    fi
+    VERSION_INFO=${RELEASE_VERSION}
+  fi
+
+  local DOWNLOAD_FILE_NAME
+  DOWNLOAD_FILE_NAME="enebular-agent-updater-${VERSION_INFO}.tar.gz"
+  local _DOWNLOAD_URL
+  local _INSTALL_KIND
+  _DOWNLOAD_URL="${DOWNLOAD_PATH}/${VERSION_INFO}/${DOWNLOAD_FILE_NAME}"
+  _INSTALL_KIND="prebuilt"
+  eval ${URL}="'${_DOWNLOAD_URL}'"
+  eval ${VERSION}="'${VERSION_INFO}'"
+}
+
 # args: kind, version
 get_node_download_file_name() {
   local KIND
@@ -230,7 +274,9 @@ ensure_nodejs_version() {
   eval "$1='${NODE_PATH}'"
 }
 
-UPDATER_DOWNLOAD_URL="https://download.enebular.com/enebular-agent-update/latest"
+UPDATER_DOWNLOAD_PATH="https://s3-ap-northeast-1.amazonaws.com/download.enebular.com/enebular-agent"
+UPDATER_TEST_DOWNLOAD_PATH="https://s3-ap-northeast-1.amazonaws.com/download.enebular.com/enebular-agent-staging"
+UPDATER_VERSION=latest-release
 USER=enebular
 
 declare -a UPDATER_PARAMETER
@@ -242,7 +288,15 @@ case $i in
   shift
   ;;
   --updater-download-path=*)
-  UPDATER_DOWNLOAD_URL="${i#*=}"
+  UPDATER_DOWNLOAD_PATH="${i#*=}"
+  shift
+  ;;
+  --updater-test-download-path=*)
+  UPDATER_TEST_DOWNLOAD_PATH="${i#*=}"
+  shift
+  ;;
+  --updater-version=*)
+  UPDATER_VERSION="${i#*=}"
   shift
   ;;
   *)
@@ -266,8 +320,16 @@ if ! id -u ${USER} > /dev/null 2>&1; then
 fi
 
 TEMP_UPDATER_TARBALL=`mktemp --dry-run /tmp/enebular-agent-updater.XXXXXXXXX.tar.gz`
-_task "Downloading enebular-agent-updater"
-_echo "Downloading from ${UPDATER_DOWNLOAD_URL}"
+_task "Fetching updater version info"
+get_download_info_s3 ${UPDATER_VERSION} UPDATER_DOWNLOAD_URL ACTUAL_VERSION
+EXIT_CODE=$?
+if [ "$EXIT_CODE" -ne 0 ]; then
+  _err "Failed to get latest version info"
+  _exit 1
+fi
+_echo_g "OK"
+
+_task "Downloading updater version ${ACTUAL_VERSION}"
 if ! download ${UPDATER_DOWNLOAD_URL} ${TEMP_UPDATER_TARBALL}; then 
   _err "Download ${UPDATER_DOWNLOAD_URL} failed"
   _exit 1
