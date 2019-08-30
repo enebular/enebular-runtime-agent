@@ -13,7 +13,7 @@
     "lint": "eslint src",
     "flow": "flow",
     "test": "test/bash/env.bash && test/bash/commandline-opts.bash",
-    "dev": "DEBUG=debug ./bin/enebular-mbed-agent --dev-mode"
+    "dev": "DEBUG=debug ./bin/enebular-pelion-agent --dev-mode"
   },
   "author": "",
   "license": "MIT",
