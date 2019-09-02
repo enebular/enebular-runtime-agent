@@ -7,6 +7,8 @@ interface ConfigOptionMap {
 }
 
 export default class CommandLine {
+  private _command?: string
+  private _commandOptions = {}
   private _config: Config
   private _configOptionMap: ConfigOptionMap = {}
   private _commander: program.Command = new program.Command(pkg.name)
@@ -39,6 +41,38 @@ export default class CommandLine {
       /^(factory|developer)$/i
     )
     this.addConfigOption('FORCE_UPDATE', '--force')
+
+    this._commander.on('command:*', () => {
+      if (!process.env.ENEBULAR_TEST && this._commander.args.length > 0) {
+        this._command = 'unknown'
+      }
+    })
+
+    this._commander
+      .command('install')
+      .description('install enebular-agent')
+      .action(options => {
+        this._command = 'install'
+        this._commandOptions = options
+      })
+  }
+
+  public hasCommand(): boolean {
+    return !!this._command
+  }
+
+  public processCommand(): boolean{
+    switch (this._command) {
+      case 'install':
+        return true
+      case 'unknown':
+      default:
+        console.error(
+          'Invalid command: %s\nSee --help for a list of available commands.',
+          this._commander.args.join(' ')
+        )
+        return false
+    }
   }
 
   public addConfigOption(

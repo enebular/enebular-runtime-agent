@@ -232,7 +232,11 @@ export default class AgentUpdater {
     agentInfo: AgentInfo,
     newAgentInfo: AgentInfo
   ): Promise<void> {
-    await this._installer.build(agentInfo, newAgentInfo, this._userInfo)
+    const mbed_cloud_dev_creds_path = 
+      `${agentInfo.path}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c`
+
+    await this._installer.build(agentInfo.detectPortType(),
+            newAgentInfo, this._userInfo, mbed_cloud_dev_creds_path)
 
     try {
       await this._configAndStartNewAgent(
@@ -308,6 +312,10 @@ export default class AgentUpdater {
           : process.env.USER || user
       )
       throw new Error('You have to run this with root permission.')
+    }
+
+    if (this._commandLine.hasCommand()) {
+      return this._commandLine.processCommand()
     }
 
     let agentInfo

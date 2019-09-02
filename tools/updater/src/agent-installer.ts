@@ -17,9 +17,10 @@ import Log from './log'
 export interface AgentInstallerIf {
   download(installPath: string, userInfo: UserInfo): Promise<void>
   build(
-    agentInfo: AgentInfo,
+    port: string,
     newAgentInfo: AgentInfo,
-    userInfo: UserInfo
+    userInfo: UserInfo,
+    mbed_cloud_dev_credentials_path?: string
   ): Promise<void>
 }
 
@@ -342,9 +343,9 @@ export class AgentInstaller implements AgentInstallerIf {
   }
 
   private async _buildMbedCloudConnector(
-    agentPath: string,
     installPath: string,
-    userInfo: UserInfo
+    userInfo: UserInfo,
+    devCredsPath?: string
   ): Promise<void> {
     const connectorPath = `${installPath}/tools/mbed-cloud-connector`
     await Utils.taskAsync(
@@ -375,18 +376,23 @@ export class AgentInstaller implements AgentInstallerIf {
 
     const factoryMode = this._config.getString('PELION_MODE') == 'factory'
     if (!factoryMode) {
-      await Utils.taskAsync(
-        'Copy mbed-cloud-connector developer credentials',
-        this._log,
-        async (): Promise<void> => {
-          return Utils.copy(
-            this._log,
-            `${agentPath}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c`,
-            `${installPath}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c`,
-            userInfo
-          )
-        }
-      )
+      if (devCredsPath) {
+        await Utils.taskAsync(
+          'Copy mbed-cloud-connector developer credentials',
+          this._log,
+          async (): Promise<void> => {
+            return Utils.copy(
+              this._log,
+              `${devCredsPath}`,
+              `${installPath}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c`,
+              userInfo
+            )
+          }
+        )
+      }
+      else {
+        throw new Error('mbed cloud dev credentials c file is required.')
+      }
     }
 
     await Utils.taskAsync(
@@ -453,9 +459,10 @@ export class AgentInstaller implements AgentInstallerIf {
   }
 
   public async build(
-    agentInfo: AgentInfo,
+    port: string,
     newAgentInfo: AgentInfo,
-    userInfo: UserInfo
+    userInfo: UserInfo,
+    mbed_cloud_dev_credentials_path?: string
   ): Promise<void> {
     const installPath = newAgentInfo.path
     const nodejsPath = path.resolve(
@@ -492,7 +499,7 @@ export class AgentInstaller implements AgentInstallerIf {
       }
     )
 
-    if (agentInfo.detectPortType() == 'awsiot') {
+    if (port == 'awsiot') {
       await this._buildAWSIoT(installPath, userInfo)
     } else {
       await Utils.taskAsync(
@@ -528,9 +535,9 @@ export class AgentInstaller implements AgentInstallerIf {
         )
 
         await this._buildMbedCloudConnector(
-          agentInfo.path,
           installPath,
-          userInfo
+          userInfo,
+          mbed_cloud_dev_credentials_path
         )
 
         /*

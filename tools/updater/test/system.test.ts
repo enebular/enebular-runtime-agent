@@ -13,6 +13,7 @@ const readFile = util.promisify(fs.readFile)
 const writeFile = util.promisify(fs.writeFile)
 
 test.before(() => {
+  process.env['ENEBULAR_TEST'] = 'true'
   process.env['ROOT_REQUIRED'] = 'false'
   /* process.env['DEBUG'] = 'debug' */
   process.env['MINIMUM_CHECKING_TIME'] = '2'
