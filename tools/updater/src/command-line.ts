@@ -122,7 +122,8 @@ export default class CommandLine {
             userInfo,
             this._commandOptions.devCredsPath
           )
-          if (pelionMode === 'factory') {
+          if (this._installPort === 'pelion' && pelionMode === 'factory'
+              && this._commandOptions.bundleFilePath) {
             await installer.bundle2PAL(
               this._installPath,
               this._commandOptions.bundleFilePath,
