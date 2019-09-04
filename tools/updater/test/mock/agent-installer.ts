@@ -33,4 +33,10 @@ export default class MockAgentInstaller implements AgentInstallerIf {
       throw new Error('Agent Build failed.')
     }
   }
+
+  public async bundle2PAL(
+    installPath: string,
+    bundlePath: string,
+    userInfo: UserInfo
+  ): Promise<void>
 }

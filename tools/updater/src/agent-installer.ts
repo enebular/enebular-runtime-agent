@@ -22,6 +22,11 @@ export interface AgentInstallerIf {
     userInfo: UserInfo,
     mbedCloudDevCredsPath?: string
   ): Promise<void>
+  bundle2PAL(
+    installPath: string,
+    bundlePath: string,
+    userInfo: UserInfo
+  ): Promise<void>
 }
 
 interface GithubVersionAsset {
@@ -623,6 +628,32 @@ export class AgentInstaller implements AgentInstallerIf {
       '/tmp/enebular-runtime-agent-' + Utils.randomString(),
       installPath,
       userInfo
+    )
+  }
+
+  public async bundle2PAL(
+    installPath: string,
+    bundlePath: string,
+    userInfo: UserInfo
+  ): Promise<void> {
+    const fccPath = `${installPath}/tools/mbed-cloud-connector-fcc`
+    const palPath = `${installPath}/ports/pelion/.pelion-connector`
+
+    if (!fs.existsSync(palPath)) {
+      await Utils.mkdirp(this._log, palPath, userInfo)
+    }
+
+    await Utils.taskAsync(
+      'Generating mbed cloud credentials',
+      this._log,
+      async (): Promise<void> => {
+        return this._buildConnector(
+          palPath,
+          `${fccPath}/__x86_x64_NativeLinux_mbedtls/Release/factory-configurator-client-enebular.elf`,
+          [bundlePath],
+          userInfo
+        )
+      }
     )
   }
 }

@@ -67,6 +67,10 @@ export default class CommandLine {
         '--dev-creds-path <path>',
         'Path to mbed cloud dev credentials (must be specified in developer mode)'
       )
+      .option(
+        '--bundle-file-path <path>',
+        'Path to mbed cloud bundle file (must be specified in factory mode)'
+      )
   }
 
   public hasCommand(): boolean {
@@ -80,42 +84,54 @@ export default class CommandLine {
   ): Promise<boolean> {
     switch (this._command) {
       case 'install':
+        const pelionMode = this._config.getString('PELION_MODE')
         if (!this._installPath || !this._installPort) {
-          console.error(`Invalid parameters.`)
           return false
         }
-
         try {
-          await installer.download(this._installPath, userInfo)
-
-          const agentInfo = AgentInfo.createFromSource(
-            system,
-            this._installPath
-          )
-
-          if (this._installPort == 'pelion') {
+          if (this._installPort === 'pelion') {
             if (!this._config.isOverridden('PELION_MODE')) {
               throw new Error(
                 `Installing enebular-agent pelion port requires --pelion-mode to be set (developer or factory)`
               )
-            } else if (
-              this._config.getString('PELION_MODE') === 'developer' &&
-              !this._commandOptions.devCredsPath
-            ) {
+            }
+            if (pelionMode !== 'developer' && pelionMode !== 'factory') {
               throw new Error(
-                `--dev-creds-path must be specified in developer mode`
+                `--pelion-mode must be either developer or factory`
+              )
+            }
+            if (pelionMode === 'developer' && !this._commandOptions.devCredsPath) {
+              throw new Error(
+                `--dev-creds-path must be specified in pelion developer mode`
+              )
+            }
+            if (pelionMode === 'factory' && !this._commandOptions.bundleFilePath) {
+              throw new Error(
+                `--bundle-file-path must be specified in pelion factory mode`
               )
             }
           }
+ 
+          await installer.download(this._installPath, userInfo)
           await installer.build(
             this._installPort,
-            agentInfo,
+            AgentInfo.createFromSource(
+              system,
+              this._installPath
+            ),
             userInfo,
             this._commandOptions.devCredsPath
           )
+          if (pelionMode === 'factory') {
+            await installer.bundle2PAL(
+              this._installPath,
+              this._commandOptions.bundleFilePath,
+              userInfo
+            )
+          }
           return true
         } catch (err) {
-          console.error(`Install failed. Reason: ${err.message}`)
+          console.error(`Install enebular-agent failed, reason: ${err.message}`)
           return false
         }
       case 'unknown':
