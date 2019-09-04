@@ -1,6 +1,10 @@
 import * as program from 'commander'
 import pkg from '../package.json'
+import AgentInfo from './agent-info'
 import Config, { ConfigAnyTypes } from './config'
+import { AgentInstallerIf } from './agent-installer'
+import { SystemIf } from './system'
+import { UserInfo } from './utils'
 
 interface ConfigOptionMap {
   [configName: string]: string
@@ -8,7 +12,9 @@ interface ConfigOptionMap {
 
 export default class CommandLine {
   private _command?: string
-  private _commandOptions = {}
+  private _installPath?: string
+  private _installPort?: string
+  private _commandOptions: ConfigOptionMap = {}
   private _config: Config
   private _configOptionMap: ConfigOptionMap = {}
   private _commander: program.Command = new program.Command(pkg.name)
@@ -49,22 +55,69 @@ export default class CommandLine {
     })
 
     this._commander
-      .command('install')
-      .description('install enebular-agent')
-      .action(options => {
+      .command('install <port> <path>')
+      .description('install enebular-agent <port> <path>')
+      .action((port, path, options) => {
         this._command = 'install'
+        this._installPort = port
+        this._installPath = path
         this._commandOptions = options
       })
+      .option(
+        '--dev-creds-path <path>',
+        'Path to mbed cloud dev credentials (must be specified in developer mode)'
+      )
   }
 
   public hasCommand(): boolean {
     return !!this._command
   }
 
-  public processCommand(): boolean{
+  public async processCommand(
+    installer: AgentInstallerIf,
+    system: SystemIf,
+    userInfo: UserInfo
+  ): Promise<boolean> {
     switch (this._command) {
       case 'install':
-        return true
+        if (!this._installPath || !this._installPort) {
+          console.error(`Invalid parameters.`)
+          return false
+        }
+
+        try {
+          await installer.download(this._installPath, userInfo)
+
+          const agentInfo = AgentInfo.createFromSource(
+            system,
+            this._installPath
+          )
+
+          if (this._installPort == 'pelion') {
+            if (!this._config.isOverridden('PELION_MODE')) {
+              throw new Error(
+                `Installing enebular-agent pelion port requires --pelion-mode to be set (developer or factory)`
+              )
+            } else if (
+              this._config.getString('PELION_MODE') === 'developer' &&
+              !this._commandOptions.devCredsPath
+            ) {
+              throw new Error(
+                `--dev-creds-path must be specified in developer mode`
+              )
+            }
+          }
+          await installer.build(
+            this._installPort,
+            agentInfo,
+            userInfo,
+            this._commandOptions.devCredsPath
+          )
+          return true
+        } catch (err) {
+          console.error(`Install failed. Reason: ${err.message}`)
+          return false
+        }
       case 'unknown':
       default:
         console.error(
@@ -91,15 +144,13 @@ export default class CommandLine {
   }
 
   public getConfigOptions(): ConfigAnyTypes {
-    let options: ConfigAnyTypes = {}
-    Object.keys(this._configOptionMap).forEach(
-      (configName): void => {
-        const optionName = this._configOptionMap[configName]
-        if (this._commander[optionName]) {
-          options[configName] = this._commander[optionName]
-        }
+    const options: ConfigAnyTypes = {}
+    Object.keys(this._configOptionMap).forEach((configName): void => {
+      const optionName = this._configOptionMap[configName]
+      if (this._commander[optionName]) {
+        options[configName] = this._commander[optionName]
       }
-    )
+    })
     return options
   }
 

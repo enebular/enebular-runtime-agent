@@ -20,7 +20,7 @@ export interface AgentInstallerIf {
     port: string,
     newAgentInfo: AgentInfo,
     userInfo: UserInfo,
-    mbed_cloud_dev_credentials_path?: string
+    mbedCloudDevCredsPath?: string
   ): Promise<void>
 }
 
@@ -45,8 +45,8 @@ interface LatestReleaseInfo {
 export class AgentInstaller implements AgentInstallerIf {
   private _config: Config
   private _minimumRequiredDiskSpace: number = 400 * 1024 * 1024 // 400 MiB
-  private _maxFetchRetryCount: number = 3
-  private _fetchRetryCount: number = 0
+  private _maxFetchRetryCount = 3
+  private _fetchRetryCount = 0
   private _npmBuildEnv: NodeJS.ProcessEnv = {}
   private _binBuildEnv: NodeJS.ProcessEnv = {}
   private _log: Log
@@ -70,52 +70,36 @@ export class AgentInstaller implements AgentInstallerIf {
       )
     }
     this._log.debug(`Downloading ${url} to ${path} `)
-    return new Promise(
-      (resolve, reject): void => {
-        const fileStream = fs.createWriteStream(path)
-        fileStream.on(
-          'error',
-          (err): void => {
-            reject(err)
-          }
-        )
-        progress(request(url), {
-          delay: 5000,
-          throttle: 5000
-        })
-          .on(
-            'response',
-            (response): void => {
-              this._log.debug(
-                `Response: ${response.statusCode}: ${response.statusMessage}`
+    return new Promise((resolve, reject): void => {
+      const fileStream = fs.createWriteStream(path)
+      fileStream.on('error', (err): void => {
+        reject(err)
+      })
+      progress(request(url), {
+        delay: 5000,
+        throttle: 5000
+      })
+        .on('response', (response): void => {
+          this._log.debug(
+            `Response: ${response.statusCode}: ${response.statusMessage}`
+          )
+          if (response.statusCode >= 400) {
+            reject(
+              new Error(
+                `Error response: ${response.statusCode}: ${response.statusMessage}`
               )
-              if (response.statusCode >= 400) {
-                reject(
-                  new Error(
-                    `Error response: ${response.statusCode}: ${
-                      response.statusMessage
-                    }`
-                  )
-                )
-              }
-            }
-          )
-          .on('progress', onProgress)
-          .on(
-            'error',
-            (err): void => {
-              reject(err)
-            }
-          )
-          .on(
-            'end',
-            (): void => {
-              resolve()
-            }
-          )
-          .pipe(fileStream)
-      }
-    )
+            )
+          }
+        })
+        .on('progress', onProgress)
+        .on('error', (err): void => {
+          reject(err)
+        })
+        .on('end', (): void => {
+          resolve()
+        })
+        .pipe(fileStream)
+    })
   }
 
   private async _fetch(
@@ -131,9 +115,7 @@ export class AgentInstaller implements AgentInstallerIf {
     }
     if (usageInfo.free < this._minimumRequiredDiskSpace) {
       throw new Error(
-        `Not enough storage space (available: ${usageInfo.free}B, required: ${
-          this._minimumRequiredDiskSpace
-        }B)`
+        `Not enough storage space (available: ${usageInfo.free}B, required: ${this._minimumRequiredDiskSpace}B)`
       )
     }
 
@@ -187,9 +169,7 @@ export class AgentInstaller implements AgentInstallerIf {
           } else {
             this._fetchRetryCount = 0
             this._log.error(
-              `Failed to to fetch agent, retry count(${
-                this._maxFetchRetryCount
-              }) reaches max ${err.message}`
+              `Failed to to fetch agent, retry count(${this._maxFetchRetryCount}) reaches max ${err.message}`
             )
             resolve(false)
           }
@@ -240,7 +220,7 @@ export class AgentInstaller implements AgentInstallerIf {
     args: string[],
     userInfo?: UserInfo
   ): Promise<void> {
-    let options = {
+    const options = {
       cwd: path,
       env: this._binBuildEnv
     }
@@ -326,20 +306,16 @@ export class AgentInstaller implements AgentInstallerIf {
       }
     )
 
-    Utils.task(
-      `Verifying mbed-cloud-connector`,
-      this._log,
-      (): void => {
-        if (
-          !fs.existsSync(
-            fccPath +
-              '/__x86_x64_NativeLinux_mbedtls/Release/factory-configurator-client-enebular.elf'
-          )
-        ) {
-          throw new Error('Verifying mbed-cloud-connector-fcc failed.')
-        }
+    Utils.task(`Verifying mbed-cloud-connector`, this._log, (): void => {
+      if (
+        !fs.existsSync(
+          fccPath +
+            '/__x86_x64_NativeLinux_mbedtls/Release/factory-configurator-client-enebular.elf'
+        )
+      ) {
+        throw new Error('Verifying mbed-cloud-connector-fcc failed.')
       }
-    )
+    })
   }
 
   private async _buildMbedCloudConnector(
@@ -389,9 +365,10 @@ export class AgentInstaller implements AgentInstallerIf {
             )
           }
         )
-      }
-      else {
-        throw new Error('mbed cloud dev credentials c file is required.')
+      } else {
+        throw new Error(
+          'mbed cloud dev credentials c file is required in developer mode.'
+        )
       }
     }
 
@@ -408,20 +385,15 @@ export class AgentInstaller implements AgentInstallerIf {
       }
     )
 
-    Utils.task(
-      `Verifying mbed-cloud-connector`,
-      this._log,
-      (): void => {
-        if (
-          !fs.existsSync(
-            connectorPath +
-              '/out/Release/enebular-agent-mbed-cloud-connector.elf'
-          )
-        ) {
-          throw new Error('Verifying mbed-cloud-connector failed.')
-        }
+    Utils.task(`Verifying mbed-cloud-connector`, this._log, (): void => {
+      if (
+        !fs.existsSync(
+          connectorPath + '/out/Release/enebular-agent-mbed-cloud-connector.elf'
+        )
+      ) {
+        throw new Error('Verifying mbed-cloud-connector failed.')
       }
-    )
+    })
   }
 
   private async _downloadAndExtract(
@@ -462,7 +434,7 @@ export class AgentInstaller implements AgentInstallerIf {
     port: string,
     newAgentInfo: AgentInfo,
     userInfo: UserInfo,
-    mbed_cloud_dev_credentials_path?: string
+    mbedCloudDevCredsPath?: string
   ): Promise<void> {
     const installPath = newAgentInfo.path
     const nodejsPath = path.resolve(
@@ -509,9 +481,9 @@ export class AgentInstaller implements AgentInstallerIf {
           return this._buildNpmPackage(`${installPath}/ports/pelion`, userInfo)
         }
       )
-      this._binBuildEnv['PATH'] = `/home/${userInfo.user}/.local/bin:${
-        process.env['PATH']
-      }`
+      this._binBuildEnv[
+        'PATH'
+      ] = `/home/${userInfo.user}/.local/bin:${process.env['PATH']}`
       this._binBuildEnv['PYTHONUSERBASE'] = `/home/${userInfo.user}/.local`
       this._binBuildEnv['PYTHONPATH'] = `/usr/lib/python2.7`
 
@@ -525,19 +497,17 @@ export class AgentInstaller implements AgentInstallerIf {
               'cmake',
               'python-pip'
             ])
-            return this._system.installPythonPackages([
-              'mbed-cli',
-              'click',
-              'requests'
-            ],
-            userInfo)
+            return this._system.installPythonPackages(
+              ['mbed-cli', 'click', 'requests'],
+              userInfo
+            )
           }
         )
 
         await this._buildMbedCloudConnector(
           installPath,
           userInfo,
-          mbed_cloud_dev_credentials_path
+          mbedCloudDevCredsPath
         )
 
         /*
@@ -549,25 +519,27 @@ export class AgentInstaller implements AgentInstallerIf {
           'Checking dependencies for mbed-cloud-connector-fcc',
           this._log,
           async (): Promise<void> => {
-            return this._system.installPythonPackages([
-              'colorama',
-              'PySerial',
-              'PrettyTable',
-              'Jinja2',
-              'IntelHex',
-              'junit-xml',
-              'pyYAML',
-              'requests',
-              'mbed-ls',
-              'mbed-host-tests',
-              'mbed-greentea',
-              'beautifulsoup4',
-              'fuzzywuzzy',
-              'pyelftools',
-              'jsonschema',
-              'future'
-            ],
-            userInfo)
+            return this._system.installPythonPackages(
+              [
+                'colorama',
+                'PySerial',
+                'PrettyTable',
+                'Jinja2',
+                'IntelHex',
+                'junit-xml',
+                'pyYAML',
+                'requests',
+                'mbed-ls',
+                'mbed-host-tests',
+                'mbed-greentea',
+                'beautifulsoup4',
+                'fuzzywuzzy',
+                'pyelftools',
+                'jsonschema',
+                'future'
+              ],
+              userInfo
+            )
           }
         )
         await this._buildMbedCloudConnectorFCC(installPath, userInfo)
@@ -630,10 +602,7 @@ export class AgentInstaller implements AgentInstallerIf {
       if (version === 'latest') {
         let info
         try {
-          info = await Utils.fetchJSON(
-            `${downloadPath}/latest.info`,
-            {}
-          )
+          info = await Utils.fetchJSON(`${downloadPath}/latest.info`, {})
         } catch (err) {
           throw new Error(`Failed to get latest version info from s3`)
         }
