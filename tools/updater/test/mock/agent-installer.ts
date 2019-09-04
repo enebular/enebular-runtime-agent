@@ -38,5 +38,6 @@ export default class MockAgentInstaller implements AgentInstallerIf {
     installPath: string,
     bundlePath: string,
     userInfo: UserInfo
-  ): Promise<void>
+  ): Promise<void> {
+  }
 }
