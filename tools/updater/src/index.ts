@@ -10,11 +10,9 @@ function printLogInfo(): void {
 
 function update(): Promise<boolean | void> {
   updater = new AgentUpdater()
-  return updater.update().catch(
-    (err: Error): void => {
-      throw new Error(`ERROR: Update failed, reason: ${err.message}`)
-    }
-  )
+  return updater.update().catch((err: Error): void => {
+    throw new Error(`ERROR: Update failed, reason: ${err.message}`)
+  })
 }
 
 async function cancel(): Promise<void> {
@@ -31,33 +29,23 @@ async function exit(): Promise<void> {
 }
 
 if (require.main === module) {
-  process.on(
-    'SIGINT',
-    (): void => {
-      exit()
-    }
-  )
-  process.on(
-    'SIGTERM',
-    (): void => {
-      exit()
-    }
-  )
+  process.on('SIGINT', (): void => {
+    exit()
+  })
+  process.on('SIGTERM', (): void => {
+    exit()
+  })
 
   update()
-    .then(
-      (success): void => {
-        printLogInfo()
-        process.exit(success ? 0 : 1)
-      }
-    )
-    .catch(
-      (err): void => {
-        console.error(err)
-        printLogInfo()
-        process.exit(1)
-      }
-    )
+    .then((success): void => {
+      printLogInfo()
+      process.exit(success ? 0 : 1)
+    })
+    .catch((err): void => {
+      console.error(err)
+      printLogInfo()
+      process.exit(1)
+    })
 }
 
 export { update, cancel, printLogInfo }
