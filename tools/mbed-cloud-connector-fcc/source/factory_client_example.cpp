@@ -105,6 +105,7 @@ static int factory_flow_file(const char * path)
             (response_bundle == NULL) ||
             (response_bundle_size == 0)) {
         tr_error("Failed to handle bundle");
+        return -1;
     } else {
         free(response_bundle);
         printf("Successfully handled file bundle\n");
