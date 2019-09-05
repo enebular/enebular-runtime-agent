@@ -38,7 +38,7 @@ export default class CommandLine {
     )
     this.addConfigOption(
       'ENEBULAR_AGENT_GITHUB_API_PATH',
-      '--agent-github-api-path <url>'
+      '--github-api-path <url>'
     )
     this.addConfigOption('ENEBULAR_AGENT_USER', '--user <user>')
     this.addConfigOption(
@@ -64,12 +64,12 @@ export default class CommandLine {
         this._commandOptions = options
       })
       .option(
-        '--dev-creds-path <path>',
-        'Path to mbed cloud dev credentials (must be specified in developer mode)'
+        '--pelion-dev-cred <path>',
+        'Path to pelion dev credentials (must be specified in developer mode)'
       )
       .option(
-        '--bundle-file-path <path>',
-        'Path to mbed cloud bundle file (must be specified in factory mode)'
+        '--pelion-bundle <path>',
+        'Path to pelion bundle file (must be specified in factory mode)'
       )
   }
 
@@ -100,14 +100,14 @@ export default class CommandLine {
                 `--pelion-mode must be either developer or factory`
               )
             }
-            if (pelionMode === 'developer' && !this._commandOptions.devCredsPath) {
+            if (pelionMode === 'developer' && !this._commandOptions.pelionDevCred) {
               throw new Error(
-                `--dev-creds-path must be specified in pelion developer mode`
+                `--pelion-dev-cred must be specified in pelion developer mode`
               )
             }
-            if (pelionMode === 'factory' && !this._commandOptions.bundleFilePath) {
+            if (pelionMode === 'factory' && !this._commandOptions.pelionBundle) {
               throw new Error(
-                `--bundle-file-path must be specified in pelion factory mode`
+                `--pelion-bundle must be specified in pelion factory mode`
               )
             }
           }
@@ -120,13 +120,13 @@ export default class CommandLine {
               this._installPath
             ),
             userInfo,
-            this._commandOptions.devCredsPath
+            this._commandOptions.pelionDevCred
           )
           if (this._installPort === 'pelion' && pelionMode === 'factory'
-              && this._commandOptions.bundleFilePath) {
+              && this._commandOptions.pelionBundle) {
             await installer.bundle2PAL(
               this._installPath,
-              this._commandOptions.bundleFilePath,
+              this._commandOptions.pelionBundle,
               userInfo
             )
           }
