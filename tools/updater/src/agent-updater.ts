@@ -68,6 +68,14 @@ export default class AgentUpdater {
       : new Migrator(this._system, this._config, this._log, this._userInfo)
   }
 
+  public printLogInfo(): void {
+    if (!this._config.isOverridden('ENEBULAR_AGENT_UPDATER_LOG_FILE')) {
+      console.log(
+        `See details in full update log file: ${this._log.getLogFilePath()}`
+      )
+    }
+  }
+
   public getLogFilePath(): string {
     return this._log.getLogFilePath()
   }

@@ -3,9 +3,7 @@ import AgentUpdater from './agent-updater'
 let updater: AgentUpdater
 
 function printLogInfo(): void {
-  console.log(
-    `See details in full update log file: ${updater.getLogFilePath()}`
-  )
+  updater.printLogInfo()
 }
 
 function update(): Promise<boolean | void> {
