@@ -13,7 +13,7 @@ process.on('SIGTERM', () => {
   exit()
 })
 
-updater.update().then(function (success) {
+updater.run().then(function (success) {
     updater.printLogInfo()
     process.exit(success ? 0 : 1)
   })

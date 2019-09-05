@@ -6,9 +6,9 @@ function printLogInfo(): void {
   updater.printLogInfo()
 }
 
-function update(): Promise<boolean | void> {
+function run(): Promise<boolean | void> {
   updater = new AgentUpdater()
-  return updater.update().catch((err: Error): void => {
+  return updater.run().catch((err: Error): void => {
     throw new Error(`ERROR: Update failed, reason: ${err.message}`)
   })
 }
@@ -34,7 +34,7 @@ if (require.main === module) {
     exit()
   })
 
-  update()
+  run()
     .then((success): void => {
       printLogInfo()
       process.exit(success ? 0 : 1)
@@ -46,4 +46,4 @@ if (require.main === module) {
     })
 }
 
-export { update, cancel, printLogInfo }
+export { run, cancel, printLogInfo }

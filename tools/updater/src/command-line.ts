@@ -84,6 +84,10 @@ export default class CommandLine {
   ): Promise<boolean> {
     switch (this._command) {
       case 'install':
+        if (this._config.getBoolean('ROOT_REQUIRED') && process.getuid() !== 0) {
+          throw new Error('You have to run this with root permission.')
+        }
+
         const pelionMode = this._config.getString('PELION_MODE')
         if (!this._installPath || !this._installPort) {
           return false

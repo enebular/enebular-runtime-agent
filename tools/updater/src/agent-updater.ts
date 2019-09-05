@@ -318,14 +318,6 @@ export default class AgentUpdater {
       throw new Error('You have to run this with root permission.')
     }
 
-    if (this._commandLine.hasCommand()) {
-      return this._commandLine.processCommand(
-        this._installer,
-        this._system,
-        this._userInfo
-      )
-    }
-
     let agentInfo
     const agentPath = this._config.getString('ENEBULAR_AGENT_INSTALL_DIR')
     await Utils.taskAsync(
@@ -412,5 +404,18 @@ export default class AgentUpdater {
     this._log.info(Utils.echoYellow('Update canceled ✔'))
     this._removeNewAgent()
     return true
+  }
+
+  public async run(): Promise<boolean> {
+    if (this._commandLine.hasCommand()) {
+      return this._commandLine.processCommand(
+        this._installer,
+        this._system,
+        this._userInfo
+      )
+    }
+    else {
+      return this.update()
+    }
   }
 }
