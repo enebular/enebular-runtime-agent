@@ -39,7 +39,8 @@ export default class AgentUpdater {
 
     this._log = new Log(
       this._config.getString('DEBUG'),
-      this._config.getBoolean('ENEBULAR_AGENT_UPDATER_ENABLE_LOG')
+      this._config.getBoolean('ENEBULAR_AGENT_UPDATER_ENABLE_LOG'),
+      this._config.getString('ENEBULAR_AGENT_UPDATER_LOG_FILE')
     )
 
     this._userInfo = Utils.getUserInfo(

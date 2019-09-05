@@ -1,4 +1,5 @@
 import * as path from 'path'
+import { Utils } from './utils'
 
 export interface ConfigItem {
   value: string | number | boolean
@@ -110,6 +111,11 @@ export default class Config {
         value: 'https://nodejs.org/dist',
         description: 'NodeJS download base URL',
         userExpose: true
+      },
+      ENEBULAR_AGENT_UPDATER_LOG_FILE: {
+        value: `/tmp/enebular-agent-updater-${Utils.randomString()}.log`,
+        description: 'updater log file path',
+        userExpose: false
       }
     }
   }
