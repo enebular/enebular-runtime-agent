@@ -21,17 +21,17 @@ async function cancel(): Promise<void> {
   }
 }
 
-async function exit(): Promise<void> {
+async function exit(code: number): Promise<void> {
   await cancel()
-  process.exit(0)
+  process.exit(code)
 }
 
 if (require.main === module) {
   process.on('SIGINT', (): void => {
-    exit()
+    exit(1)
   })
   process.on('SIGTERM', (): void => {
-    exit()
+    exit(1)
   })
 
   run()

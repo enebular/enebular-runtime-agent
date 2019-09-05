@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 var updater = require('..')
 
-async function exit() {
+async function exit(code) {
   await updater.cancel()
-  process.exit(0)
+  process.exit(code)
 }
 
 process.on('SIGINT', () => {
-  exit()
+  exit(1)
 })
 process.on('SIGTERM', () => {
-  exit()
+  exit(1)
 })
 
 updater.run().then(function (success) {
