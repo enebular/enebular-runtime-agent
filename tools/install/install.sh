@@ -457,7 +457,7 @@ do_install() {
   fi
 
   local NODE_ENV
-  NODE_ENV="PATH=${NODE_PATH}:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+  NODE_ENV="PATH=${NODE_PATH}:/bin:/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 
   env ENEBULAR_AGENT_UPDATER_LOG_FILE=${LOG_FILE} ${NODE_ENV} ${DEBUG_ENV} \
     /bin/bash -c "${TEMP_UPDATER_DST}/bin/enebular-agent-update install "${PORT}" "${INSTALL_DIR}" \
