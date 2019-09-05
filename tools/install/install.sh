@@ -72,38 +72,6 @@ run_as_user() {
   sudo -H -u $1 env $3 /bin/bash -c "$2"
 }
 
-#args: retry times, command
-retry() {
-  local RETRIES=$1
-  shift
-
-  local COUNT=0
-  until "$@"; do
-    EXIT=$?
-    COUNT=$(($COUNT + 1))
-    if [ $COUNT -ge $RETRIES ]; then
-      return $EXIT
-    fi
-  done
-  return 0
-}
-
-pip_user_install() {
-  cmd_wrapper run_as_user ${USER} "(pip install $1 --user)"
-}
-
-pip_install_packages() {
-  FCC_PYTHON_PACKAGES=("$@")
-  for p in "${FCC_PYTHON_PACKAGES[@]}"
-  do
-    retry 5 pip_user_install ${p}
-    if [ "$?" -ne 0 ]; then
-      return 1
-    fi
-  done
-  return 0
-}
-
 get_os() {
   local UNAME
   UNAME="$(uname -a)"
@@ -142,32 +110,9 @@ is_raspberry_pi() {
   fi
 }
 
-#args: package_name
-ensure_deb_packages_are_installed() {
-  local PACKAGES_TO_INSTALL
-  PACKAGES_TO_INSTALL=("$@")
-  for i in "${PACKAGES_TO_INSTALL[@]}"
-  do
-    local INSTALLED
-    INSTALLED=`dpkg-query --show --showformat='${db:Status-Status}\n' ${i} 2>/dev/null | grep "^\<installed\>" | wc -l`
-    if [ $INSTALLED -eq 0 ]; then
-      cmd_wrapper apt-get -y install ${i}
-      if [ "$?" -ne 0 ]; then
-        _err "Install package ${i} failed."
-        _exit 1
-      fi
-    fi
-  done
-}
-
 #args: url, file_name
 get_node_checksum() {
   download "${1-}" "-" | command awk "{ if (\"${2-}\" == \$2) print \$1}"
-}
-
-#args: url, release_version, prebuilt_url
-get_version_info_from_github() {
-  download "${1-}" "-" | grep -e tag_name -e browser_download_url | sed -E 's/.*"([^"]+)".*/\1/' | xargs
 }
 
 get_version_info_from_s3() {
@@ -251,199 +196,6 @@ get_download_file_name() {
   elif [ "${KIND}" = 'source' ]; then
     echo "${NAME}-${VERSION}.${COMPRESSION}"
   fi
-}
-
-# args: url, destination
-download_tarball() {
-  local DOWNLOAD_URL
-  DOWNLOAD_URL="${1-}"
-
-  if [ -z "${DOWNLOAD_URL}" ]; then
-    _err "A download URL is required"
-    return 1
-  fi
-
-  local DST
-  DST="${2-}"
-
-  if [ -z "${DST}" ]; then
-    _err "A destination is required"
-    return 2
-  fi
-
-  _echo "Downloading ${DOWNLOAD_URL}"
-  if ! download ${DOWNLOAD_URL} ${DST}; then 
-    return 3
-  fi
-
-  tar -tzf ${DST} >/dev/null 
-  EXIT_CODE=$?
-  if [ "$EXIT_CODE" -ne 0 ]; then
-    _err "Tarball integrity check failed."
-    return 4
-  fi
-}
-
-# args: file, destination
-install_tarball() {
-  local TAR_FILE
-  TAR_FILE="${1-}"
-  if [ -z "${TAR_FILE}" ]; then
-    _err "A tarball is required"
-    return 1
-  fi
-
-  local DST
-  DST="${2-}"
-
-  if [ -z "${DST}" ]; then
-    _err "A destination is required"
-    return 2
-  fi
-
-# TODO: handle update gracefully
-  run_as_user ${USER} "mkdir -p ${DST}"
-  run_as_user ${USER} "tar --extract --file=${TAR_FILE} \
-    --strip-components=1 --directory=${DST}"
-  EXIT_CODE=$?
-  if [ "$EXIT_CODE" -ne 0 ]; then
-    _err "Install agent failed."
-    return 4
-  fi
-}
-
-#args: patch_dir
-apply_patches() {
-  local PATCH_DIR
-  PATCH_DIR="${1-}"
-  if [ -z "${PATCH_DIR}" ]; then
-    _err "Missing patch path."
-    return 1
-  fi
-
-  find ${PATCH_DIR} -type f -name "*.patch" | while read PATCH_FULL_PATH; do
-    PATCH_RELATIVE_PATH=./${PATCH_FULL_PATH#"${PATCH_DIR}/"}
-    PATCH_PROJECT_PATH=${INSTALL_DIR}/${PATCH_RELATIVE_PATH%/*}
-    if [ ! -d "${PATCH_PROJECT_PATH}" ]; then
-      continue
-    fi
-    patch -p1 -N --dry-run --silent -f -d ${PATCH_PROJECT_PATH} < ${PATCH_FULL_PATH} &>/dev/null
-    if [ "$?" -eq 0 ]; then
-      _task "Applying ${PATCH_RELATIVE_PATH}"
-      patch -p1 -N --silent -f -d ${PATCH_PROJECT_PATH} < ${PATCH_FULL_PATH} &>/dev/null
-      if [ "$?" -ne 0 ]; then
-        _err "Applying patch failed, ignore it."
-      else
-        _echo "Patch applied."
-      fi
-      _echo_g "OK"
-    else
-      patch -p1 -R --dry-run --silent -f -d ${PATCH_PROJECT_PATH} < ${PATCH_FULL_PATH} &>/dev/null
-      if [ "$?" -ne 0 ]; then
-        _task "Applying ${PATCH_RELATIVE_PATH}"
-        _err "Applying patch failed, ignore it."
-        _echo_g "OK"
-      # else
-        #_echo "Patch has been applied, skip it."
-      fi
-    fi
-  done
-}
-
-apply_patches_if_available() {
-  local PATCH_PATH_TO_INSTALL
-  PATCH_PATH_TO_INSTALL=${INSTALL_DIR}/tools/install/patches
-  if [ -d "${PATCH_PATH_TO_INSTALL}" ]; then
-    apply_patches ${PATCH_PATH_TO_INSTALL}
-  fi
-}
-
-#args: port, user, install_dir, node_env, install_kind
-setup_enebular_agent() {
-  local PORT
-  PORT="${1-}"
-  if [ -z "${PORT}" ]; then
-    _err "Missing port."
-    return 1
-  fi
-  local USER
-  USER="${2-}"
-  if [ -z "${USER}" ]; then
-    _err "Missing user."
-    return 2
-  fi
-  local INSTALL_DIR
-  INSTALL_DIR="${3-}"
-  if [ -z "${INSTALL_DIR}" ]; then
-    _err "Missing install directory."
-    return 3
-  fi
-  local NODE_ENV
-  NODE_ENV="${4-}"
-  if [ -z "${NODE_ENV}" ]; then
-    _err "Missing node env."
-    return 4
-  fi
-  local INSTALL_KIND
-  INSTALL_KIND="${5-}"
-  if [ -z "${INSTALL_KIND}" ]; then
-    _err "Missing install kind."
-    return 5
-  fi
-
-  _task Checking build environment for enebular-agent ${INSTALL_KIND} package
-  run_as_user ${USER} 'echo Build environment nodejs: `node -v` \(npm `npm -v`\)' ${NODE_ENV}
-  _echo_g "OK"
-
-  apply_patches_if_available
-
-  local EXIT_CODE
-  case "${INSTALL_KIND}" in
-    source)
-    local NPM_BUILD_AND_INSTALL
-    NPM_BUILD_AND_INSTALL="npm install && rm -rf node_modules && npm install --production"
-    if [ -d "${INSTALL_DIR}/tools/awsiot-thing-creator" ] && [ ${PORT} == 'awsiot' ]; then
-      _task "Building AWSIoT thing creator from source"
-      cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/awsiot-thing-creator && ${NPM_BUILD_AND_INSTALL})" \
-        ${NODE_ENV}
-      EXIT_CODE=$?
-      if [ "$EXIT_CODE" -ne 0 ]; then
-        return 6
-      fi
-      _echo_g "OK"
-    fi
-    _task "Building enebular-agent from source (It may take a few minutes)"
-    cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/agent && ${NPM_BUILD_AND_INSTALL}) \
-      && (cd ${INSTALL_DIR}/node-red && ${NPM_BUILD_AND_INSTALL}) \
-      && (cd ${INSTALL_DIR}/ports/${PORT} && ${NPM_BUILD_AND_INSTALL})" ${NODE_ENV}
-    EXIT_CODE=$?
-    if [ "$EXIT_CODE" -ne 0 ]; then
-      return 6
-    fi
-    _echo_g "OK"
-    ;;
-    prebuilt)
-    if [ -d "${INSTALL_DIR}/tools/awsiot-thing-creator" ] && [ ${PORT} == 'awsiot' ]; then
-      _task "Building AWSIoT thing creator"
-      cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/awsiot-thing-creator && npm install --production)" \
-        ${NODE_ENV}
-      EXIT_CODE=$?
-      if [ "$EXIT_CODE" -ne 0 ]; then
-        return 6
-      fi
-      _echo_g "OK"
-    fi
-    _task "Building enebular-agent(It may take a few minutes)"
-    cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/agent && npm install --production) \
-      && (cd ${INSTALL_DIR}/node-red && npm install --production) \
-      && (cd ${INSTALL_DIR}/ports/${PORT} && npm install --production)" ${NODE_ENV}
-    EXIT_CODE=$?
-    if [ "$EXIT_CODE" -ne 0 ]; then
-      return 6
-    fi
-    _echo_g "OK"
-    ;;
-  esac
 }
 
 # args: version, destination
@@ -553,14 +305,13 @@ get_download_info_s3() {
     return 1
   fi
   local URL="${2-}"
-  local KIND="${3-}"
-  local VERSION="${4-}"
+  local VERSION="${3-}"
 
   local VERSION_INFO
   local DOWNLOAD_PATH
-  DOWNLOAD_PATH=${AGENT_DOWNLOAD_PATH}
+  DOWNLOAD_PATH=${UPDATER_DOWNLOAD_PATH}
   if [ "${RELEASE_VERSION}" == "latest-release" ]; then
-    VERSION_INFO="$(get_version_info_from_s3 ${AGENT_DOWNLOAD_PATH}/latest.info)"
+    VERSION_INFO="$(get_version_info_from_s3 ${UPDATER_DOWNLOAD_PATH}/latest.info)"
     if [ -z "${VERSION_INFO}" ]; then
       _err "Failed to get latest version info."
       return 2
@@ -570,62 +321,19 @@ get_download_info_s3() {
     local RX
     RX='^([0-9]+\.){0,2}(\*|[0-9]+)$'
     if ! [[ "${RELEASE_VERSION}" =~ ${RX} ]]; then
-      DOWNLOAD_PATH=${AGENT_TEST_DOWNLOAD_PATH}
+      DOWNLOAD_PATH=${UPDATER_TEST_DOWNLOAD_PATH}
     fi
     VERSION_INFO=${RELEASE_VERSION}
   fi
 
   local DOWNLOAD_FILE_NAME
-  DOWNLOAD_FILE_NAME="$(get_download_file_name "enebular-agent" "prebuilt" "${VERSION_INFO}")"
+  DOWNLOAD_FILE_NAME="enebular-agent-updater-${VERSION_INFO}.tar.gz"
   local _DOWNLOAD_URL
   local _INSTALL_KIND
   _DOWNLOAD_URL="${DOWNLOAD_PATH}/${VERSION_INFO}/${DOWNLOAD_FILE_NAME}"
   _INSTALL_KIND="prebuilt"
-  eval ${KIND}="'${_INSTALL_KIND}'"
   eval ${URL}="'${_DOWNLOAD_URL}'"
   eval ${VERSION}="'${VERSION_INFO}'"
-}
-
-#args: version, url(out), kind(out)
-get_download_info_github() {
-  local RELEASE_VERSION
-  RELEASE_VERSION="${1-}"
-  if [ -z "${RELEASE_VERSION}" ]; then
-    _err "Missing release version."
-    return 1
-  fi
-  local URL="${2-}"
-  local KIND="${3-}"
-  local VERSION="${4-}"
-
-  local VERSION_INFO
-  local PREBUILT_URL
-  if [ "${RELEASE_VERSION}" == "latest-release" ]; then
-    VERSION_INFO="$(get_version_info_from_github ${GITHUB_API_PATH}/releases/latest)"
-  else
-    VERSION_INFO="$(get_version_info_from_github ${GITHUB_API_PATH}/releases/tags/${RELEASE_VERSION})"
-  fi
-  if [ -z "${VERSION_INFO}" ]; then
-    _err "Failed to get version ${RELEASE_VERSION} from github."
-    return 2
-  else
-    VERSION_INFO=($VERSION_INFO)
-    RELEASE_VERSION="${VERSION_INFO[0]}"
-    PREBUILT_URL=${VERSION_INFO[1]}
-  fi
-
-  local _INSTALL_KIND
-  local _DOWNLOAD_URL
-  if [ -z "${PREBUILT_URL}" ]; then
-    _DOWNLOAD_URL="${GITHUB_API_PATH}/tarball/${RELEASE_VERSION}"
-    _INSTALL_KIND="source"
-  else
-    _DOWNLOAD_URL="${PREBUILT_URL}"
-    _INSTALL_KIND="prebuilt"
-  fi
-  eval ${KIND}="'${_INSTALL_KIND}'"
-  eval ${URL}="'${_DOWNLOAD_URL}'"
-  eval ${VERSION}="'${RELEASE_VERSION}'"
 }
 
 #args: port, user, install_dir, release_version, node_env_path(return value)
@@ -665,12 +373,6 @@ do_install() {
   _echo "   - Agent version:       ${RELEASE_VERSION}"
   _horizontal_bar
 
-  _task "Checking dependencies"
-  local PACKAGES_TO_INSTALL
-  PACKAGES_TO_INSTALL=( "build-essential" "python")
-  ensure_deb_packages_are_installed "${PACKAGES_TO_INSTALL[@]}"
-  _echo_g OK
-
   local EXIT_CODE
   if ! id -u ${USER} > /dev/null 2>&1; then
     _task "Creating user ${USER}"
@@ -683,240 +385,89 @@ do_install() {
     _echo_g OK
   fi
 
-  _task "Downloading enebular-agent"
-  local TEMP_GZ
-  TEMP_GZ=`mktemp --dry-run /tmp/enebular-agent.XXXXXXXXX`
-
-  if [ ! -z ${DOWNLOAD_AGENT_FROM_GTIHUB} ]; then
-    get_download_info_github ${RELEASE_VERSION} DOWNLOAD_URL INSTALL_KIND ACTUAL_VERSION
-  else
-    get_download_info_s3 ${RELEASE_VERSION} DOWNLOAD_URL INSTALL_KIND ACTUAL_VERSION
-  fi
+  TEMP_UPDATER_TARBALL=`mktemp --dry-run /tmp/enebular-agent-updater.XXXXXXXXX.tar.gz`
+  _task "Fetching updater version info"
+  get_download_info_s3 ${UPDATER_VERSION} UPDATER_DOWNLOAD_URL ACTUAL_VERSION
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
+    _err "Failed to get latest version info"
     _exit 1
   fi
+  _echo_g "OK"
 
-  _echo "Agent version to download: ${ACTUAL_VERSION}"
-  cmd_wrapper download_tarball "${DOWNLOAD_URL}" "${TEMP_GZ}"
-  EXIT_CODE=$?
-  if [ "$EXIT_CODE" -ne 0 ]; then
-    _err "Can't find available release for ${RELEASE_VERSION}"
+  _task "Downloading updater version ${ACTUAL_VERSION}"
+  if ! download ${UPDATER_DOWNLOAD_URL} ${TEMP_UPDATER_TARBALL}; then 
+    _err "Download ${UPDATER_DOWNLOAD_URL} failed"
     _exit 1
   fi
-  _echo_g OK
-
-  _task "Installing enebular-agent ${VERSION_INFO}"
-  install_tarball "${TEMP_GZ}" "${INSTALL_DIR}"
-  EXIT_CODE=$?
-  if [ "$EXIT_CODE" -ne 0 ]; then
-    _err "Install enebular agent failed."
-    rm ${TEMP_GZ}
+  tar -tzf ${TEMP_UPDATER_TARBALL} >/dev/null 
+  if [ "$?" -ne 0 ]; then
+    _err "Tarball integrity check failed."
     _exit 1
   fi
-  rm ${TEMP_GZ}
-  _echo_g OK
+  _echo_g "OK"
 
-  local NODE_PATH
+  TEMP_UPDATER_DST=`mktemp --dry-run /tmp/enebular-agent-updater.XXXXXXXXX`
+  _task "Installing enebular-agent-updater to ${TEMP_UPDATER_DST}"
+  if (
+    mkdir -p "${TEMP_UPDATER_DST}" && \
+    tar -xzf "${TEMP_UPDATER_TARBALL}" -C "${TEMP_UPDATER_DST}" --strip-components 1 && \
+    rm -f "${TEMP_UPDATER_TARBALL}"
+  ); then
+    _echo_g "OK"
+  fi 
+
+  NODE_STR=`grep \"node\": ${TEMP_UPDATER_DST}/package.json`
+  NODE_STR=${NODE_STR#*:}
+  NODE_STR=${NODE_STR#*\"}
+  NODE_STR=${NODE_STR%*\"}
+  SUPPORTED_NODE_VERSION=v${NODE_STR}
   ensure_nodejs_version NODE_PATH
   EXIT_CODE=$?
   if [ "$EXIT_CODE" -ne 0 ]; then
-    _err "No suitable Node.js has been installed"
+    _err "No suitable Node.js can be installed"
     _exit 1
+  fi
+
+  if [ "${RELEASE_VERSION}" == "latest-release" ]; then
+    RELEASE_VERSION="latest"
+  fi
+  if [ ! -z ${VERBOSE} ]; then
+    DEBUG_ENV="DEBUG=debug"
+  fi
+
+  declare -a UPDATER_PARAMETER
+  if [ "${PORT}" == "pelion" ]; then
+    UPDATER_PARAMETER+=("--pelion-mode=${MBED_CLOUD_MODE}")
+    if [ "${MBED_CLOUD_MODE}" == "factory" ]; then
+      UPDATER_PARAMETER+=("--pelion-bundle=${MBED_CLOUD_BUNDLE}")
+    fi
+    if [ "${MBED_CLOUD_MODE}" == "developer" ]; then
+      UPDATER_PARAMETER+=("--pelion-dev-cred=${MBED_CLOUD_DEV_CRED}")
+    fi
+  fi
+  if [ ! -z ${GITHUB_API_PATH} ]; then
+    UPDATER_PARAMETER+=("--github-api-path=${GITHUB_API_PATH}")
+  fi
+  if [ ! -z ${AGENT_DOWNLOAD_PATH} ]; then
+    UPDATER_PARAMETER+=("--agent-download-path=${AGENT_DOWNLOAD_PATH}")
+  fi
+  if [ ! -z ${AGENT_TEST_DOWNLOAD_PATH} ]; then
+    UPDATER_PARAMETER+=("--agent-test-download-path=${AGENT_TEST_DOWNLOAD_PATH}")
   fi
 
   local NODE_ENV
   NODE_ENV="PATH=${NODE_PATH}:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 
-  setup_enebular_agent "${PORT}" "${USER}" "${INSTALL_DIR}" "${NODE_ENV}" "${INSTALL_KIND}"
-  EXIT_CODE=$?
-  if [ "$EXIT_CODE" -ne 0 ]; then
-    _err "Setup agent failed."
+  env ENEBULAR_AGENT_UPDATER_LOG_FILE=${LOG_FILE} ${NODE_ENV} ${DEBUG_ENV} \
+    /bin/bash -c "${TEMP_UPDATER_DST}/bin/enebular-agent-update install "${PORT}" "${INSTALL_DIR}" \
+    --user=${USER} --release-version=${RELEASE_VERSION} ${UPDATER_PARAMETER[*]}"
+  if [ "$?" -ne 0 ]; then
+    _err "Updater install failed."
     _exit 1
   fi
-
-  if [ "${PORT}" == "pelion" ]; then
-    _task "Checking dependencies for mbed-cloud-connector"
-    # ignore apt-get update failure
-    cmd_wrapper apt-get update
-    local PACKAGES_TO_INSTALL
-    PACKAGES_TO_INSTALL=( "git" "cmake" "python-pip")
-    ensure_deb_packages_are_installed "${PACKAGES_TO_INSTALL[@]}"
-    _echo_g "OK"
-
-    _task "Checking python dependencies for mbed-cloud-connector"
-    local PYTHON_PACKAGES
-    PYTHON_PACKAGES=( "mbed-cli" "click" "requests" )
-    pip_install_packages "${PYTHON_PACKAGES[@]}"
-    EXIT_CODE=$?
-    if [ "$EXIT_CODE" -ne 0 ]; then
-      _err "Python dependencies install failed."
-      _exit 1
-    fi
-    _echo_g "OK"
-
-    if [ -d "${INSTALL_DIR}/tools/mbed-cloud-connector-fcc" ] && [ ! -z ${MBED_CLOUD_BUNDLE} ]; then
-      _task "Checking python dependencies for mbed-cloud-connector-fcc"
-      # The package list here comes from mbed-os/requirements.txt. In order to avoid `mbed deploy` install packages using
-      # root permission, we'd like to install them using user permission in prior to `mbed deploy`.
-      local FCC_PYTHON_PACKAGES
-      FCC_PYTHON_PACKAGES=(
-          'colorama'
-          'PySerial'
-          'PrettyTable'
-          'Jinja2'
-          'IntelHex'
-          'junit-xml'
-          'pyYAML'
-          'requests'
-          'mbed-ls'
-          'mbed-host-tests'
-          'mbed-greentea'
-          'beautifulsoup4'
-          'fuzzywuzzy'
-          'pyelftools'
-          'jsonschema'
-          'future'
-      )
-      pip_install_packages "${FCC_PYTHON_PACKAGES[@]}"
-      EXIT_CODE=$?
-      if [ "$EXIT_CODE" -ne 0 ]; then
-        _err "Python dependencies install failed."
-        _exit 1
-      fi
-      _echo_g "OK"
-
-      setup_mbed_cloud_connector_fcc
-      EXIT_CODE=$?
-      if [ "$EXIT_CODE" -ne 0 ]; then
-        _err "Setup mbed-cloud-connector-fcc failed."
-        _exit 1
-      fi
-    fi
-
-    setup_mbed_cloud_connector
-    EXIT_CODE=$?
-    if [ "$EXIT_CODE" -ne 0 ]; then
-      _err "Setup mbed-cloud-connector failed."
-      _exit 1
-    fi
-  fi
-
+  rm -rf "${TEMP_UPDATER_DST}"
   eval "$5='${NODE_ENV}'"
-}
-
-setup_mbed_cloud_connector_fcc() {
-  _task "Deploying mbed project"
-  local LOCAL_BIN_ENV
-  LOCAL_BIN_ENV="PATH=/home/${USER}/.local/bin:${PATH} PYTHONUSERBASE=/home/${USER}/.local PYTHONPATH=/usr/lib/python2.7"
-  cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector-fcc \
-    && mbed config root . && mbed deploy -v)" "${LOCAL_BIN_ENV}"
-  EXIT_CODE=$?
-  if [ "$EXIT_CODE" -ne 0 ]; then
-    _err "mbed deploy failed."
-    _exit 1
-  fi
-
-  cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector-fcc \
-    && python pal-platform/pal-platform.py -v deploy --target=x86_x64_NativeLinux_mbedtls generate)" ${LOCAL_BIN_ENV}
-  EXIT_CODE=$?
-  if [ "$EXIT_CODE" -ne 0 ]; then
-    _err "pal-platform deploy failed."
-    _exit 1
-  fi
-  _echo_g "OK"
-
-  apply_patches_if_available
-
-  _task "Building mbed-cloud-connector-fcc (It may take a few minutes)"
-  cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector-fcc && ./build-linux-release.sh)"
-  EXIT_CODE=$?
-  if [ "$EXIT_CODE" -ne 0 ]; then
-    _err "Failed to build mbed-cloud-connector-fcc."
-    _exit 1
-  fi
-  _echo_g "OK"
-
-  _task "Verifying mbed-cloud-connector-fcc"
-  if [ ! -f "${INSTALL_DIR}/tools/mbed-cloud-connector-fcc/__x86_x64_NativeLinux_mbedtls/Release/factory-configurator-client-enebular.elf" ]; then
-    _err "Can't find mbed-cloud-connector-fcc binary."
-    _exit 1
-  fi
-  _echo_g "OK"
-}
-
-setup_mbed_cloud_connector() {
-  _task "Deploying mbed project"
-  local LOCAL_BIN_ENV
-  LOCAL_BIN_ENV="PATH=/home/${USER}/.local/bin:${PATH}"
-  cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector \
-    && mbed config root . && mbed deploy -v)" ${LOCAL_BIN_ENV}
-  EXIT_CODE=$?
-  if [ "$EXIT_CODE" -ne 0 ]; then
-    _err "mbed deploy failed."
-    _exit 1
-  fi
-  _echo_g "OK"
-
-  local MBED_CLOUD_DEFINE
-  if [ ! -z ${MBED_CLOUD_DEV_CRED} ]; then
-    _task "Copying mbed cloud dev credentials"
-    cmd_wrapper run_as_user ${USER} "cp ${MBED_CLOUD_DEV_CRED} \
-      ${INSTALL_DIR}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c"
-    EXIT_CODE=$?
-    if [ "$EXIT_CODE" -ne 0 ]; then
-      _err "Failed to copy mbed cloud developer credentials."
-      _exit 1
-    fi
-    _echo_g "OK"
-  fi
-
-  if [ ! -z ${MBED_CLOUD_BUNDLE} ]; then
-    _task "Generating mbed cloud credentials"
-    local PAL_PATH
-    PAL_PATH=${INSTALL_DIR}/ports/pelion/.pelion-connector
-    cmd_wrapper run_as_user ${USER} "mkdir -p ${PAL_PATH}"
-    EXIT_CODE=$?
-    if [ "$EXIT_CODE" -ne 0 ]; then
-      _err "Failed to create pal directory."
-      _exit 1
-    fi
-    cmd_wrapper run_as_user ${USER} "(cd ${PAL_PATH} && ${INSTALL_DIR}/tools/mbed-cloud-connector-fcc/__x86_x64_NativeLinux_mbedtls/Release/factory-configurator-client-enebular.elf ${MBED_CLOUD_BUNDLE})"
-    EXIT_CODE=$?
-    if [ "$EXIT_CODE" -ne 0 ]; then
-      _err "Failed to generate mbed cloud credentials from bundle file."
-      _exit 1
-    fi
-    _echo_g "OK"
-  fi
-
-  if [ ${MBED_CLOUD_MODE} == 'developer' ]; then
-    MBED_CLOUD_DEFINE=define.txt
-  else
-    MBED_CLOUD_DEFINE=define_factory.txt
-  fi
-
-  apply_patches_if_available
-
-  _task "Building mbed-cloud-connector (It may take a few minutes)"
-  cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/mbed-cloud-connector && \
-    python pal-platform/pal-platform.py fullbuild --target x86_x64_NativeLinux_mbedtls --toolchain GCC --external \
-    ./../${MBED_CLOUD_DEFINE} --name enebular-agent-mbed-cloud-connector.elf)"
-  EXIT_CODE=$?
-  if [ "$EXIT_CODE" -ne 0 ]; then
-    _err "Failed to complie mbed-cloud-connector."
-    _exit 1
-  fi
-  _echo_g "OK"
-
-# FIXME: One more setup to check as the build script return zero _exit code even the build was failed.
-# Consider check version number matches or not.
-  _task "Verifying mbed-cloud-connector"
-  if [ ! -f "${INSTALL_DIR}/tools/mbed-cloud-connector/out/Release/enebular-agent-mbed-cloud-connector.elf" ]; then
-    _err "Can't find mbed-cloud-connector binary."
-    _exit 1
-  fi
-  _echo_g "OK"
 }
 
 post_install() {
@@ -979,13 +530,14 @@ post_install() {
 USER=enebular
 PORT=awsiot
 RELEASE_VERSION="latest-release"
-GITHUB_API_PATH="https://api.github.com/repos/enebular/enebular-runtime-agent"
-AGENT_DOWNLOAD_PATH="https://s3-ap-northeast-1.amazonaws.com/download.enebular.com/enebular-agent"
-AGENT_TEST_DOWNLOAD_PATH="https://s3-ap-northeast-1.amazonaws.com/download.enebular.com/enebular-agent-staging"
 SUPPORTED_NODE_VERSION="v9.2.1"
 ENEBULAR_BASE_URL="https://enebular.com/api/v1"
 MBED_CLOUD_MODE=developer
 AWS_IOT_DISABLE_RULE_CREATION=false
+
+UPDATER_DOWNLOAD_PATH="https://s3-ap-northeast-1.amazonaws.com/download.enebular.com/enebular-agent"
+UPDATER_TEST_DOWNLOAD_PATH="https://s3-ap-northeast-1.amazonaws.com/download.enebular.com/enebular-agent-staging"
+UPDATER_VERSION="latest-release"
 
 LOG_FILE="$(create_log)"
 chmod +r ${LOG_FILE}
@@ -1075,6 +627,18 @@ case $i in
   ;;
   --download-agent-from-github)
   DOWNLOAD_AGENT_FROM_GTIHUB=yes
+  shift
+  ;;
+  --updater-download-path=*)
+  UPDATER_DOWNLOAD_PATH="${i#*=}"
+  shift
+  ;;
+  --updater-test-download-path=*)
+  UPDATER_TEST_DOWNLOAD_PATH="${i#*=}"
+  shift
+  ;;
+  --updater-version=*)
+  UPDATER_VERSION="${i#*=}"
   shift
   ;;
   *)
