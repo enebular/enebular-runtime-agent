@@ -385,14 +385,6 @@ do_install() {
     _echo_g OK
   fi
 
-  _task "Updating system package lists"
-  cmd_wrapper apt-get update
-  if [ "$?" -ne 0 ]; then
-    _err "Failed to apt-get update, please try again."
-    _exit 1
-  fi
-  _echo_g "OK"
-
   TEMP_UPDATER_TARBALL=`mktemp --dry-run /tmp/enebular-agent-updater.XXXXXXXXX.tar.gz`
   _task "Fetching updater version info"
   get_download_info_s3 ${UPDATER_VERSION} UPDATER_DOWNLOAD_URL ACTUAL_VERSION

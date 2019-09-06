@@ -41,6 +41,7 @@ export interface SystemIf {
     nodejsVersion: string
   }
   installDebianPackages(packages: string[]): Promise<void>
+  updatePackageLists(): Promise<void>
   installPythonPackages(packages: string[], userInfo: UserInfo): Promise<void>
   updateNodeJSVersionInSystemd(
     user: string,
@@ -295,6 +296,14 @@ export class System implements SystemIf {
       } catch (err) {
         throw new Error(`Failed to install ${packages[i]}: ${err.message}`)
       }
+    }
+  }
+
+  public async updatePackageLists(): Promise<void> {
+    try {
+      await Utils.spawn('apt-get', ['update'], this._log)
+    } catch (err) {
+      throw new Error(`Failed to apt-get update`)
     }
   }
 
