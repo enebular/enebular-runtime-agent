@@ -27,6 +27,7 @@ export default class CommandLine {
     this.addConfigOption('NODE_RED_COMMAND', '--node-red-command <command>')
     this.addConfigOption('ENEBULAR_ENABLE_SYSLOG', '--enable-syslog')
     this.addConfigOption('ENEBULAR_DAEMON_MODE', '--daemon-mode')
+    this.addConfigOption('ENEBULAR_START_CORE', '--start-core')
 
     commander.on('command:*', () => {
       if (!process.env.ENEBULAR_TEST && commander.args.length > 0) {

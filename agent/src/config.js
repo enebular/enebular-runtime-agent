@@ -23,6 +23,11 @@ export default class Config {
         description: 'Run as daemon',
         userExpose: true
       },
+      ENEBULAR_START_CORE: {
+        value: false,
+        description: 'Run enebular-agent core',
+        userExpose: true
+      },
       ENEBULAR_CONFIG_PATH: {
         value: p.resolve(portBasePath, '.enebular-config.json'),
         description: 'Enebular config file path',
