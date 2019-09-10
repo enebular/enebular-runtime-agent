@@ -691,12 +691,12 @@ export class AgentInstaller implements AgentInstallerIf {
       'Copying mbed cloud credentials',
       this._log,
       async (): Promise<void> => {
-        return Utils.copy(
+        await Utils.copy(
           this._log,
           palPath,
-          `${pelionDatePath}/pal`,
-          userInfo
+          `${pelionDatePath}/pal`
         )
+        return Utils.chown(this._log, `${pelionDatePath}/pal`, userInfo)
       }
     )
   }

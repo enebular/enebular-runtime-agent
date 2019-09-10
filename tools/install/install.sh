@@ -440,7 +440,12 @@ do_install() {
   if [ "${PORT}" == "pelion" ]; then
     UPDATER_PARAMETER+=("--pelion-mode=${MBED_CLOUD_MODE}")
     if [ "${MBED_CLOUD_MODE}" == "factory" ]; then
-      UPDATER_PARAMETER+=("--pelion-bundle=${MBED_CLOUD_BUNDLE}")
+      if [ ! -z ${MBED_CLOUD_BUNDLE} ]; then
+        UPDATER_PARAMETER+=("--pelion-bundle=${MBED_CLOUD_BUNDLE}")
+      fi
+      if [ ! -z ${MBED_CLOUD_PAL} ]; then
+        UPDATER_PARAMETER+=("--pelion-pal=${MBED_CLOUD_PAL}")
+      fi
     fi
     if [ "${MBED_CLOUD_MODE}" == "developer" ]; then
       UPDATER_PARAMETER+=("--pelion-dev-cred=${MBED_CLOUD_DEV_CRED}")
@@ -593,6 +598,10 @@ case $i in
   MBED_CLOUD_DEV_CRED="${i#*=}"
   shift
   ;;
+  --mbed-cloud-pal=*)
+  MBED_CLOUD_PAL="${i#*=}"
+  shift
+  ;;
   --mbed-cloud-bundle=*)
   MBED_CLOUD_BUNDLE="${i#*=}"
   shift
@@ -678,9 +687,11 @@ case "${PORT}" in
     _err 'Must specify --mbed-cloud-dev-cred in pelion developer mode'
     _exit 1
   fi
-  if [ -z "${MBED_CLOUD_BUNDLE}" ] && [ ${MBED_CLOUD_MODE} == 'factory' ]; then
-    _err 'Must specify --mbed-cloud-bundle in pelion factory mode'
+  if [ ${MBED_CLOUD_MODE} == 'factory' ]; then
+    if [ -z "${MBED_CLOUD_BUNDLE}" ] && [ -z ${MBED_CLOUD_PAL} ]; then
+    _err 'Must specify --mbed-cloud-bundle or --mbed-cloud-pal in pelion factory mode'
     _exit 1
+    fi
   fi
   ;;
   *)
@@ -696,6 +707,11 @@ fi
 
 if [ ! -z ${MBED_CLOUD_BUNDLE} ] && [ ! -f ${MBED_CLOUD_BUNDLE} ]; then
   _err "${MBED_CLOUD_BUNDLE} doesn't exist."
+  _exit 1
+fi
+
+if [ ! -z ${MBED_CLOUD_PAL} ] && [ ! -d ${MBED_CLOUD_PAL} ]; then
+  _err "${MBED_CLOUD_PAL} doesn't exist."
   _exit 1
 fi
 
