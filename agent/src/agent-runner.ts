@@ -1,7 +1,7 @@
 import * as path from 'path'
 import { spawn, ChildProcess } from 'child_process'
 
-export default class AgentRunner {
+class AgentRunner {
   private _cproc?: ChildProcess
 
   public constructor()
@@ -76,4 +76,25 @@ export default class AgentRunner {
     })
   }
 }
+
+let runner: AgentRunner
   
+function startup(): Promise<boolean | void> {
+  runner = new AgentRunner()
+  return runner.startup().catch(
+    (err: Error): void => {
+      throw new Error(`ERROR: Failed to start enebular-agent, reason: ${err.message}`)
+    }
+  )
+}
+
+async function shutdown(): Promise<void> {
+  try {
+    await runner.shutdown()
+  } catch (err) {
+    // ignore
+  }
+}
+
+export { startup, shutdown }
+
