@@ -41,6 +41,7 @@ export interface SystemIf {
     nodejsVersion: string
   }
   installDebianPackages(packages: string[]): Promise<void>
+  updatePackageLists(): Promise<void>
   installPythonPackages(packages: string[], userInfo: UserInfo): Promise<void>
   updateNodeJSVersionInSystemd(
     user: string,
@@ -52,7 +53,7 @@ export interface SystemIf {
 
 export class System implements SystemIf {
   private _log: Log
-  private _pipRetryCount: number = 0
+  private _pipRetryCount = 0
 
   public constructor(log: Log) {
     this._log = log
@@ -129,7 +130,7 @@ export class System implements SystemIf {
     const tmpFile = '/tmp/enebular-agent-systemd-config-' + Utils.randomString()
 
     try {
-      let content = fs.readFileSync(serviceFile, 'utf8')
+      const content = fs.readFileSync(serviceFile, 'utf8')
       fs.writeFileSync(tmpFile, content.replace(envToReplace, newEnv), 'utf8')
       await Utils.mv(tmpFile, serviceFile)
     } catch (err) {
@@ -298,15 +299,26 @@ export class System implements SystemIf {
     }
   }
 
-  public async installPythonPackages(packages: string[], userInfo: UserInfo): Promise<void> {
+  public async updatePackageLists(): Promise<void> {
+    try {
+      await Utils.spawn('apt-get', ['update'], this._log)
+    } catch (err) {
+      throw new Error(`Failed to apt-get update`)
+    }
+  }
+
+  public async installPythonPackages(
+    packages: string[],
+    userInfo: UserInfo
+  ): Promise<void> {
     return new Promise(
       async (resolve, reject): Promise<void> => {
-        let pipEnv: NodeJS.ProcessEnv = {}
+        const pipEnv: NodeJS.ProcessEnv = {}
         pipEnv['PYTHONUSERBASE'] = `/home/${userInfo.user}/.local`
         pipEnv['PYTHONPATH'] = `/usr/lib/python2.7`
         let options = ['install']
         options = options.concat(packages)
-        options.push("--user")
+        options.push('--user')
         try {
           await Utils.spawn('pip', options, this._log, {
             uid: userInfo.uid,
@@ -325,16 +337,17 @@ export class System implements SystemIf {
               try {
                 await this.installPythonPackages(packages, userInfo)
                 resolve()
-              }
-              catch (err) {
+              } catch (err) {
                 reject(err)
               }
             }, 1000)
           } else {
             this._pipRetryCount = 0
-            reject(new Error(
-              `Failed to install python ${packages.join(' ')}: ${err.message}`
-            ))
+            reject(
+              new Error(
+                `Failed to install python ${packages.join(' ')}: ${err.message}`
+              )
+            )
           }
         }
       }

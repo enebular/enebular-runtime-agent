@@ -13,13 +13,15 @@ const readFile = util.promisify(fs.readFile)
 const writeFile = util.promisify(fs.writeFile)
 
 test.before(() => {
+  process.env['ENEBULAR_TEST'] = 'true'
   process.env['ROOT_REQUIRED'] = 'false'
   /* process.env['DEBUG'] = 'debug' */
   process.env['MINIMUM_CHECKING_TIME'] = '2'
   process.env['ENEBULAR_AGENT_USER'] = os.userInfo().username
   process.env['FORCE_UPDATE'] = 'true'
 
-  log = new Log('debug', true)
+  log = new Log('debug', true,
+      `/tmp/updater-test-log-system-tmp-${Utils.randomString()}`)
 })
 
 test('System.1: update nodejs version in systemd config file', async t => {

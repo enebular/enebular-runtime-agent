@@ -86,10 +86,10 @@ The credentials must be copied to the device first and then their location must 
 
 ```sh
 --mbed-cloud-dev-cred
---mbed-cloud-pal
+--mbed-cloud-bundle or --mbed-cloud-pal
 ```
 
-Use `--mbed-cloud-dev-cred` to specify the developer credentials in developer mode and `--mbed-cloud-pal` to specify the pal directory in factory mode.
+Use `--mbed-cloud-dev-cred` to specify the developer credentials in developer mode and `--mbed-cloud-bundle` or `--mbed-cloud-pal` to specify the credentials in factory mode.
 
 It's best to copy the credentials to a temporary storage area on the device such as under `/tmp` which won't be saved after a reboot.
 
@@ -123,6 +123,7 @@ OPTION                      FORMAT                DEFAULT                       
 --mbed-cloud-mode           =[developer,factory]  developer                            Pelion connection mode
 --mbed-cloud-dev-cred       =*                    N/A                                  Path to Pelion developer credentials c file
 --mbed-cloud-pal            =*                    N/A                                  Path to Pelion factory pal directory
+--mbed-cloud-bundle         =*                    N/A                                  Path to Pelion factory bundle file
 --mbed-cloud-build-fcc      N/A                   N/A                                  Build the Pelion FCC tool
 --license-key               =*                    N/A                                  Enebular licence key to activate
 --dev-mode                  N/A                   N/A                                  Run enebular-agent in developer mode
@@ -159,7 +160,7 @@ Install the Pelion enebular-agent port with the factory pal directory on a Raspb
 
 ```sh
 scp -r pal pi@192.168.1.125:/tmp/
-ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-mode=factory --mbed-cloud-pal=/tmp/pal"
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-mode=factory --mbed-cloud-bundle=/tmp/bundle"
 ```
 
 ## Post Install

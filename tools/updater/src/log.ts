@@ -12,10 +12,10 @@ export default class Logger {
   private _enable: boolean
   private _logFilePath: string
 
-  public constructor(level: string, enable: boolean) {
+  public constructor(level: string, enable: boolean, logFilePath: string) {
     this._level = this._string2Level(level)
     this._enable = enable
-    this._logFilePath = `/tmp/enebular-agent-updater-${Utils.randomString()}.log`
+    this._logFilePath = logFilePath
   }
 
   public getLogFilePath(): string {

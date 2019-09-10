@@ -73,53 +73,39 @@ export class Utils {
       gid?: number
     }
   ): Promise<void> {
-    return new Promise(
-      (resolve, reject): void => {
-        const ops = options
-          ? Object.assign({ stdio: 'pipe' }, options)
-          : { stdio: 'pipe' }
-        const cproc = spawn(cmd, args, ops)
-        let stdout = '',
-          stderr = ''
-        cproc.stdout.on(
-          'data',
-          (data): void => {
-            stdout = data.toString().replace(/(\n|\r)+$/, '')
-            if (log) log.debug(stdout)
-          }
-        )
-        cproc.stderr.on(
-          'data',
-          (data): void => {
-            stderr = data.toString().replace(/(\n|\r)+$/, '')
-            if (log) log.debug(stderr)
-          }
-        )
-        cproc.once(
-          'exit',
-          (code, signal): void => {
-            if (code !== 0) {
-              let stdio = ''
-              stdio += stderr ? `stderr:\n${stderr}` : ''
-              stdio += stdout ? `stdout:\n${stdout}` : ''
-              reject(
-                new Error(
-                  `Exited with (${code !== null ? code : signal})\n${stdio}`
-                )
-              )
-            } else {
-              resolve()
-            }
-          }
-        )
-        cproc.once(
-          'error',
-          (err): void => {
-            reject(err)
-          }
-        )
-      }
-    )
+    return new Promise((resolve, reject): void => {
+      const ops = options
+        ? Object.assign({ stdio: 'pipe' }, options)
+        : { stdio: 'pipe' }
+      const cproc = spawn(cmd, args, ops)
+      let stdout = '',
+        stderr = ''
+      cproc.stdout.on('data', (data): void => {
+        stdout = data.toString().replace(/(\n|\r)+$/, '')
+        if (log) log.debug(stdout)
+      })
+      cproc.stderr.on('data', (data): void => {
+        stderr = data.toString().replace(/(\n|\r)+$/, '')
+        if (log) log.debug(stderr)
+      })
+      cproc.once('exit', (code, signal): void => {
+        if (code !== 0) {
+          let stdio = ''
+          stdio += stderr ? `stderr:\n${stderr}` : ''
+          stdio += stdout ? `stdout:\n${stdout}` : ''
+          reject(
+            new Error(
+              `Exited with (${code !== null ? code : signal})\n${stdio}`
+            )
+          )
+        } else {
+          resolve()
+        }
+      })
+      cproc.once('error', (err): void => {
+        reject(err)
+      })
+    })
   }
 
   public static getUserInfo(user: string): UserInfo {
@@ -146,32 +132,30 @@ export class Utils {
     interval: number,
     timeout: number
   ): Promise<boolean> {
-    return new Promise(
-      (resolve, reject): void => {
-        const cb = (): void => {
-          const intervalObj = setInterval(async (): Promise<void> => {
-            try {
-              if (await callback()) {
-                clearInterval(intervalObj)
-                resolve(true)
-              }
-            } catch (err) {
-              reject(err)
+    return new Promise((resolve, reject): void => {
+      const cb = (): void => {
+        const intervalObj = setInterval(async (): Promise<void> => {
+          try {
+            if (await callback()) {
+              clearInterval(intervalObj)
+              resolve(true)
             }
-          }, interval)
-          setTimeout((): void => {
-            clearInterval(intervalObj)
-            resolve(false)
-            // max waiting time
-          }, timeout)
-        }
-        if (initialDelay) {
-          setTimeout(cb, initialDelay)
-        } else {
-          cb()
-        }
+          } catch (err) {
+            reject(err)
+          }
+        }, interval)
+        setTimeout((): void => {
+          clearInterval(intervalObj)
+          resolve(false)
+          // max waiting time
+        }, timeout)
       }
-    )
+      if (initialDelay) {
+        setTimeout(cb, initialDelay)
+      } else {
+        cb()
+      }
+    })
   }
 
   public static randomString(): string {
@@ -288,7 +272,7 @@ export class Utils {
     if (!fs.existsSync(parentDir)) {
       await Utils.mkdirp(log, parentDir, userInfo)
     }
-    let args = [src, dst]
+    const args = [src, dst]
     if (fs.lstatSync(src).isDirectory()) {
       args.unshift('-rT')
     }

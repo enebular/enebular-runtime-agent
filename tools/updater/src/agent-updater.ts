@@ -39,7 +39,8 @@ export default class AgentUpdater {
 
     this._log = new Log(
       this._config.getString('DEBUG'),
-      this._config.getBoolean('ENEBULAR_AGENT_UPDATER_ENABLE_LOG')
+      this._config.getBoolean('ENEBULAR_AGENT_UPDATER_ENABLE_LOG'),
+      this._config.getString('ENEBULAR_AGENT_UPDATER_LOG_FILE')
     )
 
     this._userInfo = Utils.getUserInfo(
@@ -67,6 +68,14 @@ export default class AgentUpdater {
       : new Migrator(this._system, this._config, this._log, this._userInfo)
   }
 
+  public printLogInfo(): void {
+    if (!this._config.isOverridden('ENEBULAR_AGENT_UPDATER_LOG_FILE')) {
+      console.log(
+        `See details in full update log file: ${this._log.getLogFilePath()}`
+      )
+    }
+  }
+
   public getLogFilePath(): string {
     return this._log.getLogFilePath()
   }
@@ -79,12 +88,10 @@ export default class AgentUpdater {
     let appendEnvs = ''
     const overriddenItems = this._config.getOverriddenItems()
     const itemKeys = Object.keys(overriddenItems)
-    itemKeys.forEach(
-      (key): void => {
-        if (key !== 'ENEBULAR_AGENT_USER')
-          appendEnvs = appendEnvs + ` ${key}='${overriddenItems[key].value}'`
-      }
-    )
+    itemKeys.forEach((key): void => {
+      if (key !== 'ENEBULAR_AGENT_USER')
+        appendEnvs = appendEnvs + ` ${key}='${overriddenItems[key].value}'`
+    })
 
     this._log.info(
       'sudo env PATH=$PATH:' +
@@ -165,9 +172,7 @@ export default class AgentUpdater {
       !this._config.getBoolean('FORCE_UPDATE')
     ) {
       throw new Error(
-        `Downgrading enebular-agent is not supported yet. (${
-          agentInfo.version
-        } => ${newAgentInfo.version})`
+        `Downgrading enebular-agent is not supported yet. (${agentInfo.version} => ${newAgentInfo.version})`
       )
     }
     if (agentInfo.version.lessThan(new AgentVersion(2, 3, 0))) {
@@ -209,9 +214,7 @@ export default class AgentUpdater {
     await this._migrator.migrate(agentInfo, newAgentInfo)
 
     await Utils.taskAsync(
-      `Switching enebular-agent from ${agentInfo.version} to ${
-        newAgentInfo.version
-      }`,
+      `Switching enebular-agent from ${agentInfo.version} to ${newAgentInfo.version}`,
       this._log,
       (): Promise<boolean> => {
         return this._system.flipToNewAgent(
@@ -232,7 +235,14 @@ export default class AgentUpdater {
     agentInfo: AgentInfo,
     newAgentInfo: AgentInfo
   ): Promise<void> {
-    await this._installer.build(agentInfo, newAgentInfo, this._userInfo)
+    const mbedCloudDevCredsPath = `${agentInfo.path}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c`
+
+    await this._installer.build(
+      agentInfo.detectPortType(),
+      newAgentInfo,
+      this._userInfo,
+      mbedCloudDevCredsPath
+    )
 
     try {
       await this._configAndStartNewAgent(
@@ -288,9 +298,7 @@ export default class AgentUpdater {
       } catch (err1) {
         throw new Error(
           err.message +
-            ` [Faulty] restore to ${version} failed! error message: ${
-              err1.message
-            }`
+            ` [Faulty] restore to ${version} failed! error message: ${err1.message}`
         )
       }
       throw err
@@ -325,9 +333,7 @@ export default class AgentUpdater {
               await Utils.mv(this._oldAgentBackupPath, err.agentPath)
             } catch (err) {
               throw new Error(
-                `Failed to restore agent from ${this._oldAgentBackupPath} to ${
-                  err.agentPath
-                }: ${err.message}`
+                `Failed to restore agent from ${this._oldAgentBackupPath} to ${err.agentPath}: ${err.message}`
               )
             }
             // retry it
@@ -347,20 +353,14 @@ export default class AgentUpdater {
       agentInfo.path != agentPath
     ) {
       throw new Error(
-        `Registered systemd service path (${
-          agentInfo.path
-        }) under ${user} is differnet from specified path (${agentPath}).`
+        `Registered systemd service path (${agentInfo.path}) under ${user} is differnet from specified path (${agentPath}).`
       )
     }
 
     if (!agentInfo) {
-      Utils.task(
-        `Checking enebular-agent by path`,
-        this._log,
-        (): void => {
-          agentInfo = AgentInfo.createFromSource(this._system, agentPath)
-        }
-      )
+      Utils.task(`Checking enebular-agent by path`, this._log, (): void => {
+        agentInfo = AgentInfo.createFromSource(this._system, agentPath)
+      })
     }
 
     agentInfo.prettyStatus(this._log)
@@ -404,5 +404,18 @@ export default class AgentUpdater {
     this._log.info(Utils.echoYellow('Update canceled ✔'))
     this._removeNewAgent()
     return true
+  }
+
+  public async run(): Promise<boolean> {
+    if (this._commandLine.hasCommand()) {
+      return this._commandLine.processCommand(
+        this._installer,
+        this._system,
+        this._userInfo
+      )
+    }
+    else {
+      return this.update()
+    }
   }
 }
