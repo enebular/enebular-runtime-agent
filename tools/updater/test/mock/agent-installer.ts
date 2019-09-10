@@ -40,4 +40,11 @@ export default class MockAgentInstaller implements AgentInstallerIf {
     userInfo: UserInfo
   ): Promise<void> {
   }
+
+  public async installPAL(
+    installPath: string,
+    palPath: string,
+    userInfo: UserInfo
+  ): Promise<void> {
+  }
 }

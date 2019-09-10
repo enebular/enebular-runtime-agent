@@ -69,7 +69,11 @@ export default class CommandLine {
       )
       .option(
         '--pelion-bundle <path>',
-        'Path to pelion bundle file (must be specified in factory mode)'
+        'Path to pelion bundle file'
+      )
+      .option(
+        '--pelion-pal <path>',
+        'Path to pelion pal directory'
       )
   }
 
@@ -109,9 +113,9 @@ export default class CommandLine {
                 `--pelion-dev-cred must be specified in pelion developer mode`
               )
             }
-            if (pelionMode === 'factory' && !this._commandOptions.pelionBundle) {
+            if (pelionMode === 'factory' && !this._commandOptions.pelionPal && !this._commandOptions.pelionBundle) {
               throw new Error(
-                `--pelion-bundle must be specified in pelion factory mode`
+                `either --pelion-bundle or --pelion-pal must be specified in pelion factory mode`
               )
             }
           }
@@ -126,13 +130,21 @@ export default class CommandLine {
             userInfo,
             this._commandOptions.pelionDevCred
           )
-          if (this._installPort === 'pelion' && pelionMode === 'factory'
-              && this._commandOptions.pelionBundle) {
-            await installer.bundle2PAL(
-              this._installPath,
-              this._commandOptions.pelionBundle,
-              userInfo
-            )
+          if (this._installPort === 'pelion' && pelionMode === 'factory') {
+            if (this._commandOptions.pelionBundle) {
+              await installer.bundle2PAL(
+                this._installPath,
+                this._commandOptions.pelionBundle,
+                userInfo
+              )
+            }
+            if (this._commandOptions.pelionPal) {
+              await installer.installPAL(
+                this._installPath,
+                this._commandOptions.pelionPal,
+                userInfo
+              )
+            }
           }
           return true
         } catch (err) {

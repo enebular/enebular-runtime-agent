@@ -27,6 +27,11 @@ export interface AgentInstallerIf {
     bundlePath: string,
     userInfo: UserInfo
   ): Promise<void>
+  installPAL(
+    installPath: string,
+    palPath: string,
+    userInfo: UserInfo
+  ): Promise<void>
 }
 
 interface GithubVersionAsset {
@@ -665,6 +670,31 @@ export class AgentInstaller implements AgentInstallerIf {
           palPath,
           `${fccPath}/__x86_x64_NativeLinux_mbedtls/Release/factory-configurator-client-enebular.elf`,
           [bundlePath],
+          userInfo
+        )
+      }
+    )
+  }
+
+  public async installPAL(
+    installPath: string,
+    palPath: string,
+    userInfo: UserInfo
+  ): Promise<void> {
+    const pelionDatePath = `${installPath}/ports/pelion/.pelion-connector`
+
+    if (!fs.existsSync(pelionDatePath)) {
+      await Utils.mkdirp(this._log, pelionDatePath, userInfo)
+    }
+
+    await Utils.taskAsync(
+      'Copying mbed cloud credentials',
+      this._log,
+      async (): Promise<void> => {
+        return Utils.copy(
+          this._log,
+          palPath,
+          `${pelionDatePath}/pal`,
           userInfo
         )
       }
