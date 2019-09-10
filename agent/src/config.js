@@ -28,6 +28,11 @@ export default class Config {
         description: 'Run enebular-agent core',
         userExpose: true
       },
+      ENEBULAR_AGENT_USER: {
+        value: 'enebular',
+        description: 'User to run as',
+        userExpose: true
+      },
       ENEBULAR_CONFIG_PATH: {
         value: p.resolve(portBasePath, '.enebular-config.json'),
         description: 'Enebular config file path',
@@ -249,6 +254,14 @@ export default class Config {
       }
     })
     return items
+  }
+
+  isOverridden(key: string): boolean {
+    return this.getItem(key).override ? true : false
+  }
+
+  getItem(key: string): ConfigItem {
+    return this._items[key]
   }
 
   addItem(key: string, value: any, description: string, userExpose: boolean) {

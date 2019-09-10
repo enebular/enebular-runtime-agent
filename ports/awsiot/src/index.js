@@ -371,10 +371,10 @@ function onConnectorInit() {
   info('Agent started')
 }
 
-async function startup() {
+async function startup(portBasePath: string) {
   connector = new ConnectorService(onConnectorInit, onConnectorRegisterConfig)
   agent = new EnebularAgent({
-    portBasePath: path.resolve(__dirname, '../'),
+    portBasePath: portBasePath,
     connector: connector
   })
 
@@ -404,7 +404,7 @@ if (require.main === module) {
     exit()
   })
 
-  startup()
+  startup(path.resolve(__dirname, '../'))
     .then(ret => {
       if (!ret) {
         process.exit(1)

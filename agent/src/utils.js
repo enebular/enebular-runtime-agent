@@ -112,3 +112,4 @@ export function decryptCredential(key, credential) {
     decipher.final('utf8')
   return decrypted
 }
+

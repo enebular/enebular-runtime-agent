@@ -28,6 +28,7 @@ export default class CommandLine {
     this.addConfigOption('ENEBULAR_ENABLE_SYSLOG', '--enable-syslog')
     this.addConfigOption('ENEBULAR_DAEMON_MODE', '--daemon-mode')
     this.addConfigOption('ENEBULAR_START_CORE', '--start-core')
+    this.addConfigOption('ENEBULAR_AGENT_USER', '--user <user>')
 
     commander.on('command:*', () => {
       if (!process.env.ENEBULAR_TEST && commander.args.length > 0) {
