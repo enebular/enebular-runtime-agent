@@ -11,8 +11,10 @@
     "build:flow": "flow-copy-source -v src lib",
     "build:ts": "tsc -p tsconfig.build.json",
     "flow": "flow",
-    "lint": "eslint src --ext .js,.ts",
-    "lint-fix": "eslint src --ext .js,.ts --fix",
+    "lint": "eslint src --ext .js",
+    "lint:ts": "eslint src --ext .ts -c .eslintrc-ts.json",
+    "lint-fix": "eslint src --ext .js --fix",
+    "lint:ts-fix": "eslint src --ext .ts -c .eslintrc-ts.json --fix",
     "test": "ava",
     "test:serial": "ava --serial"
   },

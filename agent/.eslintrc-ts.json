@@ -1,12 +1,13 @@
 {
   "extends": [
     "standard",
-    "plugin:flowtype/recommended",
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
     "prettier",
-    "prettier/flowtype",
+    "prettier/@typescript-eslint",
     "prettier/standard"
   ],
-  "plugins": ["flowtype", "prettier", "standard"],
+  "plugins": ["@typescript-eslint", "prettier", "standard"],
   "parserOptions": {
     "sourceType": "module"
   },
@@ -22,10 +23,11 @@
         "semi": false,
         "printWidth": 80,
         "tabWidth": 2,
-        "parser": "flow",
+        "parser": "typescript",
         "trailingComma": "none",
         "jsxBracketSameLine": false
       }
-    ]
+    ],
+    "no-console": "off"
   }
 }
