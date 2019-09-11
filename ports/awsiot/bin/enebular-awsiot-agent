@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 var path = require('path')
-var startupCore = process.argv.filter(arg => arg === '--start-core')
-var agent = (startupCore.length > 0) ? require('..') : require('../../../agent/lib/agent-runner')
+var startCore = process.argv.filter(arg => arg === '--start-core')
+var agent = (startCore.length > 0) ? require('..') : require('../../../agent/lib/agent-runner')
 
 async function exit() {
   await agent.shutdown()
