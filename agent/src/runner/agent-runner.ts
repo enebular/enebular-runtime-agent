@@ -2,6 +2,7 @@ import * as path from 'path'
 import { execSync, fork, ChildProcess } from 'child_process'
 import CommandLine from '../command-line'
 import Config from '../config'
+import AgentRunnerService from './agent-runner-service'
 
 interface UserInfo {
   user: string
@@ -15,11 +16,13 @@ export default class AgentRunner {
   private _commandLine: CommandLine
   private _userInfo?: UserInfo
   private _portBasePath: string
+  private _agentRunnerService: AgentRunnerService
 
   public constructor(portBasePath: string) {
     this._portBasePath = portBasePath
     this._config = new Config(portBasePath)
     this._commandLine = new CommandLine(this._config, true)
+    this._agentRunnerService = new AgentRunnerService()
   }
 
   private _debug(...args: any[]): void {
@@ -92,7 +95,8 @@ export default class AgentRunner {
         })
       }
       cproc.on('message', msg => {
-        this._debug(msg.toString())
+        this._debug(msg)
+        this._agentRunnerService.onRequestReceived(msg)
       })
       cproc.once('exit', (code, signal) => {})
       cproc.once('error', err => {

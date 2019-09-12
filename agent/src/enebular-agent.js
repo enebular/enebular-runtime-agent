@@ -17,6 +17,8 @@ import AiModelManager from './ai-model-manager'
 import LogManager from './log-manager'
 import NodeREDController from './node-red-controller'
 import MonitorManager from './monitor-manager'
+import RemoteLogin from './remote-login'
+import AgentRunnerManager from './agent-runner-manager'
 
 export type EnebularAgentConfig = {
   NODE_RED_DIR: string,
@@ -94,6 +96,8 @@ export default class EnebularAgent extends EventEmitter {
   _agentInfoManager: AgentInfoManager
   _assetManager: AssetManager
   _aiModelManager: AiModelManager
+  _agentRunnerManager: AgentRunnerManager
+  _remoteLogin: RemoteLogin
 
   _connectionId: ?string
   _deviceId: ?string
@@ -226,6 +230,14 @@ export default class EnebularAgent extends EventEmitter {
       }
     )
 
+    this._agentRunnerManager = new AgentRunnerManager()
+
+    this._remoteLogin = new RemoteLogin(
+      this._deviceStateManager,
+      this._agentRunnerManager,
+      this._log
+    )
+
     this._deviceAuth = new DeviceAuthMediator(this._messageEmitter, this._log)
     this._deviceAuth.on('accessTokenUpdate', accessToken =>
       this._onAccessTokenUpdate(accessToken)
@@ -331,6 +343,7 @@ export default class EnebularAgent extends EventEmitter {
     await this._assetManager.setup()
     await this._aiModelManager.setup()
     await this._nodeRed.setup()
+    await this._remoteLogin.setup()
     this._nodeRed.activate(true)
 
     if (this._connector.init) {
@@ -339,6 +352,7 @@ export default class EnebularAgent extends EventEmitter {
 
     await this._nodeRed.startService()
 
+    this._remoteLogin.test()
     return true
   }
 
