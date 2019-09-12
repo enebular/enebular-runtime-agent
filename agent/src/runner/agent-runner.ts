@@ -1,7 +1,7 @@
 import * as path from 'path'
 import { execSync, fork, ChildProcess } from 'child_process'
-import CommandLine from './command-line'
-import Config from './config'
+import CommandLine from '../command-line'
+import Config from '../config'
 
 interface UserInfo {
   user: string
@@ -9,7 +9,7 @@ interface UserInfo {
   uid: number
 }
 
-class AgentRunner {
+export default class AgentRunner {
   private _cproc?: ChildProcess
   private _config: Config
   private _commandLine: CommandLine
@@ -104,7 +104,7 @@ class AgentRunner {
 
   public async startup(): Promise<boolean> {
     /* strip out help argument therefore the help will be returned by agent core */
-    const argv = process.argv.filter(arg => (arg !== '--help' && arg !== '-h'))
+    const argv = process.argv.filter(arg => arg !== '--help' && arg !== '-h')
     this._commandLine.parse(argv)
     this._config.importItems(this._commandLine.getConfigOptions())
 
@@ -144,20 +144,3 @@ class AgentRunner {
     })
   }
 }
-
-let runner: AgentRunner
-
-function startup(portBasePath: string): Promise<boolean> {
-  runner = new AgentRunner(portBasePath)
-  return runner.startup()
-}
-
-async function shutdown(): Promise<void> {
-  try {
-    await runner.shutdown()
-  } catch (err) {
-    // ignore
-  }
-}
-
-export { startup, shutdown }
