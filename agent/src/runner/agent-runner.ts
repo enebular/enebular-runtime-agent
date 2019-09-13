@@ -4,6 +4,7 @@ import CommandLine from '../command-line'
 import Config from '../config'
 import { getUserInfo } from '../utils'
 import AgentRunnerService from './agent-runner-service'
+import AgentCoreManager from './agent-core-manager'
 
 interface UserInfo {
   user: string
@@ -15,15 +16,16 @@ export default class AgentRunner {
   private _cproc?: ChildProcess
   private _config: Config
   private _commandLine: CommandLine
-  private _userInfo?: UserInfo
   private _portBasePath: string
   private _agentRunnerService: AgentRunnerService
+  private _agentCoreManager: AgentCoreManager
 
   public constructor(portBasePath: string) {
     this._portBasePath = portBasePath
     this._config = new Config(portBasePath)
     this._commandLine = new CommandLine(this._config, true)
-    this._agentRunnerService = new AgentRunnerService()
+    this._agentCoreManager = new AgentCoreManager()
+    this._agentRunnerService = new AgentRunnerService(this._agentCoreManager)
   }
 
   private _debug(...args: any[]): void {
@@ -34,7 +36,7 @@ export default class AgentRunner {
     console.info(...args)
   }
 
-  public async _startEnebularAgent(): Promise<boolean> {
+  public async _startEnebularAgent(userInfo?: UserInfo): Promise<boolean> {
     this._debug('Starting enebular-agent core...')
     return new Promise((resolve, reject): void => {
       const startupModule = process.argv[1]
@@ -47,12 +49,12 @@ export default class AgentRunner {
       const cproc = fork(
         startupModule,
         args,
-        this._userInfo
+        userInfo
           ? {
               stdio: [0, 1, 2, 'ipc'],
               cwd: this._portBasePath,
-              uid: this._userInfo.uid,
-              gid: this._userInfo.gid
+              uid: userInfo.uid,
+              gid: userInfo.gid
             }
           : {
               stdio: [0, 1, 2, 'ipc'],
@@ -77,6 +79,7 @@ export default class AgentRunner {
       cproc.once('error', err => {
         reject(err)
       })
+      this._agentCoreManager.init(cproc)
       this._cproc = cproc
     })
   }
@@ -87,6 +90,7 @@ export default class AgentRunner {
     this._commandLine.parse(argv)
     this._config.importItems(this._commandLine.getConfigOptions())
 
+    let userInfo
     if (process.getuid() !== 0) {
       this._debug('Run as non-root user.')
     } else {
@@ -97,13 +101,13 @@ export default class AgentRunner {
       }
       const user = this._config.get('ENEBULAR_AGENT_USER')
       try {
-        this._userInfo = getUserInfo(user)
+        userInfo = getUserInfo(user)
       } catch (err) {
         console.error(`Failed to get user info for ${user}, reason: ${err.message}`)
         return false
       }
     }
-    return this._startEnebularAgent()
+    return this._startEnebularAgent(userInfo)
   }
 
   public async shutdown(): Promise<void> {

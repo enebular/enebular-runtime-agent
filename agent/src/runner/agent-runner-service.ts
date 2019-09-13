@@ -3,8 +3,10 @@ import * as path from 'path'
 import crypto from 'crypto'
 import objectHash from 'object-hash'
 import Task from './task'
+import AgentCoreManager from './agent-core-manager'
 
 interface Request {
+  id: number
   type: string
   settings: Object
   signature: string
@@ -20,11 +22,13 @@ interface RunningTasks {
 }
 
 export default class AgentRunnerService {
+  private _agentCoreManager: AgentCoreManager
   private _taskMap: TaskItem[] = []
   private _runningTasks: RunningTasks = {}
   private _taskIndex = 0
 
-  public constructor() {
+  public constructor(agentCoreManager: AgentCoreManager) {
+    this._agentCoreManager = agentCoreManager
     this._taskMap.push({ type: "remoteLogin", modulePath: path.resolve(__dirname, 'task-remote-login.js') })
   }
 
@@ -41,7 +45,7 @@ export default class AgentRunnerService {
   }
 
   public async onRequestReceived(request: Request) {
-    if (!request.type || !request.settings || !request.signature) {
+    if (!request.id || !request.type || !request.settings || !request.signature) {
       this._error("Invalid request:", JSON.stringify(request, null, 2))
       return
     }
@@ -61,7 +65,6 @@ export default class AgentRunnerService {
       return
     }
 
-
     const taskItem = this._taskMap.filter(item => item.type === request.type)
     if (taskItem.length < 1) {
       this._error("unknown request type:", request.type)
@@ -71,17 +74,24 @@ export default class AgentRunnerService {
     const taskModule = await import(taskItem[0].modulePath)
     const task = taskModule.create(request.settings)
 
-    const id = this._taskIndex++
+    const id = request.id
     this._runningTasks[id] = task
 
     this._debug(`starting task ${id} ...`)
     try {
       await task.run()
-      // TODO: send task response
+      this._agentCoreManager.sendResponse({ 
+        id: id,
+        success: true,
+      })
     }
     catch(err) {
       this._debug(`task ${id} failed, reason: ${err.message}`)
-      // TODO: send task response
+      this._agentCoreManager.sendResponse({ 
+        id: id,
+        success: false,
+        err_msg: err.message
+      })
     }
     this._debug(`task ${id} stopped`)
     delete this._runningTasks[id]
