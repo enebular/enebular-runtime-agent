@@ -2,6 +2,7 @@ import * as path from 'path'
 import { execSync, fork, ChildProcess } from 'child_process'
 import CommandLine from '../command-line'
 import Config from '../config'
+import { getUserInfo } from '../utils'
 import AgentRunnerService from './agent-runner-service'
 
 interface UserInfo {
@@ -31,32 +32,6 @@ export default class AgentRunner {
 
   private _info(...args: any[]): void {
     console.info(...args)
-  }
-
-  private _execReturnStdout(cmd: string): string | undefined {
-    try {
-      return execSync(cmd).toString()
-    } catch (err) {
-      return undefined
-    }
-  }
-
-  private _getUserInfo(user: string): UserInfo {
-    let ret = this._execReturnStdout(`id -u ${user}`)
-    if (!ret) {
-      throw new Error('Failed to get user uid')
-    }
-    const uid = parseInt(ret)
-    ret = this._execReturnStdout(`id -g ${user}`)
-    if (!ret) {
-      throw new Error('Failed to get user gid')
-    }
-    const gid = parseInt(ret)
-    return {
-      user: user,
-      gid: gid,
-      uid: uid
-    }
   }
 
   public async _startEnebularAgent(): Promise<boolean> {
@@ -94,9 +69,9 @@ export default class AgentRunner {
           this._info(data.toString().replace(/(\n|\r)+$/, ''))
         })
       }
-      cproc.on('message', msg => {
+      cproc.on('message', async msg => {
         this._debug(msg)
-        this._agentRunnerService.onRequestReceived(msg)
+        await this._agentRunnerService.onRequestReceived(msg)
       })
       cproc.once('exit', (code, signal) => {})
       cproc.once('error', err => {
@@ -122,9 +97,9 @@ export default class AgentRunner {
       }
       const user = this._config.get('ENEBULAR_AGENT_USER')
       try {
-        this._userInfo = this._getUserInfo(user)
+        this._userInfo = getUserInfo(user)
       } catch (err) {
-        console.error(`Failed to get user info for ${user}`)
+        console.error(`Failed to get user info for ${user}, reason: ${err.message}`)
         return false
       }
     }

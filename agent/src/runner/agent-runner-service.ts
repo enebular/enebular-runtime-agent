@@ -2,17 +2,30 @@ import * as fs from 'fs'
 import * as path from 'path'
 import crypto from 'crypto'
 import objectHash from 'object-hash'
+import Task from './task'
 
 interface Request {
   type: string
-  config: Object
+  settings: Object
   signature: string
 }
 
+interface TaskItem {
+  type: string
+  modulePath: string
+}
+
+interface RunningTasks {
+  [index: string]: Task
+}
+
 export default class AgentRunnerService {
+  private _taskMap: TaskItem[] = []
+  private _runningTasks: RunningTasks = {}
+  private _taskIndex = 0
 
   public constructor() {
-
+    this._taskMap.push({ type: "remoteLogin", modulePath: path.resolve(__dirname, 'task-remote-login.js') })
   }
 
   private _debug(...args: any[]): void {
@@ -27,13 +40,13 @@ export default class AgentRunnerService {
     console.error(...args)
   }
 
-  public onRequestReceived(request: Request) {
-    if (!request.type || !request.config || !request.signature) {
+  public async onRequestReceived(request: Request) {
+    if (!request.type || !request.settings || !request.signature) {
       this._error("Invalid request:", JSON.stringify(request, null, 2))
       return
     }
       
-    const hash = objectHash(request.config, { algorithm: 'sha256', encoding: 'base64' })
+    const hash = objectHash(request.settings, { algorithm: 'sha256', encoding: 'base64' })
     this._debug("Config object hash is:", hash)
 
     const pubKeyPath = path.resolve(__dirname, '../../keys/pubkey.pem')
@@ -48,12 +61,29 @@ export default class AgentRunnerService {
       return
     }
 
-    switch (request.type) {
-      case 'remoteLogin':
-        break
-      default:
-        this._error("unknown request type:", request.type)
-        return
+
+    const taskItem = this._taskMap.filter(item => item.type === request.type)
+    if (taskItem.length < 1) {
+      this._error("unknown request type:", request.type)
+      return
     }
+
+    const taskModule = await import(taskItem[0].modulePath)
+    const task = taskModule.create(request.settings)
+
+    const id = this._taskIndex++
+    this._runningTasks[id] = task
+
+    this._debug(`starting task ${id} ...`)
+    try {
+      await task.run()
+      // TODO: send task response
+    }
+    catch(err) {
+      this._debug(`task ${id} failed, reason: ${err.message}`)
+      // TODO: send task response
+    }
+    this._debug(`task ${id} stopped`)
+    delete this._runningTasks[id]
   }
 }

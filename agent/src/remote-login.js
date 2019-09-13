@@ -128,18 +128,42 @@ export default class RemoteLogin {
   }
 
   test() {
-    this._agentRunnerMan.remoteLogin({ 
+    const objectHash = require('object-hash')
+    const fs = require('fs')
+    const path = require('path')
+    const crypto = require('crypto')
+
+    let settings = { 
       enable: true,
       config: {
           options: {
-            deviceUser: 'user',
-            serverIPaddr: '12.22.33.33',
-            serverPort: '22'
+            deviceUser: 'suyouxin',
+            serverIPaddr: '192.168.2.156',
+            serverPort: '22',
+            serverUser: 'suyouxin',
+            identify: path.resolve(__dirname, '../keys/privkey.pem')
           }
       }
-    },
-    "MEQCIDpDHHMrYeLbgfp/ClxrqrgsNJUMTzIaaATx8LTmZdW5AiAqHZqcQt/3+rDi\nynCkrAI2DG/wcFCT7OdVfddsG7aj7A==\n"
-    )
+    }
+    // For test only
+    const hash = objectHash(settings, { algorithm: 'sha256', encoding: 'base64' })
+    const privKeyPath = path.resolve(__dirname, '../keys/privkey.pem')
+    const privKey = fs.readFileSync(privKeyPath, 'utf8')
+    let sign = crypto.createSign('SHA256')
+    sign.update(hash)
+    let signature = sign.sign(privKey, 'base64')
+    this._agentRunnerMan.remoteLogin(settings, signature)
+
+    setTimeout(() => {
+      settings = {
+        enable: false
+      }
+      const hash = objectHash(settings, { algorithm: 'sha256', encoding: 'base64' })
+      sign = crypto.createSign('SHA256')
+      sign.update(hash)
+      signature = sign.sign(privKey, 'base64')
+      this._agentRunnerMan.remoteLogin(settings, signature)
+    }, 10000);
   }
 }
  

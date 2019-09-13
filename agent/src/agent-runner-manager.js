@@ -9,10 +9,10 @@ export default class AgentRunnerManager {
     }
   }
 
-  remoteLogin(config: Object, signature: string) {
+  remoteLogin(settings: Object, signature: string) {
     this._sendRequest({
       type: "remoteLogin",
-      config: config,
+      settings: settings,
       signature: signature
     })
   }
