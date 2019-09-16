@@ -1,5 +1,6 @@
 import type { Logger } from 'winston'
 import type LogManager from './log-manager'
+import EventEmitter from 'events'
 
 const moduleName = 'agent-runner-man'
 // TODO: types should be merged into runner/agent-runner-message-type.ts
@@ -31,15 +32,17 @@ type StatusUpdate = {
   status: Object
 }
 
-export default class AgentRunnerManager {
+export default class AgentRunnerManager extends EventEmitter {
   _taskIndex = 1
   _log: Logger
   _logManager: LogManager
   _runnerLog: Logger
+  _requests = {}
 
   constructor(
     log: Logger,
     logManager: LogManager) {
+    super()
     process.on('message', data => {
       this._onDataReceived(data)
     })
@@ -75,18 +78,30 @@ export default class AgentRunnerManager {
     }
   }
 
-  _sendRequest(request: Request) {
+  _sendRequest(type: string, settings: Object, callback: (success: boolean, errorMsg?: string) => void) {
+    const id = this._taskIndex++
+    this._requests[id] = callback
     this._send({
       type: 'request',
-      body: request
+      body: {
+        id: id,
+        type: type,
+        settings: settings
+      }
     })
   }
 
   remoteLogin(settings: Object) {
-    this._sendRequest({
-      id: this._taskIndex++,
-      type: "remoteLogin",
-      settings: settings
+    return new Promise((resolve, reject) => {
+      const callback = (success, errorMsg) => {
+        if (success) {
+          this._info('remoteLogin succeeded')
+          resolve()
+        } else
+          this._info('remoteLogin failed')
+          reject(new Error(errorMsg))
+      }
+      this._sendRequest("remoteLogin", settings, callback)
     })
   }
 
@@ -130,11 +145,24 @@ export default class AgentRunnerManager {
   }
 
   _onResponseReceived(response: Response) {
-    this._debug(response)
+    if (!response.id) {
+      this._error(`response id is required`)
+      return
+    }
+    const callback = this._requests[response.id]
+    if (!callback) {
+      this._error(`cannot found callback for request ${id}`)
+      return
+    }
+    callback(response.success, response.errorMsg)
   }
 
   _onStatusUpdateReceived(statusUpdate: StatusUpdate) {
-    this._debug(statusUpdate)
+    if (!statusUpdate.type) {
+      this._error(`statusUpdate type is required`)
+      return
+    }
+    this.emit(statusUpdate.type, statusUpdate.status)
   }
 }
 

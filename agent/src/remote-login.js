@@ -21,6 +21,12 @@ export default class RemoteLogin {
     this._deviceStateMan.on('stateChange', params =>
       this._handleDeviceStateChange(params)
     )
+    this._agentRunnerMan.on('sshServerStatusChanged', params =>
+      this._debug('ssh server status:', params)
+    )
+    this._agentRunnerMan.on('sshClientStatusChanged', params =>
+      this._debug('ssh client status:', params)
+    )
   }
 
   _debug(msg: string, ...args: Array<mixed>) {

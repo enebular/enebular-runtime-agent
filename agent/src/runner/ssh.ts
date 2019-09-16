@@ -105,6 +105,7 @@ class SSH extends EventEmitter {
         reject(err)
       })
 
+      // TODO: detect client is connected
       this._sshClient = cproc
       this.emit('clientStatusChanged', true)
       resolve()
