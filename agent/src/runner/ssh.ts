@@ -1,5 +1,7 @@
 import { execSync, spawn, ChildProcess } from 'child_process'
 import { getUserInfo, exec } from '../utils'
+import EventEmitter from 'events'
+import AgentRunnerLogger from './agent-runner-logger'
 
 interface SSHClientOptions {
   deviceUser: string
@@ -9,22 +11,25 @@ interface SSHClientOptions {
   identify: string
 }
 
-class SSH {
+class SSH extends EventEmitter {
   private _serverActive: boolean = false
   private _sshClient?: ChildProcess
+  private _log: AgentRunnerLogger
 
   private static instance: SSH
 
-  private constructor() {
-
+  private constructor (log: AgentRunnerLogger) {
+    super()
+    this._log = log
   }
 
   private _info(...args: any[]): void {
-    console.info(...args)
+    this._log.info(...args)
   }
 
-  private init() {
+  public init() {
     this._serverActive = this.isServiceActive('sshd')
+    this.emit('serverStatusChanged', this._serverActive)
   }
 
   private isServiceActive(serviceName: string): boolean {
@@ -46,6 +51,8 @@ class SSH {
   public async startServer(): Promise<void> {
     if (!this._serverActive) {
       await this._exec("sudo service sshd start")
+      this._serverActive = true
+      this.emit('serverStatusChanged', this._serverActive)
     }
     else {
       this._info('SSH server already started')
@@ -55,6 +62,8 @@ class SSH {
   public async stopServer(): Promise<void> {
     if (this._serverActive) {
       await this._exec("sudo service sshd stop")
+      this._serverActive = false
+      this.emit('serverStatusChanged', this._serverActive)
     }
     else {
       this._info('SSH server already shutdown')
@@ -97,6 +106,7 @@ class SSH {
       })
 
       this._sshClient = cproc
+      this.emit('clientStatusChanged', true)
       resolve()
     })
   }
@@ -109,6 +119,7 @@ class SSH {
         cproc.once('exit', () => {
           this._info('SSH client ended')
           this._sshClient = undefined
+          this.emit('clientStatusChanged', false)
           resolve()
         })
         cproc.kill('SIGINT')
@@ -119,10 +130,9 @@ class SSH {
     })
   }
 
-  public static getInstance() {
+  public static getInstance(log: AgentRunnerLogger) {
     if (!SSH.instance) {
-      SSH.instance = new SSH()
-      SSH.instance.init()
+      SSH.instance = new SSH(log)
     }
     return SSH.instance
   }

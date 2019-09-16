@@ -1,33 +1,42 @@
 import { ChildProcess } from 'child_process'
 import EventEmitter from 'events'
+import { Data, Log, Response, StatusUpdate } from './agent-runner-message-type'
 
 export default class AgentCoreManager extends EventEmitter {
   private _proc?: ChildProcess
 
-  public init(proc: ChildProcess) {
+  public constructor(proc: ChildProcess) {
+    super()
     this._proc = proc
     this._proc.on('message', async msg => {
       this.emit('dataReceived', msg)
     })
   }
 
-  _send(msg: Object) {
+  _send(msg: Data) {
     if (this._proc && this._proc.send) {
       this._proc.send(msg)
     }
   }
 
-  public sendResponse(response: Object) {
+  public sendResponse(response: Response) {
     return this._send({
       type: 'response',
-      response: response
+      body: response
     })
   }
 
-  public sendLog(log: string) {
+  public sendStatusUpdate(statusUpdate: StatusUpdate) {
+    return this._send({
+      type: 'statusUpdate',
+      body: statusUpdate
+    })
+  }
+
+  public sendLog(log: Log) {
     return this._send({
       type: 'log',
-      log: log
+      body: log
     })
   }
 }

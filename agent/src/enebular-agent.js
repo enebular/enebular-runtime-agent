@@ -230,7 +230,7 @@ export default class EnebularAgent extends EventEmitter {
       }
     )
 
-    this._agentRunnerManager = new AgentRunnerManager()
+    this._agentRunnerManager = new AgentRunnerManager(this._log, this._logManager)
 
     this._remoteLogin = new RemoteLogin(
       this._deviceStateManager,
@@ -352,7 +352,8 @@ export default class EnebularAgent extends EventEmitter {
 
     await this._nodeRed.startService()
 
-    this._remoteLogin.test()
+    if (!process.env.ENEBULAR_TEST)
+      this._remoteLogin.test()
     return true
   }
 

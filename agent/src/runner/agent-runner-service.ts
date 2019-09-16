@@ -1,17 +1,9 @@
 import * as path from 'path'
 import Task from './task'
 import AgentCoreManager from './agent-core-manager'
-
-interface Data {
-  type: string
-  body: Request
-}
-
-interface Request {
-  id: number
-  type: string
-  settings: Object
-}
+import AgentRunnerLogger from './agent-runner-logger'
+import { SSH } from './ssh'
+import { Data, Request } from './agent-runner-message-type'
 
 interface TaskItem {
   type: string
@@ -24,6 +16,7 @@ interface RunningTasks {
 
 export default class AgentRunnerService {
   private _agentCoreManager: AgentCoreManager
+  private _log: AgentRunnerLogger
   private _taskMap: TaskItem[] = []
   private _runningTasks: RunningTasks = {}
   private _taskIndex = 0
@@ -33,19 +26,40 @@ export default class AgentRunnerService {
     this._agentCoreManager.on('dataReceived', async (data) =>
       await this._onDataReceived(data)
     )
+    this._log = new AgentRunnerLogger(this._agentCoreManager)
+
+    const ssh = SSH.getInstance(this._log)
+    ssh.on('clientStatusChanged', (connected) => {
+      this._agentCoreManager.sendStatusUpdate({
+          type: 'sshClientStatusChanged',
+          status: {
+            connected: connected
+          }
+      })
+    })
+    ssh.on('serverStatusChanged', (active) => {
+      this._agentCoreManager.sendStatusUpdate({
+          type: 'sshServerStatusChanged',
+          status: {
+            active: active
+          }
+      })
+    })
+    ssh.init()
+
     this._taskMap.push({ type: "remoteLogin", modulePath: path.resolve(__dirname, 'task-remote-login.js') })
   }
 
   private _debug(...args: any[]): void {
-    if (process.env.DEBUG === 'debug') console.info('runner:', ...args)
+    this._log.debug(...args)
   }
 
   private _info(...args: any[]): void {
-    console.info(...args)
+    this._log.info(...args)
   }
 
   private _error(...args: any[]): void {
-    console.error(...args)
+    this._log.error(...args)
   }
 
   public async _onDataReceived(data: Data): Promise<void> {
@@ -56,7 +70,7 @@ export default class AgentRunnerService {
 
     switch(data.type) {
     case 'request':
-      return this._onRequestReceived(data.body)
+      return this._onRequestReceived(data.body as Request)
     default:
       this._error("Invalid data: unknown type:", JSON.stringify(data, null, 2))
       return
@@ -77,23 +91,6 @@ export default class AgentRunnerService {
       return
     }
       
-    /*
-    const hash = objectHash(request.settings, { algorithm: 'sha256', encoding: 'base64' })
-    this._debug("Config object hash is:", hash)
-
-    const pubKeyPath = path.resolve(__dirname, '../../keys/pubkey.pem')
-    const signature = request.signature
-    const pubKey = fs.readFileSync(pubKeyPath, 'utf8')
-    const verify = crypto.createVerify('SHA256')
-    verify.update(hash)
-    if (verify.verify(pubKey, signature, 'base64')) {
-      this._debug('Signature verified OK')
-    } else {
-      this._error("Signature verified failed, invalid request", JSON.stringify(request, null, 2))
-      return
-    }
-    */
-
     const taskItem = this._taskMap.filter(item => item.type === request.type)
     if (taskItem.length < 1) {
       const msg = `unknown request type:${request.type}`
@@ -103,7 +100,7 @@ export default class AgentRunnerService {
     }
 
     const taskModule = await import(taskItem[0].modulePath)
-    const task = taskModule.create(request.settings)
+    const task = taskModule.create(this._log, request.settings)
 
     const id = request.id
     this._runningTasks[id] = task

@@ -17,23 +17,23 @@ export default class AgentRunner {
   private _config: Config
   private _commandLine: CommandLine
   private _portBasePath: string
-  private _agentRunnerService: AgentRunnerService
-  private _agentCoreManager: AgentCoreManager
 
   public constructor(portBasePath: string) {
     this._portBasePath = portBasePath
     this._config = new Config(portBasePath)
     this._commandLine = new CommandLine(this._config, true)
-    this._agentCoreManager = new AgentCoreManager()
-    this._agentRunnerService = new AgentRunnerService(this._agentCoreManager)
   }
 
   private _debug(...args: any[]): void {
-    if (process.env.DEBUG === 'debug') console.info('runner:', ...args)
+    if (process.env.DEBUG === 'debug') this._info(...args)
   }
 
   private _info(...args: any[]): void {
-    console.info(...args)
+    console.info("runner", ...args)
+  }
+
+  private _error(...args: any[]): void {
+    console.error("runner", ...args)
   }
 
   public async _startEnebularAgent(userInfo?: UserInfo): Promise<boolean> {
@@ -75,7 +75,8 @@ export default class AgentRunner {
       cproc.once('error', err => {
         reject(err)
       })
-      this._agentCoreManager.init(cproc)
+      const agentCoreManager = new AgentCoreManager(cproc)
+      const agentRunnerService = new AgentRunnerService(agentCoreManager)
       this._cproc = cproc
     })
   }
@@ -92,14 +93,14 @@ export default class AgentRunner {
     } else {
       this._debug('Run as root user.')
       if (!this._config.isOverridden('ENEBULAR_AGENT_USER')) {
-        console.error(`--user <user> must be specified when running as root`)
+        this._error(`--user <user> must be specified when running as root`)
         return false
       }
       const user = this._config.get('ENEBULAR_AGENT_USER')
       try {
         userInfo = getUserInfo(user)
       } catch (err) {
-        console.error(`Failed to get user info for ${user}, reason: ${err.message}`)
+        this._error(`Failed to get user info for ${user}, reason: ${err.message}`)
         return false
       }
     }
@@ -116,7 +117,7 @@ export default class AgentRunner {
 
       if (this._cproc) {
         this._cproc.once('exit', (code, signal) => {
-          this._info('enebular-agent has terminated.')
+          this._debug('enebular-agent has terminated.')
           resolve()
         })
       }
