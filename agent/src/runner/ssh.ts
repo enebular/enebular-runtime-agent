@@ -97,6 +97,7 @@ class SSH {
       })
 
       this._sshClient = cproc
+      resolve()
     })
   }
 

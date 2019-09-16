@@ -71,10 +71,6 @@ export default class AgentRunner {
           this._info(data.toString().replace(/(\n|\r)+$/, ''))
         })
       }
-      cproc.on('message', async msg => {
-        this._debug(msg)
-        await this._agentRunnerService.onRequestReceived(msg)
-      })
       cproc.once('exit', (code, signal) => {})
       cproc.once('error', err => {
         reject(err)

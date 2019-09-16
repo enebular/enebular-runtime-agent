@@ -1,10 +1,14 @@
 import { ChildProcess } from 'child_process'
+import EventEmitter from 'events'
 
-export default class AgentCoreManager {
+export default class AgentCoreManager extends EventEmitter {
   private _proc?: ChildProcess
 
   public init(proc: ChildProcess) {
     this._proc = proc
+    this._proc.on('message', async msg => {
+      this.emit('dataReceived', msg)
+    })
   }
 
   _send(msg: Object) {

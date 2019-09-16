@@ -136,33 +136,42 @@ export default class RemoteLogin {
     let settings = { 
       enable: true,
       config: {
-          options: {
-            deviceUser: 'suyouxin',
-            serverIPaddr: '192.168.2.156',
-            serverPort: '22',
-            serverUser: 'suyouxin',
-            identify: path.resolve(__dirname, '../keys/privkey.pem')
-          }
+        options: {
+          deviceUser: 'suyouxin',
+          serverIPaddr: '192.168.2.156',
+          serverPort: '22',
+          serverUser: 'suyouxin',
+        }
+      },
+      devicePublicKey: {
+        data: fs.readFileSync(path.resolve(__dirname, '../keys/ssh/device_pubkey.pem'), 'utf8')
+      },
+      globalServerPrivateKey: {
+        data: fs.readFileSync(path.resolve(__dirname, '../keys/ssh/global_server_privkey.pem'), 'utf8')
       }
     }
     // For test only
-    const hash = objectHash(settings, { algorithm: 'sha256', encoding: 'base64' })
-    const privKeyPath = path.resolve(__dirname, '../keys/privkey.pem')
-    const privKey = fs.readFileSync(privKeyPath, 'utf8')
+    const hash = objectHash(settings.config.options, { algorithm: 'sha256', encoding: 'base64' })
+    const privKey = fs.readFileSync(path.resolve(__dirname, '../keys/enebular/privkey.pem'), 'utf8')
     let sign = crypto.createSign('SHA256')
     sign.update(hash)
-    let signature = sign.sign(privKey, 'base64')
-    this._agentRunnerMan.remoteLogin(settings, signature)
+    settings.config['signature'] = sign.sign(privKey, 'base64')
+
+    sign = crypto.createSign('SHA256')
+    sign.update(settings.devicePublicKey.data)
+    settings.devicePublicKey['signature'] = sign.sign(privKey, 'base64')
+
+    sign = crypto.createSign('SHA256')
+    sign.update(settings.globalServerPrivateKey.data)
+    settings.globalServerPrivateKey['signature'] = sign.sign(privKey, 'base64')
+
+    this._agentRunnerMan.remoteLogin(settings)
 
     setTimeout(() => {
       settings = {
         enable: false
       }
-      const hash = objectHash(settings, { algorithm: 'sha256', encoding: 'base64' })
-      sign = crypto.createSign('SHA256')
-      sign.update(hash)
-      signature = sign.sign(privKey, 'base64')
-      this._agentRunnerMan.remoteLogin(settings, signature)
+      this._agentRunnerMan.remoteLogin(settings)
     }, 10000);
   }
 }
