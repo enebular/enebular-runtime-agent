@@ -14,7 +14,11 @@ export default class RemoteLogin {
   _pendingEnableRequest: boolean = false
   _remoteLoginState: Object = {}
 
-  constructor(deviceStateMan: DeviceStateManager, agentRunnerMan: AgentRunnerManager, log: Logger) {
+  constructor(
+    deviceStateMan: DeviceStateManager,
+    agentRunnerMan: AgentRunnerManager,
+    log: Logger
+  ) {
     this._deviceStateMan = deviceStateMan
     this._agentRunnerMan = agentRunnerMan
     this._log = log
@@ -27,6 +31,11 @@ export default class RemoteLogin {
     this._agentRunnerMan.on('sshClientStatusChanged', params =>
       this._debug('ssh client status:', params)
     )
+  }
+
+  _info(msg: string, ...args: Array<mixed>) {
+    args.push({ module: moduleName })
+    this._log.info(msg, ...args)
   }
 
   _debug(msg: string, ...args: Array<mixed>) {
@@ -80,7 +89,9 @@ export default class RemoteLogin {
 
     const desiredRemoteLogin = desiredState.remoteLogin || {}
 
-    this._debug('Desired state change: ' + JSON.stringify(desiredState, null, 2))
+    this._debug(
+      'Desired state change: ' + JSON.stringify(desiredState, null, 2)
+    )
 
     let change = false
 
@@ -107,78 +118,96 @@ export default class RemoteLogin {
       change = true
     }
 
-    this._debug('RemoteLogin state: ' + JSON.stringify(this._remoteLoginState, null, 2))
+    this._debug(
+      'RemoteLogin state: ' + JSON.stringify(this._remoteLoginState, null, 2)
+    )
 
     if (change) {
       this._updateRemoteLoginStatusState()
       this._updateRemoteLoginReportedState()
       this._processPendingRemoteLoginChanges()
     }
-
   }
 
-  _updateRemoteLoginReportedState() {
-  }
+  _updateRemoteLoginReportedState() {}
 
-  _updateRemoteLoginStatusState() {
-  }
+  _updateRemoteLoginStatusState() {}
 
   _processPendingRemoteLoginChanges() {
     if (this._pendingEnableRequest) {
-      this._agentRunnerMan.remoteLogin({ 
+      this._agentRunnerMan.remoteLogin({
         enable: true,
-        signature: "random"
+        signature: 'random'
       })
       this._pendingEnableRequest = false
     }
   }
 
-  test() {
+  async test() {
     const objectHash = require('object-hash')
     const fs = require('fs')
     const path = require('path')
     const crypto = require('crypto')
 
-    let settings = { 
+    let settings = {
       enable: true,
       config: {
         options: {
           deviceUser: 'suyouxin',
           serverIPaddr: '192.168.2.156',
           serverPort: '22',
-          serverUser: 'suyouxin',
+          serverUser: 'suyouxin'
         }
       },
       devicePublicKey: {
-        data: fs.readFileSync(path.resolve(__dirname, '../keys/ssh/device_pubkey.pem'), 'utf8')
+        data: fs.readFileSync(
+          path.resolve(__dirname, '../keys/ssh/device_pubkey.pem'),
+          'utf8'
+        )
       },
       globalServerPrivateKey: {
-        data: fs.readFileSync(path.resolve(__dirname, '../keys/ssh/global_server_privkey.pem'), 'utf8')
+        data: fs.readFileSync(
+          path.resolve(__dirname, '../keys/ssh/global_server_privkey.pem'),
+          'utf8'
+        )
       }
     }
     // For test only
-    const hash = objectHash(settings.config.options, { algorithm: 'sha256', encoding: 'base64' })
-    const privKey = fs.readFileSync(path.resolve(__dirname, '../keys/enebular/privkey.pem'), 'utf8')
+    const hash = objectHash(settings.config.options, {
+      algorithm: 'sha256',
+      encoding: 'base64'
+    })
+    const privKey = fs.readFileSync(
+      path.resolve(__dirname, '../keys/enebular/privkey.pem'),
+      'utf8'
+    )
     let sign = crypto.createSign('SHA256')
     sign.update(hash)
-    settings.config['signature'] = sign.sign(privKey, 'base64')
+    settings.config.signature = sign.sign(privKey, 'base64')
 
     sign = crypto.createSign('SHA256')
     sign.update(settings.devicePublicKey.data)
-    settings.devicePublicKey['signature'] = sign.sign(privKey, 'base64')
+    settings.devicePublicKey.signature = sign.sign(privKey, 'base64')
 
     sign = crypto.createSign('SHA256')
     sign.update(settings.globalServerPrivateKey.data)
-    settings.globalServerPrivateKey['signature'] = sign.sign(privKey, 'base64')
+    settings.globalServerPrivateKey.signature = sign.sign(privKey, 'base64')
 
-    this._agentRunnerMan.remoteLogin(settings)
+    try {
+      await this._agentRunnerMan.remoteLogin(settings)
+    } catch (err) {
+      this._info('RemoteLogin failed: ' + err.message)
+    }
 
-    setTimeout(() => {
+    setTimeout(async () => {
       settings = {
         enable: false
       }
-      this._agentRunnerMan.remoteLogin(settings)
-    }, 10000);
+      try {
+        await this._agentRunnerMan.remoteLogin(settings)
+      } catch (err) {
+        this._info('RemoteLogin failed: ' + err.message)
+      }
+    }, 10000)
   }
 }
- 

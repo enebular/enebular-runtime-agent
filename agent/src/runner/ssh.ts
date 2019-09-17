@@ -3,7 +3,7 @@ import { getUserInfo, exec } from '../utils'
 import EventEmitter from 'events'
 import AgentRunnerLogger from './agent-runner-logger'
 
-interface SSHClientOptions {
+export interface SSHClientOptions {
   deviceUser: string
   serverIPaddr: string
   serverPort: string
@@ -11,14 +11,14 @@ interface SSHClientOptions {
   identify: string
 }
 
-class SSH extends EventEmitter {
-  private _serverActive: boolean = false
+export class SSH extends EventEmitter {
+  private _serverActive = false
   private _sshClient?: ChildProcess
   private _log: AgentRunnerLogger
 
   private static instance: SSH
 
-  private constructor (log: AgentRunnerLogger) {
+  private constructor(log: AgentRunnerLogger) {
     super()
     this._log = log
   }
@@ -27,7 +27,7 @@ class SSH extends EventEmitter {
     this._log.info(...args)
   }
 
-  public init() {
+  public init(): void {
     this._serverActive = this.isServiceActive('sshd')
     this.emit('serverStatusChanged', this._serverActive)
   }
@@ -40,8 +40,7 @@ class SSH extends EventEmitter {
     return new Promise((resolve, reject): void => {
       try {
         execSync(cmd)
-      }
-      catch (err) {
+      } catch (err) {
         reject(err)
       }
       resolve()
@@ -50,22 +49,20 @@ class SSH extends EventEmitter {
 
   public async startServer(): Promise<void> {
     if (!this._serverActive) {
-      await this._exec("sudo service sshd start")
+      await this._exec('service ssssssss start')
       this._serverActive = true
       this.emit('serverStatusChanged', this._serverActive)
-    }
-    else {
+    } else {
       this._info('SSH server already started')
     }
   }
 
   public async stopServer(): Promise<void> {
     if (this._serverActive) {
-      await this._exec("sudo service sshd stop")
+      await this._exec('service sshd stop')
       this._serverActive = false
       this.emit('serverStatusChanged', this._serverActive)
-    }
-    else {
+    } else {
       this._info('SSH server already shutdown')
     }
   }
@@ -82,25 +79,20 @@ class SSH extends EventEmitter {
       const args = [
         `${options.serverUser}@${options.serverIPaddr}`,
         `-p ${options.serverPort}`,
-        `-i ${options.identify}`,
+        `-i ${options.identify}`
       ]
 
-      const cproc = spawn(
-        "ssh",
-        args,
-        {
-          stdio: 'pipe',
-          uid: deviceUserInfo.uid,
-          gid: deviceUserInfo.gid
-        }
-      )
+      const cproc = spawn('ssh', args, {
+        stdio: 'pipe',
+        uid: deviceUserInfo.uid,
+        gid: deviceUserInfo.gid
+      })
       cproc.stdout.on('data', data => {
         this._info('sshClient:', data.toString().replace(/(\n|\r)+$/, ''))
       })
       cproc.stderr.on('data', data => {
         this._info('sshClient:', data.toString().replace(/(\n|\r)+$/, ''))
       })
-      cproc.once('exit', (code, signal) => {})
       cproc.once('error', err => {
         reject(err)
       })
@@ -113,7 +105,7 @@ class SSH extends EventEmitter {
   }
 
   public async stopClient(): Promise<void> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, reject): void => {
       const cproc = this._sshClient
       if (cproc) {
         this._info('Shutting down ssh client...')
@@ -131,12 +123,10 @@ class SSH extends EventEmitter {
     })
   }
 
-  public static getInstance(log: AgentRunnerLogger) {
+  public static getInstance(log: AgentRunnerLogger): SSH {
     if (!SSH.instance) {
       SSH.instance = new SSH(log)
     }
     return SSH.instance
   }
 }
-
-export { SSH, SSHClientOptions } 

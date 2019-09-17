@@ -1,5 +1,4 @@
-import * as path from 'path'
-import { execSync, fork, ChildProcess } from 'child_process'
+import { fork, ChildProcess } from 'child_process'
 import CommandLine from '../command-line'
 import Config from '../config'
 import { getUserInfo } from '../utils'
@@ -29,11 +28,11 @@ export default class AgentRunner {
   }
 
   private _info(...args: any[]): void {
-    console.info("runner", ...args)
+    console.info('runner', ...args)
   }
 
   private _error(...args: any[]): void {
-    console.error("runner", ...args)
+    console.error('runner', ...args)
   }
 
   public async _startEnebularAgent(userInfo?: UserInfo): Promise<boolean> {
@@ -71,7 +70,6 @@ export default class AgentRunner {
           this._info(data.toString().replace(/(\n|\r)+$/, ''))
         })
       }
-      cproc.once('exit', (code, signal) => {})
       cproc.once('error', err => {
         reject(err)
       })
@@ -100,7 +98,9 @@ export default class AgentRunner {
       try {
         userInfo = getUserInfo(user)
       } catch (err) {
-        this._error(`Failed to get user info for ${user}, reason: ${err.message}`)
+        this._error(
+          `Failed to get user info for ${user}, reason: ${err.message}`
+        )
         return false
       }
     }

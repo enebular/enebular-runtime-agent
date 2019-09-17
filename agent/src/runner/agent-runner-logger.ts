@@ -29,4 +29,3 @@ export default class AgentRunnerLogger {
     this._log('error', ...args)
   }
 }
- 

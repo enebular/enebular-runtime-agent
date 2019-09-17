@@ -13,27 +13,27 @@ export default class AgentCoreManager extends EventEmitter {
     })
   }
 
-  _send(msg: Data) {
+  private _send(msg: Data): void {
     if (this._proc && this._proc.send) {
       this._proc.send(msg)
     }
   }
 
-  public sendResponse(response: Response) {
+  public sendResponse(response: Response): void {
     return this._send({
       type: 'response',
       body: response
     })
   }
 
-  public sendStatusUpdate(statusUpdate: StatusUpdate) {
+  public sendStatusUpdate(statusUpdate: StatusUpdate): void {
     return this._send({
       type: 'statusUpdate',
       body: statusUpdate
     })
   }
 
-  public sendLog(log: Log) {
+  public sendLog(log: Log): void {
     return this._send({
       type: 'log',
       body: log

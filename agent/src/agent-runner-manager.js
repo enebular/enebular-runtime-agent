@@ -1,15 +1,11 @@
+/* @flow */
 import type { Logger } from 'winston'
 import type LogManager from './log-manager'
 import EventEmitter from 'events'
 
 const moduleName = 'agent-runner-man'
 // TODO: types should be merged into runner/agent-runner-message-type.ts
-// once we switched to typescript. 
-type Data = {
-  type: string,
-  body: Request | Response | Log | StatusUpdate
-}
-
+// once we switched to typescript.
 type Request = {
   id: number,
   type: string,
@@ -24,12 +20,17 @@ type Response = {
 
 type Log = {
   level: string,
-  msg : string
+  msg: string
 }
 
 type StatusUpdate = {
   type: string,
   status: Object
+}
+
+type Data = {
+  type: string,
+  body: Request | Response | Log | StatusUpdate
 }
 
 export default class AgentRunnerManager extends EventEmitter {
@@ -39,9 +40,7 @@ export default class AgentRunnerManager extends EventEmitter {
   _runnerLog: Logger
   _requests = {}
 
-  constructor(
-    log: Logger,
-    logManager: LogManager) {
+  constructor(log: Logger, logManager: LogManager) {
     super()
     process.on('message', data => {
       this._onDataReceived(data)
@@ -78,7 +77,11 @@ export default class AgentRunnerManager extends EventEmitter {
     }
   }
 
-  _sendRequest(type: string, settings: Object, callback: (success: boolean, errorMsg?: string) => void) {
+  _sendRequest(
+    type: string,
+    settings: Object,
+    callback: (success: boolean, errorMsg?: string) => void
+  ) {
     const id = this._taskIndex++
     this._requests[id] = callback
     this._send({
@@ -95,13 +98,10 @@ export default class AgentRunnerManager extends EventEmitter {
     return new Promise((resolve, reject) => {
       const callback = (success, errorMsg) => {
         if (success) {
-          this._info('remoteLogin succeeded')
           resolve()
-        } else
-          this._info('remoteLogin failed')
-          reject(new Error(errorMsg))
+        } else reject(new Error(errorMsg))
       }
-      this._sendRequest("remoteLogin", settings, callback)
+      this._sendRequest('remoteLogin', settings, callback)
     })
   }
 
@@ -110,16 +110,18 @@ export default class AgentRunnerManager extends EventEmitter {
       this._error(`data type is not defined, invalid data: ${data}`)
       return
     }
-    switch(data.type) {
-    case 'log':
-      return this._onLogReceived(data.body)
-    case 'response':
-      return this._onResponseReceived(data.body)
-    case 'statusUpdate':
-      return this._onStatusUpdateReceived(data.body)
-    default:
-      this._error("Invalid data: unknown type:", JSON.stringify(data, null, 2))
-      return
+    switch (data.type) {
+      case 'log':
+        return this._onLogReceived(data.body)
+      case 'response':
+        return this._onResponseReceived(data.body)
+      case 'statusUpdate':
+        return this._onStatusUpdateReceived(data.body)
+      default:
+        this._error(
+          'Invalid data: unknown type:',
+          JSON.stringify(data, null, 2)
+        )
     }
   }
 
@@ -129,27 +131,30 @@ export default class AgentRunnerManager extends EventEmitter {
       return
     }
     switch (log.level) {
-    case 'info':
-      this._runnerLog.info(log.msg)
-      return
-    case 'error':
-      this._runnerLog.error(log.msg)
-      return
-    case 'debug':
-      this._runnerLog.debug(log.msg)
-      return
-    default:
-      this._error("Invalid data: unknown level:", JSON.stringify(log, null, 2))
-      return
+      case 'info':
+        this._runnerLog.info(log.msg)
+        return
+      case 'error':
+        this._runnerLog.error(log.msg)
+        return
+      case 'debug':
+        this._runnerLog.debug(log.msg)
+        return
+      default:
+        this._error(
+          'Invalid data: unknown level:',
+          JSON.stringify(log, null, 2)
+        )
     }
   }
 
   _onResponseReceived(response: Response) {
-    if (!response.id) {
+    const id = response.id
+    if (!id) {
       this._error(`response id is required`)
       return
     }
-    const callback = this._requests[response.id]
+    const callback = this._requests[id]
     if (!callback) {
       this._error(`cannot found callback for request ${id}`)
       return
@@ -165,4 +170,3 @@ export default class AgentRunnerManager extends EventEmitter {
     this.emit(statusUpdate.type, statusUpdate.status)
   }
 }
-

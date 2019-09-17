@@ -6,7 +6,7 @@ export interface Data {
 export interface Request {
   id: number
   type: string
-  settings: Object
+  settings: Record<string, any>
 }
 
 export interface Response {
@@ -17,12 +17,10 @@ export interface Response {
 
 export interface Log {
   level: string
-  msg : string
+  msg: string
 }
 
 export interface StatusUpdate {
   type: string
-  status: Object
+  status: Record<string, any>
 }
-
-
