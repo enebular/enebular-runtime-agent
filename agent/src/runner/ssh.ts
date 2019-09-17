@@ -49,7 +49,7 @@ export class SSH extends EventEmitter {
 
   public async startServer(): Promise<void> {
     if (!this._serverActive) {
-      await this._exec('service ssssssss start')
+      await this._exec('service sshd start')
       this._serverActive = true
       this.emit('serverStatusChanged', this._serverActive)
     } else {

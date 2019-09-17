@@ -4,11 +4,7 @@ import AgentCoreManager from './agent-core-manager'
 import AgentRunnerLogger from './agent-runner-logger'
 import { SSH } from './ssh'
 import { Data, Request } from './agent-runner-message-type'
-
-interface TaskItem {
-  type: string
-  modulePath: string
-}
+import TaskRemoteLogin from './task-remote-login'
 
 interface RunningTasks {
   [index: string]: Task
@@ -17,7 +13,6 @@ interface RunningTasks {
 export default class AgentRunnerService {
   private _agentCoreManager: AgentCoreManager
   private _log: AgentRunnerLogger
-  private _taskMap: TaskItem[] = []
   private _runningTasks: RunningTasks = {}
   private _taskIndex = 0
 
@@ -46,11 +41,6 @@ export default class AgentRunnerService {
       })
     })
     ssh.init()
-
-    this._taskMap.push({
-      type: 'remoteLogin',
-      modulePath: path.resolve(__dirname, 'task-remote-login.js')
-    })
   }
 
   private _debug(...args: any[]): void {
@@ -97,37 +87,43 @@ export default class AgentRunnerService {
     })
   }
 
+  private _createTask(taskType: string, settings: Record<string, any>): Task | undefined {
+    switch(taskType) {
+    case 'remoteLogin':
+      return new TaskRemoteLogin(this._log, settings)
+    default:
+      return undefined
+    }
+  }
+
   public async _onRequestReceived(request: Request): Promise<void> {
-    if (!request.id || !request.type || !request.settings) {
+    if (!request.id || !request.taskType || !request.settings) {
       this._error('Invalid request:', JSON.stringify(request, null, 2))
       return
     }
 
-    const taskItem = this._taskMap.filter(item => item.type === request.type)
-    if (taskItem.length < 1) {
-      const msg = `unknown request type:${request.type}`
+    const task = this._createTask(request.taskType, request.settings)
+    if (!task) {
+      const msg = `Unknown task type: ${request.taskType}`
       this._error(msg)
       this._sendErrorResponse(request.id, msg)
       return
     }
 
-    const taskModule = await import(taskItem[0].modulePath)
-    const task = taskModule.create(this._log, request.settings)
-
     const id = request.id
     this._runningTasks[id] = task
 
-    this._debug(`starting task ${id} ...`)
+    this._debug(`Starting task ${id} ...`)
     try {
       await task.run()
     } catch (err) {
-      this._debug(`task ${id} failed, reason: ${err.message}`)
+      this._debug(`Task ${id} failed, reason: ${err.message}`)
       this._sendErrorResponse(id, err.message)
       delete this._runningTasks[id]
       return
     }
     this._sendResponse(id)
-    this._debug(`task ${id} stopped`)
+    this._debug(`Task ${id} stopped`)
     delete this._runningTasks[id]
   }
 }

@@ -8,7 +8,7 @@ const moduleName = 'agent-runner-man'
 // once we switched to typescript.
 type Request = {
   id: number,
-  type: string,
+  taskType: string,
   settings: Object
 }
 
@@ -78,7 +78,7 @@ export default class AgentRunnerManager extends EventEmitter {
   }
 
   _sendRequest(
-    type: string,
+    taskType: string,
     settings: Object,
     callback: (success: boolean, errorMsg?: string) => void
   ) {
@@ -88,13 +88,13 @@ export default class AgentRunnerManager extends EventEmitter {
       type: 'request',
       body: {
         id: id,
-        type: type,
+        taskType: taskType,
         settings: settings
       }
     })
   }
 
-  remoteLogin(settings: Object) {
+  remoteLoginSet(settings: Object) {
     return new Promise((resolve, reject) => {
       const callback = (success, errorMsg) => {
         if (success) {

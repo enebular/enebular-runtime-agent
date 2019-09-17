@@ -23,11 +23,6 @@ export default class Config {
         description: 'Run as daemon',
         userExpose: true
       },
-      ENEBULAR_START_CORE: {
-        value: false,
-        description: 'Run enebular-agent core',
-        userExpose: true
-      },
       ENEBULAR_AGENT_USER: {
         value: 'enebular',
         description: 'User to run as',

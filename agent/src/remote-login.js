@@ -194,7 +194,7 @@ export default class RemoteLogin {
     settings.globalServerPrivateKey.signature = sign.sign(privKey, 'base64')
 
     try {
-      await this._agentRunnerMan.remoteLogin(settings)
+      await this._agentRunnerMan.remoteLoginSet(settings)
     } catch (err) {
       this._info('RemoteLogin failed: ' + err.message)
     }
@@ -204,7 +204,7 @@ export default class RemoteLogin {
         enable: false
       }
       try {
-        await this._agentRunnerMan.remoteLogin(settings)
+        await this._agentRunnerMan.remoteLoginSet(settings)
       } catch (err) {
         this._info('RemoteLogin failed: ' + err.message)
       }

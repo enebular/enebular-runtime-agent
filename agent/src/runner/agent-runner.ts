@@ -1,21 +1,15 @@
-import { fork, ChildProcess } from 'child_process'
 import CommandLine from '../command-line'
 import Config from '../config'
 import { getUserInfo } from '../utils'
 import AgentRunnerService from './agent-runner-service'
 import AgentCoreManager from './agent-core-manager'
 
-interface UserInfo {
-  user: string
-  gid: number
-  uid: number
-}
-
 export default class AgentRunner {
-  private _cproc?: ChildProcess
   private _config: Config
   private _commandLine: CommandLine
   private _portBasePath: string
+  private _agentCoreManager?: AgentCoreManager
+  private _agentRunnerService?: AgentRunnerService
 
   public constructor(portBasePath: string) {
     this._portBasePath = portBasePath
@@ -33,50 +27,6 @@ export default class AgentRunner {
 
   private _error(...args: any[]): void {
     console.error('runner', ...args)
-  }
-
-  public async _startEnebularAgent(userInfo?: UserInfo): Promise<boolean> {
-    this._debug('Starting enebular-agent core...')
-    return new Promise((resolve, reject): void => {
-      const startupModule = process.argv[1]
-      let args = ['--start-core']
-
-      if (process.argv.length > 2) {
-        args = args.concat(process.argv.slice(2))
-      }
-
-      const cproc = fork(
-        startupModule,
-        args,
-        userInfo
-          ? {
-              stdio: [0, 1, 2, 'ipc'],
-              cwd: this._portBasePath,
-              uid: userInfo.uid,
-              gid: userInfo.gid
-            }
-          : {
-              stdio: [0, 1, 2, 'ipc'],
-              cwd: this._portBasePath
-            }
-      )
-      if (cproc.stdout) {
-        cproc.stdout.on('data', data => {
-          this._info(data.toString().replace(/(\n|\r)+$/, ''))
-        })
-      }
-      if (cproc.stderr) {
-        cproc.stderr.on('data', data => {
-          this._info(data.toString().replace(/(\n|\r)+$/, ''))
-        })
-      }
-      cproc.once('error', err => {
-        reject(err)
-      })
-      const agentCoreManager = new AgentCoreManager(cproc)
-      const agentRunnerService = new AgentRunnerService(agentCoreManager)
-      this._cproc = cproc
-    })
   }
 
   public async startup(): Promise<boolean> {
@@ -104,23 +54,14 @@ export default class AgentRunner {
         return false
       }
     }
-    return this._startEnebularAgent(userInfo)
+
+    this._agentCoreManager = new AgentCoreManager()
+    this._agentRunnerService = new AgentRunnerService(this._agentCoreManager)
+    return this._agentCoreManager.startAgentCore(this._portBasePath, userInfo)
   }
 
   public async shutdown(): Promise<void> {
-    if (!this._cproc) return
-
-    return new Promise((resolve, reject): void => {
-      setTimeout(() => {
-        resolve()
-      }, 5000)
-
-      if (this._cproc) {
-        this._cproc.once('exit', (code, signal) => {
-          this._debug('enebular-agent has terminated.')
-          resolve()
-        })
-      }
-    })
+    if (this._agentCoreManager)
+      return this._agentCoreManager.shutdownAgentCore()
   }
 }

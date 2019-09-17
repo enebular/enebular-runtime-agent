@@ -28,7 +28,7 @@ interface RemoteLoginSettings {
   }
 }
 
-class TaskRemoteLogin extends Task {
+export default class TaskRemoteLogin extends Task {
   public constructor(log: AgentRunnerLogger, settings: Record<string, any>) {
     super(log, 'remoteLogin', settings)
   }
@@ -38,10 +38,8 @@ class TaskRemoteLogin extends Task {
   }
 
   public async run(): Promise<void> {
-    this._log.info(`running task ${this._type} ...`)
     const settings = this._settings as RemoteLoginSettings
     const ssh = SSH.getInstance(this._log)
-
     const pubkey = fs.readFileSync(
       path.resolve(__dirname, '../../keys/enebular/pubkey.pem'),
       'utf8'
@@ -95,9 +93,3 @@ class TaskRemoteLogin extends Task {
 
   public async cancel(): Promise<void> {}
 }
-
-function create(log: AgentRunnerLogger, settings: Record<string, any>): Task {
-  return new TaskRemoteLogin(log, settings)
-}
-
-export { create }

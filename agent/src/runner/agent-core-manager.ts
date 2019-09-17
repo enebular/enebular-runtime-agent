@@ -1,21 +1,19 @@
-import { ChildProcess } from 'child_process'
+import { fork, ChildProcess } from 'child_process'
 import EventEmitter from 'events'
 import { Data, Log, Response, StatusUpdate } from './agent-runner-message-type'
 
-export default class AgentCoreManager extends EventEmitter {
-  private _proc?: ChildProcess
+interface UserInfo {
+  user: string
+  gid: number
+  uid: number
+}
 
-  public constructor(proc: ChildProcess) {
-    super()
-    this._proc = proc
-    this._proc.on('message', async msg => {
-      this.emit('dataReceived', msg)
-    })
-  }
+export default class AgentCoreManager extends EventEmitter {
+  private _cproc?: ChildProcess
 
   private _send(msg: Data): void {
-    if (this._proc && this._proc.send) {
-      this._proc.send(msg)
+    if (this._cproc && this._cproc.send) {
+      this._cproc.send(msg)
     }
   }
 
@@ -37,6 +35,70 @@ export default class AgentCoreManager extends EventEmitter {
     return this._send({
       type: 'log',
       body: log
+    })
+  }
+
+  public async startAgentCore(
+    portBasePath: string,
+    userInfo?: UserInfo
+  ): Promise<boolean> {
+    return new Promise((resolve, reject): void => {
+      const startupModule = process.argv[1]
+      let args = ['--start-core']
+
+      if (process.argv.length > 2) {
+        args = args.concat(process.argv.slice(2))
+      }
+
+      const cproc = fork(
+        startupModule,
+        args,
+        userInfo
+          ? {
+              stdio: [0, 1, 2, 'ipc'],
+              cwd: portBasePath,
+              uid: userInfo.uid,
+              gid: userInfo.gid
+            }
+          : {
+              stdio: [0, 1, 2, 'ipc'],
+              cwd: portBasePath
+            }
+      )
+      if (cproc.stdout) {
+        cproc.stdout.on('data', data => {
+          console.info(data.toString().replace(/(\n|\r)+$/, ''))
+        })
+      }
+      if (cproc.stderr) {
+        cproc.stderr.on('data', data => {
+          console.error(data.toString().replace(/(\n|\r)+$/, ''))
+        })
+      }
+      cproc.once('error', err => {
+        reject(err)
+      })
+      cproc.on('message', msg => {
+        this.emit('dataReceived', msg)
+      })
+
+      this._cproc = cproc
+    })
+  }
+
+  public async shutdownAgentCore(): Promise<void> {
+    if (!this._cproc) return
+
+    return new Promise((resolve, reject): void => {
+      setTimeout(() => {
+        resolve()
+      }, 5000)
+
+      if (this._cproc) {
+        this._cproc.once('exit', (code, signal) => {
+          resolve()
+        })
+      }
     })
   }
 }

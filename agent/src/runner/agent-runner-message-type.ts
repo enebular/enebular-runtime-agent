@@ -5,7 +5,7 @@ export interface Data {
 
 export interface Request {
   id: number
-  type: string
+  taskType: string
   settings: Record<string, any>
 }
 
