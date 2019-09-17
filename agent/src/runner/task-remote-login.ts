@@ -44,6 +44,9 @@ export default class TaskRemoteLogin extends Task {
       path.resolve(__dirname, '../../keys/enebular/pubkey.pem'),
       'utf8'
     )
+    if (process.getuid() !== 0) {
+      throw new Error(`RemoteLogin task requires root permission`)
+    }
 
     const promises: Promise<void>[] = []
     if (settings.enable) {

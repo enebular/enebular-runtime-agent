@@ -1,7 +1,5 @@
 #!/usr/bin/env node
-var path = require('path')
-var startCore = process.argv.filter(arg => arg === '--start-core')
-var agent = (startCore.length > 0) ? require('..') : require('../../../agent/lib/runner/index')
+var agent = require('..')
 
 async function exit() {
   await agent.shutdown()
@@ -15,7 +13,7 @@ process.on('SIGTERM', () => {
   exit()
 })
 
-agent.startup(path.resolve(__dirname, '../')).then(ret => {
+agent.startup().then(ret => {
   if (!ret) {
     process.exit(1)
   }
@@ -23,3 +21,4 @@ agent.startup(path.resolve(__dirname, '../')).then(ret => {
   console.error(`Agent startup failed: ${err}`)
   process.exit(1)
 })
+
