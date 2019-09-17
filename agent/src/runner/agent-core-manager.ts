@@ -41,7 +41,7 @@ export default class AgentCoreManager extends EventEmitter {
   public async startAgentCore(
     portBasePath: string,
     userInfo?: UserInfo
-  ): Promise<boolean> {
+  ): Promise<void> {
     return new Promise((resolve, reject): void => {
       const startupModule = process.argv[1]
       let args = ['--start-core']
@@ -83,6 +83,7 @@ export default class AgentCoreManager extends EventEmitter {
       })
 
       this._cproc = cproc
+      resolve()
     })
   }
 

@@ -1,14 +1,16 @@
+import * as fs from 'fs'
+import * as path from 'path'
 import { execSync, spawn, ChildProcess } from 'child_process'
 import { getUserInfo, exec } from '../utils'
 import EventEmitter from 'events'
 import AgentRunnerLogger from './agent-runner-logger'
 
-export interface SSHClientOptions {
-  deviceUser: string
-  serverIPaddr: string
-  serverPort: string
-  serverUser: string
-  identify: string
+export interface SSHClientConnectOptions {
+  user: string
+  remoteUser: string
+  remoteIPAddr: string
+  remotePort: string
+  privateKey: string
 }
 
 export class SSH extends EventEmitter {
@@ -67,7 +69,7 @@ export class SSH extends EventEmitter {
     }
   }
 
-  public async startClient(options: SSHClientOptions): Promise<void> {
+  public async startClient(options: SSHClientConnectOptions): Promise<void> {
     return new Promise((resolve, reject): void => {
       if (this._sshClient) {
         this._info('SSH client already started')
@@ -75,23 +77,30 @@ export class SSH extends EventEmitter {
         return
       }
 
-      const deviceUserInfo = getUserInfo(options.deviceUser)
+      const userInfo = getUserInfo(options.user)
+      const privateKeyPath = path.resolve(__dirname, '../../keys/tmp_private_key')
+      fs.writeFileSync(privateKeyPath, options.privateKey, 'utf8')
+      fs.chmodSync(privateKeyPath, 0o600)
+      fs.chownSync(privateKeyPath, userInfo.uid, userInfo.gid)
+      // TODO: should we remove key when stopping
+
       const args = [
-        `${options.serverUser}@${options.serverIPaddr}`,
-        `-p ${options.serverPort}`,
-        `-i ${options.identify}`
+        `-p ${options.remotePort}`,
+        `-i${privateKeyPath}`,
+        `${options.remoteUser}@${options.remoteIPAddr}`
       ]
+      this._info(args)
 
       const cproc = spawn('ssh', args, {
         stdio: 'pipe',
-        uid: deviceUserInfo.uid,
-        gid: deviceUserInfo.gid
+        uid: userInfo.uid,
+        gid: userInfo.gid
       })
       cproc.stdout.on('data', data => {
-        this._info('sshClient:', data.toString().replace(/(\n|\r)+$/, ''))
+        this._info('sshClient: ', data.toString().replace(/(\n|\r)+$/, ''))
       })
       cproc.stderr.on('data', data => {
-        this._info('sshClient:', data.toString().replace(/(\n|\r)+$/, ''))
+        this._info('sshClient: ', data.toString().replace(/(\n|\r)+$/, ''))
       })
       cproc.once('error', err => {
         reject(err)

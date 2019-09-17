@@ -150,48 +150,46 @@ export default class RemoteLogin {
     const crypto = require('crypto')
 
     let settings = {
-      enable: true,
       config: {
-        options: {
-          deviceUser: 'suyouxin',
-          serverIPaddr: '192.168.2.156',
-          serverPort: '22',
-          serverUser: 'suyouxin'
+        enable: true,
+        localUser: 'suyouxin',
+        localServerPublicKey: {
+          data: fs.readFileSync(
+            path.resolve(__dirname, '../keys/ssh/device_pubkey.pem'),
+            'utf8'
+          )
+        },
+        relayServer: '192.168.2.156',
+        relayServerPort: '22',
+        relayServerUser: 'suyouxin',
+        relayServerPrivateKey: {
+          data: fs.readFileSync(
+            path.resolve(__dirname, '../keys/ssh/global_server_privkey.pem'),
+            'utf8'
+          )
         }
       },
-      devicePublicKey: {
-        data: fs.readFileSync(
-          path.resolve(__dirname, '../keys/ssh/device_pubkey.pem'),
-          'utf8'
-        )
-      },
-      globalServerPrivateKey: {
-        data: fs.readFileSync(
-          path.resolve(__dirname, '../keys/ssh/global_server_privkey.pem'),
-          'utf8'
-        )
-      }
     }
     // For test only
-    const hash = objectHash(settings.config.options, {
-      algorithm: 'sha256',
-      encoding: 'base64'
-    })
     const privKey = fs.readFileSync(
       path.resolve(__dirname, '../keys/enebular/privkey.pem'),
       'utf8'
     )
     let sign = crypto.createSign('SHA256')
+    sign.update(settings.config.localServerPublicKey.data)
+    settings.config.localServerPublicKey.signature = sign.sign(privKey, 'base64')
+
+    sign = crypto.createSign('SHA256')
+    sign.update(settings.config.relayServerPrivateKey.data)
+    settings.config.relayServerPrivateKey.signature = sign.sign(privKey, 'base64')
+
+    const hash = objectHash(settings.config, {
+      algorithm: 'sha256',
+      encoding: 'base64'
+    })
+    sign = crypto.createSign('SHA256')
     sign.update(hash)
-    settings.config.signature = sign.sign(privKey, 'base64')
-
-    sign = crypto.createSign('SHA256')
-    sign.update(settings.devicePublicKey.data)
-    settings.devicePublicKey.signature = sign.sign(privKey, 'base64')
-
-    sign = crypto.createSign('SHA256')
-    sign.update(settings.globalServerPrivateKey.data)
-    settings.globalServerPrivateKey.signature = sign.sign(privKey, 'base64')
+    settings.signature = sign.sign(privKey, 'base64')
 
     try {
       await this._agentRunnerMan.remoteLoginSet(settings)
@@ -201,8 +199,17 @@ export default class RemoteLogin {
 
     setTimeout(async () => {
       settings = {
-        enable: false
+        config: {
+          enable: false,
+        }
       }
+      const hash = objectHash(settings.config, {
+        algorithm: 'sha256',
+        encoding: 'base64'
+      })
+      sign = crypto.createSign('SHA256')
+      sign.update(hash)
+      settings.signature = sign.sign(privKey, 'base64')
       try {
         await this._agentRunnerMan.remoteLoginSet(settings)
       } catch (err) {

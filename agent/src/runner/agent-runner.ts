@@ -56,8 +56,9 @@ export default class AgentRunner {
     }
 
     this._agentCoreManager = new AgentCoreManager()
+    await this._agentCoreManager.startAgentCore(this._portBasePath, userInfo)
     this._agentRunnerService = new AgentRunnerService(this._agentCoreManager)
-    return this._agentCoreManager.startAgentCore(this._portBasePath, userInfo)
+    return true
   }
 
   public async shutdown(): Promise<void> {

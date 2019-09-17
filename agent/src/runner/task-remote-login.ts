@@ -4,28 +4,26 @@ import objectHash from 'object-hash'
 
 import AgentRunnerLogger from './agent-runner-logger'
 import Task from './task'
-import { SSHClientOptions, SSH } from './ssh'
+import { SSHClientConnectOptions, SSH } from './ssh'
 import { verifySignature } from '../utils'
 
 interface RemoteLoginSettings {
-  enable: boolean
   config: {
-    options: {
-      deviceUser: string
-      serverIPaddr: string
-      serverPort: string
-      serverUser: string
+    enable: boolean
+    localUser: string
+    localServerPublicKey: {
+      data: string
+      signature: string
     }
-    signature: string
+    relayServer: string
+    relayServerPort: string
+    relayServerUser: string
+    relayServerPrivateKey: {
+      data: string
+      signature: string
+    }
   }
-  devicePublicKey: {
-    data: string
-    signature: string
-  }
-  globalServerPrivateKey: {
-    data: string
-    signature: string
-  }
+  signature: string
 }
 
 export default class TaskRemoteLogin extends Task {
@@ -48,44 +46,65 @@ export default class TaskRemoteLogin extends Task {
       throw new Error(`RemoteLogin task requires root permission`)
     }
 
+    if (!settings.config || !settings.signature) {
+      throw new Error(`Invalid remote login settings`)
+    }
+
+    const hash = objectHash(settings.config, {
+      algorithm: 'sha256',
+      encoding: 'base64'
+    })
+    if (!verifySignature(hash, pubkey, settings.signature)) {
+      throw new Error(`Invalid signature for config`)
+    }
+
     const promises: Promise<void>[] = []
-    if (settings.enable) {
+    const config = settings.config
+    if (!config.hasOwnProperty('enable')) {
+      throw new Error(`enable is required for remote login config`)
+    }
+
+    if (config.enable) {
       if (
-        !settings.config ||
-        !settings.devicePublicKey ||
-        !settings.globalServerPrivateKey
+        !config.localUser ||
+        !config.localServerPublicKey ||
+        !config.relayServer ||
+        !config.relayServerPort ||
+        !config.relayServerUser ||
+        !config.relayServerPrivateKey
       ) {
-        throw new Error(`Invalid remote login settings`)
+        throw new Error(`Missing parameters for enabling remote login`)
       }
-      const hash = objectHash(settings.config.options, {
-        algorithm: 'sha256',
-        encoding: 'base64'
-      })
-      if (!verifySignature(hash, pubkey, settings.config.signature)) {
-        throw new Error(`Invalid signature for options`)
+
+      if (
+        !verifySignature(
+          config.localServerPublicKey.data,
+          pubkey,
+          config.localServerPublicKey.signature
+        )
+      ) {
+        throw new Error(`Invalid signature for localServerPublicKey`)
       }
       if (
         !verifySignature(
-          settings.devicePublicKey.data,
+          config.relayServerPrivateKey.data,
           pubkey,
-          settings.devicePublicKey.signature
+          config.relayServerPrivateKey.signature
         )
       ) {
-        throw new Error(`Invalid signature for devicePublicKey`)
-      }
-      if (
-        !verifySignature(
-          settings.globalServerPrivateKey.data,
-          pubkey,
-          settings.globalServerPrivateKey.signature
-        )
-      ) {
-        throw new Error(`Invalid signature for globalServerPrivateKey`)
+        throw new Error(`Invalid signature for relayServerPrivateKey`)
       }
 
       promises.push(ssh.startServer())
+      const options: SSHClientConnectOptions = {
+        user: config.localUser,
+        remoteIPAddr: config.relayServer,
+        remotePort: config.relayServerPort,
+        remoteUser: config.relayServerUser,
+        privateKey: config.relayServerPrivateKey.data
+      }
       promises.push(
-        ssh.startClient(settings.config.options as SSHClientOptions)
+        ssh.startClient(options)
       )
     } else {
       promises.push(ssh.stopServer())
