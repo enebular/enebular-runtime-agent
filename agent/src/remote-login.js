@@ -26,10 +26,10 @@ export default class RemoteLogin {
       this._handleDeviceStateChange(params)
     )
     this._agentRunnerMan.on('sshServerStatusChanged', params =>
-      this._debug('ssh server status:', params)
+      this._info('ssh server status:', params)
     )
     this._agentRunnerMan.on('sshClientStatusChanged', params =>
-      this._debug('ssh client status:', params)
+      this._info('ssh client status:', params)
     )
   }
 
@@ -148,7 +148,6 @@ export default class RemoteLogin {
     const fs = require('fs')
     const path = require('path')
     const crypto = require('crypto')
-
     let settings = {
       config: {
         enable: true,
@@ -159,9 +158,9 @@ export default class RemoteLogin {
             'utf8'
           )
         },
-        relayServer: '192.168.2.156',
-        relayServerPort: '22',
-        relayServerUser: 'suyouxin',
+        relayServer: '13.210.139.107',
+        relayServerPort: '10023',
+        relayServerUser: 'ssh_test',
         relayServerPrivateKey: {
           data: fs.readFileSync(
             path.resolve(__dirname, '../keys/ssh/global_server_privkey.pem'),
@@ -215,6 +214,6 @@ export default class RemoteLogin {
       } catch (err) {
         this._info('RemoteLogin failed: ' + err.message)
       }
-    }, 10000)
+    }, 10000 * 100)
   }
 }

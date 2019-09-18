@@ -63,6 +63,8 @@ export default class AgentRunner {
 
   public async shutdown(): Promise<void> {
     if (this._agentCoreManager)
-      return this._agentCoreManager.shutdownAgentCore()
+      await this._agentCoreManager.shutdownAgentCore()
+    if (this._agentRunnerService)
+      await this._agentRunnerService.cleanup()
   }
 }

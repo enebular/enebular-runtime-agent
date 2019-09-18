@@ -4,7 +4,7 @@ import objectHash from 'object-hash'
 
 import AgentRunnerLogger from './agent-runner-logger'
 import Task from './task'
-import { SSHClientConnectOptions, SSH } from './ssh'
+import { SSHClientConnectOptions, SSHServerOptions, SSH } from './ssh'
 import { verifySignature } from '../utils'
 
 interface RemoteLoginSettings {
@@ -95,8 +95,12 @@ export default class TaskRemoteLogin extends Task {
         throw new Error(`Invalid signature for relayServerPrivateKey`)
       }
 
-      promises.push(ssh.startServer())
-      const options: SSHClientConnectOptions = {
+      const serverOptions: SSHServerOptions = {
+        user: config.localUser,
+        publicKey: config.localServerPublicKey.data
+      }
+      promises.push(ssh.startServer(serverOptions))
+      const clientOptions: SSHClientConnectOptions = {
         user: config.localUser,
         remoteIPAddr: config.relayServer,
         remotePort: config.relayServerPort,
@@ -104,7 +108,7 @@ export default class TaskRemoteLogin extends Task {
         privateKey: config.relayServerPrivateKey.data
       }
       promises.push(
-        ssh.startClient(options)
+        ssh.startClient(clientOptions)
       )
     } else {
       promises.push(ssh.stopServer())

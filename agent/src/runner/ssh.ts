@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import { execSync, spawn, ChildProcess } from 'child_process'
-import { getUserInfo, exec } from '../utils'
+import { execReturnStdout, getUserInfo, exec } from '../utils'
 import EventEmitter from 'events'
 import AgentRunnerLogger from './agent-runner-logger'
 
@@ -11,6 +11,11 @@ export interface SSHClientConnectOptions {
   remoteIPAddr: string
   remotePort: string
   privateKey: string
+}
+
+export interface SSHServerOptions {
+  user: string
+  publicKey: string
 }
 
 export class SSH extends EventEmitter {
@@ -23,6 +28,10 @@ export class SSH extends EventEmitter {
   private constructor(log: AgentRunnerLogger) {
     super()
     this._log = log
+  }
+
+  private _debug(...args: any[]): void {
+    this._log.debug(...args)
   }
 
   private _info(...args: any[]): void {
@@ -49,8 +58,38 @@ export class SSH extends EventEmitter {
     })
   }
 
-  public async startServer(): Promise<void> {
+  public async startServer(options: SSHServerOptions): Promise<void> {
     if (!this._serverActive) {
+      const getentResult = execReturnStdout(`getent passwd ${options.user}`)
+      if (!getentResult) {
+        throw new Error(`Failed to get home directory of user ${options.user}`)
+      }
+      const userInfo = getUserInfo(options.user)
+      const userHome = getentResult.split(':')[5]
+      const userSSHPath = `${userHome}/.ssh`
+      this._debug(userHome)
+      try {
+        if (!fs.existsSync(userSSHPath)) {
+          fs.mkdirSync(userSSHPath)
+          fs.chownSync(userSSHPath, userInfo.uid, userInfo.gid)
+          fs.chmodSync(userSSHPath, 0o600)
+        }
+        const authorizedKeys = `${userSSHPath}/authorized_keys`
+        if (!fs.existsSync(authorizedKeys)) {
+          fs.writeFileSync(authorizedKeys, options.publicKey, 'utf8')
+          fs.chownSync(authorizedKeys, userInfo.uid, userInfo.gid)
+          fs.chmodSync(authorizedKeys, 0o600)
+        }
+        else {
+          const keys = fs.readFileSync(authorizedKeys, 'utf8')
+          if (keys.indexOf(options.publicKey) === -1) {
+            fs.appendFileSync(authorizedKeys, options.publicKey, 'utf8')
+          }
+        }
+      } catch (err) {
+        throw new Error(`Failed to save public key: ${err.message}`)
+      }
+
       await this._exec('service sshd start')
       this._serverActive = true
       this.emit('serverStatusChanged', this._serverActive)
@@ -72,7 +111,7 @@ export class SSH extends EventEmitter {
   public async startClient(options: SSHClientConnectOptions): Promise<void> {
     return new Promise((resolve, reject): void => {
       if (this._sshClient) {
-        this._info('SSH client already started')
+        this._info('ssh-client already started')
         resolve()
         return
       }
@@ -85,11 +124,14 @@ export class SSH extends EventEmitter {
       // TODO: should we remove key when stopping
 
       const args = [
-        `-p ${options.remotePort}`,
+        "-v",
+        "-N",
+        "-o ExitOnForwardFailure=yes",
+        "-o StrictHostKeyChecking=no",
+        `-R ${options.remotePort}:localhost:22`,
         `-i${privateKeyPath}`,
         `${options.remoteUser}@${options.remoteIPAddr}`
       ]
-      this._info(args)
 
       const cproc = spawn('ssh', args, {
         stdio: 'pipe',
@@ -97,10 +139,27 @@ export class SSH extends EventEmitter {
         gid: userInfo.gid
       })
       cproc.stdout.on('data', data => {
-        this._info('sshClient: ', data.toString().replace(/(\n|\r)+$/, ''))
+        this._debug('ssh-client: ', data.toString().replace(/(\n|\r)+$/, ''))
       })
       cproc.stderr.on('data', data => {
-        this._info('sshClient: ', data.toString().replace(/(\n|\r)+$/, ''))
+        const connected = data.indexOf('All remote forwarding requests processed') !== -1 ? true : false 
+        const _data = data.toString().replace(/(\n|\r)+$/, '')
+        this._debug('ssh-client: ', _data)
+        if (connected) {
+          this.emit('clientStatusChanged', true)
+          resolve()
+        }
+      })
+      cproc.once('exit', (code, signal) => {
+        const message =
+          code !== null
+            ? `ssh-client exited, code ${code}`
+            : `ssh-client killed by signal ${signal}`
+        this._debug(message)
+        this._sshClient = undefined
+        if (code !== 0) {
+          reject(new Error(message))
+        }
       })
       cproc.once('error', err => {
         reject(err)
@@ -108,8 +167,6 @@ export class SSH extends EventEmitter {
 
       // TODO: detect client is connected
       this._sshClient = cproc
-      this.emit('clientStatusChanged', true)
-      resolve()
     })
   }
 
@@ -119,14 +176,14 @@ export class SSH extends EventEmitter {
       if (cproc) {
         this._info('Shutting down ssh client...')
         cproc.once('exit', () => {
-          this._info('SSH client ended')
+          this._info('ssh-client ended')
           this._sshClient = undefined
           this.emit('clientStatusChanged', false)
           resolve()
         })
         cproc.kill('SIGINT')
       } else {
-        this._info('SSH client already shutdown')
+        this._info('ssh-client already shutdown')
         resolve()
       }
     })

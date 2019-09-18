@@ -15,6 +15,7 @@ export default class AgentRunnerService {
   private _log: AgentRunnerLogger
   private _runningTasks: RunningTasks = {}
   private _taskIndex = 0
+  private _ssh : SSH
 
   public constructor(agentCoreManager: AgentCoreManager) {
     this._agentCoreManager = agentCoreManager
@@ -23,8 +24,8 @@ export default class AgentRunnerService {
     )
     this._log = new AgentRunnerLogger(this._agentCoreManager)
 
-    const ssh = SSH.getInstance(this._log)
-    ssh.on('clientStatusChanged', connected => {
+    this._ssh = SSH.getInstance(this._log)
+    this._ssh.on('clientStatusChanged', connected => {
       this._agentCoreManager.sendStatusUpdate({
         type: 'sshClientStatusChanged',
         status: {
@@ -32,7 +33,7 @@ export default class AgentRunnerService {
         }
       })
     })
-    ssh.on('serverStatusChanged', active => {
+    this._ssh.on('serverStatusChanged', active => {
       this._agentCoreManager.sendStatusUpdate({
         type: 'sshServerStatusChanged',
         status: {
@@ -40,7 +41,7 @@ export default class AgentRunnerService {
         }
       })
     })
-    ssh.init()
+    this._ssh.init()
   }
 
   private _debug(...args: any[]): void {
@@ -125,5 +126,10 @@ export default class AgentRunnerService {
     this._sendResponse(id)
     this._debug(`Task ${id} stopped`)
     delete this._runningTasks[id]
+  }
+
+  public async cleanup(): Promise<void> {
+    await this._ssh.stopServer()
+    await this._ssh.stopClient()
   }
 }
