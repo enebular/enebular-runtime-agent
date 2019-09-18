@@ -169,6 +169,7 @@ export default class RemoteLogin {
         }
       },
     }
+    /*
     // For test only
     const privKey = fs.readFileSync(
       path.resolve(__dirname, '../keys/enebular/privkey.pem'),
@@ -189,6 +190,7 @@ export default class RemoteLogin {
     sign = crypto.createSign('SHA256')
     sign.update(hash)
     settings.signature = sign.sign(privKey, 'base64')
+    */
 
     try {
       await this._agentRunnerMan.remoteLoginSet(settings)
@@ -202,6 +204,7 @@ export default class RemoteLogin {
           enable: false,
         }
       }
+      /*
       const hash = objectHash(settings.config, {
         algorithm: 'sha256',
         encoding: 'base64'
@@ -209,6 +212,7 @@ export default class RemoteLogin {
       sign = crypto.createSign('SHA256')
       sign.update(hash)
       settings.signature = sign.sign(privKey, 'base64')
+      */
       try {
         await this._agentRunnerMan.remoteLoginSet(settings)
       } catch (err) {
