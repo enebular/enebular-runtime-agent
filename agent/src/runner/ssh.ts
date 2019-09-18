@@ -39,12 +39,19 @@ export class SSH extends EventEmitter {
   }
 
   public init(): void {
-    this._serverActive = this.isServiceActive('sshd')
+    this._ensureServiceIsEnabled('ssh')
+    this._serverActive = this.isServiceActive('ssh')
     this.emit('serverStatusChanged', this._serverActive)
   }
 
   private isServiceActive(serviceName: string): boolean {
     return exec(`systemctl is-active --quiet ${serviceName}`)
+  }
+
+  private _ensureServiceIsEnabled(serviceName: string): void {
+    if (!exec(`systemctl is-enabled --quiet ${serviceName}`)) {
+      return exec(`systemctl enable -quiet ${serviceName}`)
+    }
   }
 
   private _exec(cmd: string): Promise<void> {
@@ -67,12 +74,11 @@ export class SSH extends EventEmitter {
       const userInfo = getUserInfo(options.user)
       const userHome = getentResult.split(':')[5]
       const userSSHPath = `${userHome}/.ssh`
-      this._debug(userHome)
       try {
         if (!fs.existsSync(userSSHPath)) {
           fs.mkdirSync(userSSHPath)
           fs.chownSync(userSSHPath, userInfo.uid, userInfo.gid)
-          fs.chmodSync(userSSHPath, 0o600)
+          fs.chmodSync(userSSHPath, 0o700)
         }
         const authorizedKeys = `${userSSHPath}/authorized_keys`
         if (!fs.existsSync(authorizedKeys)) {
@@ -90,7 +96,7 @@ export class SSH extends EventEmitter {
         throw new Error(`Failed to save public key: ${err.message}`)
       }
 
-      await this._exec('service sshd start')
+      await this._exec('service ssh start')
       this._serverActive = true
       this.emit('serverStatusChanged', this._serverActive)
     } else {
@@ -100,7 +106,7 @@ export class SSH extends EventEmitter {
 
   public async stopServer(): Promise<void> {
     if (this._serverActive) {
-      await this._exec('service sshd stop')
+      await this._exec('service ssh stop')
       this._serverActive = false
       this.emit('serverStatusChanged', this._serverActive)
     } else {

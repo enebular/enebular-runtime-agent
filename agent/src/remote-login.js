@@ -151,7 +151,7 @@ export default class RemoteLogin {
     let settings = {
       config: {
         enable: true,
-        localUser: 'suyouxin',
+        localUser: 'pi',
         localServerPublicKey: {
           data: fs.readFileSync(
             path.resolve(__dirname, '../keys/ssh/device_pubkey.pem'),
@@ -214,6 +214,6 @@ export default class RemoteLogin {
       } catch (err) {
         this._info('RemoteLogin failed: ' + err.message)
       }
-    }, 10000 * 100)
+    }, 1000 * 1000)
   }
 }
