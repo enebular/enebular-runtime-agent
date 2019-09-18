@@ -154,7 +154,7 @@ export default class RemoteLogin {
         localUser: 'pi',
         localServerPublicKey: {
           data: fs.readFileSync(
-            path.resolve(__dirname, '../keys/ssh/device_pubkey.pem'),
+            path.resolve(__dirname, '../keys/ssh/local_server_pubkey.pem'),
             'utf8'
           )
         },
@@ -163,7 +163,7 @@ export default class RemoteLogin {
         relayServerUser: 'ssh_test',
         relayServerPrivateKey: {
           data: fs.readFileSync(
-            path.resolve(__dirname, '../keys/ssh/global_server_privkey.pem'),
+            path.resolve(__dirname, '../keys/ssh/relay_server_privkey.pem'),
             'utf8'
           )
         }
