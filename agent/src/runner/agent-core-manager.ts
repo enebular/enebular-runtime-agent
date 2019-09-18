@@ -75,6 +75,19 @@ export default class AgentCoreManager extends EventEmitter {
           console.error(data.toString().replace(/(\n|\r)+$/, ''))
         })
       }
+      cproc.once('exit', (code, signal) => {
+        let message
+        if (code === null) {
+          message = `agent-core killed by signal ${signal}`
+          // killed by signal treated as normally exiting
+          code = 0
+        }
+        else {
+          message = `agent-core exited, code ${code}`
+        }
+        this._cproc = undefined
+        this.emit('agentCoreTerminated', code, message)
+      })
       cproc.once('error', err => {
         reject(err)
       })

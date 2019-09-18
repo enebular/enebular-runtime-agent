@@ -56,6 +56,11 @@ export default class AgentRunner {
     }
 
     this._agentCoreManager = new AgentCoreManager()
+    this._agentCoreManager.on('agentCoreTerminated', async (code, message) => {
+      this._debug(`Agent core terminated, exit code ${code}`)
+      await this.shutdown()
+      process.exit(code)
+    })
     await this._agentCoreManager.startAgentCore(this._portBasePath, userInfo)
     this._agentRunnerService = new AgentRunnerService(this._agentCoreManager)
     return true
