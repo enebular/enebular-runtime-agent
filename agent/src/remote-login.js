@@ -12,7 +12,7 @@ export default class RemoteLogin {
   _log: Logger
   _inited: boolean = false
   _pendingEnableRequest: boolean = false
-  _remoteLoginState: Object = {}
+  _remoteLoginState: Object = {config:object}
 
   constructor(
     deviceStateMan: DeviceStateManager,
@@ -90,21 +90,10 @@ export default class RemoteLogin {
 //    const desiredRemoteLogin = desiredState.remoteLogin || {}
     const desiredConfig = desiredState.config || {}
 
-    this._debug(
-      'Desired state change: ' + JSON.stringify(desiredState, null, 2)
-    )
-
     let change = false
 
     let enableRequest = false
-/*
-    if (desiredState.hasOwnProperty('enable')) {
-      if (this._remoteLoginState.enable !== desiredState.enable) {
-        this._remoteLoginState.enable = desiredState.enable
-        enableRequest = true
-      }
-*/
-    if (desiredRemoteConfig.hasOwnProperty('enable')) {
+    if (desiredConfig.hasOwnProperty('enable')) {
       if (this._remoteLoginState.config.enable !== desiredConfig.enable) {
         this._remoteLoginState.config.enable = desiredConfig.enable
         enableRequest = true
@@ -120,7 +109,6 @@ export default class RemoteLogin {
     if (enableRequest) {
       this._remoteLoginState.enableDesiredStateRef = this._deviceStateMan.getRef(
         'desired',
-//        'remoteLogin.enable'
         'remoteLogin.config.enable'
       )
       this._enableRequest()
@@ -138,11 +126,19 @@ export default class RemoteLogin {
     }
   }
 
-  _updateRemoteLoginReportedState() {}
+  _updateRemoteLoginReportedState() {
+    this._debug(
+      '********** _updateRemoteLoginReportedState *******************')
+  }
 
-  _updateRemoteLoginStatusState() {}
+  _updateRemoteLoginStatusState()  {
+    this._debug(
+      '********** _updateRemoteLoginStatusState *******************')
+  }
 
   _processPendingRemoteLoginChanges() {
+    this._debug(
+      '********** _processPendingRemoteLoginChanges *******************')
     if (this._pendingEnableRequest) {
 /*
       this._agentRunnerMan.remoteLogin({
@@ -150,6 +146,8 @@ export default class RemoteLogin {
         signature: 'random'
       })
 */
+      const fs = require('fs')
+      const path = require('path')
       let settings = {
         config: {
           enable: true,
