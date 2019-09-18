@@ -87,7 +87,8 @@ export default class RemoteLogin {
       return
     }
 
-    const desiredRemoteLogin = desiredState.remoteLogin || {}
+//    const desiredRemoteLogin = desiredState.remoteLogin || {}
+    const desiredConfig = desiredState.config || {}
 
     this._debug(
       'Desired state change: ' + JSON.stringify(desiredState, null, 2)
@@ -96,23 +97,31 @@ export default class RemoteLogin {
     let change = false
 
     let enableRequest = false
+/*
     if (desiredState.hasOwnProperty('enable')) {
       if (this._remoteLoginState.enable !== desiredState.enable) {
         this._remoteLoginState.enable = desiredState.enable
         enableRequest = true
       }
+*/
+    if (desiredRemoteConfig.hasOwnProperty('enable')) {
+      if (this._remoteLoginState.config.enable !== desiredConfig.enable) {
+        this._remoteLoginState.config.enable = desiredConfig.enable
+        enableRequest = true
+      }
     } else {
       // enable is undefined or false
-      if (!this._remoteLoginState.enable) {
+      if (!this._remoteLoginState.config.enable) {
         // the default enable state is true
-        this._remoteLoginState.enable = true
+        this._remoteLoginState.config.enable = true
         enableRequest = true
       }
     }
     if (enableRequest) {
       this._remoteLoginState.enableDesiredStateRef = this._deviceStateMan.getRef(
         'desired',
-        'remoteLogin.enable'
+//        'remoteLogin.enable'
+        'remoteLogin.config.enable'
       )
       this._enableRequest()
       change = true
@@ -135,10 +144,40 @@ export default class RemoteLogin {
 
   _processPendingRemoteLoginChanges() {
     if (this._pendingEnableRequest) {
+/*
       this._agentRunnerMan.remoteLogin({
         enable: true,
         signature: 'random'
       })
+*/
+      let settings = {
+        config: {
+          enable: true,
+          localUser: 'suyouxin',
+          localServerPublicKey: {
+            data: fs.readFileSync(
+              path.resolve(__dirname, '../keys/ssh/device_pubkey.pem'),
+              'utf8'
+            )
+          },
+          relayServer: '192.168.2.156',
+          relayServerPort: '22',
+          relayServerUser: 'suyouxin',
+          relayServerPrivateKey: {
+            data: fs.readFileSync(
+              path.resolve(__dirname, '../keys/ssh/global_server_privkey.pem'),
+              'utf8'
+            )
+          }
+        },
+      }
+      try {
+//        await this._agentRunnerMan.remoteLoginSet(settings)
+        this._agentRunnerMan.remoteLoginSet(settings)
+      } catch (err) {
+        this._info('RemoteLogin failed: ' + err.message)
+      }
+
       this._pendingEnableRequest = false
     }
   }
