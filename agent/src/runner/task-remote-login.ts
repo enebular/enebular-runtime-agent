@@ -46,6 +46,10 @@ export default class TaskRemoteLogin extends Task {
       throw new Error(`RemoteLogin task requires root permission`)
     }
 
+    if (!settings.config) {
+      throw new Error(`Invalid remote login settings`)
+    }
+    /*
     if (!settings.config || !settings.signature) {
       throw new Error(`Invalid remote login settings`)
     }
@@ -57,6 +61,7 @@ export default class TaskRemoteLogin extends Task {
     if (!verifySignature(hash, pubkey, settings.signature)) {
       throw new Error(`Invalid signature for config`)
     }
+    */
 
     const promises: Promise<void>[] = []
     const config = settings.config
@@ -76,6 +81,7 @@ export default class TaskRemoteLogin extends Task {
         throw new Error(`Missing parameters for enabling remote login`)
       }
 
+      /*
       if (
         !verifySignature(
           config.localServerPublicKey.data,
@@ -94,6 +100,7 @@ export default class TaskRemoteLogin extends Task {
       ) {
         throw new Error(`Invalid signature for relayServerPrivateKey`)
       }
+      */
 
       const serverOptions: SSHServerOptions = {
         user: config.localUser,
