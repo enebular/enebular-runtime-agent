@@ -2,6 +2,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { execSync, spawn, ChildProcess } from 'child_process'
 import { execReturnStdout, getUserInfo, exec } from '../utils'
+import ProcessUtil, { RetryInfo } from '../process-util'
 import EventEmitter from 'events'
 import AgentRunnerLogger from './agent-runner-logger'
 
@@ -22,10 +23,12 @@ export class SSH extends EventEmitter {
   private _serverActive = false
   private _sshClient?: ChildProcess
   private _log: AgentRunnerLogger
+  private _retryInfo: RetryInfo
 
   public constructor(log: AgentRunnerLogger) {
     super()
     this._log = log
+    this._retryInfo = { retryCount: 0, lastRetryTimestamp: Date.now() }
   }
 
   private _debug(...args: any[]): void {
@@ -99,17 +102,18 @@ export class SSH extends EventEmitter {
       this._serverActive = true
       this.emit('serverStatusChanged', this._serverActive)
     } else {
-      this._info('SSH server already started')
+      this._info('ssh-server already started')
     }
   }
 
   public async stopServer(): Promise<void> {
     if (this._serverActive) {
+      this._info('Shutting down ssh-server...')
       await this._exec('service ssh stop')
       this._serverActive = false
       this.emit('serverStatusChanged', this._serverActive)
     } else {
-      this._info('SSH server already shutdown')
+      this._info('ssh-server already shutdown')
     }
   }
 
@@ -166,7 +170,26 @@ export class SSH extends EventEmitter {
         this._sshClient = undefined
         this.emit('clientStatusChanged', false)
         if (code !== 0) {
-          reject(new Error(message))
+          let shouldRetry = ProcessUtil.shouldRetryOnCrash(this._retryInfo)
+          if (shouldRetry) {
+            this._info(
+              'Unexpected exit, restarting ssh-client in 5 seconds. Retry count:' +
+                this._retryInfo.retryCount
+            )
+            setTimeout(async () => {
+              try {
+                await this.startClient(options)
+                resolve()
+              } catch (err) {
+                reject(err)
+              }
+            }, 5000)
+          } else {
+            this._info(
+              `Unexpected exit, but retry count(${this._retryInfo.retryCount}) exceed max.`
+            )
+            reject(new Error('Too many retry to start ssh-client'))
+          }
         }
       })
       cproc.once('error', err => {

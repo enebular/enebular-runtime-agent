@@ -11,27 +11,29 @@ interface UserInfo {
 export default class AgentCoreManager extends EventEmitter {
   private _cproc?: ChildProcess
 
-  private _send(msg: Data): void {
+  private _send(msg: Data): boolean {
     if (this._cproc && this._cproc.send) {
       this._cproc.send(msg)
+      return true
     }
+    return false
   }
 
-  public sendResponse(response: Response): void {
+  public sendResponse(response: Response): boolean {
     return this._send({
       type: 'response',
       body: response
     })
   }
 
-  public sendStatusUpdate(statusUpdate: StatusUpdate): void {
+  public sendStatusUpdate(statusUpdate: StatusUpdate): boolean {
     return this._send({
       type: 'statusUpdate',
       body: statusUpdate
     })
   }
 
-  public sendLog(log: Log): void {
+  public sendLog(log: Log): boolean {
     return this._send({
       type: 'log',
       body: log
@@ -100,19 +102,19 @@ export default class AgentCoreManager extends EventEmitter {
     })
   }
 
-  public async shutdownAgentCore(): Promise<void> {
+  public async waitAgentCoreToShutdown(): Promise<void> {
     if (!this._cproc) return
 
     return new Promise((resolve, reject): void => {
       setTimeout(() => {
-        resolve()
-      }, 5000)
+        // Agent core shall receive signal by itself, wait for 15 seconds to force kill it
+        if (this._cproc)
+          this._cproc.kill('SIGKILL')
+      }, 15 * 1000)
 
-      if (this._cproc) {
-        this._cproc.once('exit', (code, signal) => {
-          resolve()
-        })
-      }
+      this.on('agentCoreTerminated', () => {
+        resolve()
+      })
     })
   }
 }

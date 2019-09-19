@@ -3,30 +3,34 @@ import Config from '../config'
 import { getUserInfo } from '../utils'
 import AgentRunnerService from './agent-runner-service'
 import AgentCoreManager from './agent-core-manager'
+import AgentRunnerLogger from './agent-runner-logger'
 
 export default class AgentRunner {
   private _config: Config
   private _commandLine: CommandLine
   private _portBasePath: string
-  private _agentCoreManager?: AgentCoreManager
+  private _agentCoreManager: AgentCoreManager
+  private _log: AgentRunnerLogger
   private _agentRunnerService?: AgentRunnerService
 
   public constructor(portBasePath: string) {
     this._portBasePath = portBasePath
     this._config = new Config(portBasePath)
     this._commandLine = new CommandLine(this._config, true)
+    this._agentCoreManager = new AgentCoreManager()
+    this._log = new AgentRunnerLogger(this._agentCoreManager)
   }
 
   private _debug(...args: any[]): void {
-    if (process.env.DEBUG === 'debug') this._info(...args)
+    this._log.debug(...args)
   }
 
   private _info(...args: any[]): void {
-    console.info('runner', ...args)
+    this._log.info(...args)
   }
 
   private _error(...args: any[]): void {
-    console.error('runner', ...args)
+    this._log.error(...args)
   }
 
   public async startup(): Promise<boolean> {
@@ -55,10 +59,10 @@ export default class AgentRunner {
       }
     }
 
-    this._agentCoreManager = new AgentCoreManager()
     this._agentCoreManager.on('agentCoreTerminated', async (code, message) => {
       this._debug(`Agent core terminated, exit code ${code}`)
-      await this.shutdown()
+      if (this._agentRunnerService)
+        await this._agentRunnerService.cleanup()
       process.exit(code)
     })
     await this._agentCoreManager.startAgentCore(this._portBasePath, userInfo)
@@ -67,9 +71,6 @@ export default class AgentRunner {
   }
 
   public async shutdown(): Promise<void> {
-    if (this._agentCoreManager)
-      await this._agentCoreManager.shutdownAgentCore()
-    if (this._agentRunnerService)
-      await this._agentRunnerService.cleanup()
+    await this._agentCoreManager.waitAgentCoreToShutdown()
   }
 }

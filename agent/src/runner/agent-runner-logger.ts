@@ -11,10 +11,13 @@ export default class AgentRunnerLogger {
     const log = args.reduce((previous, current) => {
       return previous + current
     })
-    this._agentCoreManager.sendLog({
+    if (!this._agentCoreManager.sendLog({
       level: level,
       msg: log
-    })
+    })) {
+      if (process.env.DEBUG && !(level === 'debug' && process.env.DEBUG !== 'debug'))
+        console.info('service.runner:', log)
+    }
   }
 
   public debug(...args: any[]): void {
