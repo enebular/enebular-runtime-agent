@@ -87,7 +87,6 @@ export default class RemoteLogin {
       return
     }
 
-//    const desiredRemoteLogin = desiredState.remoteLogin || {}
     const desiredConfig = desiredState.config || {}
 
     let change = false
@@ -95,7 +94,8 @@ export default class RemoteLogin {
     let enableRequest = false
     if (desiredConfig.hasOwnProperty('enable')) {
       if (this._remoteLoginState.config.enable !== desiredConfig.enable) {
-        this._remoteLoginState.config.enable = desiredConfig.enable
+        this._remoteLoginState = JSON.parse(JSON.stringify(desiredState))
+        this._remoteLoginState.state = 'updating'
         enableRequest = true
       }
     } else {
@@ -103,9 +103,11 @@ export default class RemoteLogin {
       if (!this._remoteLoginState.config.enable) {
         // the default enable state is true
         this._remoteLoginState.config.enable = true
+        this._remoteLoginState.state = 'updating'
         enableRequest = true
       }
     }
+
     if (enableRequest) {
       this._remoteLoginState.enableDesiredStateRef = this._deviceStateMan.getRef(
         'desired',
@@ -120,25 +122,72 @@ export default class RemoteLogin {
     )
 
     if (change) {
-      this._updateRemoteLoginStatusState()
       this._updateRemoteLoginReportedState()
       this._processPendingRemoteLoginChanges()
+
+// debug
+      this._remoteLoginState.state = 'current'
+      this._updateRemoteLoginStatusState()
+      this._updateRemoteLoginReportedState()
     }
   }
 
   _updateRemoteLoginReportedState() {
-    this._debug(
-      '********** _updateRemoteLoginReportedState *******************')
+    if (!this._deviceStateMan.canUpdateState('reported')) {
+      return
+    }
+
+    let reportedState = this._deviceStateMan.getState('reported', 'remoteLogin')
+    if (!reportedState) {
+      reportedState = {}
+    }
+
+    const reportedConfig = reportedState.config || {}
+
+    let state = {
+      config: {
+        enable: this._remoteLoginState.config.enable,
+        localUser: this._remoteLoginState.config.localUser,
+        localServerPublicKey: {
+          id: this._remoteLoginState.config.localServerPublicKey.id,
+        },
+        relayServer: this._remoteLoginState.config.relayServer,
+        relayServerPort: this._remoteLoginState.config.relayServerPort,
+        relayServerUser: this._remoteLoginState.config.relayServerUser,
+        relayServerPrivateKey: {
+          id: this._remoteLoginState.config.relayServerPrivateKey.id,
+        }
+      },
+      updateId: this._remoteLoginState.updateId,
+      state: this._remoteLoginState.state
+    }
+
+    if (this._remoteLoginState.message === 'updateFail') {
+      state.message = this._remoteLoginState.message
+    }
+
+    this._deviceStateMan.updateState('reported', 'set', 'remoteLogin', state)
   }
 
   _updateRemoteLoginStatusState()  {
-    this._debug(
-      '********** _updateRemoteLoginStatusState *******************')
+    if (!this._deviceStateMan.canUpdateState('status')) {
+      return
+    }
+
+    let remoteLoginStatusState = this._deviceStateMan.getState('status', 'remoteLogin')
+    if (!remoteLoginStatusState) {
+      remoteLoginStatusState = {}
+    }
+
+    const state = {
+      localServerActive: this._remoteLoginState.config.enable,
+      relayServerConnected: this._remoteLoginState.config.enable
+    }
+
+    this._deviceStateMan.updateState('status', 'set', 'remoteLogin', state)
   }
 
   _processPendingRemoteLoginChanges() {
-    this._debug(
-      '********** _processPendingRemoteLoginChanges *******************')
     if (this._pendingEnableRequest) {
 /*
       this._agentRunnerMan.remoteLogin({
@@ -150,17 +199,17 @@ export default class RemoteLogin {
       const path = require('path')
       let settings = {
         config: {
-          enable: true,
-          localUser: 'vagrant',
+          enable: this._remoteLoginState.config.enable,
+          localUser: this._remoteLoginState.config.localUser,
           localServerPublicKey: {
             data: fs.readFileSync(
               path.resolve(__dirname, '../keys/ssh/device_pubkey.pem'),
               'utf8'
             )
           },
-          relayServer: 'ec2-52-25-60-131.us-west-2.compute.amazonaws.com',
-          relayServerPort: '10022',
-          relayServerUser: 'serverUser',
+          relayServer: this._remoteLoginState.config.relayServer,
+          relayServerPort: this._remoteLoginState.config.relayServerPort,
+          relayServerUser: this._remoteLoginState.config.relayServerUser,
           relayServerPrivateKey: {
             data: fs.readFileSync(
               path.resolve(__dirname, '../keys/ssh/global_server_privkey.pem'),
