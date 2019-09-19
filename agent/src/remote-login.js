@@ -148,15 +148,19 @@ export default class RemoteLogin {
       config: {
         enable: this._remoteLoginState.config.enable,
         localUser: this._remoteLoginState.config.localUser,
+/*
         localServerPublicKey: {
           id: this._remoteLoginState.config.localServerPublicKey.id,
         },
+*/
         relayServer: this._remoteLoginState.config.relayServer,
         relayServerPort: this._remoteLoginState.config.relayServerPort,
-        relayServerUser: this._remoteLoginState.config.relayServerUser,
+        relayServerUser: this._remoteLoginState.config.relayServerUser
+/*
         relayServerPrivateKey: {
           id: this._remoteLoginState.config.relayServerPrivateKey.id,
         }
+*/
       },
       updateId: this._remoteLoginState.updateId,
       state: this._remoteLoginState.state
@@ -189,12 +193,6 @@ export default class RemoteLogin {
 
   _processPendingRemoteLoginChanges() {
     if (this._pendingEnableRequest) {
-/*
-      this._agentRunnerMan.remoteLogin({
-        enable: true,
-        signature: 'random'
-      })
-*/
       const fs = require('fs')
       const path = require('path')
       let settings = {
