@@ -7,7 +7,7 @@ import { Data, Request } from './agent-runner-message-type'
 import TaskRemoteLogin from './task-remote-login'
 
 interface RunningTasks {
-  [index: string]: Task
+  [index: string]: Promise<void>
 }
 
 export default class AgentRunnerService {
@@ -23,8 +23,7 @@ export default class AgentRunnerService {
       this._onDataReceived(data)
     )
     this._log = new AgentRunnerLogger(this._agentCoreManager)
-
-    this._ssh = SSH.getInstance(this._log)
+    this._ssh = new SSH(this._log)
     this._ssh.on('clientStatusChanged', connected => {
       this._agentCoreManager.sendStatusUpdate({
         type: 'sshClientStatusChanged',
@@ -42,6 +41,14 @@ export default class AgentRunnerService {
       })
     })
     this._ssh.init()
+  }
+
+  get log(): AgentRunnerLogger {
+    return this._log
+  }
+
+  get ssh(): SSH {
+    return this._ssh
   }
 
   private _debug(...args: any[]): void {
@@ -91,7 +98,7 @@ export default class AgentRunnerService {
   private _createTask(taskType: string, settings: Record<string, any>): Task | undefined {
     switch(taskType) {
     case 'remoteLogin':
-      return new TaskRemoteLogin(this._log, settings)
+      return new TaskRemoteLogin(this, settings)
     default:
       return undefined
     }
@@ -112,11 +119,10 @@ export default class AgentRunnerService {
     }
 
     const id = request.id
-    this._runningTasks[id] = task
-
     this._debug(`Starting task ${id} ...`)
+    this._runningTasks[id] = task.run()
     try {
-      await task.run()
+      await this._runningTasks[id]
     } catch (err) {
       this._debug(`Task ${id} failed, reason: ${err.message}`)
       this._sendErrorResponse(id, err.message)
@@ -129,6 +135,11 @@ export default class AgentRunnerService {
   }
 
   public async cleanup(): Promise<void> {
+    for (const [id, promise] of Object.entries(this._runningTasks)) {
+      await promise
+      delete this._runningTasks[id]
+    }
+
     await this._ssh.stopServer()
     await this._ssh.stopClient()
   }

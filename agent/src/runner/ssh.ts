@@ -23,9 +23,7 @@ export class SSH extends EventEmitter {
   private _sshClient?: ChildProcess
   private _log: AgentRunnerLogger
 
-  private static instance: SSH
-
-  private constructor(log: AgentRunnerLogger) {
+  public constructor(log: AgentRunnerLogger) {
     super()
     this._log = log
   }
@@ -42,6 +40,7 @@ export class SSH extends EventEmitter {
     this._ensureServiceIsEnabled('ssh')
     this._serverActive = this.isServiceActive('ssh')
     this.emit('serverStatusChanged', this._serverActive)
+    this.emit('clientStatusChanged', false)
   }
 
   private isServiceActive(serviceName: string): boolean {
@@ -134,6 +133,8 @@ export class SSH extends EventEmitter {
         "-N",
         "-o ExitOnForwardFailure=yes",
         "-o StrictHostKeyChecking=no",
+        "-o ServerAliveInterval=30",
+        "-o ServerAliveCountMax=3",
         `-R ${options.remotePort}:localhost:22`,
         `-i${privateKeyPath}`,
         `${options.remoteUser}@${options.remoteIPAddr}`
@@ -163,6 +164,7 @@ export class SSH extends EventEmitter {
             : `ssh-client killed by signal ${signal}`
         this._debug(message)
         this._sshClient = undefined
+        this.emit('clientStatusChanged', false)
         if (code !== 0) {
           reject(new Error(message))
         }
@@ -182,9 +184,6 @@ export class SSH extends EventEmitter {
       if (cproc) {
         this._info('Shutting down ssh client...')
         cproc.once('exit', () => {
-          this._info('ssh-client ended')
-          this._sshClient = undefined
-          this.emit('clientStatusChanged', false)
           resolve()
         })
         cproc.kill('SIGINT')
@@ -193,12 +192,5 @@ export class SSH extends EventEmitter {
         resolve()
       }
     })
-  }
-
-  public static getInstance(log: AgentRunnerLogger): SSH {
-    if (!SSH.instance) {
-      SSH.instance = new SSH(log)
-    }
-    return SSH.instance
   }
 }

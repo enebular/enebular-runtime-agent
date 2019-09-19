@@ -2,7 +2,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import objectHash from 'object-hash'
 
-import AgentRunnerLogger from './agent-runner-logger'
+import AgentRunnerService from './agent-runner-service'
 import Task from './task'
 import { SSHClientConnectOptions, SSHServerOptions, SSH } from './ssh'
 import { verifySignature } from '../utils'
@@ -27,17 +27,13 @@ interface RemoteLoginSettings {
 }
 
 export default class TaskRemoteLogin extends Task {
-  public constructor(log: AgentRunnerLogger, settings: Record<string, any>) {
-    super(log, 'remoteLogin', settings)
-  }
-
-  private _info(...args: any[]): void {
-    this._log.info(...args)
+  public constructor(service: AgentRunnerService, settings: Record<string, any>) {
+    super(service, 'remoteLogin', settings)
   }
 
   public async run(): Promise<void> {
     const settings = this._settings as RemoteLoginSettings
-    const ssh = SSH.getInstance(this._log)
+    const ssh = this._service.ssh
     const pubkey = fs.readFileSync(
       path.resolve(__dirname, '../../keys/enebular/pubkey.pem'),
       'utf8'
