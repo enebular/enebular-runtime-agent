@@ -12,7 +12,7 @@ export default class RemoteLogin {
   _log: Logger
   _inited: boolean = false
   _pendingEnableRequest: boolean = false
-  _remoteLoginState: Object = {config:object}
+  _remoteLoginState: Object = {config:Object}
 
   constructor(
     deviceStateMan: DeviceStateManager,
@@ -151,16 +151,16 @@ export default class RemoteLogin {
       let settings = {
         config: {
           enable: true,
-          localUser: 'suyouxin',
+          localUser: 'vagrant',
           localServerPublicKey: {
             data: fs.readFileSync(
               path.resolve(__dirname, '../keys/ssh/device_pubkey.pem'),
               'utf8'
             )
           },
-          relayServer: '192.168.2.156',
-          relayServerPort: '22',
-          relayServerUser: 'suyouxin',
+          relayServer: 'ec2-52-25-60-131.us-west-2.compute.amazonaws.com',
+          relayServerPort: '10022',
+          relayServerUser: 'serverUser',
           relayServerPrivateKey: {
             data: fs.readFileSync(
               path.resolve(__dirname, '../keys/ssh/global_server_privkey.pem'),
