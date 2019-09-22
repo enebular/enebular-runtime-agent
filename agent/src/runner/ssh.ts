@@ -6,7 +6,7 @@ import ProcessUtil, { RetryInfo } from '../process-util'
 import EventEmitter from 'events'
 import AgentRunnerLogger from './agent-runner-logger'
 
-export interface SSHClientConnectOptions {
+interface SSHClientOptions {
   user: string
   remoteUser: string
   remoteIPAddr: string
@@ -14,21 +14,28 @@ export interface SSHClientConnectOptions {
   privateKey: string
 }
 
-export interface SSHServerOptions {
+interface SSHServerOptions {
   user: string
   publicKey: string
+}
+
+export interface SSHConfig{
+  enable: boolean
+  clientOptions?: SSHClientOptions
+  serverOptions?: SSHServerOptions
 }
 
 export class SSH extends EventEmitter {
   private _serverActive = false
   private _sshClient?: ChildProcess
   private _log: AgentRunnerLogger
-  private _retryInfo: RetryInfo
+  private _retryCount: number = 0
+  private _sshProcessingChanges? : boolean
+  private _pendingConfig : SSHConfig | null = null
 
   public constructor(log: AgentRunnerLogger) {
     super()
     this._log = log
-    this._retryInfo = { retryCount: 0, lastRetryTimestamp: Date.now() }
   }
 
   private _debug(...args: any[]): void {
@@ -37,6 +44,10 @@ export class SSH extends EventEmitter {
 
   private _info(...args: any[]): void {
     this._log.info(...args)
+  }
+
+  private _error(...args: any[]): void {
+    this._log.error(...args)
   }
 
   public init(): void {
@@ -117,7 +128,7 @@ export class SSH extends EventEmitter {
     }
   }
 
-  public async startClient(options: SSHClientConnectOptions): Promise<void> {
+  public async startClient(options: SSHClientOptions): Promise<void> {
     return new Promise((resolve, reject): void => {
       if (this._sshClient) {
         this._info('ssh-client already started')
@@ -149,6 +160,11 @@ export class SSH extends EventEmitter {
         uid: userInfo.uid,
         gid: userInfo.gid
       })
+      const startTimeout = setTimeout(async () => {
+        await this.stopClient()
+        reject(new Error('ssh-client start timed out'))
+        // It may take up to 2 mins to timeout in connecting
+      }, 3 * 60 * 1000)
       cproc.stdout.on('data', data => {
         this._debug('ssh-client: ', data.toString().replace(/(\n|\r)+$/, ''))
       })
@@ -157,6 +173,7 @@ export class SSH extends EventEmitter {
         const _data = data.toString().replace(/(\n|\r)+$/, '')
         this._debug('ssh-client: ', _data)
         if (connected) {
+          clearTimeout(startTimeout)
           this.emit('clientStatusChanged', true)
           resolve()
         }
@@ -170,11 +187,13 @@ export class SSH extends EventEmitter {
         this._sshClient = undefined
         this.emit('clientStatusChanged', false)
         if (code !== 0) {
-          let shouldRetry = ProcessUtil.shouldRetryOnCrash(this._retryInfo)
-          if (shouldRetry) {
+          clearTimeout(startTimeout)
+          const now = Date.now()
+          this._retryCount++
+          if (this._retryCount < 1) {
             this._info(
               'Unexpected exit, restarting ssh-client in 5 seconds. Retry count:' +
-                this._retryInfo.retryCount
+                this._retryCount
             )
             setTimeout(async () => {
               try {
@@ -186,8 +205,9 @@ export class SSH extends EventEmitter {
             }, 5000)
           } else {
             this._info(
-              `Unexpected exit, but retry count(${this._retryInfo.retryCount}) exceed max.`
+              `Unexpected exit, but retry count(${this._retryCount}) exceed max.`
             )
+            this._retryCount = 0
             reject(new Error('Too many retry to start ssh-client'))
           }
         }
@@ -215,5 +235,54 @@ export class SSH extends EventEmitter {
         resolve()
       }
     })
+  }
+
+  public async setConfig(sshConfig: SSHConfig): Promise<void> {
+    if (this._pendingConfig && 
+        JSON.stringify(this._pendingConfig) === JSON.stringify(sshConfig)) {
+      this._info('config is identical')
+      return
+    }
+
+    this._pendingConfig = sshConfig
+    await this._processPendingSSHChanged()
+  }
+
+  private async _processPendingSSHChanged() : Promise<void> {
+    if (this._sshProcessingChanges) {
+      return
+    }
+    this._sshProcessingChanges = true
+
+    while (true) {
+      if (this._pendingConfig == null) {
+        break
+      }
+      let pendingConfig = this._pendingConfig
+      this._pendingConfig = null
+
+      let promises: Promise<void>[] = []
+      if (pendingConfig.enable) {
+        if (!pendingConfig.serverOptions || !pendingConfig.clientOptions) {
+          this._error(`options are required to start ssh`)
+          continue
+        }
+        promises.push(this.startServer(pendingConfig.serverOptions))
+        promises.push(
+          this.startClient(pendingConfig.clientOptions)
+        )
+      }
+      else {
+        promises.push(this.stopServer())
+        promises.push(this.stopClient())
+      }
+      try {
+        await Promise.all(promises)
+      }
+      catch (err) {
+        this._error(`process ssh changes failed: ${err.message}`)
+      }
+    }
+    this._sshProcessingChanges = false
   }
 }

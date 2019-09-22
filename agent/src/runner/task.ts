@@ -15,7 +15,7 @@ export default abstract class Task {
     this._service = service
   }
 
-  public getType(): string {
+  get type(): string {
     return this._type
   }
 

@@ -119,7 +119,7 @@ export default class AgentRunnerService {
     }
 
     const id = request.id
-    this._debug(`Starting task ${id} ...`)
+    this._debug(`Starting task ${id} (${task.type})...`)
     this._runningTasks[id] = task.run()
     try {
       await this._runningTasks[id]

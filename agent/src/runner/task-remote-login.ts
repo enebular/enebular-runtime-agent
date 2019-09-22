@@ -4,7 +4,7 @@ import objectHash from 'object-hash'
 
 import AgentRunnerService from './agent-runner-service'
 import Task from './task'
-import { SSHClientConnectOptions, SSHServerOptions, SSH } from './ssh'
+import { SSHConfig, SSH } from './ssh'
 import { verifySignature } from '../utils'
 
 interface RemoteLoginSettings {
@@ -59,7 +59,7 @@ export default class TaskRemoteLogin extends Task {
     }
     */
 
-    const promises: Promise<void>[] = []
+    let sshConfig: SSHConfig
     const config = settings.config
     if (!config.hasOwnProperty('enable')) {
       throw new Error(`enable is required for remote login config`)
@@ -98,26 +98,27 @@ export default class TaskRemoteLogin extends Task {
       }
       */
 
-      const serverOptions: SSHServerOptions = {
-        user: config.localUser,
-        publicKey: config.localServerPublicKey.data
+      sshConfig = {
+        enable: true,
+        serverOptions: {
+          user: config.localUser,
+          publicKey: config.localServerPublicKey.data
+        },
+        clientOptions: {
+          user: config.localUser,
+          remoteIPAddr: config.relayServer,
+          remotePort: config.relayServerPort,
+          remoteUser: config.relayServerUser,
+          privateKey: config.relayServerPrivateKey.data
+        }
       }
-      promises.push(ssh.startServer(serverOptions))
-      const clientOptions: SSHClientConnectOptions = {
-        user: config.localUser,
-        remoteIPAddr: config.relayServer,
-        remotePort: config.relayServerPort,
-        remoteUser: config.relayServerUser,
-        privateKey: config.relayServerPrivateKey.data
-      }
-      promises.push(
-        ssh.startClient(clientOptions)
-      )
-    } else {
-      promises.push(ssh.stopServer())
-      promises.push(ssh.stopClient())
     }
-    await Promise.all(promises)
+    else {
+      sshConfig = {
+        enable: false,
+      }
+    }
+    ssh.setConfig(sshConfig)
   }
 
   public async cancel(): Promise<void> {}
