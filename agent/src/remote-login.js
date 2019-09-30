@@ -12,25 +12,30 @@ export default class RemoteLogin {
   _log: Logger
   _inited: boolean = false
   _pendingEnableRequest: boolean = false
-  _remoteLoginState: Object = {config:Object}
+  _remoteLoginState: Object
+
 
   constructor(
     deviceStateMan: DeviceStateManager,
     agentRunnerMan: AgentRunnerManager,
     log: Logger
   ) {
+    this._remoteLoginState = {config: {enable: false}}
+
     this._deviceStateMan = deviceStateMan
     this._agentRunnerMan = agentRunnerMan
     this._log = log
     this._deviceStateMan.on('stateChange', params =>
       this._handleDeviceStateChange(params)
     )
-    this._agentRunnerMan.on('sshServerStatusChanged', params =>
+    this._agentRunnerMan.on('sshServerStatusChanged', params => {
       this._info('ssh server status:', params)
-    )
-    this._agentRunnerMan.on('sshClientStatusChanged', params =>
+      this._handleSshServerStateChange(params)
+    })
+    this._agentRunnerMan.on('sshClientStatusChanged', params => {
       this._info('ssh client status:', params)
-    )
+      this._handleSshClientStateChange(params)
+    })
   }
 
   _info(msg: string, ...args: Array<mixed>) {
@@ -54,6 +59,58 @@ export default class RemoteLogin {
   _enableRequest() {
     if (!this._pendingEnableRequest) {
       this._pendingEnableRequest = true
+    }
+  }
+
+  async _handleSshServerStateChange(params: { active: boolean }) {
+    if (!this._inited) {
+      throw new Error('not setup')
+    }
+
+    // boolean でなければ log だして終わり
+    if ((typeof params.active) !== 'boolean') {
+      this._info('sshServerStatusChanged invalid paramater')
+      throw new TypeError('Parameter Type Error')
+      return
+    }
+
+    // デバイスステート status 更新 (差分更新)
+    if (this._remoteLoginState.config.enable !== params.active) {
+      this._remoteLoginState.config.enable = params.active
+      this._updateRemoteLoginStatusState()
+      // true -> false : リモートログイン OFF を runner へ依頼
+      if (this._remoteLoginState.config.enable === false) {
+        this._info('true -> false : リモートログイン OFF を runner へ依頼')
+        this._enableRequest()
+        this._processPendingRemoteLoginChanges()
+      }
+    }
+  }
+
+  async _handleSshClientStateChange(params: { connected: boolean }) {
+    if (!this._inited) {
+      return
+    }
+    this._info('_handleSshClientStateChange')
+
+    // boolean でなければ log だして終わり
+    if ((typeof params.connected) !== 'boolean') {
+      this._info('sshClientStatusChanged invalid paramater')
+      throw new TypeError('Parameter Type Error')
+      return
+    }
+
+    // デバイスステート status 更新 (差分更新)
+    if (this._remoteLoginState.config.enable !== params.connected) {
+      this._remoteLoginState.config.enable = params.connected
+      this._updateRemoteLoginStatusState()
+
+      // true -> false : リモートログイン OFF を runner へ依頼
+      if (this._remoteLoginState.config.enable === false) {
+        this._info('true -> false : リモートログイン OFF を runner へ依頼')
+        this._enableRequest()
+        this._processPendingRemoteLoginChanges()
+      }
     }
   }
 
