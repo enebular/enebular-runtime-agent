@@ -67,9 +67,7 @@ export default class RemoteLogin {
       throw new Error('not setup')
     }
 
-    // boolean でなければ log だして終わり
     if ((typeof params.active) !== 'boolean') {
-      this._info('sshServerStatusChanged invalid paramater')
       throw new TypeError('Parameter Type Error')
       return
     }
@@ -80,7 +78,6 @@ export default class RemoteLogin {
       this._updateRemoteLoginStatusState()
       // true -> false : リモートログイン OFF を runner へ依頼
       if (this._remoteLoginState.config.enable === false) {
-        this._info('true -> false : リモートログイン OFF を runner へ依頼')
         this._enableRequest()
         this._processPendingRemoteLoginChanges()
       }
@@ -89,13 +86,10 @@ export default class RemoteLogin {
 
   async _handleSshClientStateChange(params: { connected: boolean }) {
     if (!this._inited) {
-      return
+      throw new Error('not setup')
     }
-    this._info('_handleSshClientStateChange')
 
-    // boolean でなければ log だして終わり
     if ((typeof params.connected) !== 'boolean') {
-      this._info('sshClientStatusChanged invalid paramater')
       throw new TypeError('Parameter Type Error')
       return
     }
@@ -104,10 +98,8 @@ export default class RemoteLogin {
     if (this._remoteLoginState.config.enable !== params.connected) {
       this._remoteLoginState.config.enable = params.connected
       this._updateRemoteLoginStatusState()
-
       // true -> false : リモートログイン OFF を runner へ依頼
       if (this._remoteLoginState.config.enable === false) {
-        this._info('true -> false : リモートログイン OFF を runner へ依頼')
         this._enableRequest()
         this._processPendingRemoteLoginChanges()
       }
@@ -145,8 +137,7 @@ export default class RemoteLogin {
     }
 
     const desiredConfig = desiredState.config || {}
-
-    let change = false
+    const preEnable = this._remoteLoginState.config.enable
 
     let enableRequest = false
     if (desiredConfig.hasOwnProperty('enable')) {
@@ -155,37 +146,38 @@ export default class RemoteLogin {
         this._remoteLoginState.state = 'updating'
         enableRequest = true
       }
-    } else {
-      // enable is undefined or false
-      if (!this._remoteLoginState.config.enable) {
-        // the default enable state is true
-        this._remoteLoginState.config.enable = true
-        this._remoteLoginState.state = 'updating'
-        enableRequest = true
-      }
     }
 
     if (enableRequest) {
-      this._remoteLoginState.enableDesiredStateRef = this._deviceStateMan.getRef(
-        'desired',
-        'remoteLogin.config.enable'
-      )
-      this._enableRequest()
-      change = true
+      return
     }
+
+    this._remoteLoginState.enableDesiredStateRef = this._deviceStateMan.getRef(
+      'desired',
+      'remoteLogin.config.enable'
+    )
+    this._enableRequest()
 
     this._debug(
       'RemoteLogin state: ' + JSON.stringify(this._remoteLoginState, null, 2)
     )
 
-    if (change) {
-      this._updateRemoteLoginReportedState()
-      this._processPendingRemoteLoginChanges()
+    this._updateRemoteLoginReportedState()
 
-// debug
-      this._remoteLoginState.state = 'current'
-      this._updateRemoteLoginStatusState()
-      this._updateRemoteLoginReportedState()
+    let procStat = true
+    this._remoteLoginState.state = 'current'
+    try {
+      this._processPendingRemoteLoginChanges()
+    } catch (err) {
+      procStat = false
+      this._remoteLoginState.state = 'updateFail'
+      this._remoteLoginState.message = err.massage
+    }
+    this._updateRemoteLoginStatusState()
+    this._updateRemoteLoginReportedState()
+
+    if (!procStat) {
+      this._remoteLoginState.config.enable = preEnable
     }
   }
 
@@ -198,8 +190,6 @@ export default class RemoteLogin {
     if (!reportedState) {
       reportedState = {}
     }
-
-    const reportedConfig = reportedState.config || {}
 
     let state = {
       config: {
@@ -223,7 +213,7 @@ export default class RemoteLogin {
       state: this._remoteLoginState.state
     }
 
-    if (this._remoteLoginState.message === 'updateFail') {
+    if (this._remoteLoginState.state === 'updateFail') {
       state.message = this._remoteLoginState.message
     }
 
@@ -248,7 +238,7 @@ export default class RemoteLogin {
     this._deviceStateMan.updateState('status', 'set', 'remoteLogin', state)
   }
 
-  _processPendingRemoteLoginChanges() {
+  async _processPendingRemoteLoginChanges() {
     if (this._pendingEnableRequest) {
       const fs = require('fs')
       const path = require('path')
@@ -274,10 +264,10 @@ export default class RemoteLogin {
         },
       }
       try {
-//        await this._agentRunnerMan.remoteLoginSet(settings)
-        this._agentRunnerMan.remoteLoginSet(settings)
+        await this._agentRunnerMan.remoteLoginSet(settings)
+//        this._agentRunnerMan.remoteLoginSet(settings)
       } catch (err) {
-        this._info('RemoteLogin failed: ' + err.message)
+        throw err
       }
 
       this._pendingEnableRequest = false

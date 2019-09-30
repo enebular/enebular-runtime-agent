@@ -126,3 +126,83 @@ test('_handleSshServerStateChange 004', async t => {
 
   t.pass()
 })
+
+test('_handleSshClientStateChange 001', async t => {
+  let remoteLogin = new RemoteLogin(
+    mockDeviceStateManager,
+    agentRunnerManager,
+    logger
+  )
+
+  try {
+    await remoteLogin._handleSshClientStateChange({params: {connected: true}})
+  } catch (e) {
+    if (e.message === 'not setup') {
+      t.pass()
+      return
+    }
+  }
+
+  t.fail()
+})
+
+test('_handleSshClientStateChange 002', async t => {
+  let remoteLogin = new RemoteLogin(
+    mockDeviceStateManager,
+    agentRunnerManager,
+    logger
+  )
+
+  remoteLogin.setup()
+
+  try {
+    await remoteLogin._handleSshClientStateChange({params: {connected: 1}})
+  } catch (e) {
+    if (e.message === 'Parameter Type Error') {
+      t.pass()
+      return
+    }
+  }
+
+  t.fail()
+})
+
+test('_handleSshClientStateChange 003', async t => {
+  let remoteLogin = new RemoteLogin(
+    mockDeviceStateManager,
+    agentRunnerManager,
+    logger
+  )
+
+  remoteLogin.setup()
+
+  let params = { connected: true }
+  try {
+    await remoteLogin._handleSshClientStateChange(params)
+  } catch (e) {
+    t.fail()
+    return
+  }
+
+  t.pass()
+})
+
+test('_handleSshClientStateChange 004', async t => {
+  let remoteLogin = new RemoteLogin(
+    mockDeviceStateManager,
+    agentRunnerManager,
+    logger
+  )
+
+  remoteLogin.setup()
+
+  let params = { connected: false }
+  try {
+    await remoteLogin._handleSshClientStateChange(params)
+  } catch (e) {
+    t.fail()
+    return
+  }
+
+  t.pass()
+})
