@@ -20,7 +20,36 @@ class MockDeviceStateManager extends DeviceStateManager {
   ) {}
 }
 
+class MockConnectorMessenger1 extends ConnectorMessenger {
+  sendRequest(
+    topic: string,
+    body: Object
+  ) {
+    let obj = {
+      hogehoge: "hogehoge"
+    }
+    return obj
+  }
+}
+
+class MockConnectorMessenger2 extends ConnectorMessenger {
+  sendRequest(
+    topic: string,
+    body: Object
+  ) {
+    let obj = {
+      keys: {
+        id: "1111",
+        url: "http://hogehoge.com",
+      }
+    }
+    return obj
+  }
+}
+
 let connectorMessenger = new ConnectorMessenger()
+let connectorMessenger1 = new MockConnectorMessenger1()
+let connectorMessenger2 = new MockConnectorMessenger2()
 let eventEmitter = new EventEmitter()
 let config = new Config('test')
 let logManager = new LogManager(config)
@@ -224,9 +253,11 @@ test('_fetchCert 001', async t => {
   )
 
   try {
-    await remoteLogin._fetchCert(1)
+    let ret = await remoteLogin._fetchCert(1)
   } catch (e) {
+    console.error("e.message: " + e.message)
     t.pass()
+    return
   }
 
   t.fail()
@@ -241,11 +272,13 @@ test('_fetchCert 002', async t => {
   )
 
   try {
-    await remoteLogin._fetchCert("https://hogehoge.com")
+    let ret = await remoteLogin._fetchCert("xxxxxxx")
   } catch (e) {
+//    console.error("e.message: " + e.message)
     t.pass()
+    return
   }
-
+ 
   t.fail()
 })
 
@@ -258,10 +291,49 @@ test('_fetchCert 003', async t => {
   )
 
   try {
-    await remoteLogin._fetchCert("http://httpbin.org/get")
+    let ret = await remoteLogin._fetchCert("http://httpbin.org/get")
   } catch (e) {
     t.fail()
+    return
   }
 
+  t.pass()
+})
+
+test('_downloadCertificate 001', async t => {
+  let remoteLogin = new RemoteLogin(
+    mockDeviceStateManager,
+    connectorMessenger1,
+    agentRunnerManager,
+    logger
+  )
+
+  try {
+    let ret = await remoteLogin._downloadCertificate(1, 1)
+  } catch (e) {
+    t.pass()
+    return
+  }
+
+  t.fail()
+})
+
+test('_downloadCertificate 002', async t => {
+  let remoteLogin = new RemoteLogin(
+    mockDeviceStateManager,
+    connectorMessenger2,
+    agentRunnerManager,
+    logger
+  )
+
+  var ret
+  try {
+    ret = await remoteLogin._downloadCertificate("1", "1")
+  } catch (e) {
+    t.fail()
+    return
+  }
+
+  console.error("ret: " + JSON.stringify(ret, null, 2))
   t.pass()
 })
