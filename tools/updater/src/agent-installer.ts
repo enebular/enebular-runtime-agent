@@ -662,6 +662,9 @@ export class AgentInstaller implements AgentInstallerIf {
       await Utils.mkdirp(this._log, palPath, userInfo)
     }
 
+    if (!path.isAbsolute(bundlePath)) {
+      bundlePath = path.resolve(process.cwd(), bundlePath)
+    }
     await Utils.taskAsync(
       'Generating mbed cloud credentials',
       this._log,
