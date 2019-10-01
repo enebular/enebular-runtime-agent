@@ -24,11 +24,11 @@ export default class AgentRunnerService {
     )
     this._log = new AgentRunnerLogger(this._agentCoreManager)
     this._ssh = new SSH(this._log)
-    this._ssh.on('clientStatusChanged', connected => {
+    this._ssh.on('clientStatusChanged', active => {
       this._agentCoreManager.sendStatusUpdate({
         type: 'sshClientStatusChanged',
         status: {
-          connected: connected
+          active: active
         }
       })
     })
