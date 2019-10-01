@@ -5,6 +5,7 @@ import AgentRunnerLogger from './agent-runner-logger'
 import { SSH } from './ssh'
 import { Data, Request } from './agent-runner-message-type'
 import TaskRemoteLogin from './task-remote-login'
+import TaskRemoteLoginStatusUpdate from './task-remote-login-status-update'
 
 interface RunningTasks {
   [index: string]: Promise<void>
@@ -99,6 +100,8 @@ export default class AgentRunnerService {
     switch(taskType) {
     case 'remoteLogin':
       return new TaskRemoteLogin(this, settings)
+    case 'remoteLoginStatusUpdate':
+      return new TaskRemoteLoginStatusUpdate(this, settings)
     default:
       return undefined
     }

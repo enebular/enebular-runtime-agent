@@ -94,15 +94,23 @@ export default class AgentRunnerManager extends EventEmitter {
     })
   }
 
-  remoteLoginSet(settings: Object) {
+  _request(taskType: string, settings: Object): Promise<void> {
     return new Promise((resolve, reject) => {
       const callback = (success, errorMsg) => {
         if (success) {
           resolve()
         } else reject(new Error(errorMsg))
       }
-      this._sendRequest('remoteLogin', settings, callback)
+      this._sendRequest(taskType, settings, callback)
     })
+  }
+
+  remoteLoginStatusUpdate() {
+    return this._request('remoteLoginStatusUpdate', {})
+  }
+
+  remoteLoginSet(settings: Object) {
+    return this._request('remoteLogin', settings)
   }
 
   _onDataReceived(data: Data) {

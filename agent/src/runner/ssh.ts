@@ -27,6 +27,7 @@ export interface SSHConfig{
 
 export class SSH extends EventEmitter {
   private _serverActive = false
+  private _clientActive = false
   private _sshClient?: ChildProcess
   private _log: AgentRunnerLogger
   private _retryCount: number = 0
@@ -53,8 +54,12 @@ export class SSH extends EventEmitter {
   public init(): void {
     this._ensureServiceIsEnabled('ssh')
     this._serverActive = this.isServiceActive('ssh')
+    this.statusUpdate()
+  }
+
+  public statusUpdate(): void {
     this.emit('serverStatusChanged', this._serverActive)
-    this.emit('clientStatusChanged', false)
+    this.emit('clientStatusChanged', this._clientActive)
   }
 
   private isServiceActive(serviceName: string): boolean {
@@ -174,7 +179,8 @@ export class SSH extends EventEmitter {
         this._debug('ssh-client: ', _data)
         if (connected) {
           clearTimeout(startTimeout)
-          this.emit('clientStatusChanged', true)
+          this._clientActive = true
+          this.emit('clientStatusChanged', this._clientActive)
           resolve()
         }
       })
@@ -185,7 +191,8 @@ export class SSH extends EventEmitter {
             : `ssh-client killed by signal ${signal}`
         this._debug(message)
         this._sshClient = undefined
-        this.emit('clientStatusChanged', false)
+        this._clientActive = false
+        this.emit('clientStatusChanged', this._clientActive)
         if (code !== 0) {
           clearTimeout(startTimeout)
           const now = Date.now()
@@ -225,7 +232,7 @@ export class SSH extends EventEmitter {
     return new Promise((resolve, reject): void => {
       const cproc = this._sshClient
       if (cproc) {
-        this._info('Shutting down ssh client...')
+        this._info('Shutting down ssh-client...')
         cproc.once('exit', () => {
           resolve()
         })
