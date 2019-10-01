@@ -353,6 +353,9 @@ export default class RemoteLogin {
       KeyIds
     )
 
+    if (!res.hasOwnProperty('keys')) {
+      throw new Error('keys is not exist')
+    }
     const keys = res.keys || {}
     return keys
   }
