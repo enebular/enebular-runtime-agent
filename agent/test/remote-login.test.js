@@ -50,6 +50,7 @@ test.afterEach.always('cleanup listener', t => {
 test('_handleSshServerStateChange 001', async t => {
   let remoteLogin = new RemoteLogin(
     mockDeviceStateManager,
+    connectorMessenger,
     agentRunnerManager,
     logger
   )
@@ -69,6 +70,7 @@ test('_handleSshServerStateChange 001', async t => {
 test('_handleSshServerStateChange 002', async t => {
   let remoteLogin = new RemoteLogin(
     mockDeviceStateManager,
+    connectorMessenger,
     agentRunnerManager,
     logger
   )
@@ -90,6 +92,7 @@ test('_handleSshServerStateChange 002', async t => {
 test('_handleSshServerStateChange 003', async t => {
   let remoteLogin = new RemoteLogin(
     mockDeviceStateManager,
+    connectorMessenger,
     agentRunnerManager,
     logger
   )
@@ -110,6 +113,7 @@ test('_handleSshServerStateChange 003', async t => {
 test('_handleSshServerStateChange 004', async t => {
   let remoteLogin = new RemoteLogin(
     mockDeviceStateManager,
+    connectorMessenger,
     agentRunnerManager,
     logger
   )
@@ -130,6 +134,7 @@ test('_handleSshServerStateChange 004', async t => {
 test('_handleSshClientStateChange 001', async t => {
   let remoteLogin = new RemoteLogin(
     mockDeviceStateManager,
+    connectorMessenger,
     agentRunnerManager,
     logger
   )
@@ -149,6 +154,7 @@ test('_handleSshClientStateChange 001', async t => {
 test('_handleSshClientStateChange 002', async t => {
   let remoteLogin = new RemoteLogin(
     mockDeviceStateManager,
+    connectorMessenger,
     agentRunnerManager,
     logger
   )
@@ -170,6 +176,7 @@ test('_handleSshClientStateChange 002', async t => {
 test('_handleSshClientStateChange 003', async t => {
   let remoteLogin = new RemoteLogin(
     mockDeviceStateManager,
+    connectorMessenger,
     agentRunnerManager,
     logger
   )
@@ -190,6 +197,7 @@ test('_handleSshClientStateChange 003', async t => {
 test('_handleSshClientStateChange 004', async t => {
   let remoteLogin = new RemoteLogin(
     mockDeviceStateManager,
+    connectorMessenger,
     agentRunnerManager,
     logger
   )
@@ -202,6 +210,57 @@ test('_handleSshClientStateChange 004', async t => {
   } catch (e) {
     t.fail()
     return
+  }
+
+  t.pass()
+})
+
+test('_fetchCert 001', async t => {
+  let remoteLogin = new RemoteLogin(
+    mockDeviceStateManager,
+    connectorMessenger,
+    agentRunnerManager,
+    logger
+  )
+
+  try {
+    await remoteLogin._fetchCert(1)
+  } catch (e) {
+    t.pass()
+  }
+
+  t.fail()
+})
+
+test('_fetchCert 002', async t => {
+  let remoteLogin = new RemoteLogin(
+    mockDeviceStateManager,
+    connectorMessenger,
+    agentRunnerManager,
+    logger
+  )
+
+  try {
+    await remoteLogin._fetchCert("https://hogehoge.com")
+  } catch (e) {
+    t.pass()
+  }
+
+  t.fail()
+})
+
+test('_fetchCert 003', async t => {
+  let remoteLogin = new RemoteLogin(
+    mockDeviceStateManager,
+    connectorMessenger,
+    agentRunnerManager,
+    logger
+  )
+
+  try {
+    await remoteLogin._fetchCert("http://httpbin.org/get")
+  } catch (e) {
+    t.fail()
   }
 
   t.pass()
