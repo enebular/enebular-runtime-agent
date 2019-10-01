@@ -8,21 +8,25 @@ const moduleName = 'remote-login'
 
 export default class RemoteLogin {
   _deviceStateMan: DeviceStateManager
+  _connectorMessenger: ConnectorMessenger
   _agentRunnerMan: AgentRunnerManager
   _log: Logger
   _inited: boolean = false
   _pendingEnableRequest: boolean = false
   _remoteLoginState: Object
-
+  _localServerPublicKey: Object
+  _relayServerPrivateKey: Object
 
   constructor(
     deviceStateMan: DeviceStateManager,
+    connectorMessenger: ConnectorMessenger,
     agentRunnerMan: AgentRunnerManager,
     log: Logger
   ) {
     this._remoteLoginState = {config: {enable: false}}
 
     this._deviceStateMan = deviceStateMan
+    this._connectorMessenger = connectorMessenger
     this._agentRunnerMan = agentRunnerMan
     this._log = log
     this._deviceStateMan.on('stateChange', params =>
@@ -36,6 +40,11 @@ export default class RemoteLogin {
       this._info('ssh client status:', params)
       this._handleSshClientStateChange(params)
     })
+  }
+
+  _error(msg: string, ...args: Array<mixed>) {
+    args.push({ module: moduleName })
+    this._log.error(msg, ...args)
   }
 
   _info(msg: string, ...args: Array<mixed>) {
@@ -148,8 +157,14 @@ export default class RemoteLogin {
       }
     }
 
-    if (enableRequest) {
+    if (!enableRequest) {
       return
+    }
+
+    // SSH Key Check
+    if (!desiredConfig.hasOwnProperty('localServerPublicKey') || !desiredConfig.hasOwnProperty('relayServerPrivateKey')) {
+      // illegal processing
+      this._error('Key not exist')
     }
 
     this._remoteLoginState.enableDesiredStateRef = this._deviceStateMan.getRef(
@@ -195,19 +210,15 @@ export default class RemoteLogin {
       config: {
         enable: this._remoteLoginState.config.enable,
         localUser: this._remoteLoginState.config.localUser,
-/*
         localServerPublicKey: {
-          id: this._remoteLoginState.config.localServerPublicKey.id,
+          id: this._remoteLoginState.config.localServerPublicKey.id
         },
-*/
         relayServer: this._remoteLoginState.config.relayServer,
         relayServerPort: this._remoteLoginState.config.relayServerPort,
-        relayServerUser: this._remoteLoginState.config.relayServerUser
-/*
+        relayServerUser: this._remoteLoginState.config.relayServerUser,
         relayServerPrivateKey: {
           id: this._remoteLoginState.config.relayServerPrivateKey.id,
         }
-*/
       },
       updateId: this._remoteLoginState.updateId,
       state: this._remoteLoginState.state
@@ -240,6 +251,39 @@ export default class RemoteLogin {
 
   async _processPendingRemoteLoginChanges() {
     if (this._pendingEnableRequest) {
+      var keys
+      try {
+        keys = this._downloadCertificate(
+          this._remoteLoginState.config.localServerPublicKey.id,
+          this._remoteLoginState.config.relayServerPrivateKey.id
+        )
+        this._debug(
+          'RemoteLogin keys: ' + JSON.stringify(keys, null, 2)
+        )
+      } catch (err) {
+        // illegal processing
+        this._error('RemoteLogin failed: ' + err.message)
+      }
+
+      var localServerPublicKeyData
+      var relayServerPrivateKeyData
+      try {
+        for (var item in keys) {
+          if (keys[item].id === this._remoteLoginState.config.localServerPublicKey.id) {
+            localServerPublicKeyData = this._fetchCert(
+              keys[item].url
+            )
+          } else if (keys[item].id === this._remoteLoginState.config.relayServerPrivateKey.id) {
+            relayServerPrivateKeyData = this._fetchCert(
+              keys[item].url
+            )
+          }
+        }
+      } catch (err) {
+        // illegal processing
+        this._error('RemoteLogin failed: ' + err.message)
+      }
+      
       const fs = require('fs')
       const path = require('path')
       let settings = {
@@ -247,19 +291,25 @@ export default class RemoteLogin {
           enable: this._remoteLoginState.config.enable,
           localUser: this._remoteLoginState.config.localUser,
           localServerPublicKey: {
+            /*
             data: fs.readFileSync(
               path.resolve(__dirname, '../keys/ssh/device_pubkey.pem'),
               'utf8'
             )
+            */
+            data: localServerPublicKeyData
           },
           relayServer: this._remoteLoginState.config.relayServer,
           relayServerPort: this._remoteLoginState.config.relayServerPort,
           relayServerUser: this._remoteLoginState.config.relayServerUser,
           relayServerPrivateKey: {
+            /*
             data: fs.readFileSync(
               path.resolve(__dirname, '../keys/ssh/global_server_privkey.pem'),
               'utf8'
             )
+            */
+            data: relayServerPrivateKeyData
           }
         },
       }
@@ -272,6 +322,81 @@ export default class RemoteLogin {
 
       this._pendingEnableRequest = false
     }
+  }
+
+  async _fetchCert(downloadUrl: string) {
+
+    var keys
+    await fetch(downloadUrl)
+    .then(response => {
+      if (response.ok) {
+        keys = response.text()
+      } else {
+        return Promise.reject(new Error(`Failed response (${response.status} ${response.statusText})`))
+      }
+    })
+
+    return keys
+  }
+
+  async _downloadCertificate(localServerPublicKeyId: string, relayServerPrivateKeyId: string) {
+
+    let KeyIds = {
+      KeyIds: [
+        localServerPublicKeyId,
+        relayServerPrivateKeyId
+      ]
+    }
+
+    const res = await this._connectorMessenger.sendRequest(
+      'remoteLogin/device/getKeyDataUrl',
+      KeyIds
+    )
+
+    const keys = res.keys || {}
+    return keys
+  }
+
+  async download_test() {
+        ////////////////// debug
+        this._error('***************')
+        var keys
+        try {
+          keys = await this._downloadCertificate(
+            "eaf540c0-2b1b-4035-81dd-989c87e74c07",
+            "eaf540c0-2b1b-4035-81dd-989c87e74c08"
+          )
+          this._error(
+            'Getted RemoteLogin keys: ' + JSON.stringify(keys, null, 2)
+          )
+          for (var item in keys) {
+            console.log(keys[item].id)
+            console.log(keys[item].url)
+          }
+        } catch (err) {
+          this._error('Error occured during deploy: ' + err.message)
+          return
+        }
+
+        try {
+          let key1 = await this._fetchCert(
+            keys[0].url
+          )
+          this._error(
+            'Getted key1: ' + key1
+          )
+
+          let key2 = await this._fetchCert(
+            keys[1].url
+          )
+          this._error(
+            'Getted key2: ' + key2
+          )
+        } catch (err) {
+          this._error('Error occured during deploy: ' + err.message)
+          return
+        }
+        /////////////////////////////
   }
 
   async test() {
