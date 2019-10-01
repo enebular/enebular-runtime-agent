@@ -524,9 +524,6 @@ export default class EnebularAgent extends EventEmitter {
     if (this._agentState !== 'authenticated') {
       this._changeAgentState('authenticated')
     }
-
-      //////// debug
-      this._remoteLogin.download_test()
   }
 
   _onAccessTokenClear() {
