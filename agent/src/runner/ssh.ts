@@ -197,7 +197,7 @@ export class SSH extends EventEmitter {
           clearTimeout(startTimeout)
           const now = Date.now()
           this._retryCount++
-          if (this._retryCount < 1) {
+          if (this._retryCount < 3) {
             this._info(
               'Unexpected exit, restarting ssh-client in 5 seconds. Retry count:' +
                 this._retryCount
