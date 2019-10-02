@@ -217,7 +217,7 @@ export default class RemoteLogin {
         relayServerPort: this._remoteLoginState.config.relayServerPort,
         relayServerUser: this._remoteLoginState.config.relayServerUser,
         relayServerPrivateKey: {
-          id: this._remoteLoginState.config.relayServerPrivateKey.id,
+          id: this._remoteLoginState.config.relayServerPrivateKey.id
         }
       },
       updateId: this._remoteLoginState.updateId,
