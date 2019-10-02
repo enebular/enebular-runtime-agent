@@ -291,27 +291,22 @@ export default class RemoteLogin {
           enable: this._remoteLoginState.config.enable,
           localUser: this._remoteLoginState.config.localUser,
           localServerPublicKey: {
-            /*
-            data: fs.readFileSync(
-              path.resolve(__dirname, '../keys/ssh/device_pubkey.pem'),
-              'utf8'
-            )
-            */
-            data: localServerPublicKeyData
+            id: this._remoteLoginState.config.localServerPublicKey.id,
+            size: this._remoteLoginState.config.localServerPublicKey.size,
+            signature: this._remoteLoginState.config.localServerPublicKey.signature
           },
           relayServer: this._remoteLoginState.config.relayServer,
           relayServerPort: this._remoteLoginState.config.relayServerPort,
           relayServerUser: this._remoteLoginState.config.relayServerUser,
           relayServerPrivateKey: {
-            /*
-            data: fs.readFileSync(
-              path.resolve(__dirname, '../keys/ssh/global_server_privkey.pem'),
-              'utf8'
-            )
-            */
-            data: relayServerPrivateKeyData
+            id: this._remoteLoginState.config.relayServerPrivateKey.id,
+            size: this._remoteLoginState.config.relayServerPrivateKey.size,
+            signature: this._remoteLoginState.config.relayServerPrivateKey.signature
           }
         },
+        signature: _remoteLoginState.signature,
+        localServerPublicKeyData: localServerPublicKeyData,
+        relayServerPrivateKeyData: relayServerPrivateKeyData
       }
       try {
         await this._agentRunnerMan.remoteLoginSet(settings)
