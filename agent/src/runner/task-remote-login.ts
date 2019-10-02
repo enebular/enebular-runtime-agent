@@ -12,18 +12,22 @@ interface RemoteLoginSettings {
     enable: boolean
     localUser: string
     localServerPublicKey: {
-      data: string
+      id: string
+      size: string
       signature: string
     }
     relayServer: string
     relayServerPort: string
     relayServerUser: string
     relayServerPrivateKey: {
-      data: string
+      id: string
+      size: string
       signature: string
     }
   }
   signature: string
+  localServerPublicKeyData: string
+  relayServerPrivateKeyData: string
 }
 
 export default class TaskRemoteLogin extends Task {
@@ -67,14 +71,16 @@ export default class TaskRemoteLogin extends Task {
         !config.relayServer ||
         !config.relayServerPort ||
         !config.relayServerUser ||
-        !config.relayServerPrivateKey
+        !config.relayServerPrivateKey ||
+        !settings.relayServerPrivateKeyData ||
+        !settings.localServerPublicKeyData
       ) {
         throw new Error(`Missing parameters for enabling remote login`)
       }
 
       if (
         !verifySignature(
-          config.localServerPublicKey.data,
+          settings.localServerPublicKeyData,
           pubkey,
           config.localServerPublicKey.signature
         )
@@ -83,7 +89,7 @@ export default class TaskRemoteLogin extends Task {
       }
       if (
         !verifySignature(
-          config.relayServerPrivateKey.data,
+          settings.relayServerPrivateKeyData,
           pubkey,
           config.relayServerPrivateKey.signature
         )
@@ -95,14 +101,14 @@ export default class TaskRemoteLogin extends Task {
         enable: true,
         serverOptions: {
           user: config.localUser,
-          publicKey: config.localServerPublicKey.data
+          publicKey: settings.localServerPublicKeyData
         },
         clientOptions: {
           user: config.localUser,
           remoteIPAddr: config.relayServer,
           remotePort: config.relayServerPort,
           remoteUser: config.relayServerUser,
-          privateKey: config.relayServerPrivateKey.data
+          privateKey: settings.relayServerPrivateKeyData
         }
       }
     }
