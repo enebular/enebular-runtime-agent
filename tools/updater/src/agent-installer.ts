@@ -433,7 +433,7 @@ export class AgentInstaller implements AgentInstallerIf {
   }
 
   private _getNodeJSDownloadURL(version: string): string {
-    const arch = os.arch() == 'x32' ? 'x86' : os.arch()
+    const arch = this._system.getArch()
     const platform = os.platform()
     return `${this._config.getString(
       'NODE_JS_DOWNLOAD_BASE_URL'
@@ -573,7 +573,7 @@ export class AgentInstaller implements AgentInstallerIf {
 
   private _getAgentName(version: string, kind: string): string {
     if (kind === 'binary') {
-      const arch = os.arch() == 'x32' ? 'x86' : os.arch()
+      const arch = this._system.getArch()
       const platform = os.platform()
       return `enebular-agent-${version}-${platform}-${arch}.tar.gz`
     }

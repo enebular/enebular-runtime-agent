@@ -49,6 +49,8 @@ export interface SystemIf {
     newVersion: string,
     file?: string
   ): Promise<void>
+
+  getArch(): string
 }
 
 export class System implements SystemIf {
@@ -282,6 +284,28 @@ export class System implements SystemIf {
       default:
         return 'v9.2.1'
     }
+  }
+
+  public getArch(): string {
+    let arch = Utils.execReturnStdout('uname -m')
+    if (!arch) {
+      throw new Error('Failed to get arch from system')
+    }
+    arch = arch.trim()
+    switch (arch) {
+      case 'x86_64':
+      case 'amd64':
+        arch = 'x64'
+        break
+      case 'i386':
+      case 'i686':
+        arch = 'x86'
+        break
+      case 'aarch64':
+        arch = 'arm64'
+        break
+    }
+    return arch
   }
 
   public async installDebianPackages(packages: string[]): Promise<void> {

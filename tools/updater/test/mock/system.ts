@@ -207,4 +207,6 @@ export default class MockSystem implements SystemIf {
     newVersion: string,
     file?: string
   ): Promise<void> {}
+
+  public getArch(): string { throw new Error('not implemented')}
 }
