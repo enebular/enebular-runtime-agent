@@ -16,6 +16,7 @@ export default class RemoteLogin {
   _remoteLoginState: Object
   _localServerPublicKey: Object
   _relayServerPrivateKey: Object
+  _desiredTimeoutId
 
   constructor(
     deviceStateMan: DeviceStateManager,
@@ -24,6 +25,7 @@ export default class RemoteLogin {
     log: Logger
   ) {
     this._remoteLoginState = {config: {enable: false}}
+    this._desiredTimeoutId = null
 
     this._deviceStateMan = deviceStateMan
     this._connectorMessenger = connectorMessenger
@@ -76,9 +78,15 @@ export default class RemoteLogin {
       throw new Error('not setup')
     }
 
-    if ((typeof params.active) !== 'boolean') {
+    if ((typeof params.active) !== "boolean") {
       throw new TypeError('Parameter Type Error')
       return
+    }
+
+    if (this._desiredTimeoutId !== null) {
+      clearTimeout(this._desiredTimeoutId)
+      this._desiredTimeoutId = null
+      this._updateRemoteLoginReportedState()
     }
 
     // デバイスステート status 更新 (差分更新)
@@ -88,29 +96,35 @@ export default class RemoteLogin {
       // true -> false : リモートログイン OFF を runner へ依頼
       if (this._remoteLoginState.config.enable === false) {
         this._enableRequest()
-        this._processPendingRemoteLoginChanges()
+        await this._processPendingRemoteLoginChanges()
       }
     }
   }
 
-  async _handleSshClientStateChange(params: { connected: boolean }) {
+  async _handleSshClientStateChange(params: { active: boolean }) {
     if (!this._inited) {
       throw new Error('not setup')
     }
 
-    if ((typeof params.connected) !== 'boolean') {
+    if ((typeof params.active) !== 'boolean') {
       throw new TypeError('Parameter Type Error')
       return
     }
 
+    if (this._desiredTimeoutId !== null) {
+      clearTimeout(this._desiredTimeoutId)
+      this._desiredTimeoutId = null
+      this._updateRemoteLoginReportedState()
+    }
+
     // デバイスステート status 更新 (差分更新)
-    if (this._remoteLoginState.config.enable !== params.connected) {
-      this._remoteLoginState.config.enable = params.connected
+    if (this._remoteLoginState.config.enable !== params.active) {
+      this._remoteLoginState.config.enable = params.active
       this._updateRemoteLoginStatusState()
       // true -> false : リモートログイン OFF を runner へ依頼
       if (this._remoteLoginState.config.enable === false) {
         this._enableRequest()
-        this._processPendingRemoteLoginChanges()
+        await this._processPendingRemoteLoginChanges()
       }
     }
   }
@@ -120,13 +134,20 @@ export default class RemoteLogin {
       return
     }
 
+    if(!params.path) {
+      return
+    }
+    if (!params.path.startsWith('remoteLogin')) {
+      return
+    }
+
     if (params.path && !params.path.startsWith('remoteLogin')) {
       return
     }
 
     switch (params.type) {
       case 'desired':
-        this._updateRemoteLoginFromDesiredState()
+        await this._updateRemoteLoginFromDesiredState()
         break
       case 'reported':
         this._updateRemoteLoginReportedState()
@@ -139,7 +160,7 @@ export default class RemoteLogin {
     }
   }
 
-  _updateRemoteLoginFromDesiredState() {
+  async _updateRemoteLoginFromDesiredState() {
     const desiredState = this._deviceStateMan.getState('desired', 'remoteLogin')
 
     if (!desiredState) {
@@ -150,7 +171,7 @@ export default class RemoteLogin {
     const preEnable = this._remoteLoginState.config.enable
 
     let enableRequest = false
-    if (desiredConfig.hasOwnProperty('updateId')) {
+    if (desiredState.hasOwnProperty('updateId')) {
       if (desiredConfig.hasOwnProperty('enable')) {
         if (preEnable !== desiredConfig.enable) {
           this._remoteLoginState = JSON.parse(JSON.stringify(desiredState))
@@ -198,14 +219,22 @@ export default class RemoteLogin {
     let procStat = true
     this._remoteLoginState.state = 'current'
     try {
-      this._processPendingRemoteLoginChanges()
+      await this._processPendingRemoteLoginChanges()
+
+      this._desiredTimeoutId = setTimeout(() => {
+        this._desiredTimeoutId = null
+        this._remoteLoginState.state = 'updateFail'
+        this._remoteLoginState.message = 'Remote maintenance process has timed out'
+        this._updateRemoteLoginReportedState()
+      }, 30000)
     } catch (err) {
+      this._desiredTimeoutId = null
       procStat = false
       this._remoteLoginState.state = 'updateFail'
       this._remoteLoginState.message = err.massage
+      this._updateRemoteLoginReportedState()
+      this._updateRemoteLoginStatusState()
     }
-    this._updateRemoteLoginStatusState()
-    this._updateRemoteLoginReportedState()
 
     if (!procStat) {
       this._remoteLoginState.config.enable = preEnable
@@ -280,6 +309,7 @@ export default class RemoteLogin {
       } catch (err) {
         // illegal processing
         this._error('RemoteLogin failed: ' + err.message)
+        throw err
       }
 
       var localServerPublicKeyData
@@ -299,6 +329,7 @@ export default class RemoteLogin {
       } catch (err) {
         // illegal processing
         this._error('RemoteLogin failed: ' + err.message)
+        throw err
       }
 
       const fs = require('fs')
