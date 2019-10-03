@@ -168,8 +168,6 @@ export default class RemoteLogin {
       this._error('updateId not exist')
       return
     }
-        this._remoteLoginState = JSON.parse(JSON.stringify(desiredState))
-        this._remoteLoginState.state = 'updating'
 
     if (!enableRequest) {
       return
