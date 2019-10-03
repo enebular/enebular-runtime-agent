@@ -168,6 +168,8 @@ export default class RemoteLogin {
       this._error('updateId not exist')
       return
     }
+        this._remoteLoginState = JSON.parse(JSON.stringify(desiredState))
+        this._remoteLoginState.state = 'updating'
 
     if (!enableRequest) {
       return
@@ -233,7 +235,7 @@ export default class RemoteLogin {
         relayServerPort: this._remoteLoginState.config.relayServerPort,
         relayServerUser: this._remoteLoginState.config.relayServerUser,
         relayServerPrivateKey: {
-          id: this._remoteLoginState.config.relayServerPrivateKey.id,
+          id: this._remoteLoginState.config.relayServerPrivateKey.id
         }
       },
       updateId: this._remoteLoginState.updateId,
@@ -269,10 +271,11 @@ export default class RemoteLogin {
     if (this._pendingEnableRequest) {
       var keys
       try {
-        keys = this._downloadCertificate(
+        keys = await this._downloadCertificate(
           this._remoteLoginState.config.localServerPublicKey.id,
           this._remoteLoginState.config.relayServerPrivateKey.id
         )
+
         this._debug(
           'RemoteLogin keys: ' + JSON.stringify(keys, null, 2)
         )
@@ -286,11 +289,11 @@ export default class RemoteLogin {
       try {
         for (var item in keys) {
           if (keys[item].id === this._remoteLoginState.config.localServerPublicKey.id) {
-            localServerPublicKeyData = this._fetchCert(
+            localServerPublicKeyData = await this._fetchCert(
               keys[item].url
             )
           } else if (keys[item].id === this._remoteLoginState.config.relayServerPrivateKey.id) {
-            relayServerPrivateKeyData = this._fetchCert(
+            relayServerPrivateKeyData = await this._fetchCert(
               keys[item].url
             )
           }
@@ -299,7 +302,7 @@ export default class RemoteLogin {
         // illegal processing
         this._error('RemoteLogin failed: ' + err.message)
       }
-      
+
       const fs = require('fs')
       const path = require('path')
       let settings = {
@@ -320,13 +323,12 @@ export default class RemoteLogin {
             signature: this._remoteLoginState.config.relayServerPrivateKey.signature
           }
         },
-        signature: _remoteLoginState.signature,
+        signature: this._remoteLoginState.signature,
         localServerPublicKeyData: localServerPublicKeyData,
         relayServerPrivateKeyData: relayServerPrivateKeyData
       }
       try {
         await this._agentRunnerMan.remoteLoginSet(settings)
-//        this._agentRunnerMan.remoteLoginSet(settings)
       } catch (err) {
         throw err
       }
@@ -351,143 +353,30 @@ export default class RemoteLogin {
   }
 
   async _downloadCertificate(localServerPublicKeyId: string, relayServerPrivateKeyId: string) {
-
-    let KeyIds = {
-      KeyIds: [
+    let keyIds = {
+      keyIds: [
         localServerPublicKeyId,
         relayServerPrivateKeyId
       ]
     }
 
-    const res = await this._connectorMessenger.sendRequest(
-      'remoteLogin/device/getKeyDataUrl',
-      KeyIds
-    )
+    var res
+    try {
+        res = await this._connectorMessenger.sendRequest(
+        'remoteLogin/device/getKeyDataUrl',
+        keyIds
+      )
+      this._debug(
+        'remoteLogin/device/getKeyDataUrl res: ' + JSON.stringify(res, null, 2)
+      )
+    } catch (err) {
+      throw new Error('remoteLogin/device/getKeyDataUrl sendRequest error')
+    }
 
     if (!res.hasOwnProperty('keys')) {
       throw new Error('keys is not exist')
     }
     const keys = res.keys || {}
     return keys
-  }
-
-  async download_test() {
-        ////////////////// debug
-        this._error('***************')
-        var keys
-        try {
-          keys = await this._downloadCertificate(
-            "eaf540c0-2b1b-4035-81dd-989c87e74c07",
-            "eaf540c0-2b1b-4035-81dd-989c87e74c08"
-          )
-          this._error(
-            'Getted RemoteLogin keys: ' + JSON.stringify(keys, null, 2)
-          )
-          for (var item in keys) {
-            console.log(keys[item].id)
-            console.log(keys[item].url)
-          }
-        } catch (err) {
-          this._error('Error occured during deploy: ' + err.message)
-          return
-        }
-
-        try {
-          let key1 = await this._fetchCert(
-            keys[0].url
-          )
-          this._error(
-            'Getted key1: ' + key1
-          )
-
-          let key2 = await this._fetchCert(
-            keys[1].url
-          )
-          this._error(
-            'Getted key2: ' + key2
-          )
-        } catch (err) {
-          this._error('Error occured during deploy: ' + err.message)
-          return
-        }
-        /////////////////////////////
-  }
-
-  async test() {
-    const objectHash = require('object-hash')
-    const fs = require('fs')
-    const path = require('path')
-    const crypto = require('crypto')
-    let settings = {
-      config: {
-        enable: true,
-        localUser: 'pi',
-        localServerPublicKey: {
-          data: fs.readFileSync(
-            path.resolve(__dirname, '../keys/ssh/local_server_pubkey.pem'),
-            'utf8'
-          )
-        },
-        relayServer: '13.210.139.107',
-        relayServerPort: '10023',
-        relayServerUser: 'ssh_test',
-        relayServerPrivateKey: {
-          data: fs.readFileSync(
-            path.resolve(__dirname, '../keys/ssh/relay_server_privkey.pem'),
-            'utf8'
-          )
-        }
-      },
-    }
-    /*
-    // For test only
-    const privKey = fs.readFileSync(
-      path.resolve(__dirname, '../keys/enebular/privkey.pem'),
-      'utf8'
-    )
-    let sign = crypto.createSign('SHA256')
-    sign.update(settings.config.localServerPublicKey.data)
-    settings.config.localServerPublicKey.signature = sign.sign(privKey, 'base64')
-
-    sign = crypto.createSign('SHA256')
-    sign.update(settings.config.relayServerPrivateKey.data)
-    settings.config.relayServerPrivateKey.signature = sign.sign(privKey, 'base64')
-
-    const hash = objectHash(settings.config, {
-      algorithm: 'sha256',
-      encoding: 'base64'
-    })
-    sign = crypto.createSign('SHA256')
-    sign.update(hash)
-    settings.signature = sign.sign(privKey, 'base64')
-    */
-
-    try {
-      await this._agentRunnerMan.remoteLoginSet(settings)
-    } catch (err) {
-      this._info('RemoteLogin failed: ' + err.message)
-    }
-
-    setTimeout(async () => {
-      settings = {
-        config: {
-          enable: false,
-        }
-      }
-      /*
-      const hash = objectHash(settings.config, {
-        algorithm: 'sha256',
-        encoding: 'base64'
-      })
-      sign = crypto.createSign('SHA256')
-      sign.update(hash)
-      settings.signature = sign.sign(privKey, 'base64')
-      */
-      try {
-        await this._agentRunnerMan.remoteLoginSet(settings)
-      } catch (err) {
-        this._info('RemoteLogin failed: ' + err.message)
-      }
-    }, 1000 * 1000)
   }
 }
