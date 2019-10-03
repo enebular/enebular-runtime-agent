@@ -11,6 +11,8 @@ import AgentRunnerManager from '../src/agent-runner-manager'
 import Config from '../src/config'
 
 class MockDeviceStateManager extends DeviceStateManager {
+  _testType: String = `1`
+
   updateState(
     type: string,
     op: string,
@@ -18,6 +20,28 @@ class MockDeviceStateManager extends DeviceStateManager {
     state: ?Object,
     extRef: ?Object
   ) {}
+  getState(
+    type: string,
+    path: string
+    ): ?Object {
+      let state = {
+        config : {}
+      }
+      if (type === 'desired' && path === `remoteLogin`) {
+        if(this._testType === `1`) {
+          state.config.updateId = `1`
+        } else if(this._testType === `2`) {
+        } else if(this._testType === `3`) {
+          state.config.enable = true
+        }
+      }
+      return state
+    }
+  setTestType(
+    type: string
+    ) {
+      this._testType = type
+    }
 }
 
 class MockConnectorMessenger1 extends ConnectorMessenger {
@@ -336,4 +360,52 @@ test('_downloadCertificate 002', async t => {
 
   console.error("ret: " + JSON.stringify(ret, null, 2))
   t.pass()
+})
+
+test('DesiredState has no enable and has updateId' , async t => {
+  let remoteLogin = new RemoteLogin(
+    mockDeviceStateManager,
+    connectorMessenger2,
+    agentRunnerManager,
+    logger
+  )
+
+  mockDeviceStateManager.setTestType(`1`)
+
+  remoteLogin._updateRemoteLoginFromDesiredState()
+
+  t.is(remoteLogin._remoteLoginState.state,"updateFail")
+
+})
+
+test('DesiredState has no enable and no updateId' , async t => {
+  let remoteLogin = new RemoteLogin(
+    mockDeviceStateManager,
+    connectorMessenger2,
+    agentRunnerManager,
+    logger
+  )
+
+  mockDeviceStateManager.setTestType(`2`)
+
+  remoteLogin._updateRemoteLoginFromDesiredState()
+
+  t.falsy(remoteLogin._remoteLoginState.state)
+
+})
+
+test('DesiredState has enable and has updateId' , async t => {
+  let remoteLogin = new RemoteLogin(
+    mockDeviceStateManager,
+    connectorMessenger2,
+    agentRunnerManager,
+    logger
+  )
+
+  mockDeviceStateManager.setTestType(`3`)
+
+  remoteLogin._updateRemoteLoginFromDesiredState()
+
+  t.falsy(remoteLogin._remoteLoginState.state)
+
 })

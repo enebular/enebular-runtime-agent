@@ -141,6 +141,7 @@ export default class RemoteLogin {
 
   _updateRemoteLoginFromDesiredState() {
     const desiredState = this._deviceStateMan.getState('desired', 'remoteLogin')
+
     if (!desiredState) {
       return
     }
@@ -149,12 +150,23 @@ export default class RemoteLogin {
     const preEnable = this._remoteLoginState.config.enable
 
     let enableRequest = false
-    if (desiredConfig.hasOwnProperty('enable')) {
-      if (this._remoteLoginState.config.enable !== desiredConfig.enable) {
+    if (desiredConfig.hasOwnProperty('updateId')) {
+      if (desiredConfig.hasOwnProperty('enable')) {
+        if (preEnable !== desiredConfig.enable) {
+          this._remoteLoginState = JSON.parse(JSON.stringify(desiredState))
+          this._remoteLoginState.state = 'updating'
+          enableRequest = true
+        }
+      } else {
         this._remoteLoginState = JSON.parse(JSON.stringify(desiredState))
-        this._remoteLoginState.state = 'updating'
+        this._remoteLoginState.state = 'updateFail'
+        this._remoteLoginState.message = 'enable not exist'
         enableRequest = true
+        this._error('enable not exist')
       }
+    } else {
+      this._error('updateId not exist')
+      return
     }
 
     if (!enableRequest) {
@@ -178,6 +190,10 @@ export default class RemoteLogin {
     )
 
     this._updateRemoteLoginReportedState()
+
+    if (this._remoteLoginState.state === 'updateFail') {
+      return
+    }
 
     let procStat = true
     this._remoteLoginState.state = 'current'
