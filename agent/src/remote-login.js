@@ -151,36 +151,40 @@ export default class RemoteLogin {
     let settings = {
       config: {
         enable: true,
-        localUser: 'pi',
+        localUser: 'enebular-admin',
+        localServerPort: '10032',
         localServerPublicKey: {
-          data: fs.readFileSync(
+          id: '12345',
+          size: '1111'
+        },
+        relayServer: '13.210.139.107',
+        relayServerPort: '10022',
+        relayServerUser: 'ssh_test',
+        relayServerPrivateKey: {
+          id: '12345',
+          size: '1111'
+        }
+      },
+      relayServerPrivateKeyData: fs.readFileSync(
+            path.resolve(__dirname, '../keys/ssh/relay_server_privkey.pem'),
+            'utf8'
+          ),
+      localServerPublicKeyData: fs.readFileSync(
             path.resolve(__dirname, '../keys/ssh/local_server_pubkey.pem'),
             'utf8'
           )
-        },
-        relayServer: '13.210.139.107',
-        relayServerPort: '10023',
-        relayServerUser: 'ssh_test',
-        relayServerPrivateKey: {
-          data: fs.readFileSync(
-            path.resolve(__dirname, '../keys/ssh/relay_server_privkey.pem'),
-            'utf8'
-          )
-        }
-      },
     }
-    /*
     // For test only
     const privKey = fs.readFileSync(
       path.resolve(__dirname, '../keys/enebular/privkey.pem'),
       'utf8'
     )
     let sign = crypto.createSign('SHA256')
-    sign.update(settings.config.localServerPublicKey.data)
+    sign.update(settings.localServerPublicKeyData)
     settings.config.localServerPublicKey.signature = sign.sign(privKey, 'base64')
 
     sign = crypto.createSign('SHA256')
-    sign.update(settings.config.relayServerPrivateKey.data)
+    sign.update(settings.relayServerPrivateKeyData)
     settings.config.relayServerPrivateKey.signature = sign.sign(privKey, 'base64')
 
     const hash = objectHash(settings.config, {
@@ -190,7 +194,6 @@ export default class RemoteLogin {
     sign = crypto.createSign('SHA256')
     sign.update(hash)
     settings.signature = sign.sign(privKey, 'base64')
-    */
 
     try {
       await this._agentRunnerMan.remoteLoginSet(settings)
@@ -204,7 +207,6 @@ export default class RemoteLogin {
           enable: false,
         }
       }
-      /*
       const hash = objectHash(settings.config, {
         algorithm: 'sha256',
         encoding: 'base64'
@@ -212,12 +214,11 @@ export default class RemoteLogin {
       sign = crypto.createSign('SHA256')
       sign.update(hash)
       settings.signature = sign.sign(privKey, 'base64')
-      */
       try {
         await this._agentRunnerMan.remoteLoginSet(settings)
       } catch (err) {
         this._info('RemoteLogin failed: ' + err.message)
       }
-    }, 1000 * 1000)
+    }, 1 * 60 * 1000)
   }
 }

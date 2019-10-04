@@ -11,6 +11,7 @@ interface RemoteLoginSettings {
   config: {
     enable: boolean
     localUser: string
+    localServerPort: string
     localServerPublicKey: {
       id: string
       size: string
@@ -67,6 +68,7 @@ export default class TaskRemoteLogin extends Task {
     if (config.enable) {
       if (
         !config.localUser ||
+        !config.localServerPort ||
         !config.localServerPublicKey ||
         !config.relayServer ||
         !config.relayServerPort ||
@@ -101,10 +103,12 @@ export default class TaskRemoteLogin extends Task {
         enable: true,
         serverOptions: {
           user: config.localUser,
+          port: config.localServerPort,
           publicKey: settings.localServerPublicKeyData
         },
         clientOptions: {
           user: config.localUser,
+          localServerPort: config.localServerPort,
           remoteIPAddr: config.relayServer,
           remotePort: config.relayServerPort,
           remoteUser: config.relayServerUser,
