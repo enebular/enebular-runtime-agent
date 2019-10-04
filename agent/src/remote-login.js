@@ -86,7 +86,9 @@ export default class RemoteLogin {
     if (this._desiredTimeoutId !== null) {
       clearTimeout(this._desiredTimeoutId)
       this._desiredTimeoutId = null
+      this._remoteLoginState.state = 'current'
       this._updateRemoteLoginReportedState()
+      this._updateRemoteLoginStatusState()
     }
 
     // デバイスステート status 更新 (差分更新)
@@ -114,7 +116,9 @@ export default class RemoteLogin {
     if (this._desiredTimeoutId !== null) {
       clearTimeout(this._desiredTimeoutId)
       this._desiredTimeoutId = null
+      this._remoteLoginState.state = 'current'
       this._updateRemoteLoginReportedState()
+      this._updateRemoteLoginStatusState()
     }
 
     // デバイスステート status 更新 (差分更新)
@@ -217,7 +221,6 @@ export default class RemoteLogin {
     }
 
     let procStat = true
-    this._remoteLoginState.state = 'current'
     try {
       await this._processPendingRemoteLoginChanges()
 
