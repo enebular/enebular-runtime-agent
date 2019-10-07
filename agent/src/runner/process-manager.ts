@@ -102,7 +102,7 @@ export default class ProcessManager extends EventEmitter {
         if (this._startedMessage && startTimeout) {
           clearTimeout(startTimeout)
         }
-        if (code !== 0) {
+        if (code !== 0 && code !== null) {
           this._retryCount++
           if (
             this._retryCount < this._maxRetryCount ||
