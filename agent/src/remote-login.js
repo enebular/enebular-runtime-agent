@@ -5,6 +5,9 @@ import type { Logger } from 'winston'
 import AgentRunnerManager from './agent-runner-manager'
 
 const moduleName = 'remote-login'
+const DESIRED_PROC_STATUS_LOCAL_SERVER = 0x01
+const DESIRED_PROC_STATUS_RELAY_SERVER = 0x02
+const DESIRED_PROC_STATUS_ALL = DESIRED_PROC_STATUS_LOCAL_SERVER | DESIRED_PROC_STATUS_RELAY_SERVER
 
 export default class RemoteLogin {
   _deviceStateMan: DeviceStateManager
@@ -17,6 +20,9 @@ export default class RemoteLogin {
   _localServerPublicKey: Object
   _relayServerPrivateKey: Object
   _desiredTimeoutId
+  _localServerActiveStatus = false
+  _relayServerActiveStatus = false
+  _desiredProcStatus = 0x00
 
   constructor(
     deviceStateMan: DeviceStateManager,
@@ -83,20 +89,25 @@ export default class RemoteLogin {
       return
     }
 
-    if (this._desiredTimeoutId !== null) {
-      clearTimeout(this._desiredTimeoutId)
-      this._desiredTimeoutId = null
-      this._remoteLoginState.state = 'current'
-      this._updateRemoteLoginReportedState()
-      this._updateRemoteLoginStatusState()
-    }
+    this._localServerActiveStatus = params.active
 
-    // デバイスステート status 更新 (差分更新)
-    if (this._remoteLoginState.config.enable !== params.active) {
-      this._remoteLoginState.config.enable = params.active
+    if (this._desiredTimeoutId !== null) {
+      this._desiredProcStatus |= DESIRED_PROC_STATUS_LOCAL_SERVER
+
+      if (this._desiredProcStatus == DESIRED_PROC_STATUS_ALL) {
+        clearTimeout(this._desiredTimeoutId)
+        this._desiredTimeoutId = null
+        this._desiredProcStatus = 0x00
+
+        this._remoteLoginState.state = 'current'
+        this._updateRemoteLoginReportedState()
+        this._updateRemoteLoginStatusState()
+      }
+    } else {
       this._updateRemoteLoginStatusState()
-      // true -> false : リモートログイン OFF を runner へ依頼
-      if (this._remoteLoginState.config.enable === false) {
+
+      if (this._localServerActiveStatus !== this._relayServerActiveStatus) {
+        this._remoteLoginState.config.enable = false
         this._enableRequest()
         await this._processPendingRemoteLoginChanges()
       }
@@ -113,20 +124,25 @@ export default class RemoteLogin {
       return
     }
 
-    if (this._desiredTimeoutId !== null) {
-      clearTimeout(this._desiredTimeoutId)
-      this._desiredTimeoutId = null
-      this._remoteLoginState.state = 'current'
-      this._updateRemoteLoginReportedState()
-      this._updateRemoteLoginStatusState()
-    }
+    this._relayServerActiveStatus = params.active
 
-    // デバイスステート status 更新 (差分更新)
-    if (this._remoteLoginState.config.enable !== params.active) {
-      this._remoteLoginState.config.enable = params.active
+    if (this._desiredTimeoutId !== null) {
+      this._desiredProcStatus |= DESIRED_PROC_STATUS_RELAY_SERVER
+
+      if (this._desiredProcStatus == DESIRED_PROC_STATUS_ALL) {
+        clearTimeout(this._desiredTimeoutId)
+        this._desiredTimeoutId = null
+        this._desiredProcStatus = 0x00
+
+        this._remoteLoginState.state = 'current'
+        this._updateRemoteLoginReportedState()
+        this._updateRemoteLoginStatusState()
+      }
+    } else {
       this._updateRemoteLoginStatusState()
-      // true -> false : リモートログイン OFF を runner へ依頼
-      if (this._remoteLoginState.config.enable === false) {
+
+      if (this._localServerActiveStatus !== this._relayServerActiveStatus) {
+        this._remoteLoginState.config.enable = false
         this._enableRequest()
         await this._processPendingRemoteLoginChanges()
       }
@@ -136,6 +152,11 @@ export default class RemoteLogin {
   async _handleDeviceStateChange(params: { type: string, path: ?string }) {
     if (!this._inited) {
       return
+    }
+
+    // TODO 暫定対応
+    if (params.type === 'status') {
+      this._updateRemoteLoginStatusState()
     }
 
     if(!params.path) {
@@ -220,9 +241,8 @@ export default class RemoteLogin {
       return
     }
 
-    let procStat = true
     try {
-      await this._processPendingRemoteLoginChanges()
+      this._processPendingRemoteLoginChanges()
 
       this._desiredTimeoutId = setTimeout(() => {
         this._desiredTimeoutId = null
@@ -231,16 +251,13 @@ export default class RemoteLogin {
         this._updateRemoteLoginReportedState()
       }, 30000)
     } catch (err) {
+      clearTimeout(this._desiredTimeoutId)
       this._desiredTimeoutId = null
-      procStat = false
+      this._desiredProcStatus = 0x00
       this._remoteLoginState.state = 'updateFail'
       this._remoteLoginState.message = err.massage
       this._updateRemoteLoginReportedState()
       this._updateRemoteLoginStatusState()
-    }
-
-    if (!procStat) {
-      this._remoteLoginState.config.enable = preEnable
     }
   }
 
@@ -290,8 +307,8 @@ export default class RemoteLogin {
     }
 
     const state = {
-      localServerActive: this._remoteLoginState.config.enable,
-      relayServerConnected: this._remoteLoginState.config.enable
+      localServerActive: this._localServerActiveStatus,
+      relayServerConnected: this._relayServerActiveStatus
     }
 
     this._deviceStateMan.updateState('status', 'set', 'remoteLogin', state)
