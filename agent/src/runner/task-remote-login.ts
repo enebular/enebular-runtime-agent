@@ -3,6 +3,7 @@ import * as path from 'path'
 import objectHash from 'object-hash'
 
 import AgentRunnerService from './agent-runner-service'
+import GetPort from 'get-port'
 import Task from './task'
 import { SSHConfig } from './ssh'
 import { verifySignature } from '../utils'
@@ -11,7 +12,6 @@ interface RemoteLoginSettings {
   config: {
     enable: boolean
     localUser: string
-    localServerPort: string
     localServerPublicKey: {
       id: string
       size: string
@@ -71,7 +71,6 @@ export default class TaskRemoteLogin extends Task {
     if (config.enable) {
       if (
         !config.localUser ||
-        !config.localServerPort ||
         !config.localServerPublicKey ||
         !config.relayServer ||
         !config.relayServerPort ||
@@ -102,16 +101,21 @@ export default class TaskRemoteLogin extends Task {
         throw new Error(`Invalid signature for relayServerPrivateKey`)
       }
 
+      const availablePort = await GetPort({
+        port: GetPort.makeRange(10022, 11022)
+      })
+      const localServerPort = availablePort.toString()
+
       sshConfig = {
         enable: true,
         serverOptions: {
           user: config.localUser,
-          port: config.localServerPort,
+          port: localServerPort,
           publicKey: settings.localServerPublicKeyData
         },
         clientOptions: {
           user: config.localUser,
-          localServerPort: config.localServerPort,
+          localServerPort: localServerPort,
           remoteIPAddr: config.relayServer,
           remotePort: config.relayServerPort,
           remoteUser: config.relayServerUser,
