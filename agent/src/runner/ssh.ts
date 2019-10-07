@@ -35,6 +35,7 @@ export class SSH extends EventEmitter {
   private _pendingConfig: SSHConfig | null = null
   private _sshClientManager: ProcessManager
   private _sshServerManager: ProcessManager
+  private _privateKeyPath: string
 
   public constructor(log: AgentRunnerLogger) {
     super()
@@ -43,6 +44,7 @@ export class SSH extends EventEmitter {
     this._sshClientManager.maxRetryCount = 3
     this._sshServerManager = new ProcessManager('ssh-server', this._log)
     this._sshServerManager.retryDelay = 0
+    this._privateKeyPath = path.resolve(__dirname, '../../keys/tmp_private_key')
   }
 
   private _debug(...args: any[]): void {
@@ -143,7 +145,7 @@ export class SSH extends EventEmitter {
 
   public async startClient(options: SSHClientOptions): Promise<void> {
     const userInfo = getUserInfo(options.user)
-    const privateKeyPath = path.resolve(__dirname, '../../keys/tmp_private_key')
+    const privateKeyPath = this._privateKeyPath
     fs.writeFileSync(privateKeyPath, options.privateKey, 'utf8')
     fs.chmodSync(privateKeyPath, 0o600)
     fs.chownSync(privateKeyPath, userInfo.uid, userInfo.gid)
@@ -178,7 +180,10 @@ export class SSH extends EventEmitter {
   }
 
   public async stopClient(): Promise<void> {
-    return this._sshClientManager.stop()
+    await this._sshClientManager.stop()
+    if (fs.existsSync(this._privateKeyPath)) {
+      fs.unlinkSync(this._privateKeyPath)
+    }
   }
 
   public async setConfig(sshConfig: SSHConfig): Promise<void> {
