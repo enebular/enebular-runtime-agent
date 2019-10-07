@@ -17,12 +17,12 @@ export default class AgentRunnerService {
   private _taskIndex = 0
   private _ssh: SSH
 
-  public constructor(agentCoreManager: AgentCoreManager) {
+  public constructor(agentCoreManager: AgentCoreManager, log: AgentRunnerLogger) {
     this._agentCoreManager = agentCoreManager
     this._agentCoreManager.on('dataReceived', data =>
       this._onDataReceived(data)
     )
-    this._log = new AgentRunnerLogger(this._agentCoreManager)
+    this._log = log
     this._ssh = new SSH(this._log)
     this._ssh.on('clientStatusChanged', active => {
       this._agentCoreManager.sendStatusUpdate({

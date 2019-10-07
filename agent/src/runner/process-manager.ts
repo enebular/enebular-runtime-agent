@@ -57,9 +57,6 @@ export default class ProcessManager extends EventEmitter {
       return
     }
     return new Promise((resolve, reject): void => {
-      this._debug(`spawn ${command}`)
-      this._debug(args)
-
       const cproc = spawn(
         command,
         args,
