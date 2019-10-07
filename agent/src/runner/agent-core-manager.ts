@@ -78,8 +78,7 @@ export default class AgentCoreManager extends EventEmitter {
           message = `agent-core killed by signal ${signal}`
           // killed by signal treated as normally exiting
           code = 0
-        }
-        else {
+        } else {
           message = `agent-core exited, code ${code}`
         }
         this._cproc = undefined
@@ -100,11 +99,10 @@ export default class AgentCoreManager extends EventEmitter {
   public async waitAgentCoreToShutdown(): Promise<void> {
     if (!this._cproc) return
 
-    return new Promise((resolve, reject): void => {
+    return new Promise((resolve): void => {
       setTimeout(() => {
         // Agent core shall receive signal by itself, wait for 15 seconds to force kill it
-        if (this._cproc)
-          this._cproc.kill('SIGKILL')
+        if (this._cproc) this._cproc.kill('SIGKILL')
       }, 15 * 1000)
 
       this.on('agentCoreTerminated', () => {

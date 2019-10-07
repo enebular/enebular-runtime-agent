@@ -1,4 +1,3 @@
-import * as path from 'path'
 import Task from './task'
 import AgentCoreManager from './agent-core-manager'
 import AgentRunnerLogger from './agent-runner-logger'
@@ -16,7 +15,7 @@ export default class AgentRunnerService {
   private _log: AgentRunnerLogger
   private _runningTasks: RunningTasks = {}
   private _taskIndex = 0
-  private _ssh : SSH
+  private _ssh: SSH
 
   public constructor(agentCoreManager: AgentCoreManager) {
     this._agentCoreManager = agentCoreManager
@@ -96,14 +95,17 @@ export default class AgentRunnerService {
     })
   }
 
-  private _createTask(taskType: string, settings: Record<string, any>): Task | undefined {
-    switch(taskType) {
-    case 'remoteLogin':
-      return new TaskRemoteLogin(this, settings)
-    case 'remoteLoginStatusUpdate':
-      return new TaskRemoteLoginStatusUpdate(this, settings)
-    default:
-      return undefined
+  private _createTask(
+    taskType: string,
+    settings: Record<string, any>
+  ): Task | undefined {
+    switch (taskType) {
+      case 'remoteLogin':
+        return new TaskRemoteLogin(this, settings)
+      case 'remoteLoginStatusUpdate':
+        return new TaskRemoteLoginStatusUpdate(this, settings)
+      default:
+        return undefined
     }
   }
 

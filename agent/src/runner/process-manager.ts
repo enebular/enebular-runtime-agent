@@ -5,9 +5,9 @@ import { UserInfo } from '../utils'
 
 export default class ProcessManager extends EventEmitter {
   private _cproc?: ChildProcess
-  private _maxRetryCount: number = -1 // -1 means unlimited
-  private _retryDelay: number = 5
-  private _retryCount: number = 0
+  private _maxRetryCount = -1 // -1 means unlimited
+  private _retryDelay = 5
+  private _retryCount = 0
   private _log: AgentRunnerLogger
   private _startedMessage?: string
   private _startedTimeout?: number
@@ -39,12 +39,19 @@ export default class ProcessManager extends EventEmitter {
     this._log.error(...args)
   }
 
-  public startedIfTraceContains(startedMessage: string, startedTimeout: number) {
+  public startedIfTraceContains(
+    startedMessage: string,
+    startedTimeout: number
+  ): void {
     this._startedMessage = startedMessage
     this._startedTimeout = startedTimeout
   }
 
-  public async start(command: string, args: Array<string>, userInfo?: UserInfo): Promise<void> {
+  public async start(
+    command: string,
+    args: Array<string>,
+    userInfo?: UserInfo
+  ): Promise<void> {
     if (this._cproc) {
       this._info(`${this._name} already started`)
       return
@@ -53,13 +60,19 @@ export default class ProcessManager extends EventEmitter {
       this._debug(`spawn ${command}`)
       this._debug(args)
 
-      const cproc = spawn(command, args, userInfo ? {
-        stdio: 'pipe',
-        uid: userInfo.uid,
-        gid: userInfo.gid
-      } : {
-        stdio: 'pipe'
-      })
+      const cproc = spawn(
+        command,
+        args,
+        userInfo
+          ? {
+              stdio: 'pipe',
+              uid: userInfo.uid,
+              gid: userInfo.gid
+            }
+          : {
+              stdio: 'pipe'
+            }
+      )
       let startTimeout
       if (this._startedMessage && this._startedTimeout) {
         startTimeout = setTimeout(async () => {
@@ -73,12 +86,12 @@ export default class ProcessManager extends EventEmitter {
       cproc.stderr.on('data', data => {
         this._debug(`${this._name}: `, data.toString().replace(/(\n|\r)+$/, ''))
         if (this._startedMessage && startTimeout) {
-            const started = data.indexOf(this._startedMessage) !== -1 ? true : false 
-            if (started) {
-              clearTimeout(startTimeout)
-              this.emit('started', data)
-              resolve()
-            }
+          const started = data.indexOf(this._startedMessage) !== -1
+          if (started) {
+            clearTimeout(startTimeout)
+            this.emit('started', data)
+            resolve()
+          }
         }
       })
       cproc.once('exit', (code, signal) => {
@@ -93,9 +106,11 @@ export default class ProcessManager extends EventEmitter {
           clearTimeout(startTimeout)
         }
         if (code !== 0) {
-          const now = Date.now()
           this._retryCount++
-          if (this._retryCount < this._maxRetryCount || this._maxRetryCount === -1) {
+          if (
+            this._retryCount < this._maxRetryCount ||
+            this._maxRetryCount === -1
+          ) {
             this._info(
               `Unexpected exit, restarting ${this._name} in ${this._retryDelay} seconds. Retry count:` +
                 this._retryCount
@@ -122,13 +137,12 @@ export default class ProcessManager extends EventEmitter {
       })
 
       this._cproc = cproc
-      if (!this._startedMessage)
-        resolve()
+      if (!this._startedMessage) resolve()
     })
   }
 
   public async stop(): Promise<void> {
-    return new Promise((resolve, reject): void => {
+    return new Promise((resolve): void => {
       const cproc = this._cproc
       if (cproc) {
         this._info(`Shutting down ${this._name}...`)

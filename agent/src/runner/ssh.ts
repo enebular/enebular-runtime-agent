@@ -1,8 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import { execSync, spawn, ChildProcess } from 'child_process'
-import { execReturnStdout, getUserInfo, exec } from '../utils'
-import ProcessUtil, { RetryInfo } from '../process-util'
+import { execSync } from 'child_process'
+import { execReturnStdout, getUserInfo } from '../utils'
 import EventEmitter from 'events'
 import AgentRunnerLogger from './agent-runner-logger'
 import ProcessManager from './process-manager'
@@ -22,7 +21,7 @@ interface SSHServerOptions {
   publicKey: string
 }
 
-export interface SSHConfig{
+export interface SSHConfig {
   enable: boolean
   clientOptions?: SSHClientOptions
   serverOptions?: SSHServerOptions
@@ -32,8 +31,8 @@ export class SSH extends EventEmitter {
   private _serverActive = false
   private _clientActive = false
   private _log: AgentRunnerLogger
-  private _sshProcessingChanges? : boolean
-  private _pendingConfig : SSHConfig | null = null
+  private _sshProcessingChanges?: boolean
+  private _pendingConfig: SSHConfig | null = null
   private _sshClientManager: ProcessManager
   private _sshServerManager: ProcessManager
 
@@ -98,8 +97,7 @@ export class SSH extends EventEmitter {
           fs.writeFileSync(authorizedKeys, options.publicKey, 'utf8')
           fs.chownSync(authorizedKeys, userInfo.uid, userInfo.gid)
           fs.chmodSync(authorizedKeys, 0o600)
-        }
-        else {
+        } else {
           const keys = fs.readFileSync(authorizedKeys, 'utf8')
           if (keys.indexOf(options.publicKey) === -1) {
             fs.appendFileSync(authorizedKeys, options.publicKey, 'utf8')
@@ -114,21 +112,22 @@ export class SSH extends EventEmitter {
         this.emit('serverStatusChanged', this._serverActive)
       })
 
-      this._sshServerManager.on('exit', (message) => {
+      this._sshServerManager.on('exit', () => {
         this._serverActive = false
         this.emit('serverStatusChanged', this._serverActive)
       })
       this._sshServerManager.startedIfTraceContains(
-          `Server listening on :: port ${options.port}`,
-          30 * 1000)
+        `Server listening on :: port ${options.port}`,
+        30 * 1000
+      )
 
       const args = [
-        "-D",
-        "-d",
+        '-D',
+        '-d',
         `-o AllowUsers=${options.user}`,
-        "-o PasswordAuthentication=no",
-        "-o ClientAliveInterval=30",
-        "-o ClientAliveCountMax=3",
+        '-o PasswordAuthentication=no',
+        '-o ClientAliveInterval=30',
+        '-o ClientAliveCountMax=3',
         `-p ${options.port}`
       ]
 
@@ -150,12 +149,12 @@ export class SSH extends EventEmitter {
     fs.chownSync(privateKeyPath, userInfo.uid, userInfo.gid)
 
     const args = [
-      "-v",
-      "-N",
-      "-o ExitOnForwardFailure=yes",
-      "-o StrictHostKeyChecking=no",
-      "-o ServerAliveInterval=30",
-      "-o ServerAliveCountMax=3",
+      '-v',
+      '-N',
+      '-o ExitOnForwardFailure=yes',
+      '-o StrictHostKeyChecking=no',
+      '-o ServerAliveInterval=30',
+      '-o ServerAliveCountMax=3',
       `-R ${options.remotePort}:localhost:${options.localServerPort}`,
       `-i${privateKeyPath}`,
       `${options.remoteUser}@${options.remoteIPAddr}`
@@ -166,14 +165,15 @@ export class SSH extends EventEmitter {
       this.emit('clientStatusChanged', this._clientActive)
     })
 
-    this._sshClientManager.on('exit', (message) => {
+    this._sshClientManager.on('exit', () => {
       this._clientActive = false
       this.emit('clientStatusChanged', this._clientActive)
     })
     this._sshClientManager.startedIfTraceContains(
-        'All remote forwarding requests processed',
-        // It may take up to 2 mins to timeout in connecting
-        3 * 60 * 1000)
+      'All remote forwarding requests processed',
+      // It may take up to 2 mins to timeout in connecting
+      3 * 60 * 1000
+    )
     return this._sshClientManager.start('/usr/bin/ssh', args, userInfo)
   }
 
@@ -182,8 +182,10 @@ export class SSH extends EventEmitter {
   }
 
   public async setConfig(sshConfig: SSHConfig): Promise<void> {
-    if (this._pendingConfig && 
-        JSON.stringify(this._pendingConfig) === JSON.stringify(sshConfig)) {
+    if (
+      this._pendingConfig &&
+      JSON.stringify(this._pendingConfig) === JSON.stringify(sshConfig)
+    ) {
       this._info('config is identical')
       return
     }
@@ -192,7 +194,7 @@ export class SSH extends EventEmitter {
     await this._processPendingSSHChanged()
   }
 
-  private async _processPendingSSHChanged() : Promise<void> {
+  private async _processPendingSSHChanged(): Promise<void> {
     if (this._sshProcessingChanges) {
       return
     }
@@ -202,10 +204,8 @@ export class SSH extends EventEmitter {
       if (this._pendingConfig == null) {
         break
       }
-      let pendingConfig = this._pendingConfig
+      const pendingConfig = this._pendingConfig
       this._pendingConfig = null
-
-      let promises: Promise<void>[] = []
 
       try {
         if (pendingConfig.enable) {
@@ -213,15 +213,14 @@ export class SSH extends EventEmitter {
             this._error(`options are required to start ssh`)
             continue
           }
+          // sshd need to be started before launching ssh
           await this.startServer(pendingConfig.serverOptions)
           await this.startClient(pendingConfig.clientOptions)
-        }
-        else {
+        } else {
           await this.stopClient()
           await this.stopServer()
         }
-      }
-      catch (err) {
+      } catch (err) {
         this._error(`process ssh changes failed: ${err.message}`)
       }
     }

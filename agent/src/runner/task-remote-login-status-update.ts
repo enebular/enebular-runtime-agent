@@ -2,7 +2,10 @@ import AgentRunnerService from './agent-runner-service'
 import Task from './task'
 
 export default class TaskRemoteLoginStatusUpdate extends Task {
-  public constructor(service: AgentRunnerService, settings: Record<string, any>) {
+  public constructor(
+    service: AgentRunnerService,
+    settings: Record<string, any>
+  ) {
     super(service, 'remoteLoginStatusUpdate', settings)
   }
 

@@ -4,7 +4,7 @@ import objectHash from 'object-hash'
 
 import AgentRunnerService from './agent-runner-service'
 import Task from './task'
-import { SSHConfig, SSH } from './ssh'
+import { SSHConfig } from './ssh'
 import { verifySignature } from '../utils'
 
 interface RemoteLoginSettings {
@@ -32,7 +32,10 @@ interface RemoteLoginSettings {
 }
 
 export default class TaskRemoteLogin extends Task {
-  public constructor(service: AgentRunnerService, settings: Record<string, any>) {
+  public constructor(
+    service: AgentRunnerService,
+    settings: Record<string, any>
+  ) {
     super(service, 'remoteLogin', settings)
   }
 
@@ -61,7 +64,7 @@ export default class TaskRemoteLogin extends Task {
 
     let sshConfig: SSHConfig
     const config = settings.config
-    if (!config.hasOwnProperty('enable')) {
+    if (!Object.prototype.hasOwnProperty.call(config, 'enable')) {
       throw new Error(`enable is required for remote login config`)
     }
 
@@ -115,10 +118,9 @@ export default class TaskRemoteLogin extends Task {
           privateKey: settings.relayServerPrivateKeyData
         }
       }
-    }
-    else {
+    } else {
       sshConfig = {
-        enable: false,
+        enable: false
       }
     }
     ssh.setConfig(sshConfig)
