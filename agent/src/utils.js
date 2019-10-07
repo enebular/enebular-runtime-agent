@@ -3,6 +3,12 @@ import fetch from 'isomorphic-fetch'
 import crypto from 'crypto'
 import { execSync } from 'child_process'
 
+export interface UserInfo {
+  user: string,
+  gid: number,
+  uid: number
+}
+
 export async function delay(msec: number) {
   return new Promise(resolve => {
     setTimeout(() => resolve(), msec)

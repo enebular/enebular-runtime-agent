@@ -1,12 +1,7 @@
 import { fork, ChildProcess } from 'child_process'
 import EventEmitter from 'events'
 import { Data, Log, Response, StatusUpdate } from './agent-runner-message-type'
-
-interface UserInfo {
-  user: string
-  gid: number
-  uid: number
-}
+import { UserInfo } from '../utils'
 
 export default class AgentCoreManager extends EventEmitter {
   private _cproc?: ChildProcess

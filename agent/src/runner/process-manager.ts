@@ -1,10 +1,12 @@
 import { spawn, ChildProcess } from 'child_process'
 import EventEmitter from 'events'
 import AgentRunnerLogger from './agent-runner-logger'
-import { getUserInfo } from '../utils'
+import { UserInfo } from '../utils'
 
 export default class ProcessManager extends EventEmitter {
   private _cproc?: ChildProcess
+  private _maxRetryCount: number = -1 // -1 means unlimited
+  private _retryDelay: number = 5
   private _retryCount: number = 0
   private _log: AgentRunnerLogger
   private _startedMessage?: string
@@ -15,6 +17,14 @@ export default class ProcessManager extends EventEmitter {
     super()
     this._name = name
     this._log = log
+  }
+
+  set maxRetryCount(maxRetryCount: number) {
+    this._maxRetryCount = maxRetryCount
+  }
+
+  set retryDelay(retryDelay: number) {
+    this._retryDelay = retryDelay
   }
 
   private _debug(...args: any[]): void {
@@ -34,17 +44,21 @@ export default class ProcessManager extends EventEmitter {
     this._startedTimeout = startedTimeout
   }
 
-  public async start(command: string, args: Array<string>, user?: string): Promise<void> {
+  public async start(command: string, args: Array<string>, userInfo?: UserInfo): Promise<void> {
     if (this._cproc) {
       this._info(`${this._name} already started`)
       return
     }
     return new Promise((resolve, reject): void => {
-      const userInfo = getUserInfo(user)
-      const cproc = spawn(command, args, {
+      this._debug(`spawn ${command}`)
+      this._debug(args)
+
+      const cproc = spawn(command, args, userInfo ? {
         stdio: 'pipe',
         uid: userInfo.uid,
         gid: userInfo.gid
+      } : {
+        stdio: 'pipe'
       })
       let startTimeout
       if (this._startedMessage && this._startedTimeout) {
@@ -81,19 +95,19 @@ export default class ProcessManager extends EventEmitter {
         if (code !== 0) {
           const now = Date.now()
           this._retryCount++
-          if (this._retryCount < 3) {
+          if (this._retryCount < this._maxRetryCount || this._maxRetryCount === -1) {
             this._info(
-              `Unexpected exit, restarting ${this._name} in 5 seconds. Retry count:` +
+              `Unexpected exit, restarting ${this._name} in ${this._retryDelay} seconds. Retry count:` +
                 this._retryCount
             )
             setTimeout(async () => {
               try {
-                await this.start(command, args, user)
+                await this.start(command, args, userInfo)
                 resolve()
               } catch (err) {
                 reject(err)
               }
-            }, 5000)
+            }, this._retryDelay * 1000)
           } else {
             this._info(
               `Unexpected exit, but retry count(${this._retryCount}) exceed max.`

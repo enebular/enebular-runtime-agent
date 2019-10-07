@@ -41,7 +41,9 @@ export class SSH extends EventEmitter {
     super()
     this._log = log
     this._sshClientManager = new ProcessManager('ssh-client', this._log)
+    this._sshClientManager.maxRetryCount = 3
     this._sshServerManager = new ProcessManager('ssh-server', this._log)
+    this._sshServerManager.retryDelay = 0
   }
 
   private _debug(...args: any[]): void {
@@ -57,24 +59,12 @@ export class SSH extends EventEmitter {
   }
 
   public init(): void {
-    this._ensureServiceIsEnabled('ssh')
-    this._serverActive = this.isServiceActive('ssh')
     this.statusUpdate()
   }
 
   public statusUpdate(): void {
     this.emit('serverStatusChanged', this._serverActive)
     this.emit('clientStatusChanged', this._clientActive)
-  }
-
-  private isServiceActive(serviceName: string): boolean {
-    return exec(`systemctl is-active --quiet ${serviceName}`)
-  }
-
-  private _ensureServiceIsEnabled(serviceName: string): void {
-    if (!exec(`systemctl is-enabled --quiet ${serviceName}`)) {
-      return exec(`systemctl enable -quiet ${serviceName}`)
-    }
   }
 
   private _exec(cmd: string): Promise<void> {
@@ -135,10 +125,14 @@ export class SSH extends EventEmitter {
       const args = [
         "-D",
         "-d",
+        `-o AllowUsers=${options.user}`,
+        "-o PasswordAuthentication=no",
+        "-o ClientAliveInterval=30",
+        "-o ClientAliveCountMax=3",
         `-p ${options.port}`
       ]
 
-      return this._sshServerManager.start('/usr/sbin/sshd', args, options.user)
+      return this._sshServerManager.start('/usr/sbin/sshd', args)
     } else {
       this._info('ssh-server already started')
     }
@@ -180,7 +174,7 @@ export class SSH extends EventEmitter {
         'All remote forwarding requests processed',
         // It may take up to 2 mins to timeout in connecting
         3 * 60 * 1000)
-    return this._sshClientManager.start('/usr/bin/ssh', args, options.user)
+    return this._sshClientManager.start('/usr/bin/ssh', args, userInfo)
   }
 
   public async stopClient(): Promise<void> {
@@ -212,22 +206,20 @@ export class SSH extends EventEmitter {
       this._pendingConfig = null
 
       let promises: Promise<void>[] = []
-      if (pendingConfig.enable) {
-        if (!pendingConfig.serverOptions || !pendingConfig.clientOptions) {
-          this._error(`options are required to start ssh`)
-          continue
-        }
-        promises.push(this.startServer(pendingConfig.serverOptions))
-        promises.push(
-          this.startClient(pendingConfig.clientOptions)
-        )
-      }
-      else {
-        promises.push(this.stopServer())
-        promises.push(this.stopClient())
-      }
+
       try {
-        await Promise.all(promises)
+        if (pendingConfig.enable) {
+          if (!pendingConfig.serverOptions || !pendingConfig.clientOptions) {
+            this._error(`options are required to start ssh`)
+            continue
+          }
+          await this.startServer(pendingConfig.serverOptions)
+          await this.startClient(pendingConfig.clientOptions)
+        }
+        else {
+          await this.stopClient()
+          await this.stopServer()
+        }
       }
       catch (err) {
         this._error(`process ssh changes failed: ${err.message}`)
