@@ -114,7 +114,7 @@ export class SSH extends EventEmitter {
         throw new Error(`Failed to save public key: ${err.message}`)
       }
 
-      await this._exec('service ssh start')
+      await this._exec('systemctl start ssh')
       this._serverActive = true
       this.emit('serverStatusChanged', this._serverActive)
     } else {
@@ -125,7 +125,7 @@ export class SSH extends EventEmitter {
   public async stopServer(): Promise<void> {
     if (this._serverActive) {
       this._info('Shutting down ssh-server...')
-      await this._exec('service ssh stop')
+      await this._exec('systemctl stop ssh')
       this._serverActive = false
       this.emit('serverStatusChanged', this._serverActive)
     } else {
