@@ -125,7 +125,8 @@ export class SSH extends EventEmitter {
 
       const args = [
         '-D',
-        '-d',
+        '-e',
+        '-o LogLevel=DEBUG',
         `-o AllowUsers=${options.user}`,
         '-o PasswordAuthentication=no',
         '-o ClientAliveInterval=30',
