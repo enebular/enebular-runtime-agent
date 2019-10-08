@@ -90,9 +90,8 @@ export default class RemoteLogin {
       return
     }
 
-    this._localServerActiveStatus = params.active
-
-    if (this._desiredTimeoutId !== null) {
+    if (this._desiredTimeoutId !== null) { // prcessing desired
+      this._localServerActiveStatus = params.active
       this._desiredProcStatus |= DESIRED_PROC_STATUS_LOCAL_SERVER
 
       if (this._desiredProcStatus == DESIRED_PROC_STATUS_ALL) {
@@ -104,13 +103,18 @@ export default class RemoteLogin {
         this._updateRemoteLoginReportedState()
         this._updateRemoteLoginStatusState()
       }
-    } else {
-      this._updateRemoteLoginStatusState()
+    } else { // status change or requested status
+      if (this._localServerActiveStatus !== params.active) {
+        if (params.active) { // illegal case
+          this._localServerActiveStatus = params.active
 
-      if (this._localServerActiveStatus !== this._relayServerActiveStatus) {
-        this._remoteLoginState.config.enable = false
-        this._enableRequest()
-        await this._processPendingRemoteLoginChanges()
+          this._remoteLoginState.config.enable = false
+          this._enableRequest()
+          this._processPendingRemoteLoginChanges()
+        } else {
+          this._localServerActiveStatus = params.active
+          this._updateRemoteLoginStatusState()
+        }
       }
     }
   }
@@ -120,14 +124,13 @@ export default class RemoteLogin {
       throw new Error('not setup')
     }
 
-    if ((typeof params.active) !== 'boolean') {
+    if ((typeof params.active) !== "boolean") {
       throw new TypeError('Parameter Type Error')
       return
     }
 
-    this._relayServerActiveStatus = params.active
-
-    if (this._desiredTimeoutId !== null) {
+    if (this._desiredTimeoutId !== null) { // prcessing desired
+      this._relayServerActiveStatus = params.active
       this._desiredProcStatus |= DESIRED_PROC_STATUS_RELAY_SERVER
 
       if (this._desiredProcStatus == DESIRED_PROC_STATUS_ALL) {
@@ -139,13 +142,18 @@ export default class RemoteLogin {
         this._updateRemoteLoginReportedState()
         this._updateRemoteLoginStatusState()
       }
-    } else {
-      this._updateRemoteLoginStatusState()
+    } else { // status change or requested status
+      if (this._relayServerActiveStatus !== params.active) {
+        if (params.active) { // illegal case
+          this._relayServerActiveStatus = params.active
 
-      if (this._localServerActiveStatus !== this._relayServerActiveStatus) {
-        this._remoteLoginState.config.enable = false
-        this._enableRequest()
-        await this._processPendingRemoteLoginChanges()
+          this._remoteLoginState.config.enable = false
+          this._enableRequest()
+          this._processPendingRemoteLoginChanges()
+        } else {
+          this._relayServerActiveStatus = params.active
+          this._updateRemoteLoginStatusState()
+        }
       }
     }
   }
@@ -155,31 +163,29 @@ export default class RemoteLogin {
       return
     }
 
-    // TODO 暫定対応
-    if (params.type === 'status') {
-      this._updateRemoteLoginStatusState()
-    }
-
-    if(!params.path) {
-      return
-    }
-    if (!params.path.startsWith('remoteLogin')) {
-      return
-    }
-
     if (params.path && !params.path.startsWith('remoteLogin')) {
       return
     }
 
     switch (params.type) {
       case 'desired':
+        if(!params.path) {
+          return
+        }
         await this._updateRemoteLoginFromDesiredState()
         break
-      case 'reported':
-        this._updateRemoteLoginReportedState()
-        break
       case 'status':
-        this._updateRemoteLoginStatusState()
+        // enebular と同期した上で 現在の状態との差異をチェック
+        let remoteLoginStatusState = this._deviceStateMan.getState('status', 'remoteLogin')
+        if (!remoteLoginStatusState) {
+          remoteLoginStatusState = {}
+        }
+
+        this._localServerActiveStatus = remoteLoginStatusState.localServerActive ? true : false
+        this._relayServerActiveStatus = remoteLoginStatusState.relayServerConnected ? true : false
+
+        // 状態通知依頼
+        this._agentRunnerMan.remoteLoginStatusUpdate()
         break
       default:
         break
@@ -187,11 +193,6 @@ export default class RemoteLogin {
   }
 
   _isEnableRemoteLogin() {
-
-
-  }
-
-  _isEnableRemoteLogi() {
     return this._localServerActiveStatus && this._relayServerActiveStatus
   }
 
@@ -219,7 +220,7 @@ export default class RemoteLogin {
       return
     }
 
-    if (this._isEnableRemoteLogi() && (this._remoteLoginState.config.enable === true)) {
+    if (this._isEnableRemoteLogin() && (this._remoteLoginState.config.enable === true)) {
       this._error('already remote login feature is enabled')
       this._remoteLoginState.state = 'updateFail'
       this._remoteLoginState.message = 'already remote login feature is enabled'
@@ -227,7 +228,7 @@ export default class RemoteLogin {
       return
     }
 
-    if (!this._isEnableRemoteLogi() && (this._remoteLoginState.config.enable === false)) {
+    if (!this._isEnableRemoteLogin() && (this._remoteLoginState.config.enable === false)) {
       this._error('already remote login feature is disabled')
       this._remoteLoginState.state = 'updateFail'
       this._remoteLoginState.message = 'already remote login feature is disabled'
@@ -303,7 +304,7 @@ export default class RemoteLogin {
     this._deviceStateMan.updateState('reported', 'set', 'remoteLogin', state)
   }
 
-  _updateRemoteLoginStatusState()  {
+  _updateRemoteLoginStatusState() {
     if (!this._deviceStateMan.canUpdateState('status')) {
       return
     }
@@ -367,7 +368,7 @@ export default class RemoteLogin {
     }
   }
 
-  async _getRemoteLoginCertificate(certificats: {localServerPublicKeyData: String, relayServerPrivateKeyData: String}) {
+  async _getRemoteLoginCertificate(certificats: { localServerPublicKeyData: String, relayServerPrivateKeyData: String }) {
     var keys
     try {
       keys = await this._downloadCertificate(
