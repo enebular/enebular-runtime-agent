@@ -12,6 +12,7 @@ export default class ProcessManager extends EventEmitter {
   private _startedMessage?: string
   private _startedTimeout?: number
   private _name: string
+  private _stopRequested = false
 
   public constructor(name: string, log: AgentRunnerLogger) {
     super()
@@ -102,7 +103,7 @@ export default class ProcessManager extends EventEmitter {
         if (this._startedMessage && startTimeout) {
           clearTimeout(startTimeout)
         }
-        if (code !== 0 && code !== null) {
+        if (code !== 0 && code !== null && !this._stopRequested) {
           this._retryCount++
           if (
             this._retryCount < this._maxRetryCount ||
@@ -142,8 +143,10 @@ export default class ProcessManager extends EventEmitter {
     return new Promise((resolve): void => {
       const cproc = this._cproc
       if (cproc) {
+        this._stopRequested = true
         this._info(`Shutting down ${this._name}...`)
         cproc.once('exit', () => {
+          this._stopRequested = false
           resolve()
         })
         cproc.kill('SIGINT')
