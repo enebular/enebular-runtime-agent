@@ -1,5 +1,3 @@
-import * as fs from 'fs'
-import * as path from 'path'
 import objectHash from 'object-hash'
 
 import AgentRunnerService from './agent-runner-service'
@@ -7,7 +5,7 @@ import GetPort from 'get-port'
 import Task from './task'
 import TaskError from './task-error'
 import { SSHConfig } from './ssh'
-import { verifySignature } from '../utils'
+import { verifySignature, getPublicKey, PublicKeyInfo } from './utils'
 
 interface RemoteLoginSettings {
   config: {
@@ -32,11 +30,6 @@ interface RemoteLoginSettings {
   relayServerPrivateKeyData: string
 }
 
-interface PublicKeyInfo {
-  id: number
-  key: string
-}
-
 export default class TaskRemoteLogin extends Task {
   public constructor(
     service: AgentRunnerService,
@@ -45,35 +38,17 @@ export default class TaskRemoteLogin extends Task {
     super(service, 'remoteLogin', settings)
   }
 
-  private getPublicKey(): PublicKeyInfo {
-    const publicKeyPath = path.resolve(__dirname, '../../keys/enebular')
-    if (!fs.existsSync(publicKeyPath)) {
-      throw new Error(`Failed to find public key directory`)
-    }
-    let filenames
-    try {
-      filenames = fs.readdirSync(publicKeyPath)
-    } catch (err) {
-      throw new Error(
-        `Failed to get public key directory content: ${err.message}`
-      )
-    }
-
-    if (filenames.length !== 1) {
-      throw new Error(`Failed to locate public key`)
-    }
-
-    const id = filenames[0]
-    return {
-      id: id,
-      key: fs.readFileSync(path.resolve(publicKeyPath, id), 'utf8')
-    }
-  }
-
   public async run(): Promise<void> {
     const settings = this._settings as RemoteLoginSettings
     const ssh = this._service.ssh
-    const publicKeyInfo = this.getPublicKey()
+    let publicKeyInfo
+    try {
+      publicKeyInfo = getPublicKey()
+    }
+    catch (err) {
+      throw new TaskError('ERR_INVALID_PUBLIC_KEY',
+          `Invalid public key: ${err.message}`)
+    }
     const pubkey = publicKeyInfo.key
 
     if (process.getuid() !== 0) {
