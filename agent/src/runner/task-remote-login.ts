@@ -5,6 +5,7 @@ import objectHash from 'object-hash'
 import AgentRunnerService from './agent-runner-service'
 import GetPort from 'get-port'
 import Task from './task'
+import TaskError from './task-error'
 import { SSHConfig } from './ssh'
 import { verifySignature } from '../utils'
 
@@ -31,6 +32,11 @@ interface RemoteLoginSettings {
   relayServerPrivateKeyData: string
 }
 
+interface PublicKeyInfo {
+  id: number
+  key: string
+}
+
 export default class TaskRemoteLogin extends Task {
   public constructor(
     service: AgentRunnerService,
@@ -39,19 +45,46 @@ export default class TaskRemoteLogin extends Task {
     super(service, 'remoteLogin', settings)
   }
 
+  private getPublicKey(): PublicKeyInfo {
+    const publicKeyPath = path.resolve(__dirname, '../../keys/enebular')
+    if (!fs.existsSync(publicKeyPath)) {
+      throw new Error(`Failed to find public key directory`)
+    }
+    let filenames
+    try {
+      filenames = fs.readdirSync(publicKeyPath)
+    } catch (err) {
+      throw new Error(
+        `Failed to get public key directory content: ${err.message}`
+      )
+    }
+
+    if (filenames.length !== 1) {
+      throw new Error(`Failed to locate public key`)
+    }
+
+    const id = filenames[0]
+    return {
+      id: id,
+      key: fs.readFileSync(path.resolve(publicKeyPath, id), 'utf8')
+    }
+  }
+
   public async run(): Promise<void> {
     const settings = this._settings as RemoteLoginSettings
     const ssh = this._service.ssh
-    const pubkey = fs.readFileSync(
-      path.resolve(__dirname, '../../keys/enebular/pubkey.pem'),
-      'utf8'
-    )
+    const publicKeyInfo = this.getPublicKey()
+    const pubkey = publicKeyInfo.key
+
     if (process.getuid() !== 0) {
-      throw new Error(`RemoteLogin task requires root permission`)
+      throw new TaskError(
+        'ERR_PERMISSION',
+        `RemoteLogin task requires root permission`
+      )
     }
 
     if (!settings.config || !settings.signature) {
-      throw new Error(`Invalid remote login settings`)
+      throw new TaskError('ERR_INVALID_PARAM', `Invalid remote login settings`)
     }
 
     const hash = objectHash(settings.config, {
@@ -59,13 +92,22 @@ export default class TaskRemoteLogin extends Task {
       encoding: 'base64'
     })
     if (!verifySignature(hash, pubkey, settings.signature)) {
-      throw new Error(`Invalid signature for config`)
+      throw new TaskError(
+        'ERR_INVALID_SIGNATURE',
+        `Invalid signature for config`,
+        {
+          publicKeyId: publicKeyInfo.id
+        }
+      )
     }
 
     let sshConfig: SSHConfig
     const config = settings.config
     if (!Object.prototype.hasOwnProperty.call(config, 'enable')) {
-      throw new Error(`enable is required for remote login config`)
+      throw new TaskError(
+        'ERR_INVALID_PARAM',
+        `enable is required for remote login config`
+      )
     }
 
     if (config.enable) {
@@ -79,7 +121,10 @@ export default class TaskRemoteLogin extends Task {
         !settings.relayServerPrivateKeyData ||
         !settings.localServerPublicKeyData
       ) {
-        throw new Error(`Missing parameters for enabling remote login`)
+        throw new TaskError(
+          'ERR_INVALID_PARAM',
+          `Missing parameters for enabling remote login`
+        )
       }
 
       if (
@@ -89,7 +134,13 @@ export default class TaskRemoteLogin extends Task {
           config.localServerPublicKey.signature
         )
       ) {
-        throw new Error(`Invalid signature for localServerPublicKey`)
+        throw new TaskError(
+          'ERR_INVALID_SIGNATURE',
+          `Invalid signature for localServerPublicKey`,
+          {
+            publicKeyId: publicKeyInfo.id
+          }
+        )
       }
       if (
         !verifySignature(
@@ -98,7 +149,13 @@ export default class TaskRemoteLogin extends Task {
           config.relayServerPrivateKey.signature
         )
       ) {
-        throw new Error(`Invalid signature for relayServerPrivateKey`)
+        throw new TaskError(
+          'ERR_INVALID_SIGNATURE',
+          `Invalid signature for relayServerPrivateKey`,
+          {
+            publicKeyId: publicKeyInfo.id
+          }
+        )
       }
 
       const availablePort = await GetPort({

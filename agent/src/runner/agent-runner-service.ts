@@ -5,6 +5,7 @@ import { SSH } from './ssh'
 import { Data, Request } from './agent-runner-message-type'
 import TaskRemoteLogin from './task-remote-login'
 import TaskRemoteLoginStatusUpdate from './task-remote-login-status-update'
+import TaskError from './task-error'
 
 interface RunningTasks {
   [index: string]: Promise<void>
@@ -83,11 +84,15 @@ export default class AgentRunnerService {
     }
   }
 
-  private _sendErrorResponse(id: number, errorMsg: string): void {
+  private _sendErrorResponse(id: number, error: TaskError): void {
     this._agentCoreManager.sendResponse({
       id: id,
       success: false,
-      errorMsg: errorMsg
+      error: {
+        message: error.message,
+        code: error.code,
+        info: error.info
+      }
     })
   }
 
@@ -122,7 +127,7 @@ export default class AgentRunnerService {
     if (!task) {
       const msg = `Unknown task type: ${request.taskType}`
       this._error(msg)
-      this._sendErrorResponse(request.id, msg)
+      this._sendErrorResponse(request.id, new TaskError('ERR_INVALID_TYPE', msg))
       return
     }
 
@@ -133,7 +138,7 @@ export default class AgentRunnerService {
       await this._runningTasks[id]
     } catch (err) {
       this._debug(`Task ${id} failed, reason: ${err.message}`)
-      this._sendErrorResponse(id, err.message)
+      this._sendErrorResponse(id, err)
       delete this._runningTasks[id]
       return
     }

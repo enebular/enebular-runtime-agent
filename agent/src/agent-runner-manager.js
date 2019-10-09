@@ -12,10 +12,16 @@ type Request = {
   settings: Object
 }
 
+type RespnseError = {
+  message: string,
+  code: string,
+  info?: Object
+}
+
 type Response = {
   id: number,
   success: boolean,
-  errorMsg?: string
+  error?: RespnseError
 }
 
 type Log = {
@@ -80,7 +86,7 @@ export default class AgentRunnerManager extends EventEmitter {
   _sendRequest(
     taskType: string,
     settings: Object,
-    callback: (success: boolean, errorMsg?: string) => void
+    callback: (success: boolean, error?: RespnseError) => void
   ) {
     const id = this._taskIndex++
     this._requests[id] = callback
@@ -96,10 +102,10 @@ export default class AgentRunnerManager extends EventEmitter {
 
   _request(taskType: string, settings: Object): Promise<void> {
     return new Promise((resolve, reject) => {
-      const callback = (success, errorMsg) => {
+      const callback = (success, error) => {
         if (success) {
           resolve()
-        } else reject(new Error(errorMsg))
+        } else reject(error)
       }
       this._sendRequest(taskType, settings, callback)
     })
@@ -167,7 +173,7 @@ export default class AgentRunnerManager extends EventEmitter {
       this._error(`cannot found callback for request ${id}`)
       return
     }
-    callback(response.success, response.errorMsg)
+    callback(response.success, response.error)
   }
 
   _onStatusUpdateReceived(statusUpdate: StatusUpdate) {
