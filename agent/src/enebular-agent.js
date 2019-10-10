@@ -352,10 +352,6 @@ export default class EnebularAgent extends EventEmitter {
     }
 
     await this._nodeRed.startService()
-
-    if (!process.env.ENEBULAR_TEST) {
-      await this._remoteLogin.test()
-    }
     return true
   }
 

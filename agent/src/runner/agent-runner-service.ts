@@ -1,4 +1,3 @@
-import * as path from 'path'
 import Task from './task'
 import AgentCoreManager from './agent-core-manager'
 import AgentRunnerLogger from './agent-runner-logger'
@@ -16,14 +15,17 @@ export default class AgentRunnerService {
   private _log: AgentRunnerLogger
   private _runningTasks: RunningTasks = {}
   private _taskIndex = 0
-  private _ssh : SSH
+  private _ssh: SSH
 
-  public constructor(agentCoreManager: AgentCoreManager) {
+  public constructor(
+    agentCoreManager: AgentCoreManager,
+    log: AgentRunnerLogger
+  ) {
     this._agentCoreManager = agentCoreManager
     this._agentCoreManager.on('dataReceived', data =>
       this._onDataReceived(data)
     )
-    this._log = new AgentRunnerLogger(this._agentCoreManager)
+    this._log = log
     this._ssh = new SSH(this._log)
     this._ssh.on('clientStatusChanged', active => {
       this._agentCoreManager.sendStatusUpdate({
@@ -96,14 +98,17 @@ export default class AgentRunnerService {
     })
   }
 
-  private _createTask(taskType: string, settings: Record<string, any>): Task | undefined {
-    switch(taskType) {
-    case 'remoteLogin':
-      return new TaskRemoteLogin(this, settings)
-    case 'remoteLoginStatusUpdate':
-      return new TaskRemoteLoginStatusUpdate(this, settings)
-    default:
-      return undefined
+  private _createTask(
+    taskType: string,
+    settings: Record<string, any>
+  ): Task | undefined {
+    switch (taskType) {
+      case 'remoteLogin':
+        return new TaskRemoteLogin(this, settings)
+      case 'remoteLoginStatusUpdate':
+        return new TaskRemoteLoginStatusUpdate(this, settings)
+      default:
+        return undefined
     }
   }
 

@@ -3,8 +3,9 @@ import * as path from 'path'
 import objectHash from 'object-hash'
 
 import AgentRunnerService from './agent-runner-service'
+import GetPort from 'get-port'
 import Task from './task'
-import { SSHConfig, SSH } from './ssh'
+import { SSHConfig } from './ssh'
 import { verifySignature } from '../utils'
 
 interface RemoteLoginSettings {
@@ -31,7 +32,10 @@ interface RemoteLoginSettings {
 }
 
 export default class TaskRemoteLogin extends Task {
-  public constructor(service: AgentRunnerService, settings: Record<string, any>) {
+  public constructor(
+    service: AgentRunnerService,
+    settings: Record<string, any>
+  ) {
     super(service, 'remoteLogin', settings)
   }
 
@@ -60,7 +64,7 @@ export default class TaskRemoteLogin extends Task {
 
     let sshConfig: SSHConfig
     const config = settings.config
-    if (!config.hasOwnProperty('enable')) {
+    if (!Object.prototype.hasOwnProperty.call(config, 'enable')) {
       throw new Error(`enable is required for remote login config`)
     }
 
@@ -97,24 +101,30 @@ export default class TaskRemoteLogin extends Task {
         throw new Error(`Invalid signature for relayServerPrivateKey`)
       }
 
+      const availablePort = await GetPort({
+        port: GetPort.makeRange(10022, 11022)
+      })
+      const localServerPort = availablePort.toString()
+
       sshConfig = {
         enable: true,
         serverOptions: {
           user: config.localUser,
+          port: localServerPort,
           publicKey: settings.localServerPublicKeyData
         },
         clientOptions: {
           user: config.localUser,
+          localServerPort: localServerPort,
           remoteIPAddr: config.relayServer,
           remotePort: config.relayServerPort,
           remoteUser: config.relayServerUser,
           privateKey: settings.relayServerPrivateKeyData
         }
       }
-    }
-    else {
+    } else {
       sshConfig = {
-        enable: false,
+        enable: false
       }
     }
     ssh.setConfig(sshConfig)

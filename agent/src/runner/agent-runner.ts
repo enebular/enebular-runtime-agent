@@ -60,13 +60,15 @@ export default class AgentRunner {
     }
 
     this._agentCoreManager.on('agentCoreTerminated', async (code, message) => {
-      this._debug(`Agent core terminated, exit code ${code}`)
-      if (this._agentRunnerService)
-        await this._agentRunnerService.cleanup()
+      this._debug(`Agent core terminated, ${message}`)
+      if (this._agentRunnerService) await this._agentRunnerService.cleanup()
       process.exit(code)
     })
     await this._agentCoreManager.startAgentCore(this._portBasePath, userInfo)
-    this._agentRunnerService = new AgentRunnerService(this._agentCoreManager)
+    this._agentRunnerService = new AgentRunnerService(
+      this._agentCoreManager,
+      this._log
+    )
     return true
   }
 
