@@ -34,14 +34,17 @@ export function getPublicKey(): PublicKeyInfo {
   }
 }
 
-export function verifySignature(data: string, pubKey: string, signature: string): void {
+export function verifySignature(
+  data: string,
+  pubKey: string,
+  signature: string
+): void {
   let verified = false
   try {
     const verify = crypto.createVerify('SHA256')
     verify.update(data)
     verified = verify.verify(pubKey, signature, 'base64')
-  }
-  catch (err) {
+  } catch (err) {
     throw new Error(err.message)
   }
 
@@ -49,4 +52,3 @@ export function verifySignature(data: string, pubKey: string, signature: string)
     throw new Error(`Invalid signature`)
   }
 }
-

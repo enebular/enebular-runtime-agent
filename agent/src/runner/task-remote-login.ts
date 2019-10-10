@@ -44,10 +44,11 @@ export default class TaskRemoteLogin extends Task {
     let publicKeyInfo
     try {
       publicKeyInfo = getPublicKey()
-    }
-    catch (err) {
-      throw new TaskError('ERR_INVALID_PUBLIC_KEY',
-          `Invalid public key: ${err.message}`)
+    } catch (err) {
+      throw new TaskError(
+        'ERR_INVALID_PUBLIC_KEY',
+        `Invalid public key: ${err.message}`
+      )
     }
     const pubkey = publicKeyInfo.key
 
@@ -69,11 +70,10 @@ export default class TaskRemoteLogin extends Task {
 
     try {
       verifySignature(hash, settings.signature, pubkey)
-    }
-    catch (err) {
+    } catch (err) {
       throw new TaskError(
         'ERR_INVALID_SIGNATURE',
-        `Invalid signature for config: ${err.message}`,
+        `config signature verification failed: ${err.message}`,
         {
           publicKeyId: publicKeyInfo.id
         }
@@ -110,12 +110,12 @@ export default class TaskRemoteLogin extends Task {
         verifySignature(
           settings.localServerPublicKeyData,
           pubkey,
-          config.localServerPublicKey.signature)
-      }
-      catch (err) {
+          config.localServerPublicKey.signature
+        )
+      } catch (err) {
         throw new TaskError(
           'ERR_INVALID_SIGNATURE',
-          `Invalid signature for localServerPublicKey: ${err.message}`,
+          `localServerPublicKey signature verification failed: ${err.message}`,
           {
             publicKeyId: publicKeyInfo.id
           }
@@ -126,12 +126,12 @@ export default class TaskRemoteLogin extends Task {
         verifySignature(
           settings.relayServerPrivateKeyData,
           pubkey,
-          config.relayServerPrivateKey.signature)
-      }
-      catch (err) {
+          config.relayServerPrivateKey.signature
+        )
+      } catch (err) {
         throw new TaskError(
           'ERR_INVALID_SIGNATURE',
-          `Invalid signature for relayServerPrivateKey: ${err.message}`,
+          `relayServerPrivateKey signature verification failed: ${err.message}`,
           {
             publicKeyId: publicKeyInfo.id
           }

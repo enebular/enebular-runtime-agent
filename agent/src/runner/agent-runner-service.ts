@@ -24,9 +24,7 @@ export default class AgentRunnerService {
     log: AgentRunnerLogger
   ) {
     this._agentCoreManager = agentCoreManager
-    this._agentCoreManager.on('dataReceived', data =>
-      this.onDataReceived(data)
-    )
+    this._agentCoreManager.on('dataReceived', data => this.onDataReceived(data))
     this._log = log
     this._ssh = new SSH(this._log)
     this._ssh.on('clientStatusChanged', active => {
@@ -130,7 +128,10 @@ export default class AgentRunnerService {
     if (!task) {
       const msg = `Unknown task type: ${request.taskType}`
       this._error(msg)
-      this._sendErrorResponse(request.id, new TaskError('ERR_INVALID_TYPE', msg))
+      this._sendErrorResponse(
+        request.id,
+        new TaskError('ERR_INVALID_TYPE', msg)
+      )
       return
     }
 

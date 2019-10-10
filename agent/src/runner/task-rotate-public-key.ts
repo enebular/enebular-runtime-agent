@@ -24,10 +24,11 @@ export default class TaskRotatePublicKey extends Task {
     let publicKeyInfo
     try {
       publicKeyInfo = getPublicKey()
-    }
-    catch (err) {
-      throw new TaskError('ERR_INVALID_PUBLIC_KEY',
-          `Invalid public key: ${err.message}`)
+    } catch (err) {
+      throw new TaskError(
+        'ERR_INVALID_PUBLIC_KEY',
+        `Invalid public key: ${err.message}`
+      )
     }
     const pubkey = publicKeyInfo.key
 
@@ -36,39 +37,39 @@ export default class TaskRotatePublicKey extends Task {
     }
 
     try {
-      verifySignature(
-        settings.key,
-        pubkey,
-        settings.signature
-      )
-    }
-    catch (err) {
+      verifySignature(settings.key, pubkey, settings.signature)
+    } catch (err) {
       throw new TaskError(
         'ERR_INVALID_SIGNATURE',
-        `Invalid signature for public key: ${err.message}`,
+        `Public key signature verification failed: ${err.message}`,
         {
           publicKeyId: publicKeyInfo.id
         }
       )
     }
 
-    const oldPublicKeyFilename = path.resolve(publicKeyInfo.path, publicKeyInfo.id)
+    const oldPublicKeyFilename = path.resolve(
+      publicKeyInfo.path,
+      publicKeyInfo.id
+    )
     const newPublicKeyFilename = path.resolve(publicKeyInfo.path, settings.id)
     try {
       fs.writeFileSync(newPublicKeyFilename, settings.key, 'utf8')
       fs.chmodSync(newPublicKeyFilename, 0o600)
-    }
-    catch (err) {
-      throw new TaskError('ERR_SAVE_FILE',
-          `Cannot save public key: ${err.message}`)
+    } catch (err) {
+      throw new TaskError(
+        'ERR_SAVE_FILE',
+        `Cannot save public key: ${err.message}`
+      )
     }
 
     try {
       fs.unlinkSync(oldPublicKeyFilename)
-    }
-    catch (err) {
-      throw new TaskError('ERR_DELETE_FILE',
-          `Cannot remove current public key: ${err.message}`)
+    } catch (err) {
+      throw new TaskError(
+        'ERR_DELETE_FILE',
+        `Cannot remove current public key: ${err.message}`
+      )
     }
   }
 
