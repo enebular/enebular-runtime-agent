@@ -69,7 +69,7 @@ export default class TaskRemoteLogin extends Task {
     })
 
     try {
-      verifySignature(hash, settings.signature, pubkey)
+      verifySignature(hash, pubkey, settings.signature)
     } catch (err) {
       throw new TaskError(
         'ERR_INVALID_SIGNATURE',
