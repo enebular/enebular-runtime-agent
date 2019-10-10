@@ -5,6 +5,7 @@ import { SSH } from './ssh'
 import { Data, Request } from './agent-runner-message-type'
 import TaskRemoteLogin from './task-remote-login'
 import TaskRemoteLoginStatusUpdate from './task-remote-login-status-update'
+import TaskRotatePublicKey from './task-rotate-public-key'
 import TaskError from './task-error'
 
 interface RunningTasks {
@@ -24,7 +25,7 @@ export default class AgentRunnerService {
   ) {
     this._agentCoreManager = agentCoreManager
     this._agentCoreManager.on('dataReceived', data =>
-      this._onDataReceived(data)
+      this.onDataReceived(data)
     )
     this._log = log
     this._ssh = new SSH(this._log)
@@ -67,7 +68,7 @@ export default class AgentRunnerService {
     this._log.error(...args)
   }
 
-  public async _onDataReceived(data: Data): Promise<void> {
+  public async onDataReceived(data: Data): Promise<void> {
     if (!data.type || !data.body) {
       this._error('Invalid data:', JSON.stringify(data, null, 2))
       return
@@ -112,6 +113,8 @@ export default class AgentRunnerService {
         return new TaskRemoteLogin(this, settings)
       case 'remoteLoginStatusUpdate':
         return new TaskRemoteLoginStatusUpdate(this, settings)
+      case 'rotatePublicKey':
+        return new TaskRotatePublicKey(this, settings)
       default:
         return undefined
     }

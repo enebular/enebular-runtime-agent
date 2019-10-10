@@ -66,10 +66,14 @@ export default class TaskRemoteLogin extends Task {
       algorithm: 'sha256',
       encoding: 'base64'
     })
-    if (!verifySignature(hash, pubkey, settings.signature)) {
+
+    try {
+      verifySignature(hash, settings.signature, pubkey)
+    }
+    catch (err) {
       throw new TaskError(
         'ERR_INVALID_SIGNATURE',
-        `Invalid signature for config`,
+        `Invalid signature for config: ${err.message}`,
         {
           publicKeyId: publicKeyInfo.id
         }
@@ -102,31 +106,32 @@ export default class TaskRemoteLogin extends Task {
         )
       }
 
-      if (
-        !verifySignature(
+      try {
+        verifySignature(
           settings.localServerPublicKeyData,
           pubkey,
-          config.localServerPublicKey.signature
-        )
-      ) {
+          config.localServerPublicKey.signature)
+      }
+      catch (err) {
         throw new TaskError(
           'ERR_INVALID_SIGNATURE',
-          `Invalid signature for localServerPublicKey`,
+          `Invalid signature for localServerPublicKey: ${err.message}`,
           {
             publicKeyId: publicKeyInfo.id
           }
         )
       }
-      if (
-        !verifySignature(
+
+      try {
+        verifySignature(
           settings.relayServerPrivateKeyData,
           pubkey,
-          config.relayServerPrivateKey.signature
-        )
-      ) {
+          config.relayServerPrivateKey.signature)
+      }
+      catch (err) {
         throw new TaskError(
           'ERR_INVALID_SIGNATURE',
-          `Invalid signature for relayServerPrivateKey`,
+          `Invalid signature for relayServerPrivateKey: ${err.message}`,
           {
             publicKeyId: publicKeyInfo.id
           }

@@ -119,6 +119,10 @@ export default class AgentRunnerManager extends EventEmitter {
     return this._request('remoteLogin', settings)
   }
 
+  rotatePublicKey(settings: Object) {
+    return this._request('rotatePublicKey', settings)
+  }
+
   _onDataReceived(data: Data) {
     if (!data.type) {
       this._error(`data type is not defined, invalid data: ${data}`)

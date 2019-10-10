@@ -1,7 +1,9 @@
+import * as fs from 'fs'
+import * as path from 'path'
 import AgentRunnerService from './agent-runner-service'
 import Task from './task'
 import TaskError from './task-error'
-import { getPublicKey, PublicKeyInfo } from './utils'
+import { verifySignature, getPublicKey, PublicKeyInfo } from './utils'
 
 interface RotateSettings {
   id: string
@@ -33,6 +35,41 @@ export default class TaskRotatePublicKey extends Task {
       throw new TaskError('ERR_INVALID_PARAM', `Invalid rotate settings`)
     }
 
+    try {
+      verifySignature(
+        settings.key,
+        pubkey,
+        settings.signature
+      )
+    }
+    catch (err) {
+      throw new TaskError(
+        'ERR_INVALID_SIGNATURE',
+        `Invalid signature for public key: ${err.message}`,
+        {
+          publicKeyId: publicKeyInfo.id
+        }
+      )
+    }
+
+    const oldPublicKeyFilename = path.resolve(publicKeyInfo.path, publicKeyInfo.id)
+    const newPublicKeyFilename = path.resolve(publicKeyInfo.path, settings.id)
+    try {
+      fs.writeFileSync(newPublicKeyFilename, settings.key, 'utf8')
+      fs.chmodSync(newPublicKeyFilename, 0o600)
+    }
+    catch (err) {
+      throw new TaskError('ERR_SAVE_FILE',
+          `Cannot save public key: ${err.message}`)
+    }
+
+    try {
+      fs.unlinkSync(oldPublicKeyFilename)
+    }
+    catch (err) {
+      throw new TaskError('ERR_DELETE_FILE',
+          `Cannot remove current public key: ${err.message}`)
+    }
   }
 
   public async cancel(): Promise<void> {}

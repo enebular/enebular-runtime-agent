@@ -5,6 +5,7 @@ import * as crypto from 'crypto'
 export interface PublicKeyInfo {
   id: number
   key: string
+  path: string
 }
 
 export function getPublicKey(): PublicKeyInfo {
@@ -28,16 +29,24 @@ export function getPublicKey(): PublicKeyInfo {
   const id = filenames[0]
   return {
     id: id,
-    key: fs.readFileSync(path.resolve(publicKeyPath, id), 'utf8')
+    key: fs.readFileSync(path.resolve(publicKeyPath, id), 'utf8'),
+    path: publicKeyPath
   }
 }
 
-export function verifySignature(data: string, pubKey: string, signature: string) {
-  const verify = crypto.createVerify('SHA256')
-  verify.update(data)
-  return verify.verify(pubKey, signature, 'base64')
+export function verifySignature(data: string, pubKey: string, signature: string): void {
+  let verified = false
+  try {
+    const verify = crypto.createVerify('SHA256')
+    verify.update(data)
+    verified = verify.verify(pubKey, signature, 'base64')
+  }
+  catch (err) {
+    throw new Error(err.message)
+  }
+
+  if (!verified) {
+    throw new Error(`Invalid signature`)
+  }
 }
-
-
-
 
