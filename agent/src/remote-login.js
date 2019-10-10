@@ -15,7 +15,6 @@ export default class RemoteLogin {
   _agentRunnerMan: AgentRunnerManager
   _log: Logger
   _inited: boolean = false
-  _pendingEnableRequest: boolean = false
   _remoteLoginState: Object
   _localServerPublicKey: Object
   _relayServerPrivateKey: Object
@@ -74,12 +73,6 @@ export default class RemoteLogin {
     this._inited = true
   }
 
-  _enableRequest() {
-    if (!this._pendingEnableRequest) {
-      this._pendingEnableRequest = true
-    }
-  }
-
   async _handleSshServerStateChange(params: { active: boolean }) {
     if (!this._inited) {
       throw new Error('not setup')
@@ -99,9 +92,18 @@ export default class RemoteLogin {
         this._desiredTimeoutId = null
         this._desiredProcStatus = 0x00
 
-        this._remoteLoginState.state = 'current'
-        this._updateRemoteLoginReportedState()
-        this._updateRemoteLoginStatusState()
+        if (this._localServerActiveStatus === this._relayServerActiveStatus) {
+          this._remoteLoginState.state = 'current'
+          this._updateRemoteLoginReportedState()
+          this._updateRemoteLoginStatusState()
+        } else {
+          this._remoteLoginState.state = 'updateFail'
+          this._updateRemoteLoginReportedState()
+          this._updateRemoteLoginStatusState()
+
+          this._remoteLoginState.config.enable = false
+          this._processPendingRemoteLoginChanges()
+        }
       }
     } else { // status change or requested status
       if (this._localServerActiveStatus !== params.active) {
@@ -109,7 +111,6 @@ export default class RemoteLogin {
           this._localServerActiveStatus = params.active
 
           this._remoteLoginState.config.enable = false
-          this._enableRequest()
           this._processPendingRemoteLoginChanges()
         } else {
           this._localServerActiveStatus = params.active
@@ -138,9 +139,18 @@ export default class RemoteLogin {
         this._desiredTimeoutId = null
         this._desiredProcStatus = 0x00
 
-        this._remoteLoginState.state = 'current'
-        this._updateRemoteLoginReportedState()
-        this._updateRemoteLoginStatusState()
+        if (this._localServerActiveStatus === this._relayServerActiveStatus) {
+          this._remoteLoginState.state = 'current'
+          this._updateRemoteLoginReportedState()
+          this._updateRemoteLoginStatusState()
+        } else {
+          this._remoteLoginState.state = 'updateFail'
+          this._updateRemoteLoginReportedState()
+          this._updateRemoteLoginStatusState()
+
+          this._remoteLoginState.config.enable = false
+          this._processPendingRemoteLoginChanges()
+        }
       }
     } else { // status change or requested status
       if (this._relayServerActiveStatus !== params.active) {
@@ -148,7 +158,6 @@ export default class RemoteLogin {
           this._relayServerActiveStatus = params.active
 
           this._remoteLoginState.config.enable = false
-          this._enableRequest()
           this._processPendingRemoteLoginChanges()
         } else {
           this._relayServerActiveStatus = params.active
@@ -175,7 +184,6 @@ export default class RemoteLogin {
         await this._updateRemoteLoginFromDesiredState()
         break
       case 'status':
-        // enebular と同期した上で 現在の状態との差異をチェック
         let remoteLoginStatusState = this._deviceStateMan.getState('status', 'remoteLogin')
         if (!remoteLoginStatusState) {
           remoteLoginStatusState = {}
@@ -184,7 +192,6 @@ export default class RemoteLogin {
         this._localServerActiveStatus = remoteLoginStatusState.localServerActive ? true : false
         this._relayServerActiveStatus = remoteLoginStatusState.relayServerConnected ? true : false
 
-        // 状態通知依頼
         this._agentRunnerMan.remoteLoginStatusUpdate()
         break
       default:
@@ -239,16 +246,6 @@ export default class RemoteLogin {
     this._remoteLoginState.state = 'updating'
     this._updateRemoteLoginReportedState()
 
-    if (this._remoteLoginState.config.enable === true) {
-      // SSH Key Check
-      if (!desiredConfig.hasOwnProperty('localServerPublicKey') || !desiredConfig.hasOwnProperty('relayServerPrivateKey')) {
-        // illegal processing
-        this._error('Key not exist')
-      }
-    }
-
-    this._enableRequest()
-
     try {
       this._processPendingRemoteLoginChanges()
 
@@ -262,10 +259,10 @@ export default class RemoteLogin {
       clearTimeout(this._desiredTimeoutId)
       this._desiredTimeoutId = null
       this._desiredProcStatus = 0x00
+
       this._remoteLoginState.state = 'updateFail'
       this._remoteLoginState.message = err.massage
       this._updateRemoteLoginReportedState()
-      this._updateRemoteLoginStatusState()
     }
   }
 
@@ -323,48 +320,43 @@ export default class RemoteLogin {
   }
 
   async _processPendingRemoteLoginChanges() {
-    if (this._pendingEnableRequest) {
-
-      let certificats = {localServerPublicKeyData: '', relayServerPrivateKeyData: ''}
-      if (this._remoteLoginState.config.enable === true) {
-        try {
-          await this._getRemoteLoginCertificate(certificats)
-        } catch (err) {
-          throw err
-        }
-      }
-
-      const fs = require('fs')
-      const path = require('path')
-      let settings = {
-        config: {
-          enable: this._remoteLoginState.config.enable,
-          localUser: this._remoteLoginState.config.localUser,
-          localServerPublicKey: {
-            id: this._remoteLoginState.config.localServerPublicKey.id,
-            size: this._remoteLoginState.config.localServerPublicKey.size,
-            signature: this._remoteLoginState.config.localServerPublicKey.signature
-          },
-          relayServer: this._remoteLoginState.config.relayServer,
-          relayServerPort: this._remoteLoginState.config.relayServerPort,
-          relayServerUser: this._remoteLoginState.config.relayServerUser,
-          relayServerPrivateKey: {
-            id: this._remoteLoginState.config.relayServerPrivateKey.id,
-            size: this._remoteLoginState.config.relayServerPrivateKey.size,
-            signature: this._remoteLoginState.config.relayServerPrivateKey.signature
-          }
-        },
-        signature: this._remoteLoginState.signature,
-        localServerPublicKeyData: certificats.localServerPublicKeyData,
-        relayServerPrivateKeyData: certificats.relayServerPrivateKeyData
-      }
+    let certificats = {localServerPublicKeyData: '', relayServerPrivateKeyData: ''}
+    if (this._remoteLoginState.config.enable === true) {
       try {
-        await this._agentRunnerMan.remoteLoginSet(settings)
+        await this._getRemoteLoginCertificate(certificats)
       } catch (err) {
         throw err
       }
+    }
 
-      this._pendingEnableRequest = false
+    const fs = require('fs')
+    const path = require('path')
+    let settings = {
+      config: {
+        enable: this._remoteLoginState.config.enable,
+        localUser: this._remoteLoginState.config.localUser,
+        localServerPublicKey: {
+          id: this._remoteLoginState.config.localServerPublicKey.id,
+          size: this._remoteLoginState.config.localServerPublicKey.size,
+          signature: this._remoteLoginState.config.localServerPublicKey.signature
+        },
+        relayServer: this._remoteLoginState.config.relayServer,
+        relayServerPort: this._remoteLoginState.config.relayServerPort,
+        relayServerUser: this._remoteLoginState.config.relayServerUser,
+        relayServerPrivateKey: {
+          id: this._remoteLoginState.config.relayServerPrivateKey.id,
+          size: this._remoteLoginState.config.relayServerPrivateKey.size,
+          signature: this._remoteLoginState.config.relayServerPrivateKey.signature
+        }
+      },
+      signature: this._remoteLoginState.signature,
+      localServerPublicKeyData: certificats.localServerPublicKeyData,
+      relayServerPrivateKeyData: certificats.relayServerPrivateKeyData
+    }
+    try {
+      await this._agentRunnerMan.remoteLoginSet(settings)
+    } catch (err) {
+      throw err
     }
   }
 
