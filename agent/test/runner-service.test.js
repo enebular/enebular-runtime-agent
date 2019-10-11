@@ -3,6 +3,7 @@ import test from 'ava'
 import sinon from 'sinon'
 import fs from 'fs'
 import path from 'path'
+import crypto from 'crypto'
 import Utils from './helpers/utils'
 
 import AgentCoreManager from '../lib/runner/agent-core-manager'
@@ -17,6 +18,7 @@ test.before(async t => {
 })
 
 test.after(t => {
+  sinon.restore()
 })
 
 test.serial(
@@ -137,7 +139,7 @@ test.serial(
 )
 
 test.serial(
-  'AgentRunnerService.4: rotate public key correctly',
+  'AgentRunnerService.4: rotatePublicKey runs correctly',
   async t => {
     const agentCoreManager = new AgentCoreManager()
     const log = new AgentRunnerLogger(agentCoreManager)
@@ -148,19 +150,76 @@ test.serial(
     const keyPath = '/tmp'
     const keyName = `public-key-${Utils.randomString()}.pub`
     const keyFullPath = path.resolve(keyPath, keyName)
-    const dummyKey = 'dummy key data'
+    const pubKey = fs.readFileSync(
+      path.resolve(__dirname, 'data/keys/enebular/pubkey.pem'),
+      'utf8'
+    )
 
-    fs.writeFileSync(keyFullPath, dummyKey, 'utf8')
+    fs.writeFileSync(keyFullPath, pubKey, 'utf8')
 
     const getPublicKeyStub = sinon.stub(utils, 'getPublicKey')
     getPublicKeyStub.returns({
       id: keyName,
-      key: dummyKey,
+      key: pubKey,
       path: keyPath
     })
 
-    const verifySignatureStub = sinon.stub(utils, 'verifySignature')
-    verifySignatureStub.callsFake(() => {})
+    const privKey = fs.readFileSync(
+      path.resolve(__dirname, 'data/keys/enebular/privkey.pem'),
+      'utf8'
+    )
+ 
+    const newKeyName = `public-key-${Utils.randomString()}.pub`
+    let request = {
+      type: "request",
+      body: {
+        id: "1",
+        taskType: "rotatePublicKey",
+        settings: {
+          id: newKeyName,
+          key: "data",
+        }
+      }
+    }
+
+    const sign = crypto.createSign('SHA256')
+    sign.update(request.body.settings.key)
+    request.body.settings.signature = sign.sign(privKey, 'base64')
+
+    await agentRunnerService.onDataReceived(request)
+    t.true(stub.called)
+    let response = stub.args[0][0]
+    t.true(response.success, 'response send success')
+    t.false(fs.existsSync(keyFullPath), 'old public key has been removed')
+    const newKeyFullPath = path.resolve(keyPath, newKeyName)
+    t.true(fs.existsSync(newKeyFullPath), 'new public key has been installed')
+    fs.unlinkSync(newKeyFullPath)
+    getPublicKeyStub.restore()
+  }
+)
+
+test.serial(
+  'AgentRunnerService.5: rotatePublicKey handles public key error as expected',
+  async t => {
+    const agentCoreManager = new AgentCoreManager()
+    const log = new AgentRunnerLogger(agentCoreManager)
+    const agentRunnerService = new AgentRunnerService(agentCoreManager, log)
+
+    const stub = sinon.stub(agentCoreManager, "sendResponse")
+
+    const keyPath = '/tmp'
+    const keyName = `public-key-${Utils.randomString()}.pub`
+    const keyFullPath = path.resolve(keyPath, keyName)
+    const pubKey = fs.readFileSync(
+      path.resolve(__dirname, 'data/keys/enebular/pubkey.pem'),
+      'utf8'
+    )
+    const privKey = fs.readFileSync(
+      path.resolve(__dirname, 'data/keys/enebular/privkey.pem'),
+      'utf8'
+    )
+
+    const getPublicKeyStub = sinon.stub(utils, 'getPublicKey')
 
     const newKeyName = `public-key-${Utils.randomString()}.pub`
     let request = {
@@ -171,18 +230,45 @@ test.serial(
         settings: {
           id: newKeyName,
           key: "data",
-          signature: "dunmmy"
+          signature: "abcd"
         }
       }
     }
 
+    // Failed to get public key
+    getPublicKeyStub.throws()
+
     await agentRunnerService.onDataReceived(request)
     t.true(stub.called)
     let response = stub.args[0][0]
-    console.log(response)
-    t.true(response.success)
-    t.false(fs.existsSync(keyFullPath))
-    const newKeyFullPath = path.resolve(keyPath, newKeyName)
-    t.true(fs.existsSync(newKeyFullPath))
+    t.false(response.success, 'response set success to false')
+    t.true(response.error.code === 'ERR_INVALID_PUBLIC_KEY')
+
+    getPublicKeyStub.returns({
+      id: keyName,
+      key: pubKey,
+      path: keyPath
+    })
+
+    // wrong signature
+    request.body.settings.signature = 'wrong signature'
+    await agentRunnerService.onDataReceived(request)
+    t.true(stub.calledTwice)
+    response = stub.args[1][0]
+    t.false(response.success, 'response set success to false')
+    t.true(response.error.code === 'ERR_INVALID_SIGNATURE')
+    t.true(response.error.info.publicKeyId === keyName)
+
+    const sign = crypto.createSign('SHA256')
+    sign.update(request.body.settings.key)
+    request.body.settings.signature = sign.sign(privKey, 'base64')
+
+    // cannot delete public key
+    await agentRunnerService.onDataReceived(request)
+    t.true(stub.calledThrice)
+    response = stub.args[2][0]
+    t.false(response.success, 'response set success to false')
+    t.true(response.error.code === 'ERR_DELETE_FILE')
+    getPublicKeyStub.restore()
   }
 )
