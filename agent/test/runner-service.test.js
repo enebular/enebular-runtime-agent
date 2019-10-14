@@ -95,6 +95,13 @@ test.serial(
     const log = new AgentRunnerLogger(agentCoreManager)
     const agentRunnerService = new AgentRunnerService(agentCoreManager, log)
 
+    const getPublicKeyStub = sinon.stub(utils, 'getPublicKey')
+    getPublicKeyStub.returns({
+      id: "",
+      key: "",
+      path: ""
+    })
+
     const stub = sinon.stub(agentCoreManager, "sendResponse")
 
     let request = {
@@ -135,6 +142,7 @@ test.serial(
     t.false(response.success)
     t.true(response.error.code === 'ERR_INVALID_SIGNATURE')
     t.true(Object.prototype.hasOwnProperty.call(response.error.info, 'publicKeyId'))
+    getPublicKeyStub.restore()
   }
 )
 
