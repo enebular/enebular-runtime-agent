@@ -8,6 +8,7 @@ export default class ProcessManager extends EventEmitter {
   private _maxRetryCount = -1 // -1 means unlimited
   private _retryDelay = 5
   private _retryCount = 0
+  private _resetRetryCountWhenSuccess = false
   private _log: AgentRunnerLogger
   private _startedMessage?: string
   private _startedTimeout?: number
@@ -27,6 +28,10 @@ export default class ProcessManager extends EventEmitter {
 
   set retryDelay(retryDelay: number) {
     this._retryDelay = retryDelay
+  }
+
+  set resetRetryCountWhenSuccess(resetRetryCountWhenSuccess: boolean) {
+    this._resetRetryCountWhenSuccess = resetRetryCountWhenSuccess
   }
 
   private _debug(...args: any[]): void {
@@ -96,7 +101,9 @@ export default class ProcessManager extends EventEmitter {
           if (started) {
             clearTimeout(startTimeout)
             this.emit('started', data)
-            this._retryCount = 0
+            if (this._resetRetryCountWhenSuccess) {
+              this._retryCount = 0
+            }
             resolve()
           }
         }
@@ -117,7 +124,7 @@ export default class ProcessManager extends EventEmitter {
         if (this._startedMessage && startTimeout) {
           clearTimeout(startTimeout)
         }
-        if (code !== 0 && !this._stopRequested) {
+        if (!this._stopRequested) {
           this._retryCount++
           if (
             this._retryCount < this._maxRetryCount ||
@@ -168,7 +175,7 @@ export default class ProcessManager extends EventEmitter {
           this._stopRequested = false
           resolve()
         })
-        cproc.kill('SIGINT')
+        cproc.kill('SIGTERM')
       } else {
         this._info(`${this._name} already shutdown`)
         resolve()

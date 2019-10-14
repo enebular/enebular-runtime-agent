@@ -128,7 +128,7 @@ export default class AgentRunnerService {
     }
 
     const id = request.id
-    this._debug(`Starting task ${id} (${task.type})...`)
+    this._info(`Starting task ${id} (${task.type})...`)
     this._runningTasks[id] = task.run()
     try {
       await this._runningTasks[id]
@@ -139,7 +139,7 @@ export default class AgentRunnerService {
       return
     }
     this._sendResponse(id)
-    this._debug(`Task ${id} stopped`)
+    this._info(`Task ${id} stopped`)
     delete this._runningTasks[id]
   }
 
