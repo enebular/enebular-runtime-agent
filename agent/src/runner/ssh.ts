@@ -43,7 +43,7 @@ export class SSH extends EventEmitter {
     this._sshClientManager = new ProcessManager('ssh-client', this._log)
     this._sshClientManager.maxRetryCount = 3
     this._sshServerManager = new ProcessManager('ssh-server', this._log)
-    this._sshServerManager.retryDelay = 0
+    this._sshServerManager.maxRetryCount = 3
     this._privateKeyPath = path.resolve(__dirname, '../../keys/tmp_private_key')
   }
 
@@ -64,8 +64,7 @@ export class SSH extends EventEmitter {
   }
 
   public statusUpdate(): void {
-    this.emit('serverStatusChanged', this._serverActive)
-    this.emit('clientStatusChanged', this._clientActive)
+    this.emit('statusChanged', this._clientActive && this._serverActive)
   }
 
   private _exec(cmd: string): Promise<void> {
@@ -111,12 +110,14 @@ export class SSH extends EventEmitter {
 
       this._sshServerManager.on('started', () => {
         this._serverActive = true
-        this.emit('serverStatusChanged', this._serverActive)
+        this._debug(`ssh-server active: ${this._serverActive}`)
+        this.statusUpdate()
       })
 
-      this._sshServerManager.on('exit', () => {
+      this._sshServerManager.on('permanentlyTerminated', () => {
         this._serverActive = false
-        this.emit('serverStatusChanged', this._serverActive)
+        this._debug(`ssh-server active: ${this._serverActive}`)
+        this.statusUpdate()
       })
       this._sshServerManager.startedIfTraceContains(
         `Server listening on :: port ${options.port}`,
@@ -165,12 +166,14 @@ export class SSH extends EventEmitter {
 
     this._sshClientManager.on('started', () => {
       this._clientActive = true
-      this.emit('clientStatusChanged', this._clientActive)
+      this._debug(`ssh-client active: ${this._clientActive}`)
+      this.statusUpdate()
     })
 
-    this._sshClientManager.on('exit', () => {
+    this._sshClientManager.on('permanentlyTerminated', () => {
       this._clientActive = false
-      this.emit('clientStatusChanged', this._clientActive)
+      this._debug(`ssh-client active: ${this._clientActive}`)
+      this.statusUpdate()
     })
     this._sshClientManager.startedIfTraceContains(
       'All remote forwarding requests processed',
@@ -228,6 +231,10 @@ export class SSH extends EventEmitter {
         }
       } catch (err) {
         this._error(`process ssh changes failed: ${err.message}`)
+        if (pendingConfig.enable) {
+          await this.stopClient()
+          await this.stopServer()
+        }
       }
     }
     this._sshProcessingChanges = false

@@ -27,17 +27,9 @@ export default class AgentRunnerService {
     this._agentCoreManager.on('dataReceived', data => this.onDataReceived(data))
     this._log = log
     this._ssh = new SSH(this._log)
-    this._ssh.on('clientStatusChanged', active => {
+    this._ssh.on('statusChanged', active => {
       this._agentCoreManager.sendStatusUpdate({
-        type: 'sshClientStatusChanged',
-        status: {
-          active: active
-        }
-      })
-    })
-    this._ssh.on('serverStatusChanged', active => {
-      this._agentCoreManager.sendStatusUpdate({
-        type: 'sshServerStatusChanged',
+        type: 'sshStatusChanged',
         status: {
           active: active
         }
