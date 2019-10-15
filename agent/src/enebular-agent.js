@@ -234,6 +234,7 @@ export default class EnebularAgent extends EventEmitter {
 
     this._remoteLogin = new RemoteLogin(
       this._deviceStateManager,
+      this._connectorMessenger,
       this._agentRunnerManager,
       this._log
     )
