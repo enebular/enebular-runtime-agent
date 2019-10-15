@@ -105,11 +105,10 @@ export default class ProcessManager extends EventEmitter {
         }
       })
       cproc.once('exit', (code, signal) => {
-        const killedBySignal = (code === null) ? true : false
-        const message =
-          killedBySignal
-            ? `${this._name} killed by signal ${signal}`
-            : `${this._name} exited, code ${code}`
+        const killedBySignal = code === null
+        const message = killedBySignal
+          ? `${this._name} killed by signal ${signal}`
+          : `${this._name} exited, code ${code}`
         this._cproc = undefined
         // Only record error here if exit code is non-zero
         if (!killedBySignal && code !== 0) {
@@ -121,8 +120,7 @@ export default class ProcessManager extends EventEmitter {
         }
         if (this._stopRequested) {
           this.emit('exit', message, false)
-        }
-        else {
+        } else {
           this._retryCount++
           if (
             this._retryCount < this._maxRetryCount ||
@@ -146,7 +144,9 @@ export default class ProcessManager extends EventEmitter {
               `Unexpected exit, but retry count(${this._retryCount}) exceed max.`
             )
             this._retryCount = 0
-            const errMsg = this._lastErrorMessage ? this._lastErrorMessage : `Too many retry to start ${this._name}`
+            const errMsg = this._lastErrorMessage
+              ? this._lastErrorMessage
+              : `Too many retry to start ${this._name}`
             this.emit('exit', errMsg, false)
             reject(new Error(errMsg))
           }

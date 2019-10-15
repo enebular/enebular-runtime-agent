@@ -5,7 +5,7 @@ import GetPort from 'get-port'
 import Task from './task'
 import TaskError from './task-error'
 import { SSHConfig } from './ssh'
-import { verifySignature, getPublicKey, PublicKeyInfo } from './utils'
+import { verifySignature, getPublicKey } from './utils'
 
 interface RemoteLoginSettings {
   config: {

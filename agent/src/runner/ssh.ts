@@ -79,8 +79,9 @@ export class SSH extends EventEmitter {
   }
 
   public _statusChanged(): void {
-    const active = this._clientStatus === this.STATUS_RUNNING
-        && this._serverStatus === this.STATUS_RUNNING
+    const active =
+      this._clientStatus === this.STATUS_RUNNING &&
+      this._serverStatus === this.STATUS_RUNNING
     if (active !== this._active) {
       this._info(`ssh active: ${this._active} ==> ${active}`)
       this._active = active
@@ -89,12 +90,13 @@ export class SSH extends EventEmitter {
   }
 
   private _clientStatusChanged(status: string): void {
-    if (status === this._clientStatus)
-      return
+    if (status === this._clientStatus) return
     this._info(`ssh-client status changed: ${this._clientStatus} ==> ${status}`)
     if (status === this.STATUS_IDLE) {
-      if (this._clientStatus === this.STATUS_STARTING
-          || this._clientStatus === this.STATUS_RUNNING) {
+      if (
+        this._clientStatus === this.STATUS_STARTING ||
+        this._clientStatus === this.STATUS_RUNNING
+      ) {
         this._debug(`ssh-client exited unexpected, shutting down ssh-server`)
         this.stopServer()
       }
@@ -104,12 +106,13 @@ export class SSH extends EventEmitter {
   }
 
   private _serverStatusChanged(status: string): void {
-    if (status === this._serverStatus)
-      return
+    if (status === this._serverStatus) return
     this._info(`ssh-server status changed: ${this._serverStatus} ==> ${status}`)
     if (status === this.STATUS_IDLE) {
-      if (this._serverStatus === this.STATUS_STARTING
-          || this._serverStatus === this.STATUS_RUNNING) {
+      if (
+        this._serverStatus === this.STATUS_STARTING ||
+        this._serverStatus === this.STATUS_RUNNING
+      ) {
         this._debug(`ssh-server exited unexpected, shutting down ssh-client`)
         this.stopClient()
       }
@@ -129,7 +132,7 @@ export class SSH extends EventEmitter {
     })
   }
 
-  private _prepareServerPublicKey(user: string, publicKey: string) {
+  private _prepareServerPublicKey(user: string, publicKey: string): void {
     const userInfo = getUserInfo(user)
     const getentResult = execReturnStdout(`getent passwd ${user}`)
     if (!getentResult) {
@@ -161,7 +164,9 @@ export class SSH extends EventEmitter {
 
   public async startServer(options: SSHServerOptions): Promise<void> {
     if (this._serverStatus !== this.STATUS_IDLE) {
-      this._debug(`Cannot start ssh-server, unexpected status: ${this._serverStatus}`)
+      this._debug(
+        `Cannot start ssh-server, unexpected status: ${this._serverStatus}`
+      )
       return
     }
 
@@ -197,9 +202,13 @@ export class SSH extends EventEmitter {
   }
 
   public async stopServer(): Promise<void> {
-    if (this._serverStatus === this.STATUS_STOPPING ||
-        this._serverStatus === this.STATUS_IDLE) {
-      this._debug(`Cannot stop ssh-server, unexpected status: ${this._serverStatus}`)
+    if (
+      this._serverStatus === this.STATUS_STOPPING ||
+      this._serverStatus === this.STATUS_IDLE
+    ) {
+      this._debug(
+        `Cannot stop ssh-server, unexpected status: ${this._serverStatus}`
+      )
       return
     }
     this._serverStatusChanged(this.STATUS_STOPPING)
@@ -208,7 +217,9 @@ export class SSH extends EventEmitter {
 
   public async startClient(options: SSHClientOptions): Promise<void> {
     if (this._clientStatus !== this.STATUS_IDLE) {
-      this._debug(`Cannot start ssh-client, unexpected status: ${this._clientStatus}`)
+      this._debug(
+        `Cannot start ssh-client, unexpected status: ${this._clientStatus}`
+      )
       return
     }
 
@@ -250,9 +261,13 @@ export class SSH extends EventEmitter {
   }
 
   public async stopClient(): Promise<void> {
-    if (this._clientStatus === this.STATUS_STOPPING ||
-        this._clientStatus === this.STATUS_IDLE) {
-      this._debug(`Cannot stop ssh-client, unexpected status: ${this._clientStatus}`)
+    if (
+      this._clientStatus === this.STATUS_STOPPING ||
+      this._clientStatus === this.STATUS_IDLE
+    ) {
+      this._debug(
+        `Cannot stop ssh-client, unexpected status: ${this._clientStatus}`
+      )
       return
     }
     this._clientStatusChanged(this.STATUS_STOPPING)

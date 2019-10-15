@@ -3,7 +3,7 @@ import * as path from 'path'
 import AgentRunnerService from './agent-runner-service'
 import Task from './task'
 import TaskError from './task-error'
-import { verifySignature, getPublicKey, PublicKeyInfo } from './utils'
+import { verifySignature, getPublicKey } from './utils'
 
 interface RotateSettings {
   id: string
