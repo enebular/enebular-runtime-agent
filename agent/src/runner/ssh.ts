@@ -198,7 +198,16 @@ export class SSH extends EventEmitter {
     ]
 
     this._serverStatusChanged(this.STATUS_STARTING)
-    return this._sshServerManager.start('/usr/sbin/sshd', args)
+    try {
+      await this._sshServerManager.start('/usr/sbin/sshd', args)
+    }
+    catch (err) {
+      this._debug(
+        `ssh-server start failed: ${err.message}`
+      )
+      this._clientStatusChanged(this.STATUS_IDLE)
+      throw(err)
+    }
   }
 
   public async stopServer(): Promise<void> {
@@ -212,7 +221,16 @@ export class SSH extends EventEmitter {
       return
     }
     this._serverStatusChanged(this.STATUS_STOPPING)
-    return this._sshServerManager.stop()
+    try {
+      await this._sshServerManager.stop()
+    }
+    catch (err) {
+      this._debug(
+        `ssh-server stop failed: ${err.message}`
+      )
+      this._clientStatusChanged(this.STATUS_IDLE)
+      throw(err)
+    }
   }
 
   public async startClient(options: SSHClientOptions): Promise<void> {
@@ -257,7 +275,16 @@ export class SSH extends EventEmitter {
     )
 
     this._clientStatusChanged(this.STATUS_STARTING)
-    return this._sshClientManager.start('/usr/bin/ssh', args, userInfo)
+    try {
+      await this._sshClientManager.start('/usr/bin/ssh', args, userInfo)
+    }
+    catch (err) {
+      this._debug(
+        `ssh-client start failed: ${err.message}`
+      )
+      this._clientStatusChanged(this.STATUS_IDLE)
+      throw(err)
+    }
   }
 
   public async stopClient(): Promise<void> {
@@ -271,7 +298,16 @@ export class SSH extends EventEmitter {
       return
     }
     this._clientStatusChanged(this.STATUS_STOPPING)
-    await this._sshClientManager.stop()
+    try {
+      await this._sshClientManager.stop()
+    }
+    catch (err) {
+      this._debug(
+        `ssh-client stop failed: ${err.message}`
+      )
+      this._clientStatusChanged(this.STATUS_IDLE)
+      throw(err)
+    }
     if (fs.existsSync(this._privateKeyPath)) {
       fs.unlinkSync(this._privateKeyPath)
     }

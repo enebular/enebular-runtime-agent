@@ -59,11 +59,12 @@ export default class ProcessManager extends EventEmitter {
     args: Array<string>,
     userInfo?: UserInfo
   ): Promise<void> {
-    if (this._cproc) {
-      this._info(`${this._name} already started`)
-      return
-    }
     return new Promise((resolve, reject): void => {
+      if (this._cproc) {
+        this._info(`${this._name} already started`)
+        reject(new Error('already started'))
+        return
+      }
       const cproc = spawn(
         command,
         args,
@@ -119,7 +120,7 @@ export default class ProcessManager extends EventEmitter {
           clearTimeout(startTimeout)
         }
         if (this._stopRequested) {
-          this.emit('exit', message, false)
+          this.emit('exited', message, false)
         } else {
           this._retryCount++
           if (
@@ -138,7 +139,7 @@ export default class ProcessManager extends EventEmitter {
                 reject(err)
               }
             }, this._retryDelay * 1000)
-            this.emit('exit', message, true)
+            this.emit('exited', message, true)
           } else {
             this._info(
               `Unexpected exit, but retry count(${this._retryCount}) exceed max.`
@@ -147,7 +148,7 @@ export default class ProcessManager extends EventEmitter {
             const errMsg = this._lastErrorMessage
               ? this._lastErrorMessage
               : `Too many retry to start ${this._name}`
-            this.emit('exit', errMsg, false)
+            this.emit('exited', errMsg, false)
             reject(new Error(errMsg))
           }
         }
@@ -163,7 +164,7 @@ export default class ProcessManager extends EventEmitter {
   }
 
   public async stop(): Promise<void> {
-    return new Promise((resolve): void => {
+    return new Promise((resolve, reject): void => {
       const cproc = this._cproc
       if (cproc) {
         this._stopRequested = true
@@ -175,7 +176,7 @@ export default class ProcessManager extends EventEmitter {
         cproc.kill('SIGTERM')
       } else {
         this._info(`${this._name} already shutdown`)
-        resolve()
+        reject(new Error('already shutdown'))
       }
     })
   }
