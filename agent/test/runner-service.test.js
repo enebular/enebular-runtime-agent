@@ -83,8 +83,7 @@ test.serial(
     }))
 
     t.true(stub.called)
-    t.deepEqual(stub.args[0][0], { type: 'sshServerStatusChanged', status: { active: false } })
-    t.deepEqual(stub.args[1][0], { type: 'sshClientStatusChanged', status: { active: false } })
+    t.deepEqual(stub.args[0][0], { type: 'sshStatusChanged', status: { active: false } })
   }
 )
 

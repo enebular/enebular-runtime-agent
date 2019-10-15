@@ -29,10 +29,8 @@ export function getPublicKey(): PublicKeyInfo {
   const id = filenames[0]
   const filePath = path.resolve(publicKeyPath, id)
   const stat = fs.statSync(filePath)
-  if ((stat.mode & 0x1FF) !== 0o600) {
-    throw new Error(
-      `Public key permission is too open`
-    )
+  if ((stat.mode & 0x1ff) !== 0o600) {
+    throw new Error(`Public key permission is too open`)
   }
   return {
     id: id,
