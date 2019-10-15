@@ -237,11 +237,17 @@ export default class AgentUpdater {
   ): Promise<void> {
     const mbedCloudDevCredsPath = `${agentInfo.path}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c`
 
+    const port = agentInfo.detectPortType()
     await this._installer.build(
-      agentInfo.detectPortType(),
+      port,
       newAgentInfo,
       this._userInfo,
       mbedCloudDevCredsPath
+    )
+    await this._installer.installRuntimeDependencies(
+      port,
+      agentInfo,
+      userInfo
     )
 
     try {

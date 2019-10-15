@@ -47,6 +47,10 @@ export default class CommandLine {
       /^(factory|developer)$/i
     )
     this.addConfigOption('FORCE_UPDATE', '--force')
+    this.addConfigOption(
+      'REMOTE_MAINTENANCE_USER_PASSWORD',
+      '--remote-maintenance-user-password <password>'
+    )
 
     this._commander.on('command:*', () => {
       if (!process.env.ENEBULAR_TEST && this._commander.args.length > 0) {
@@ -121,14 +125,20 @@ export default class CommandLine {
           }
  
           await installer.download(this._installPath, userInfo)
-          await installer.build(
-            this._installPort,
-            AgentInfo.createFromSource(
+          const agentInfo = AgentInfo.createFromSource(
               system,
               this._installPath
-            ),
+            )
+          await installer.build(
+            this._installPort,
+            agentInfo,
             userInfo,
             this._commandOptions.pelionDevCred
+          )
+          await installer.installRuntimeDependencies(
+            this._installPort,
+            agentInfo,
+            userInfo
           )
           if (this._installPort === 'pelion' && pelionMode === 'factory') {
             if (this._commandOptions.pelionBundle) {

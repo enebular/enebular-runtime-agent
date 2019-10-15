@@ -252,6 +252,32 @@ export class Utils {
     )
   }
 
+  public static chmod(
+    log: Log,
+    path: string,
+    mode: string
+  ): Promise<void> {
+    return Utils.spawn(
+      'chmod',
+      ['-R', mode, path],
+      log
+    )
+  }
+
+  public static async userExists(log: Log, user: string): Promise<boolean> {
+    try {
+      await Utils.spawn(
+        'id',
+        ['-u', user],
+        log
+      )
+      return true
+    }
+    catch (err) {
+      return false
+    }
+  }
+
   public static async copy(
     log: Log,
     src?: string,
@@ -306,6 +332,27 @@ export class Utils {
           }
         : {}
     )
+  }
+
+  public static passwd(
+    username: string,
+    password: string,
+    log?: Log
+  ): Promise<void> {
+    return new Promise((resolve, reject): void => {
+      const cproc = spawn('passwd', [username], { stdio: 'pipe' })
+      cproc.stderr.on('data', (data): void => {
+        const stderr = data.toString().replace(/(\n|\r)+$/, '')
+        if (log) log.debug(stderr)
+        if (stderr.startsWith('Enter new UNIX password:')
+            || stderr.startsWith('Retype new UNIX password:')) {
+          cproc.stdin.write(`${password}\n`)
+        }
+      })
+      cproc.once('exit', (code, signal): void => {
+        (code !== 0) ? reject() : resolve()
+      })
+    })
   }
 }
 

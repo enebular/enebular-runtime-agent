@@ -116,6 +116,16 @@ export default class Config {
         value: `/tmp/enebular-agent-updater-${Utils.randomString()}.log`,
         description: 'updater log file path',
         userExpose: false
+      },
+      REMOTE_MAINTENANCE_USER_NAME: {
+        value: 'enebular-remote-admin',
+        description: 'username to be set when creating remote maintenance user',
+        userExpose: false
+      },
+      REMOTE_MAINTENANCE_USER_PASSWORD: {
+        value: 'enebular',
+        description: 'password to be set when creating remote maintenance user',
+        userExpose: false
       }
     }
   }
