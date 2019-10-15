@@ -5,6 +5,8 @@ import { SSH } from './ssh'
 import { Data, Request } from './agent-runner-message-type'
 import TaskRemoteLogin from './task-remote-login'
 import TaskRemoteLoginStatusUpdate from './task-remote-login-status-update'
+import TaskRotatePublicKey from './task-rotate-public-key'
+import TaskError from './task-error'
 
 interface RunningTasks {
   [index: string]: Promise<void>
@@ -22,22 +24,12 @@ export default class AgentRunnerService {
     log: AgentRunnerLogger
   ) {
     this._agentCoreManager = agentCoreManager
-    this._agentCoreManager.on('dataReceived', data =>
-      this._onDataReceived(data)
-    )
+    this._agentCoreManager.on('dataReceived', data => this.onDataReceived(data))
     this._log = log
     this._ssh = new SSH(this._log)
-    this._ssh.on('clientStatusChanged', active => {
+    this._ssh.on('statusChanged', active => {
       this._agentCoreManager.sendStatusUpdate({
-        type: 'sshClientStatusChanged',
-        status: {
-          active: active
-        }
-      })
-    })
-    this._ssh.on('serverStatusChanged', active => {
-      this._agentCoreManager.sendStatusUpdate({
-        type: 'sshServerStatusChanged',
+        type: 'sshStatusChanged',
         status: {
           active: active
         }
@@ -66,7 +58,7 @@ export default class AgentRunnerService {
     this._log.error(...args)
   }
 
-  public async _onDataReceived(data: Data): Promise<void> {
+  public async onDataReceived(data: Data): Promise<void> {
     if (!data.type || !data.body) {
       this._error('Invalid data:', JSON.stringify(data, null, 2))
       return
@@ -83,11 +75,15 @@ export default class AgentRunnerService {
     }
   }
 
-  private _sendErrorResponse(id: number, errorMsg: string): void {
+  private _sendErrorResponse(id: number, error: TaskError): void {
     this._agentCoreManager.sendResponse({
       id: id,
       success: false,
-      errorMsg: errorMsg
+      error: {
+        message: error.message,
+        code: error.code,
+        info: error.info
+      }
     })
   }
 
@@ -107,6 +103,8 @@ export default class AgentRunnerService {
         return new TaskRemoteLogin(this, settings)
       case 'remoteLoginStatusUpdate':
         return new TaskRemoteLoginStatusUpdate(this, settings)
+      case 'rotatePublicKey':
+        return new TaskRotatePublicKey(this, settings)
       default:
         return undefined
     }
@@ -122,23 +120,26 @@ export default class AgentRunnerService {
     if (!task) {
       const msg = `Unknown task type: ${request.taskType}`
       this._error(msg)
-      this._sendErrorResponse(request.id, msg)
+      this._sendErrorResponse(
+        request.id,
+        new TaskError('ERR_INVALID_TYPE', msg)
+      )
       return
     }
 
     const id = request.id
-    this._debug(`Starting task ${id} (${task.type})...`)
+    this._info(`Starting task ${id} (${task.type})...`)
     this._runningTasks[id] = task.run()
     try {
       await this._runningTasks[id]
     } catch (err) {
       this._debug(`Task ${id} failed, reason: ${err.message}`)
-      this._sendErrorResponse(id, err.message)
+      this._sendErrorResponse(id, err)
       delete this._runningTasks[id]
       return
     }
     this._sendResponse(id)
-    this._debug(`Task ${id} stopped`)
+    this._info(`Task ${id} stopped`)
     delete this._runningTasks[id]
   }
 

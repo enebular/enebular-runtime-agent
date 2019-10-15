@@ -8,8 +8,13 @@ export default class AgentCoreManager extends EventEmitter {
 
   private _send(msg: Data): boolean {
     if (this._cproc && this._cproc.send) {
-      this._cproc.send(msg)
-      return true
+      try {
+        this._cproc.send(msg)
+        return true
+      } catch (err) {
+        console.error(`Send message to agent core failed: ${err.message}`)
+        return false
+      }
     }
     return false
   }

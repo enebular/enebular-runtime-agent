@@ -124,7 +124,6 @@ OPTION                      FORMAT                DEFAULT                       
 --mbed-cloud-dev-cred       =*                    N/A                                  Path to Pelion developer credentials c file
 --mbed-cloud-pal            =*                    N/A                                  Path to Pelion factory pal directory
 --mbed-cloud-bundle         =*                    N/A                                  Path to Pelion factory bundle file
---mbed-cloud-build-fcc      N/A                   N/A                                  Build the Pelion FCC tool
 --license-key               =*                    N/A                                  Enebular licence key to activate
 --dev-mode                  N/A                   N/A                                  Run enebular-agent in developer mode
 ```

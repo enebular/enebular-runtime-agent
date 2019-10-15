@@ -8,11 +8,13 @@ export default class ProcessManager extends EventEmitter {
   private _maxRetryCount = -1 // -1 means unlimited
   private _retryDelay = 5
   private _retryCount = 0
+  private _resetRetryCountWhenSuccess = false
   private _log: AgentRunnerLogger
   private _startedMessage?: string
   private _startedTimeout?: number
   private _name: string
   private _stopRequested = false
+  private _lastErrorMessage?: string
 
   public constructor(name: string, log: AgentRunnerLogger) {
     super()
@@ -26,6 +28,10 @@ export default class ProcessManager extends EventEmitter {
 
   set retryDelay(retryDelay: number) {
     this._retryDelay = retryDelay
+  }
+
+  set resetRetryCountWhenSuccess(resetRetryCountWhenSuccess: boolean) {
+    this._resetRetryCountWhenSuccess = resetRetryCountWhenSuccess
   }
 
   private _debug(...args: any[]): void {
@@ -53,11 +59,12 @@ export default class ProcessManager extends EventEmitter {
     args: Array<string>,
     userInfo?: UserInfo
   ): Promise<void> {
-    if (this._cproc) {
-      this._info(`${this._name} already started`)
-      return
-    }
     return new Promise((resolve, reject): void => {
+      if (this._cproc) {
+        this._info(`${this._name} already started`)
+        reject(new Error('already started'))
+        return
+      }
       const cproc = spawn(
         command,
         args,
@@ -74,8 +81,11 @@ export default class ProcessManager extends EventEmitter {
       let startTimeout
       if (this._startedMessage && this._startedTimeout) {
         startTimeout = setTimeout(async () => {
-          await this.stop()
-          reject(new Error(`${this._name} start timed out`))
+          const message = `${this._name} start timed out`
+          this._lastErrorMessage = message
+          this._debug(message)
+          // Stop the process and let it process retry.
+          cproc.kill('SIGTERM')
         }, this._startedTimeout)
       }
       cproc.stdout.on('data', data => {
@@ -88,22 +98,30 @@ export default class ProcessManager extends EventEmitter {
           if (started) {
             clearTimeout(startTimeout)
             this.emit('started', data)
+            if (this._resetRetryCountWhenSuccess) {
+              this._retryCount = 0
+            }
             resolve()
           }
         }
       })
       cproc.once('exit', (code, signal) => {
-        const message =
-          code !== null
-            ? `${this._name} exited, code ${code}`
-            : `${this._name} killed by signal ${signal}`
+        const killedBySignal = code === null
+        const message = killedBySignal
+          ? `${this._name} killed by signal ${signal}`
+          : `${this._name} exited, code ${code}`
         this._cproc = undefined
+        // Only record error here if exit code is non-zero
+        if (!killedBySignal && code !== 0) {
+          this._lastErrorMessage = message
+        }
         this._debug(`${this._name}: `, message)
-        this.emit('exit', message)
         if (this._startedMessage && startTimeout) {
           clearTimeout(startTimeout)
         }
-        if (code !== 0 && code !== null && !this._stopRequested) {
+        if (this._stopRequested) {
+          this.emit('exited', message, false)
+        } else {
           this._retryCount++
           if (
             this._retryCount < this._maxRetryCount ||
@@ -121,16 +139,22 @@ export default class ProcessManager extends EventEmitter {
                 reject(err)
               }
             }, this._retryDelay * 1000)
+            this.emit('exited', message, true)
           } else {
             this._info(
               `Unexpected exit, but retry count(${this._retryCount}) exceed max.`
             )
             this._retryCount = 0
-            reject(new Error(`Too many retry to start ${this._name}`))
+            const errMsg = this._lastErrorMessage
+              ? this._lastErrorMessage
+              : `Too many retry to start ${this._name}`
+            this.emit('exited', errMsg, false)
+            reject(new Error(errMsg))
           }
         }
       })
       cproc.once('error', err => {
+        this._cproc = undefined
         reject(err)
       })
 
@@ -140,7 +164,7 @@ export default class ProcessManager extends EventEmitter {
   }
 
   public async stop(): Promise<void> {
-    return new Promise((resolve): void => {
+    return new Promise((resolve, reject): void => {
       const cproc = this._cproc
       if (cproc) {
         this._stopRequested = true
@@ -149,10 +173,10 @@ export default class ProcessManager extends EventEmitter {
           this._stopRequested = false
           resolve()
         })
-        cproc.kill('SIGINT')
+        cproc.kill('SIGTERM')
       } else {
         this._info(`${this._name} already shutdown`)
-        resolve()
+        reject(new Error('already shutdown'))
       }
     })
   }
