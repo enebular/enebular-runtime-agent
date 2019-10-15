@@ -1,12 +1,11 @@
-import * as fs from 'fs'
-import * as path from 'path'
 import objectHash from 'object-hash'
 
 import AgentRunnerService from './agent-runner-service'
 import GetPort from 'get-port'
 import Task from './task'
+import TaskError from './task-error'
 import { SSHConfig } from './ssh'
-import { verifySignature } from '../utils'
+import { verifySignature, getPublicKey, PublicKeyInfo } from './utils'
 
 interface RemoteLoginSettings {
   config: {
@@ -42,30 +41,52 @@ export default class TaskRemoteLogin extends Task {
   public async run(): Promise<void> {
     const settings = this._settings as RemoteLoginSettings
     const ssh = this._service.ssh
-    const pubkey = fs.readFileSync(
-      path.resolve(__dirname, '../../keys/enebular/pubkey.pem'),
-      'utf8'
-    )
+    let publicKeyInfo
+    try {
+      publicKeyInfo = getPublicKey()
+    } catch (err) {
+      throw new TaskError(
+        'ERR_INVALID_PUBLIC_KEY',
+        `Invalid public key: ${err.message}`
+      )
+    }
+    const pubkey = publicKeyInfo.key
+
     if (process.getuid() !== 0) {
-      throw new Error(`RemoteLogin task requires root permission`)
+      throw new TaskError(
+        'ERR_PERMISSION',
+        `RemoteLogin task requires root permission`
+      )
     }
 
     if (!settings.config || !settings.signature) {
-      throw new Error(`Invalid remote login settings`)
+      throw new TaskError('ERR_INVALID_PARAM', `Invalid remote login settings`)
     }
 
     const hash = objectHash(settings.config, {
       algorithm: 'sha256',
       encoding: 'base64'
     })
-    if (!verifySignature(hash, pubkey, settings.signature)) {
-      throw new Error(`Invalid signature for config`)
+
+    try {
+      verifySignature(hash, pubkey, settings.signature)
+    } catch (err) {
+      throw new TaskError(
+        'ERR_INVALID_SIGNATURE',
+        `config signature verification failed: ${err.message}`,
+        {
+          publicKeyId: publicKeyInfo.id
+        }
+      )
     }
 
     let sshConfig: SSHConfig
     const config = settings.config
     if (!Object.prototype.hasOwnProperty.call(config, 'enable')) {
-      throw new Error(`enable is required for remote login config`)
+      throw new TaskError(
+        'ERR_INVALID_PARAM',
+        `enable is required for remote login config`
+      )
     }
 
     if (config.enable) {
@@ -79,26 +100,42 @@ export default class TaskRemoteLogin extends Task {
         !settings.relayServerPrivateKeyData ||
         !settings.localServerPublicKeyData
       ) {
-        throw new Error(`Missing parameters for enabling remote login`)
+        throw new TaskError(
+          'ERR_INVALID_PARAM',
+          `Missing parameters for enabling remote login`
+        )
       }
 
-      if (
-        !verifySignature(
+      try {
+        verifySignature(
           settings.localServerPublicKeyData,
           pubkey,
           config.localServerPublicKey.signature
         )
-      ) {
-        throw new Error(`Invalid signature for localServerPublicKey`)
+      } catch (err) {
+        throw new TaskError(
+          'ERR_INVALID_SIGNATURE',
+          `localServerPublicKey signature verification failed: ${err.message}`,
+          {
+            publicKeyId: publicKeyInfo.id
+          }
+        )
       }
-      if (
-        !verifySignature(
+
+      try {
+        verifySignature(
           settings.relayServerPrivateKeyData,
           pubkey,
           config.relayServerPrivateKey.signature
         )
-      ) {
-        throw new Error(`Invalid signature for relayServerPrivateKey`)
+      } catch (err) {
+        throw new TaskError(
+          'ERR_INVALID_SIGNATURE',
+          `relayServerPrivateKey signature verification failed: ${err.message}`,
+          {
+            publicKeyId: publicKeyInfo.id
+          }
+        )
       }
 
       const availablePort = await GetPort({

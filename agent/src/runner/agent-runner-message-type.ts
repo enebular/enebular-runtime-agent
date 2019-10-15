@@ -12,7 +12,11 @@ export interface Request {
 export interface Response {
   id: number
   success: boolean
-  errorMsg?: string
+  error?: {
+    message: string
+    code: string
+    info?: Record<string, any>
+  }
 }
 
 export interface Log {

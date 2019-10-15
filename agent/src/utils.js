@@ -150,12 +150,4 @@ export function getUserInfo(user: string): UserInfo {
   }
 }
 
-export function verifySignature(data: string, pubKey: string, signature: string) {
-  const verify = crypto.createVerify('SHA256')
-  verify.update(data)
-  return verify.verify(pubKey, signature, 'base64')
-}
-
-
-
 
