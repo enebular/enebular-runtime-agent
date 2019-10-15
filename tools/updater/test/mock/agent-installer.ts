@@ -34,6 +34,13 @@ export default class MockAgentInstaller implements AgentInstallerIf {
     }
   }
 
+  public async installRuntimeDependencies(
+    port: string,
+    newAgentInfo: AgentInfo,
+    userInfo: UserInfo,
+  ): Promise<void> {
+  }
+
   public async bundle2PAL(
     installPath: string,
     bundlePath: string,

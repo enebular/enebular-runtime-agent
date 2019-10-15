@@ -246,8 +246,8 @@ export default class AgentUpdater {
     )
     await this._installer.installRuntimeDependencies(
       port,
-      agentInfo,
-      userInfo
+      newAgentInfo,
+      this._userInfo
     )
 
     try {
