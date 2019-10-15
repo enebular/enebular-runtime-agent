@@ -129,17 +129,12 @@ export class SSH extends EventEmitter {
     })
   }
 
-  public async startServer(options: SSHServerOptions): Promise<void> {
-    if (this._serverStatus !== this.STATUS_IDLE) {
-      this._debug(`Cannot start ssh-server, unexpected status: ${this._serverStatus}`)
-      return
-    }
-
-    const getentResult = execReturnStdout(`getent passwd ${options.user}`)
+  private _prepareServerPublicKey(user: string, publicKey: string) {
+    const userInfo = getUserInfo(user)
+    const getentResult = execReturnStdout(`getent passwd ${user}`)
     if (!getentResult) {
-      throw new Error(`Failed to get home directory of user ${options.user}`)
+      throw new Error(`Failed to get home directory of user ${user}`)
     }
-    const userInfo = getUserInfo(options.user)
     const userHome = getentResult.split(':')[5]
     const userSSHPath = `${userHome}/.ssh`
     try {
@@ -150,25 +145,36 @@ export class SSH extends EventEmitter {
       }
       const authorizedKeys = `${userSSHPath}/authorized_keys`
       if (!fs.existsSync(authorizedKeys)) {
-        fs.writeFileSync(authorizedKeys, options.publicKey, 'utf8')
+        fs.writeFileSync(authorizedKeys, publicKey, 'utf8')
         fs.chownSync(authorizedKeys, userInfo.uid, userInfo.gid)
         fs.chmodSync(authorizedKeys, 0o600)
       } else {
         const keys = fs.readFileSync(authorizedKeys, 'utf8')
-        if (keys.indexOf(options.publicKey) === -1) {
-          fs.appendFileSync(authorizedKeys, options.publicKey, 'utf8')
+        if (keys.indexOf(publicKey) === -1) {
+          fs.appendFileSync(authorizedKeys, publicKey, 'utf8')
         }
       }
     } catch (err) {
       throw new Error(`Failed to save public key: ${err.message}`)
     }
+  }
+
+  public async startServer(options: SSHServerOptions): Promise<void> {
+    if (this._serverStatus !== this.STATUS_IDLE) {
+      this._debug(`Cannot start ssh-server, unexpected status: ${this._serverStatus}`)
+      return
+    }
+
+    this._prepareServerPublicKey(options.user, options.publicKey)
 
     this._sshServerManager.on('started', () => {
       this._serverStatusChanged(this.STATUS_RUNNING)
     })
 
-    this._sshServerManager.on('permanentlyTerminated', () => {
-      this._serverStatusChanged(this.STATUS_IDLE)
+    this._sshServerManager.on('exited', (msg, retry) => {
+      if (!retry) {
+        this._serverStatusChanged(this.STATUS_IDLE)
+      }
     })
     this._sshServerManager.startedIfTraceContains(
       `Server listening on :: port ${options.port}`,
@@ -228,8 +234,10 @@ export class SSH extends EventEmitter {
       this._clientStatusChanged(this.STATUS_RUNNING)
     })
 
-    this._sshClientManager.on('permanentlyTerminated', () => {
-      this._clientStatusChanged(this.STATUS_IDLE)
+    this._sshClientManager.on('exited', (msg, retry) => {
+      if (!retry) {
+        this._clientStatusChanged(this.STATUS_IDLE)
+      }
     })
     this._sshClientManager.startedIfTraceContains(
       'All remote forwarding requests processed',

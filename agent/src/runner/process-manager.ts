@@ -54,10 +54,6 @@ export default class ProcessManager extends EventEmitter {
     this._startedTimeout = startedTimeout
   }
 
-  private _permanentlyTerminated(message: string): void {
-    this.emit('permanentlyTerminated', message)
-  }
-
   public async start(
     command: string,
     args: Array<string>,
@@ -120,11 +116,13 @@ export default class ProcessManager extends EventEmitter {
           this._lastErrorMessage = message
         }
         this._debug(`${this._name}: `, message)
-        this.emit('exit', message)
         if (this._startedMessage && startTimeout) {
           clearTimeout(startTimeout)
         }
-        if (!this._stopRequested) {
+        if (this._stopRequested) {
+          this.emit('exit', message, false)
+        }
+        else {
           this._retryCount++
           if (
             this._retryCount < this._maxRetryCount ||
@@ -142,21 +140,20 @@ export default class ProcessManager extends EventEmitter {
                 reject(err)
               }
             }, this._retryDelay * 1000)
+            this.emit('exit', message, true)
           } else {
             this._info(
               `Unexpected exit, but retry count(${this._retryCount}) exceed max.`
             )
             this._retryCount = 0
             const errMsg = this._lastErrorMessage ? this._lastErrorMessage : `Too many retry to start ${this._name}`
-            this._permanentlyTerminated(errMsg)
+            this.emit('exit', errMsg, false)
             reject(new Error(errMsg))
           }
         }
-        else {
-          this._permanentlyTerminated(message)
-        }
       })
       cproc.once('error', err => {
+        this._cproc = undefined
         reject(err)
       })
 
