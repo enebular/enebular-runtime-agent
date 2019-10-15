@@ -10,7 +10,7 @@
   ],
   "node-red": {
     "nodes": {
-      "enebular-ai-node": "./nodes/enebular-ai-node.js"
+      "enebular-ai-node": "./default/enebular-ai-node.js"
     }
   }
 }
