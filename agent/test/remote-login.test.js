@@ -104,7 +104,7 @@ test.after(t => {
 test.afterEach.always('cleanup listener', t => {
 })
 
-test('_handleSshServerStateChange() no setup', async t => {
+test('_handleSshStateChange() no setup', async t => {
   let remoteLogin = new RemoteLogin(
     mockDeviceStateManager,
     connectorMessenger,
@@ -113,7 +113,7 @@ test('_handleSshServerStateChange() no setup', async t => {
   )
 
   try {
-    await remoteLogin._handleSshServerStateChange({params: {active: true}})
+    await remoteLogin._handleSshStateChange({params: {active: true}})
   } catch (e) {
     if (e.message === 'not setup') {
       t.pass()
@@ -124,7 +124,7 @@ test('_handleSshServerStateChange() no setup', async t => {
   t.fail()
 })
 
-test('_handleSshServerStateChange() param type error', async t => {
+test('_handleSshStateChange() param type error', async t => {
   let remoteLogin = new RemoteLogin(
     mockDeviceStateManager,
     connectorMessenger,
@@ -135,7 +135,7 @@ test('_handleSshServerStateChange() param type error', async t => {
   remoteLogin.setup()
 
   try {
-    await remoteLogin._handleSshServerStateChange({params: {active: 1}})
+    await remoteLogin._handleSshStateChange({params: {active: 1}})
   } catch (e) {
     if (e.message === 'Parameter Type Error') {
       t.pass()
@@ -146,7 +146,7 @@ test('_handleSshServerStateChange() param type error', async t => {
   t.fail()
 })
 
-test('_handleSshServerStateChange() parameter true', async t => {
+test('_handleSshStateChange() parameter true', async t => {
   let remoteLogin = new RemoteLogin(
     mockDeviceStateManager,
     connectorMessenger,
@@ -180,7 +180,7 @@ test('_handleSshServerStateChange() parameter true', async t => {
   }
 
   try {
-    await remoteLogin._handleSshServerStateChange({active: true})
+    await remoteLogin._handleSshStateChange({active: true})
   } catch (e) {
     if (e.message === 'Parameter Type Error') {
       t.fail()
@@ -190,7 +190,7 @@ test('_handleSshServerStateChange() parameter true', async t => {
   t.pass()
 })
 
-test('_handleSshServerStateChange() parameter false', async t => {
+test('_handleSshStateChange() parameter false', async t => {
   let remoteLogin = new RemoteLogin(
     mockDeviceStateManager,
     connectorMessenger,
@@ -201,114 +201,7 @@ test('_handleSshServerStateChange() parameter false', async t => {
   remoteLogin.setup()
 
   try {
-    await remoteLogin._handleSshServerStateChange({active: false})
-  } catch (e) {
-    if (e.message === 'Parameter Type Error') {
-      t.fail()
-      return
-    }
-  }
-  t.pass()
-})
-
-test('_handleSshClientStateChange() no setup', async t => {
-  let remoteLogin = new RemoteLogin(
-    mockDeviceStateManager,
-    connectorMessenger,
-    agentRunnerManager,
-    logger
-  )
-
-  try {
-    await remoteLogin._handleSshClientStateChange({params: {connected: true}})
-  } catch (e) {
-    if (e.message === 'not setup') {
-      t.pass()
-      return
-    }
-  }
-
-  t.fail()
-})
-
-test('_handleSshClientStateChange() param type error', async t => {
-  let remoteLogin = new RemoteLogin(
-    mockDeviceStateManager,
-    connectorMessenger,
-    agentRunnerManager,
-    logger
-  )
-
-  remoteLogin.setup()
-
-  try {
-    await remoteLogin._handleSshClientStateChange({params: {connected: 1}})
-  } catch (e) {
-    if (e.message === 'Parameter Type Error') {
-      t.pass()
-      return
-    }
-  }
-
-  t.fail()
-})
-
-test('_handleSshClientStateChange() parameter true', async t => {
-  let remoteLogin = new RemoteLogin(
-    mockDeviceStateManager,
-    connectorMessenger,
-    agentRunnerManager,
-    logger
-  )
-
-  remoteLogin.setup()
-
-  remoteLogin._remoteLoginState = {
-    config: {
-      enable: false,
-      localUser: 'test',
-      localServerPublicKey: {
-        id: 'test',
-        size: 1,
-        signature: 'test'
-      },
-      relayServer: 'test',
-      relayServerPort: 1,
-      relayServerUser: 'test',
-      relayServerPrivateKey: {
-        id: 'test',
-        size: 1,
-        signature: 'test'
-      },
-    },
-    signature: 'test',
-    localServerPublicKeyData: 'test',
-    relayServerPrivateKeyData: 'test'
-  }
-
-  try {
-    await remoteLogin._handleSshClientStateChange({active: true})
-  } catch (e) {
-    if (e.message === 'Parameter Type Error') {
-      t.fail()
-      return
-    }
-  }
-  t.pass()
-})
-
-test('_handleSshClientStateChange() parameter false', async t => {
-  let remoteLogin = new RemoteLogin(
-    mockDeviceStateManager,
-    connectorMessenger,
-    agentRunnerManager,
-    logger
-  )
-
-  remoteLogin.setup()
-
-  try {
-    await remoteLogin._handleSshClientStateChange({active: false})
+    await remoteLogin._handleSshStateChange({active: false})
   } catch (e) {
     if (e.message === 'Parameter Type Error') {
       t.fail()
