@@ -12,7 +12,7 @@ type Request = {
   settings: Object
 }
 
-type RespnseError = {
+type ResponseError = {
   message: string,
   code: string,
   info?: Object
@@ -21,7 +21,7 @@ type RespnseError = {
 type Response = {
   id: number,
   success: boolean,
-  error?: RespnseError
+  error?: ResponseError
 }
 
 type Log = {
@@ -86,7 +86,7 @@ export default class AgentRunnerManager extends EventEmitter {
   _sendRequest(
     taskType: string,
     settings: Object,
-    callback: (success: boolean, error?: RespnseError) => void
+    callback: (success: boolean, error?: ResponseError) => void
   ) {
     const id = this._taskIndex++
     this._requests[id] = callback
