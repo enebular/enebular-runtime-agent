@@ -84,7 +84,7 @@ export default class ProcessManager extends EventEmitter {
           this._lastErrorMessage = message
           this._debug(message)
           // Stop the process and let it process retry.
-          cproc.kill('SIGINT')
+          cproc.kill('SIGTERM')
         }, this._startedTimeout)
       }
       cproc.stdout.on('data', data => {
