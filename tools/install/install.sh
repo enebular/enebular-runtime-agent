@@ -522,7 +522,7 @@ post_install() {
       LAUNCH_ENV="${LAUNCH_ENV} ENEBULAR_DEV_MODE=true"
     fi
     cmd_wrapper bash -c "${LAUNCH_ENV} ${INSTALL_DIR}/ports/${PORT}/bin/enebular-${PORT}-agent \
-      startup-register --start-core -u ${USER}"
+      startup-register -u ${USER}"
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
       _err "Registering startup service failed."
