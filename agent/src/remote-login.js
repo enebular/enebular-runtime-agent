@@ -184,22 +184,75 @@ export default class RemoteLogin {
     this._remoteLoginState.state = 'updating'
     this._updateRemoteLoginReportedState()
 
-    try {
-      this._processPendingRemoteLoginChanges()
+    let isUpdateSign = false // 署名用公開鍵更新フラグ
+    let curSignPublicKey = '' // 署名用公開鍵更新フラグ
+    let certificats = {localServerPublicKeyData: '', relayServerPrivateKeyData: ''}
 
+    try {
       this._desiredTimeoutId = setTimeout(() => {
         this._desiredTimeoutId = null
         this._remoteLoginState.state = 'updateFail'
         this._remoteLoginState.message = 'Remote maintenance process has timed out'
         this._updateRemoteLoginReportedState()
-      }, 30000)
+      }, 20000)
+
+      if (this._remoteLoginState.config.enable === true) {
+        try {
+          await this._getRemoteLoginCertificate(certificats)
+        } catch (err) {
+          // エラー処理
+          if(this._desiredTimeoutId !== null) {
+            clearTimeout(this._desiredTimeoutId)
+            this._desiredTimeoutId = null
+            this._desiredProcStatus = 0x00
+            this._remoteLoginState.state = 'updateFail'
+            this._remoteLoginState.message = err.message
+            this._updateRemoteLoginReportedState()
+            return
+          }
+        }
+      }
+      if(this._desiredTimeoutId !== null) {
+        await this._processPendingRemoteLoginChanges(certificats)
+      }
     } catch (err) {
       clearTimeout(this._desiredTimeoutId)
       this._desiredTimeoutId = null
+      this._desiredProcStatus = 0x00
 
-      this._remoteLoginState.state = 'updateFail'
-      this._remoteLoginState.message = err.message
-      this._updateRemoteLoginReportedState()
+      if (err.code === 'ERR_INVALID_SIGNATURE') {
+        isUpdateSign = true
+        curSignPublicKey = err.info.publicKeyId
+      } else {
+        this._remoteLoginState.state = 'updateFail'
+        this._remoteLoginState.message = err.message
+        this._updateRemoteLoginReportedState()
+      }
+    }
+
+    if (isUpdateSign) {
+      try {
+        let res = await this._downloadNewSignPublicKey(curSignPublicKey)
+        let rowkey = new Buffer(res.key,'base64').toString('utf-8')
+        let settings = { id: res.id, signature: res.signature, key: rowkey }
+        await this._agentRunnerMan.rotatePublicKey(settings)
+
+        // retry
+        this._desiredTimeoutId = setTimeout(() => {
+          this._desiredTimeoutId = null
+          this._remoteLoginState.state = 'updateFail'
+          this._remoteLoginState.message = 'Remote maintenance process has timed out'
+          this._updateRemoteLoginReportedState()
+        }, 20000)
+        await this._processPendingRemoteLoginChanges(certificats)
+      } catch (err) {
+        clearTimeout(this._desiredTimeoutId)
+        this._desiredTimeoutId = null
+        this._desiredProcStatus = 0x00
+        this._remoteLoginState.state = 'updateFail'
+        this._remoteLoginState.message = err.message
+        this._updateRemoteLoginReportedState()
+      }
     }
   }
 
@@ -256,44 +309,38 @@ export default class RemoteLogin {
     this._deviceStateMan.updateState('status', 'set', 'remoteLogin', state)
   }
 
-  async _processPendingRemoteLoginChanges() {
-    let certificats = {localServerPublicKeyData: '', relayServerPrivateKeyData: ''}
-    if (this._remoteLoginState.config.enable === true) {
+  async _processPendingRemoteLoginChanges(certificats: Object) {
+    
+    if (certificats.hasOwnProperty('localServerPublicKeyData') && certificats.hasOwnProperty('relayServerPrivateKeyData')) {
+      const fs = require('fs')
+      const path = require('path')
+      let settings = {
+        config: {
+          enable: this._remoteLoginState.config.enable,
+          localUser: this._remoteLoginState.config.localUser,
+          localServerPublicKey: {
+            id: this._remoteLoginState.config.localServerPublicKey.id,
+            size: this._remoteLoginState.config.localServerPublicKey.size,
+            signature: this._remoteLoginState.config.localServerPublicKey.signature
+          },
+          relayServer: this._remoteLoginState.config.relayServer,
+          relayServerPort: this._remoteLoginState.config.relayServerPort,
+          relayServerUser: this._remoteLoginState.config.relayServerUser,
+          relayServerPrivateKey: {
+            id: this._remoteLoginState.config.relayServerPrivateKey.id,
+            size: this._remoteLoginState.config.relayServerPrivateKey.size,
+            signature: this._remoteLoginState.config.relayServerPrivateKey.signature
+          }
+        },
+        signature: this._remoteLoginState.signature,
+        localServerPublicKeyData: certificats.localServerPublicKeyData,
+        relayServerPrivateKeyData: certificats.relayServerPrivateKeyData
+      }
       try {
-        await this._getRemoteLoginCertificate(certificats)
+        await this._agentRunnerMan.remoteLoginSet(settings)
       } catch (err) {
         throw err
       }
-    }
-
-    const fs = require('fs')
-    const path = require('path')
-    let settings = {
-      config: {
-        enable: this._remoteLoginState.config.enable,
-        localUser: this._remoteLoginState.config.localUser,
-        localServerPublicKey: {
-          id: this._remoteLoginState.config.localServerPublicKey.id,
-          size: this._remoteLoginState.config.localServerPublicKey.size,
-          signature: this._remoteLoginState.config.localServerPublicKey.signature
-        },
-        relayServer: this._remoteLoginState.config.relayServer,
-        relayServerPort: this._remoteLoginState.config.relayServerPort,
-        relayServerUser: this._remoteLoginState.config.relayServerUser,
-        relayServerPrivateKey: {
-          id: this._remoteLoginState.config.relayServerPrivateKey.id,
-          size: this._remoteLoginState.config.relayServerPrivateKey.size,
-          signature: this._remoteLoginState.config.relayServerPrivateKey.signature
-        }
-      },
-      signature: this._remoteLoginState.signature,
-      localServerPublicKeyData: certificats.localServerPublicKeyData,
-      relayServerPrivateKeyData: certificats.relayServerPrivateKeyData
-    }
-    try {
-      await this._agentRunnerMan.remoteLoginSet(settings)
-    } catch (err) {
-      throw err
     }
   }
 
@@ -370,5 +417,23 @@ export default class RemoteLogin {
     }
     const keys = res.keys || {}
     return keys
+  }
+
+  async _downloadNewSignPublicKey(currentSignPublicKey) {
+    let res
+    try {
+      let body = { id: currentSignPublicKey }
+      this._debug('signing/device/getKey body: ' + JSON.stringify(body, null, 2))
+      res = await this._connectorMessenger.sendRequest('signing/device/getKey', body)
+      this._debug('signing/device/getKey res: ' + JSON.stringify(res, null, 2))
+    } catch (err) {
+      throw err
+    }
+
+    if (!res.hasOwnProperty('key')) {
+      throw new Error('key is not exist')
+    }
+
+    return res
   }
 }
