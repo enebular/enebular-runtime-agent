@@ -516,6 +516,7 @@ export class AgentInstaller implements AgentInstallerIf {
         const agentPath = newAgentInfo.path
         await Utils.chown(this._log, nodejsPath, rootInfo)
         await Utils.chown(this._log, agentPath, rootInfo)
+        await Utils.chown(this._log, `${agentPath}/node-red/.node-red-config`, userInfo)
         await Utils.chown(this._log, `${agentPath}/ports/${port}`, userInfo)
         await Utils.chown(this._log, `${agentPath}/ports/${port}/lib`, rootInfo)
         await Utils.chown(this._log, `${agentPath}/ports/${port}/bin`, rootInfo)
