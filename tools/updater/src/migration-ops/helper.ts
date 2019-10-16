@@ -2,6 +2,7 @@ import { Migration } from '../migrator'
 import Copy from './copy'
 import AwsiotConfigCopy from './awsiot-config-copy'
 import NodeJSChange from './nodejs-change'
+import RunAsRoot from './run-as-root'
 
 export default class Helper {
   public static addFileCopy(
@@ -35,6 +36,16 @@ export default class Helper {
         `nodejs ${fromVersion} => ${toVersion}`,
         fromVersion,
         toVersion
+      )
+    )
+  }
+
+  public static addRunAsRoot(
+    migration: Migration,
+  ): void {
+    migration.push(
+      new RunAsRoot(
+        `run enebular-agent as root`,
       )
     )
   }

@@ -40,15 +40,22 @@ export default class AgentRunner {
     this._config.importItems(this._commandLine.getConfigOptions())
 
     let userInfo
+    let user
     if (process.getuid() !== 0) {
       this._debug('Run as non-root user.')
     } else {
       this._debug('Run as root user.')
-      if (!this._config.isOverridden('ENEBULAR_AGENT_USER')) {
-        this._error(`--user <user> must be specified when running as root`)
-        return false
+      if (this._commandLine.hasCommand()) {
+        user = 'root'
       }
-      const user = this._config.get('ENEBULAR_AGENT_USER')
+      else {
+        if (!this._config.isOverridden('ENEBULAR_AGENT_USER')) {
+          this._error(`--user <user> must be specified when running as root`)
+          return false
+        }
+        user = this._config.get('ENEBULAR_AGENT_USER')
+      }
+      this._debug(`Agent core runs as ${user} user.`)
       try {
         userInfo = getUserInfo(user)
       } catch (err) {

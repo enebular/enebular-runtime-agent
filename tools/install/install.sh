@@ -460,6 +460,9 @@ do_install() {
   if [ ! -z ${AGENT_TEST_DOWNLOAD_PATH} ]; then
     UPDATER_PARAMETER+=("--agent-test-download-path=${AGENT_TEST_DOWNLOAD_PATH}")
   fi
+  if [ ! -z ${REMOTE_MAINTENANCE_USER_PASSWORD} ]; then
+    UPDATER_PARAMETER+=("--remote-maintenance-user-password=${REMOTE_MAINTENANCE_USER_PASSWORD}")
+  fi
 
   local NODE_ENV
   NODE_ENV="PATH=${NODE_PATH}:/bin:/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
@@ -648,6 +651,10 @@ case $i in
   ;;
   --updater-version=*)
   UPDATER_VERSION="${i#*=}"
+  shift
+  ;;
+  --remote-maintenance-user-password=*)
+  REMOTE_MAINTENANCE_USER_PASSWORD="${i#*=}"
   shift
   ;;
   *)

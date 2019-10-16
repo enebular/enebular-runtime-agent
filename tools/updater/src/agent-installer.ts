@@ -22,6 +22,11 @@ export interface AgentInstallerIf {
     userInfo: UserInfo,
     mbedCloudDevCredsPath?: string
   ): Promise<void>
+  installRuntimeDependencies(
+    port: string,
+    newAgentInfo: AgentInfo,
+    userInfo: UserInfo,
+  ): Promise<void>
   bundle2PAL(
     installPath: string,
     bundlePath: string,
@@ -61,6 +66,7 @@ export class AgentInstaller implements AgentInstallerIf {
   private _binBuildEnv: NodeJS.ProcessEnv = {}
   private _log: Log
   private _system: SystemIf
+  private _systemPackageListsUpdated = false
 
   public constructor(config: Config, log: Log, system: SystemIf) {
     this._config = config
@@ -440,13 +446,11 @@ export class AgentInstaller implements AgentInstallerIf {
     )}/${version}/node-${version}-${platform}-${arch}.tar.gz`
   }
 
-  public async build(
+  public async installRuntimeDependencies(
     port: string,
     newAgentInfo: AgentInfo,
     userInfo: UserInfo,
-    mbedCloudDevCredsPath?: string
   ): Promise<void> {
-    const installPath = newAgentInfo.path
     const nodejsPath = path.resolve(
       `/home/${userInfo.user}/nodejs-${newAgentInfo.nodejsVersion}`
     )
@@ -462,13 +466,108 @@ export class AgentInstaller implements AgentInstallerIf {
       )
     }
 
+    if (newAgentInfo.version.lessThanOrEquals(new AgentVersion(2, 8, 0))) return
+
+    if (!this._systemPackageListsUpdated) {
+      await Utils.taskAsync(
+        `Updating system package lists`,
+        this._log,
+        async (): Promise<void> => {
+          await this._system.updatePackageLists()
+        }
+      )
+      this._systemPackageListsUpdated = true
+    }
+
     await Utils.taskAsync(
-      `Updating system package lists`,
+      `Install Debian dependencies`,
       this._log,
       async (): Promise<void> => {
-        await this._system.updatePackageLists()
+        await this._system.installDebianPackages(['openssh-server'])
       }
     )
+
+    const remoteMaintenanceUser = this._config.getString('REMOTE_MAINTENANCE_USER_NAME')
+    if (!await Utils.userExists(this._log, remoteMaintenanceUser)) {
+      await Utils.taskAsync(
+        `Creating Remote Maintenance User`,
+        this._log,
+        async (): Promise<void> => {
+          if (!this._config.isOverridden('REMOTE_MAINTENANCE_USER_PASSWORD')) {
+            this._log.info(`Creating ${remoteMaintenanceUser} using default password`)
+          }
+          try {
+            await this._createRemoteMaintenanceUser(remoteMaintenanceUser,
+                this._config.getString('REMOTE_MAINTENANCE_USER_PASSWORD'))
+          }
+          catch (err) {
+            if (await Utils.userExists(this._log, remoteMaintenanceUser)) {
+              await Utils.spawn(`userdel`, ['--remove', remoteMaintenanceUser], this._log)
+            }
+            throw err
+          }
+        }
+      )
+    }
+
+    await Utils.taskAsync(
+      `Applying file permissions`,
+      this._log,
+      async (): Promise<void> => {
+        const rootInfo = Utils.getUserInfo('root')
+        const agentPath = newAgentInfo.path
+        await Utils.chown(this._log, nodejsPath, rootInfo)
+        await Utils.chown(this._log, agentPath, rootInfo)
+        await Utils.chown(this._log, `${agentPath}/node-red/.node-red-config`, userInfo)
+        await Utils.chown(this._log, `${agentPath}/ports/${port}`, userInfo)
+        await Utils.chown(this._log, `${agentPath}/ports/${port}/lib`, rootInfo)
+        await Utils.chown(this._log, `${agentPath}/ports/${port}/bin`, rootInfo)
+        await Utils.chown(this._log, `${agentPath}/ports/${port}/node_modules`, rootInfo)
+        await Utils.chown(this._log, `${agentPath}/agent/keys/enebular/pubkey.pem`, rootInfo)
+        await Utils.chmod(this._log, `${agentPath}/agent/keys/enebular/pubkey.pem`, '0600')
+      }
+    )
+  }
+
+  private async _createRemoteMaintenanceUser(username: string, password: string) {
+    await Utils.spawn(`useradd`, ['-m', '-G', 'sudo', '-r', username], this._log)
+    await Utils.spawn(`usermod`, ['-L', username], this._log)
+    return Utils.passwd(username, password, this._log)
+  }
+
+  public async build(
+    port: string,
+    newAgentInfo: AgentInfo,
+    userInfo: UserInfo,
+    mbedCloudDevCredsPath?: string
+  ): Promise<void> {
+    const installPath = newAgentInfo.path
+    const nodejsPath = path.resolve(
+      `/home/${userInfo.user}/nodejs-${newAgentInfo.nodejsVersion}`
+    )
+
+    if (!fs.existsSync(nodejsPath)) {
+      this._log.info(
+        `Installing nodejs-${newAgentInfo.nodejsVersion} to ${nodejsPath} ...`
+      )
+      await this._downloadAndExtract(
+        this._getNodeJSDownloadURL(newAgentInfo.nodejsVersion),
+        '/tmp/nodejs-' + Utils.randomString(),
+        nodejsPath,
+        userInfo
+      )
+    }
+
+    if (!this._systemPackageListsUpdated) {
+      await Utils.taskAsync(
+        `Updating system package lists`,
+        this._log,
+        async (): Promise<void> => {
+          await this._system.updatePackageLists()
+        }
+      )
+      this._systemPackageListsUpdated = true
+    }
 
     await Utils.taskAsync(
       `Install Debian dependencies`,

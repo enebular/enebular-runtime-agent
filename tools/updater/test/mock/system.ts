@@ -209,4 +209,8 @@ export default class MockSystem implements SystemIf {
   ): Promise<void> {}
 
   public getArch(): string { throw new Error('not implemented')}
+
+  public async updateRunningUserToRootInSystemd(user: string, file?: string) {}
+
+  public async reverseRunningUserToRootInSystemd(user: string, file?: string) {}
 }
