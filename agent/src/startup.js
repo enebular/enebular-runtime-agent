@@ -85,13 +85,13 @@ export default class Startup {
     let template = systemdTemplate
     let destination = Startup._getServiceFilePath(serviceName)
     let startAgentCommand =
-      process.mainModule.filename + ' --enable-syslog --daemon-mode'
+      process.mainModule.filename + ` --enable-syslog --daemon-mode --user ${user}`
     template = template
       .replace(/%APPEND_ENV%/g, appendEnvs)
       .replace(/%START_AGENT%/g, startAgentCommand)
       .replace(/%STOP_AGENT%/g, process.mainModule.filename + ' kill')
       .replace(/%NODE_PATH%/g, path.dirname(process.execPath))
-      .replace(/%USER%/g, user)
+      .replace(/%USER%/g, 'root')
       .replace(/%PID_PATH%/g, config.get('ENEBULAR_AGENT_PID_FILE'))
 
     try {
