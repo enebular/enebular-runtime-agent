@@ -51,6 +51,8 @@ export interface SystemIf {
   ): Promise<void>
 
   getArch(): string
+  updateRunningUserToRootInSystemd(user: string, file?: string)
+  reverseRunningUserToRootInSystemd(user: string, file?: string)
 }
 
 export class System implements SystemIf {
