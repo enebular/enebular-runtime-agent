@@ -523,8 +523,8 @@ export class AgentInstaller implements AgentInstallerIf {
         await Utils.chown(this._log, `${agentPath}/ports/${port}/lib`, rootInfo)
         await Utils.chown(this._log, `${agentPath}/ports/${port}/bin`, rootInfo)
         await Utils.chown(this._log, `${agentPath}/ports/${port}/node_modules`, rootInfo)
-        await Utils.chown(this._log, `${agentPath}/agent/keys/enebular/*.pub`, rootInfo)
-        await Utils.chmod(this._log, `${agentPath}/agent/keys/enebular/*.pub`, '0600')
+        await Utils.chown(this._log, `${agentPath}/agent/keys/enebular`, rootInfo)
+        await Utils.chmod(this._log, `${agentPath}/agent/keys/enebular`, '0600')
       }
     )
   }
