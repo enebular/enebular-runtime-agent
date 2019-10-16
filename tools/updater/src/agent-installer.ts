@@ -451,6 +451,23 @@ export class AgentInstaller implements AgentInstallerIf {
     newAgentInfo: AgentInfo,
     userInfo: UserInfo,
   ): Promise<void> {
+    const nodejsPath = path.resolve(
+      `/home/${userInfo.user}/nodejs-${newAgentInfo.nodejsVersion}`
+    )
+    if (!fs.existsSync(nodejsPath)) {
+      this._log.info(
+        `Installing nodejs-${newAgentInfo.nodejsVersion} to ${nodejsPath} ...`
+      )
+      await this._downloadAndExtract(
+        this._getNodeJSDownloadURL(newAgentInfo.nodejsVersion),
+        '/tmp/nodejs-' + Utils.randomString(),
+        nodejsPath,
+        userInfo
+      )
+    }
+
+    if (newAgentInfo.version.lessThanOrEquals(new AgentVersion(2, 8, 0))) return
+
     if (!this._systemPackageListsUpdated) {
       await Utils.taskAsync(
         `Updating system package lists`,
@@ -469,21 +486,6 @@ export class AgentInstaller implements AgentInstallerIf {
         await this._system.installDebianPackages(['openssh-server'])
       }
     )
-
-    const nodejsPath = path.resolve(
-      `/home/${userInfo.user}/nodejs-${newAgentInfo.nodejsVersion}`
-    )
-    if (!fs.existsSync(nodejsPath)) {
-      this._log.info(
-        `Installing nodejs-${newAgentInfo.nodejsVersion} to ${nodejsPath} ...`
-      )
-      await this._downloadAndExtract(
-        this._getNodeJSDownloadURL(newAgentInfo.nodejsVersion),
-        '/tmp/nodejs-' + Utils.randomString(),
-        nodejsPath,
-        userInfo
-      )
-    }
 
     const remoteMaintenanceUser = this._config.getString('REMOTE_MAINTENANCE_USER_NAME')
     if (!await Utils.userExists(this._log, remoteMaintenanceUser)) {
