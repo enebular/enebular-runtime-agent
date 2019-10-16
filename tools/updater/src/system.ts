@@ -174,6 +174,29 @@ export class System implements SystemIf {
     if (!user) {
       throw new Error('Failed to find agent user in systemd')
     }
+    if (user === 'root') {
+      const ret = Utils.execReturnStdout(
+        `systemctl show --no-pager -p ExecStart ${serviceName}`
+      )
+      if (ret) {
+        let execStartArgvStr = ret.split(';')[1].trim()
+        if (!execStartArgvStr.startsWith('argv[]')) {
+          throw new Error('Failed to find user in systemd, syntax error')
+        }
+        execStartArgvStr = execStartArgvStr.slice(ret.indexOf('=') - 1)
+        const execStartArgv = execStartArgvStr.split(' ')
+        const index = execStartArgv.findIndex((arg) => {
+            return arg === '--user'
+        })
+        if (index === -1 && execStartArgv.length > (index + 1)) {
+          throw new Error('Failed to find --user in systemd')
+        }
+        user = execStartArgv[index + 1]
+      }
+      else {
+        throw new Error('Failed to find user in systemd')
+      }
+    }
     return user
   }
 
