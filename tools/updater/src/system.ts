@@ -142,6 +142,63 @@ export class System implements SystemIf {
     }
   }
 
+  public async updateRunningUserToRootInSystemd(user: string, file?: string) {
+    const serviceFile = file
+      ? file
+      : `/etc/systemd/system/enebular-agent-${user}.service`
+    const userToReplace = `User=${user}`
+    const newUser = 'User=root'
+    const tmpFile = '/tmp/enebular-agent-systemd-config-' + Utils.randomString()
+
+    try {
+      let content = fs.readFileSync(serviceFile, 'utf8')
+      content = content.replace(userToReplace, newUser)
+      const lines = content.split(/\r?\n/)
+      const index = lines.findIndex((line) => {
+          return line.startsWith('ExecStart=')
+      })
+      if (index === -1 ) {
+        `Failed to update running user in systemd: cannot find ExecStart`
+      }
+      const newExecStart = `${lines[index]} --user ${user}`
+      content = content.replace(lines[index], newExecStart)
+      fs.writeFileSync(tmpFile, content, 'utf8')
+      await Utils.mv(tmpFile, serviceFile)
+    } catch (err) {
+      throw new Error(
+        `Failed to update running user in systemd: ${err.message}`
+      )
+    }
+  }
+
+  public async reverseRunningUserToRootInSystemd(user: string, file?: string) {
+    const serviceFile = file
+      ? file
+      : `/etc/systemd/system/enebular-agent-${user}.service`
+    const userToReplace = 'User=root'
+    const newUser = `User=${user}`
+    const tmpFile = '/tmp/enebular-agent-systemd-config-' + Utils.randomString()
+
+    try {
+      let content = fs.readFileSync(serviceFile, 'utf8')
+      content = content.replace(userToReplace, newUser)
+      const lines = content.split(/\r?\n/)
+      const index = lines.findIndex((line) => {
+          return line.startsWith('ExecStart=')
+      })
+      if (index === -1 ) {
+        `Failed to reverse running user in systemd: cannot find ExecStart`
+      }
+      content = content.replace(` --user ${user}`, '')
+      fs.writeFileSync(tmpFile, content, 'utf8')
+      await Utils.mv(tmpFile, serviceFile)
+    } catch (err) {
+      throw new Error(
+        `Failed to reverse running user in systemd: ${err.message}`
+      )
+    }
+  }
+
   public isServiceRegistered(serviceName: string): boolean {
     const serviceFile = `${serviceName}.service`
     const ret = Utils.execReturnStdout(
