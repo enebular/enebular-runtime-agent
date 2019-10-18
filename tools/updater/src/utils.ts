@@ -340,7 +340,7 @@ export class Utils {
     log?: Log
   ): Promise<void> {
     return new Promise((resolve, reject): void => {
-      const cproc = spawn('passwd', [username], { stdio: 'pipe' })
+      const cproc = spawn('env', ['LC_ALL=C', 'passwd', username], { stdio: 'pipe' })
       cproc.stderr.on('data', (data): void => {
         const stderr = data.toString().replace(/(\n|\r)+$/, '')
         if (log) log.debug(stderr)
