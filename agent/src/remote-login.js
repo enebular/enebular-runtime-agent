@@ -158,9 +158,9 @@ export default class RemoteLogin {
 
     const desiredConfig = desiredState.config || {}
     if (!desiredConfig.hasOwnProperty('enable')) {
-      this._error('request format is incorrect')
+      this._error('Request format is incorrect')
       this._remoteLoginState.state = 'updateFail'
-      this._remoteLoginState.message = 'request format is incorrect'
+      this._remoteLoginState.message = 'Request format is incorrect'
       this._updateRemoteLoginReportedState()
       return
     }
@@ -315,6 +315,13 @@ export default class RemoteLogin {
     const state = {
       localServerActive: this._localServerActiveStatus,
       relayServerConnected: this._relayServerActiveStatus
+    }
+
+    if (this._sshStatus) {
+      state.localUser = this._remoteLoginState.config.localUser
+      state.relayServer = this._remoteLoginState.config.relayServer
+      state.relayServerPort = this._remoteLoginState.config.relayServerPort
+      state.relayServerUser = this._remoteLoginState.config.relayServerUser
     }
 
     this._deviceStateMan.updateState('status', 'set', 'remoteLogin', state)
