@@ -149,7 +149,7 @@ export default class RemoteLogin {
     }
 
     if (!desiredState.hasOwnProperty('updateId')) {
-      this._error('updateId not exist')
+      this._error('Request format is incorrect')
       return
     }
 
@@ -158,25 +158,25 @@ export default class RemoteLogin {
 
     const desiredConfig = desiredState.config || {}
     if (!desiredConfig.hasOwnProperty('enable')) {
-      this._error('enable not exist')
+      this._error('request format is incorrect')
       this._remoteLoginState.state = 'updateFail'
-      this._remoteLoginState.message = 'enable not exist'
+      this._remoteLoginState.message = 'request format is incorrect'
       this._updateRemoteLoginReportedState()
       return
     }
 
     if (this._sshStatus && (this._remoteLoginState.config.enable === true)) {
-      this._error('already remote login feature is enabled')
+      this._error('Remote Maintenance is already enabled')
       this._remoteLoginState.state = 'updateFail'
-      this._remoteLoginState.message = 'already remote login feature is enabled'
+      this._remoteLoginState.message = 'Remote Maintenance is already enabled'
       this._updateRemoteLoginReportedState()
       return
     }
 
     if (!this._sshStatus && (this._remoteLoginState.config.enable === false)) {
-      this._error('already remote login feature is disabled')
+      this._error('Remote Maintenance is already disabled')
       this._remoteLoginState.state = 'updateFail'
-      this._remoteLoginState.message = 'already remote login feature is disabled'
+      this._remoteLoginState.message = 'Remote Maintenance is already disabled'
       this._updateRemoteLoginReportedState()
       return
     }
@@ -190,19 +190,22 @@ export default class RemoteLogin {
 
     try {
       this._desiredTimeoutId = setTimeout(() => {
+        this._error('Remote Maintenance request timed out')
         this._desiredTimeoutId = null
         this._remoteLoginState.state = 'updateFail'
-        this._remoteLoginState.message = 'Remote maintenance process has timed out'
+        this._remoteLoginState.message = 'Remote Maintenance request timed out'
         this._updateRemoteLoginReportedState()
       }, 20000)
 
       if (this._remoteLoginState.config.enable === true) {
         try {
+          this._info('Start getting Certificate')
           await this._getRemoteLoginCertificate(certificats)
         } catch (err) {
           // エラー処理
           if(this._desiredTimeoutId !== null) {
             clearTimeout(this._desiredTimeoutId)
+            this._error(err.message)
             this._desiredTimeoutId = null
             this._desiredProcStatus = 0x00
             this._remoteLoginState.state = 'updateFail'
@@ -213,9 +216,11 @@ export default class RemoteLogin {
         }
       }
       if(this._desiredTimeoutId !== null) {
+        this._info('requesting to agent runner')
         await this._processPendingRemoteLoginChanges(certificats)
       }
     } catch (err) {
+      this._info('failed to request to agent runner')
       clearTimeout(this._desiredTimeoutId)
       this._desiredTimeoutId = null
       this._desiredProcStatus = 0x00
@@ -224,6 +229,7 @@ export default class RemoteLogin {
         isUpdateSign = true
         curSignPublicKey = err.info.publicKeyId
       } else {
+        this._error(err.message)
         this._remoteLoginState.state = 'updateFail'
         this._remoteLoginState.message = err.message
         this._updateRemoteLoginReportedState()
@@ -232,20 +238,24 @@ export default class RemoteLogin {
 
     if (isUpdateSign) {
       try {
+        this._info('download new signing key')
         let res = await this._downloadNewSignPublicKey(curSignPublicKey)
         let rowkey = new Buffer(res.key,'base64').toString('utf-8')
         let settings = { id: res.id, signature: res.signature, key: rowkey }
+        this._info('requesting to rotate public key')
         await this._agentRunnerMan.rotatePublicKey(settings)
 
         // retry
         this._desiredTimeoutId = setTimeout(() => {
+          this._error('Remote Maintenance request timed out')
           this._desiredTimeoutId = null
           this._remoteLoginState.state = 'updateFail'
-          this._remoteLoginState.message = 'Remote maintenance process has timed out'
+          this._remoteLoginState.message = 'Remote Maintenance request timed out'
           this._updateRemoteLoginReportedState()
         }, 20000)
         await this._processPendingRemoteLoginChanges(certificats)
       } catch (err) {
+        this._error(err.message)
         clearTimeout(this._desiredTimeoutId)
         this._desiredTimeoutId = null
         this._desiredProcStatus = 0x00
@@ -352,9 +362,7 @@ export default class RemoteLogin {
         this._remoteLoginState.config.relayServerPrivateKey.id
       )
     } catch (err) {
-      // illegal processing
-      this._error('Failed to get URL where key is stored: ' + err.message)
-      throw err
+      throw new Error('Remote Maintenance Certificate request failed')
     }
 
     try {
@@ -370,9 +378,7 @@ export default class RemoteLogin {
         }
       }
     } catch (err) {
-      // illegal processing
-      this._error('Failed to get key: ' + err.message)
-      throw err
+      throw new Error('Remote Maintenance Certificate request failed')
     }
   }
 
@@ -409,11 +415,11 @@ export default class RemoteLogin {
         'remoteLogin/device/getKeyDataUrl res: ' + JSON.stringify(res, null, 2)
       )
     } catch (err) {
-      throw new Error('remoteLogin/device/getKeyDataUrl sendRequest error')
+      throw new Error('Remote Maintenance Certificate request failed')
     }
 
     if (!res.hasOwnProperty('keys')) {
-      throw new Error('keys is not exist')
+      throw new Error('Remote Maintenance Certificate request failed')
     }
     const keys = res.keys || {}
     return keys
@@ -427,11 +433,11 @@ export default class RemoteLogin {
       res = await this._connectorMessenger.sendRequest('signing/device/getKey', body)
       this._debug('signing/device/getKey res: ' + JSON.stringify(res, null, 2))
     } catch (err) {
-      throw err
+      throw new Error('Remote Maintenance new sign public Key request failed')
     }
 
     if (!res.hasOwnProperty('key')) {
-      throw new Error('key is not exist')
+      throw new Error('Remote Maintenance new sign public Key request failed')
     }
 
     return res
