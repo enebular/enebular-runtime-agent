@@ -88,12 +88,12 @@ export default class RemoteLogin {
 
       if (this._remoteLoginState.config.enable === params.active) {
         this._remoteLoginState.state = 'current'
-        this._updateRemoteLoginReportedState()
         this._updateRemoteLoginStatusState()
+        this._updateRemoteLoginReportedState()
       } else {
         this._remoteLoginState.state = 'updateFail'
-        this._updateRemoteLoginReportedState()
         this._updateRemoteLoginStatusState()
+        this._updateRemoteLoginReportedState()
       }
     } else {
       if (this._sshStatus !== params.active) {
