@@ -317,6 +317,13 @@ export default class RemoteLogin {
       relayServerConnected: this._relayServerActiveStatus
     }
 
+    if (this._sshStatus) {
+      state.localUser = this._remoteLoginState.config.localUser
+      state.relayServer = this._remoteLoginState.config.relayServer
+      state.relayServerPort = this._remoteLoginState.config.relayServerPort
+      state.relayServerUser = this._remoteLoginState.config.relayServerUser
+    }
+
     this._deviceStateMan.updateState('status', 'set', 'remoteLogin', state)
   }
 
