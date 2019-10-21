@@ -1,6 +1,13 @@
 /* @flow */
 import fetch from 'isomorphic-fetch'
 import crypto from 'crypto'
+import { execSync } from 'child_process'
+
+export interface UserInfo {
+  user: string,
+  gid: number,
+  uid: number
+}
 
 export async function delay(msec: number) {
   return new Promise(resolve => {
@@ -112,3 +119,35 @@ export function decryptCredential(key, credential) {
     decipher.final('utf8')
   return decrypted
 }
+
+export function execReturnStdout(cmd: string): string | undefined {
+  try {
+    return execSync(cmd).toString()
+  } catch (err) {
+    return undefined
+  }
+}
+
+export function exec(cmd: string): boolean {
+  return execReturnStdout(cmd) == undefined ? false : true
+}
+
+export function getUserInfo(user: string): UserInfo {
+  let ret = execReturnStdout(`id -u ${user}`)
+  if (!ret) {
+    throw new Error(`Failed to get uid of user ${user}`)
+  }
+  const uid = parseInt(ret)
+  ret = execReturnStdout(`id -g ${user}`)
+  if (!ret) {
+    throw new Error(`Failed to get gid of user ${user}`)
+  }
+  const gid = parseInt(ret)
+  return {
+    user: user,
+    gid: gid,
+    uid: uid
+  }
+}
+
+

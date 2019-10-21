@@ -85,10 +85,10 @@ Pelionの接続モードには、以下のオプションで`developer`または
 
 ```sh
 --mbed-cloud-dev-cred
---mbed-cloud-pal
+--mbed-cloud-bundle or --mbed-cloud-pal
 ```
 
-Pelionの接続モードに開発者用モードを選択した場合に`--mbed-cloud-dev-cred`オプションで開発者用の認証情報のパス、ファクトリーモードを選択した場合に`--mbed-cloud-pal`オプションでファクトリー用の認証情報（palディレクトリ）のパスを設定します。
+Pelionの接続モードに開発者用モードを選択した場合に`--mbed-cloud-dev-cred`オプションで開発者用の認証情報のパス、ファクトリーモードを選択した場合に`--mbed-cloud-bundle` または `--mbed-cloud-pal`オプションでファクトリー用の認証情報（bundleファイルまたはpalディレクトリ）のパスを設定します。
 
 認証情報は、`/tmp`などのように再起動後に保存されない一時的なストレージ領域に転送するのが望ましいです。
 
@@ -122,7 +122,7 @@ OPTION                      FORMAT                DEFAULT                       
 --mbed-cloud-mode           =[developer,factory]  developer                            Pelionの接続モード
 --mbed-cloud-dev-cred       =*                    N/A                                  Pelionの開発者用認証情報ファイルのパス
 --mbed-cloud-pal            =*                    N/A                                  Pelionのファクトリー用認証情報（palディレクトリ）のパス
---mbed-cloud-build-fcc      N/A                   N/A                                  PelionのFCCツールをビルドする
+--mbed-cloud-bundle         =*                    N/A                                  Pelionのファクトリー用認証情報（bundleファイル）のパス
 --license-key               =*                    N/A                                  アクティベーション用のライセンスキー
 --dev-mode                  N/A                   N/A                                  enebular-agentを開発者用モードで起動する
 ```
@@ -158,7 +158,7 @@ Raspberry Pi デバイスに `pi` ユーザと `192.168.1.125` の IP アドレ�
 
 ```sh
 scp -r pal pi@192.168.1.125:/tmp/
-ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-mode=factory --mbed-cloud-pal=/tmp/pal"
+ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-mode=factory --mbed-cloud-bundle=/tmp/bundle"
 ```
 
 ## インストール完了後

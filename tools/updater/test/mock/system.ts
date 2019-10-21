@@ -197,6 +197,8 @@ export default class MockSystem implements SystemIf {
 
   public async installDebianPackages(packages: string[]): Promise<void> {}
 
+  public async updatePackageLists(): Promise<void> {}
+
   public async installPythonPackages(packages: string[], userInfo: UserInfo): Promise<void> {}
 
   public async updateNodeJSVersionInSystemd(
@@ -205,4 +207,10 @@ export default class MockSystem implements SystemIf {
     newVersion: string,
     file?: string
   ): Promise<void> {}
+
+  public getArch(): string { throw new Error('not implemented')}
+
+  public async updateRunningUserToRootInSystemd(user: string, file?: string) {}
+
+  public async reverseRunningUserToRootInSystemd(user: string, file?: string) {}
 }

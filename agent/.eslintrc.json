@@ -15,6 +15,17 @@
     "node": true
   },
   "rules": {
-    "prettier/prettier": "error"
+    "prettier/prettier": [
+      "error",
+      {
+        "singleQuote": true,
+        "semi": false,
+        "printWidth": 80,
+        "tabWidth": 2,
+        "parser": "flow",
+        "trailingComma": "none",
+        "jsxBracketSameLine": false
+      }
+    ]
   }
 }

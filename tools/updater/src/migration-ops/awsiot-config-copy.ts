@@ -34,21 +34,17 @@ export default class AwsiotConfigCopy extends Copy {
       this._ensureAbsolutePath(awsiotConfig.privateKey, awsiotConfigPath)
     ]
 
-    let promises: Promise<void>[] = []
-    filesToCopy.forEach(
-      (file): void => {
-        if (file.indexOf(context.projectPath) > -1) {
-          // inside project source directory, we will copy it to an equivalent in new project source directly.
-          const relativePath = path.relative(context.projectPath, file)
-          const newFile = path.resolve(context.newProjectPath, relativePath)
-          promises.push(
-            Utils.copy(context.log, file, newFile, context.userInfo)
-          )
-        } else {
-          // Leave it if it's not inside project source directory.
-        }
+    const promises: Promise<void>[] = []
+    filesToCopy.forEach((file): void => {
+      if (file.indexOf(context.projectPath) > -1) {
+        // inside project source directory, we will copy it to an equivalent in new project source directly.
+        const relativePath = path.relative(context.projectPath, file)
+        const newFile = path.resolve(context.newProjectPath, relativePath)
+        promises.push(Utils.copy(context.log, file, newFile, context.userInfo))
+      } else {
+        // Leave it if it's not inside project source directory.
       }
-    )
+    })
     await Promise.all(promises)
   }
 }
