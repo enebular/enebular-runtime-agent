@@ -42,7 +42,6 @@ export default class AgentCoreManager extends EventEmitter {
 
   public async startAgentCore(
     portBasePath: string,
-    userInfo?: UserInfo
   ): Promise<void> {
     return new Promise((resolve, reject): void => {
       const startupModule = process.argv[1]
@@ -55,17 +54,10 @@ export default class AgentCoreManager extends EventEmitter {
       const cproc = fork(
         startupModule,
         args,
-        userInfo
-          ? {
-              stdio: [0, 1, 2, 'ipc'],
-              cwd: portBasePath,
-              uid: userInfo.uid,
-              gid: userInfo.gid
-            }
-          : {
-              stdio: [0, 1, 2, 'ipc'],
-              cwd: portBasePath
-            }
+        {
+          stdio: [0, 1, 2, 'ipc'],
+          cwd: portBasePath
+        }
       )
       if (cproc.stdout) {
         cproc.stdout.on('data', data => {

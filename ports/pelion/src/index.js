@@ -18,6 +18,33 @@ async function startup() {
   if (!startCore()) {
     return runnerStartup(portBasePath)
   }
+
+  if (process.getuid() === 0) {
+    // drop process privilege
+    const index = process.argv.findIndex((arg) => {
+        return arg.startsWith('--user')
+    })
+    if (index === -1) {
+      throw new Error('Missing option --user in command line arguments')
+    }
+    let user
+    if (process.argv[index] === '--user') {
+      if (process.argv.length < (index + 1)) {
+        throw new Error('Option --user <user> argument missing')
+      }
+      user = process.argv[index + 1]
+    }
+    else {
+      if (!process.argv[index].startsWith('--user=')) {
+        throw new Error('Option --user <user> syntax error')
+      }
+      user = process.argv[index].split('=')[1]
+    }
+    process.initgroups(user, user)
+    process.setgid(user)
+    process.setuid(user)
+  }
+
   return pelionConnector.startup()
 }
 

@@ -247,7 +247,7 @@ export class System implements SystemIf {
         const index = execStartArgv.findIndex((arg) => {
             return arg === '--user'
         })
-        if (index === -1 && execStartArgv.length > (index + 1)) {
+        if (index === -1 || execStartArgv.length < (index + 1)) {
           throw new Error('Failed to find --user in systemd')
         }
         user = execStartArgv[index + 1]
