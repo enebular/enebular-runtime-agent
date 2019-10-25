@@ -18,7 +18,6 @@ async function startup() {
   if (!startCore()) {
     return runnerStartup(portBasePath)
   }
-
   return pelionConnector.startup()
 }
 
