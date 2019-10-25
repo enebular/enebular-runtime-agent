@@ -333,6 +333,14 @@ export default class EnebularAgent extends EventEmitter {
       return this._commandLine.processCommand()
     }
 
+    if (process.getuid() === 0) {
+      // drop process privileges
+      const user = this._config.get('ENEBULAR_AGENT_USER')
+      process.initgroups(user, user)
+      process.setgid(user)
+      process.setuid(user)
+    }
+
     this._init()
     if (this._config.get('ENEBULAR_DAEMON_MODE')) {
       this._createPIDFile()
