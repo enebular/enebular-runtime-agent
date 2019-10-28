@@ -242,13 +242,13 @@ export class System implements SystemIf {
         if (!execStartArgvStr.startsWith('argv[]')) {
           throw new Error('Failed to find user in systemd, syntax error')
         }
-        execStartArgvStr = execStartArgvStr.slice(ret.indexOf('=') - 1)
+        execStartArgvStr = execStartArgvStr.slice(execStartArgvStr.indexOf('=') + 1)
         const execStartArgv = execStartArgvStr.split(' ')
         const index = execStartArgv.findIndex((arg) => {
             return arg === '--user'
         })
         if (index === -1 || execStartArgv.length < (index + 1)) {
-          throw new Error('Failed to find --user in systemd')
+          throw new Error('Failed to find --user <user> in systemd')
         }
         user = execStartArgv[index + 1]
       }
