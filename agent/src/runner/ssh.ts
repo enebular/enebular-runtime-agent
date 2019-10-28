@@ -283,6 +283,9 @@ export class SSH extends EventEmitter {
         `ssh-client start failed: ${err.message}`
       )
       this._clientStatusChanged(this.STATUS_IDLE)
+      if (fs.existsSync(this._privateKeyPath)) {
+        fs.unlinkSync(this._privateKeyPath)
+      }
       throw(err)
     }
   }
@@ -308,8 +311,10 @@ export class SSH extends EventEmitter {
       this._clientStatusChanged(this.STATUS_IDLE)
       throw(err)
     }
-    if (fs.existsSync(this._privateKeyPath)) {
-      fs.unlinkSync(this._privateKeyPath)
+    finally {
+      if (fs.existsSync(this._privateKeyPath)) {
+        fs.unlinkSync(this._privateKeyPath)
+      }
     }
   }
 
