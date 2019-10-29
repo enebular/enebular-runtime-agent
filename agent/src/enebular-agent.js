@@ -19,6 +19,7 @@ import NodeREDController from './node-red-controller'
 import MonitorManager from './monitor-manager'
 import RemoteLogin from './remote-login'
 import AgentRunnerManager from './agent-runner-manager'
+import { getUserHome } from './utils'
 
 export type EnebularAgentConfig = {
   NODE_RED_DIR: string,
@@ -339,6 +340,12 @@ export default class EnebularAgent extends EventEmitter {
       process.initgroups(user, user)
       process.setgid(user)
       process.setuid(user)
+      process.env['HOME'] = getUserHome(user)
+      process.env['USER'] = user
+      process.env['LOGNAME'] = user
+      if (process.env['USERNAME']) {
+        process.env['USERNAME'] = user
+      }
     }
 
     this._init()
