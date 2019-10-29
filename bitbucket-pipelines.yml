@@ -35,6 +35,13 @@ definitions:
           - rm -rf .git
         artifacts:
           - '**'
+    - step: &set-key
+        name: Set the key
+        deployment: develop_s3
+        script:
+          - python tools/s3_download.py ${ENEBULAR_AGENT_S3_BUCKET} ${ENEBULAR_AGENT_S3_DIR}
+        artifacts:
+          - '**'
     - step: &pack
         name: Pack
         script:
@@ -74,7 +81,8 @@ definitions:
           - dist/**
 pipelines:
   default: 
-    - step: *build-test
+  #  - step: *build-test
+     - step: *set-key
   tags:
     '[0-9]*.[0-9]*.[0-9]*':
       - step: *build-test
