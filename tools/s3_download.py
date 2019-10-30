@@ -23,7 +23,7 @@ def download_from_s3(bucket_location):
     # objects = bucket.objects.all()
     for a_object in keys:
         base, ext = os.path.splitext(a_object)
-        if ext == 'pub':
+        if ext == '.pub':
             print(a_object)
     
     bucket.download_file('development/sign-key-pair/latest/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub','agent/keys/enebular/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub' )
