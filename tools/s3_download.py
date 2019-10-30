@@ -7,7 +7,7 @@ from botocore.exceptions import ClientError
 import subprocess
 
 def download_from_s3(bucket_location):
-    directory = os.listdir(bucket_location)
+    directory = os.listdir(bucket_location + '/agent/keys')
     print(directory)
     print("bucket_location:",bucket_location)
     #print("bucket_key:",bucket_key)
