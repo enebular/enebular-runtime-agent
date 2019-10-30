@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import { execSync } from 'child_process'
-import { execReturnStdout, getUserInfo } from '../utils'
+import { getUserHome, getUserInfo } from '../utils'
 import EventEmitter from 'events'
 import AgentRunnerLogger from './agent-runner-logger'
 import ProcessManager from './process-manager'
@@ -134,11 +134,7 @@ export class SSH extends EventEmitter {
 
   private _prepareServerPublicKey(user: string, publicKey: string): void {
     const userInfo = getUserInfo(user)
-    const getentResult = execReturnStdout(`getent passwd ${user}`)
-    if (!getentResult) {
-      throw new Error(`Failed to get home directory of user ${user}`)
-    }
-    const userHome = getentResult.split(':')[5]
+    const userHome = getUserHome(user)
     const userSSHPath = `${userHome}/.ssh`
     try {
       if (!fs.existsSync(userSSHPath)) {
