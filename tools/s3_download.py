@@ -15,8 +15,14 @@ def download_from_s3(bucket_location):
     #objects = bucket.objects.all()
     #for a_object in objects:
     #    print(a_object)
-    bucket.download_file('development/sign-key-pair/latest/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub', '5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub')
-    print(subprocess.run(["ls", "-l", "/"], stdout=subprocess.PIPE))
+    bucket.download_file('development/sign-key-pair/latest/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub', '../agent/keys/enebular/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub')
+    f = open('../agent/keys/enebular/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub')
+    data1 = f.read()  # ファイル終端まで全て読んだデータを返す
+    f.close()
+    lines1 = data1.split('\n') # 改行で区切る(改行文字そのものは戻り値のデータには含まれない)
+    for line in lines1:
+        print line
+    print
     return True
 
 def main():
