@@ -8,31 +8,21 @@ from botocore.exceptions import ClientError
 import subprocess
 
 def download_from_s3(bucket_location):
-    print("bucket_location:",bucket_location)
-    #print("bucket_key:",bucket_key)
-    s3 = boto3.resource('s3')
     s3client = Session().client('s3')
-
-    bucket = s3.Bucket('enebular-world')
     response = s3client.list_objects(
         Bucket='enebular-world',
         Prefix='development/sign-key-pair/latest/'
     )
     if 'Contents' in response:  # 該当する key がないと response に 'Contents' が含まれない
         keys = [content['Key'] for content in response['Contents']]
-    # objects = bucket.objects.all()
-    for a_object in keys:
-        base, ext = os.path.splitext(a_object)
-        if ext == '.pub':
-            print(a_object)
-    
-    bucket.download_file('development/sign-key-pair/latest/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub','agent/keys/enebular/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub' )
-    f = open('agent/keys/enebular/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub')
-    print(f.read())
-    f.close()
-    directory = os.listdir(bucket_location + '/agent/keys/enebular')
-    print(directory)
-    return True
+        for key in keys:
+            base, ext = os.path.splitext(key)
+            if ext == '.pub':
+                print(key)
+                bucket = boto3.resource('s3').Bucket('enebular-world')
+                bucket.download_file(key,'agent/keys/enebular/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub' )
+                return True
+    return False
 
 def main():
 
