@@ -11,10 +11,17 @@ def download_from_s3(bucket_location):
     print("bucket_location:",bucket_location)
     #print("bucket_key:",bucket_key)
     s3 = boto3.resource('s3')
+    s3client = Session().client('s3')
 
     bucket = s3.Bucket('enebular-world')
-    objects = bucket.objects(Prefix='development/sign-key-pair/latest/').all()
-    for a_object in objects:
+    response = s3client.list_objects(
+        Bucket='enebular-world',
+        Prefix='development/sign-key-pair/latest/'
+    )
+    if 'Contents' in response:  # 該当する key がないと response に 'Contents' が含まれない
+        keys = [content['Key'] for content in response['Contents']]
+    # objects = bucket.objects.all()
+    for a_object in keys:
         print(a_object)
     bucket.download_file('development/sign-key-pair/latest/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub','agent/keys/enebular/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub' )
     f = open('agent/keys/enebular/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub')
