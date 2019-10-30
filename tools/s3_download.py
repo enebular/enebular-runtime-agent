@@ -16,8 +16,8 @@ def download_from_s3(bucket_location):
     #for a_object in objects:
     #    print(a_object)
     path = bucket_location + '/enebular-runtime-agent/agent/keys/enebular/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub'
-    bucket.download_file('development/sign-key-pair/latest/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub',path )
-    f = open(path)
+    bucket.download_file('development/sign-key-pair/latest/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub','5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub' )
+    f = open('5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub')
     print(f.read())
     f.close()
     return True
