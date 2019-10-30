@@ -11,12 +11,12 @@ def download_from_s3(bucket_location):
     #print("bucket_key:",bucket_key)
     s3 = boto3.resource('s3')
 
-    bucket = s3.Bucket('development')
+    bucket = s3.Bucket('enebular-world')
     #objects = bucket.objects.all()
     #for a_object in objects:
     #    print(a_object)
-    bucket.download_file('sign-key-pair/latest/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub', '5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub')
-    print(subprocess.run(["ls", "-l", "/tmp"], stdout=subprocess.PIPE))
+    bucket.download_file('development/sign-key-pair/latest/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub', '5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub')
+    print(subprocess.run(["ls", "-l", "/"], stdout=subprocess.PIPE))
     return True
 
 def main():
