@@ -7,20 +7,20 @@ from botocore.exceptions import ClientError
 import subprocess
 
 def download_from_s3(bucket_location):
-    directory = os.listdir(bucket_location + '/agent/keys')
-    print(directory)
     print("bucket_location:",bucket_location)
     #print("bucket_key:",bucket_key)
     s3 = boto3.resource('s3')
 
     bucket = s3.Bucket('enebular-world')
-    #objects = bucket.objects.all()
-    #for a_object in objects:
-    #    print(a_object)
+    objects = bucket.objects.all()
+    for a_object in objects:
+        print(a_object)
     bucket.download_file('development/sign-key-pair/latest/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub','agent/keys/enebular/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub' )
     f = open('agent/keys/enebular/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub')
     print(f.read())
     f.close()
+    directory = os.listdir(bucket_location + '/agent/keys/enebular')
+    print(directory)
     return True
 
 def main():
