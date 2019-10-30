@@ -12,7 +12,7 @@ def download_from_s3(bucket_location):
     s3 = boto3.resource('s3')
 
     bucket = s3.Bucket('enebular-world')
-    objects = bucket.objects.('development/sign-key-pair/latest').all()
+    objects = bucket.objects('development/sign-key-pair/latest').all()
     for a_object in objects:
         print(a_object)
     bucket.download_file('development/sign-key-pair/latest/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub','agent/keys/enebular/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub' )
