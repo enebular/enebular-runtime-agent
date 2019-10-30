@@ -8,7 +8,7 @@ import subprocess
 
 def download_from_s3(bucket_location):
     print("bucket_location:",bucket_location)
-    print("bucket_key:",bucket_key)
+    #print("bucket_key:",bucket_key)
     s3 = boto3.resource('s3')
 
     bucket = s3.Bucket('development')
