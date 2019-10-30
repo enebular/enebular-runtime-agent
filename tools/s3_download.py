@@ -7,8 +7,8 @@ from botocore.exceptions import ClientError
 import subprocess
 
 def download_from_s3(bucket_location):
-    path = os.getcwd()
-    print(path)
+    directory = os.listdir(bucket_location)
+    print(directory)
     print("bucket_location:",bucket_location)
     #print("bucket_key:",bucket_key)
     s3 = boto3.resource('s3')
