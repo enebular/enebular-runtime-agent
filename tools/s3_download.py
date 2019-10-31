@@ -7,23 +7,20 @@ from boto3 import Session
 from botocore.exceptions import ClientError
 import subprocess
 
-def download_from_s3(bucket_location):
+def download_pub_key_from_s3(bucket_location,bucket_key,path):
     s3client = Session().client('s3')
     response = s3client.list_objects(
-        Bucket='enebular-world',
-        Prefix='development/sign-key-pair/latest/'
+        Bucket=bucket_location,
+        Prefix=bucket_key
     )
     if 'Contents' in response:  # 該当する key がないと response に 'Contents' が含まれない
         keys = [content['Key'] for content in response['Contents']]
         for key in keys:
             base, ext = os.path.splitext(key)
             if ext == '.pub':
-                print(key)
                 dirname, filename = os.path.split(key)
-                bucket = boto3.resource('s3').Bucket('enebular-world')
-                bucket.download_file(key,'agent/keys/enebular/' + filename )
-                directory = os.listdir(bucket_location + '/agent/keys/enebular')
-                print(directory)
+                bucket = boto3.resource('s3').Bucket(bucket_location)
+                bucket.download_file(key,path + filename )
                 return True
     return False
 
@@ -31,10 +28,15 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("bucket", help="Name of the existing S3 bucket location")
-    #parser.add_argument("bucket_key", help="Name of the S3 Bucket key")
+    parser.add_argument("bucket_key", help="Name of the S3 Bucket key")
+    parser.add_argument("path", help="Name of the path")
     args = parser.parse_args()
 
-    if not download_from_s3(args.bucket):
+    print("bucket:",args.bucket)
+    print("bucket_key:",args.bucket_key)
+    print("path:",args.path)
+
+    if not download_pub_key_from_s3(args.bucket,args.bucket_key,args.path):
         sys.exit(1)
 
 if __name__ == "__main__":
