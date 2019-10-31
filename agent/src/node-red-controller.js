@@ -1072,14 +1072,14 @@ export default class NodeREDController {
   }
 
   async _shutdownService() {
-    if (!this._shutdownRequested) {
-       // could be an internal shutdown that haven't set the flag yet
-       this._shutdownRequested = true
-    }
     return new Promise((resolve, reject) => {
       const cproc = this._cproc
       if (cproc) {
         this.info('Shutting down service...')
+        if (!this._shutdownRequested) {
+           // could be an internal shutdown that haven't set the flag yet
+           this._shutdownRequested = true
+        }
         const shutdownTimer = setTimeout(() => {
           if (this._cproc) {
             this.info('Graceful shutdown timeout, killing service.')
