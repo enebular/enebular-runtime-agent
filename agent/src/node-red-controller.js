@@ -1025,7 +1025,7 @@ export default class NodeREDController {
         this.info(message)
         this._cproc = null
         /* Restart automatically on an abnormal exit. */
-        if (code !== 0) {
+        if (!this._shutdownRequested) {
           this._setFlowStatus('error', message)
           let shouldRetry = ProcessUtil.shouldRetryOnCrash(this._retryInfo)
           clearTimeout(startTimeout)
@@ -1072,12 +1072,23 @@ export default class NodeREDController {
   }
 
   async _shutdownService() {
+    if (!this._shutdownRequested) {
+       // could be an internal shutdown that haven't set the flag yet
+       this._shutdownRequested = true
+    }
     return new Promise((resolve, reject) => {
       const cproc = this._cproc
       if (cproc) {
         this.info('Shutting down service...')
+        const shutdownTimer = setTimeout(() => {
+          if (this._cproc) {
+            this.info('Graceful shutdown timeout, killing service.')
+            this._cproc.kill('SIGKILL')
+          }
+        }, 15 * 1000)
         cproc.once('exit', () => {
           this.info('Service ended')
+          clearTimeout(shutdownTimer)
           this._shutdownRequested = false
           this._cproc = null
           resolve()
