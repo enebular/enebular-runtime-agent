@@ -46,6 +46,28 @@ definitions:
           - python tools/s3_download.py ${ENEBULAR_AGENT_S3_BUCKET} ${ENEBULAR_AGENT_S3_PUB_KEY_DIR} "agent/keys/enebular/"
         artifacts:
           - '**'
+    - step: &set-pub-key-staging
+        name: Set the key
+        image: python:3.5.1
+        deployment: Staging
+        script:
+          - mkdir -p agent/keys
+          - mkdir -p agent/keys/enebular
+          - pip install boto3==1.3.0
+          - python tools/s3_download.py ${ENEBULAR_AGENT_S3_BUCKET} ${ENEBULAR_AGENT_S3_PUB_KEY_DIR} "agent/keys/enebular/"
+        artifacts:
+          - '**'
+    - step: &set-pub-key-release
+        name: Set the key
+        image: python:3.5.1
+        deployment: Production
+        script:
+          - mkdir -p agent/keys
+          - mkdir -p agent/keys/enebular
+          - pip install boto3==1.3.0
+          - python tools/s3_download.py ${ENEBULAR_AGENT_S3_BUCKET} ${ENEBULAR_AGENT_S3_PUB_KEY_DIR} "agent/keys/enebular/"
+        artifacts:
+          - '**'
     - step: &pack
         name: Pack
         script:
@@ -89,10 +111,12 @@ pipelines:
   tags:
     '[0-9]*.[0-9]*.[0-9]*':
       - step: *build-test
+      - step: *set-pub-key-release
       - step: *pack
       - step: *upload-release
     '[0-9]*.[0-9]*.[0-9]*-rc*':
       - step: *build-test
+      - step: *set-pub-key-staging
       - step: *pack
       - step: *upload
     'dev-test-*':
