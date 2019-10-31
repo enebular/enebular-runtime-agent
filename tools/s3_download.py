@@ -13,7 +13,7 @@ def download_pub_key_from_s3(bucket_location,bucket_key,path):
         Bucket=bucket_location,
         Prefix=bucket_key
     )
-    if 'Contents' in response:  # 該当する key がないと response に 'Contents' が含まれない
+    if 'Contents' in response: #対象のキーが無い場合の処置
         keys = [content['Key'] for content in response['Contents']]
         for key in keys:
             base, ext = os.path.splitext(key)
@@ -31,10 +31,6 @@ def main():
     parser.add_argument("bucket_key", help="Name of the S3 Bucket key")
     parser.add_argument("path", help="Name of the path")
     args = parser.parse_args()
-
-    print("bucket:",args.bucket)
-    print("bucket_key:",args.bucket_key)
-    print("path:",args.path)
     
     if not download_pub_key_from_s3(args.bucket,args.bucket_key,args.path):
         sys.exit(1)
