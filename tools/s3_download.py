@@ -19,8 +19,11 @@ def download_from_s3(bucket_location):
             base, ext = os.path.splitext(key)
             if ext == '.pub':
                 print(key)
+                dirname, filename = os.path.split(base)
                 bucket = boto3.resource('s3').Bucket('enebular-world')
-                bucket.download_file(key,'agent/keys/enebular/5b1001a0-f2b8-4098-84be-1d7254a6ce70.pub' )
+                bucket.download_file(key,'agent/keys/enebular/' + filename )
+                directory = os.listdir('/agent/keys/enebular')
+                print(directory)
                 return True
     return False
 
