@@ -93,6 +93,9 @@ export class SSH extends EventEmitter {
     if (status === this._clientStatus) return
     this._info(`ssh-client status changed: ${this._clientStatus} ==> ${status}`)
     if (status === this.STATUS_IDLE) {
+      if (fs.existsSync(this._privateKeyPath)) {
+        fs.unlinkSync(this._privateKeyPath)
+      }
       if (
         this._clientStatus === this.STATUS_STARTING ||
         this._clientStatus === this.STATUS_RUNNING
@@ -303,9 +306,6 @@ export class SSH extends EventEmitter {
       )
       this._clientStatusChanged(this.STATUS_IDLE)
       throw(err)
-    }
-    if (fs.existsSync(this._privateKeyPath)) {
-      fs.unlinkSync(this._privateKeyPath)
     }
   }
 
