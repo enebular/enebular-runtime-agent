@@ -86,7 +86,8 @@ definitions:
 pipelines:
   default: 
   #  - step: *build-test
-     - SET_KEY_DEPLOYMENT = develop_s3
+      script:
+        - SET_KEY_DEPLOYMENT = develop_s3
      - step: *set-key
   tags:
     '[0-9]*.[0-9]*.[0-9]*':
