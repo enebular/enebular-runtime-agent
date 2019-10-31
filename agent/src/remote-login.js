@@ -448,6 +448,10 @@ export default class RemoteLogin {
       throw new Error('Remote Maintenance new sign public Key request failed')
     }
 
+    if (currentSignPublicKey === res.id) {
+      throw new Error('Remote Maintenance new sign public Key is already saved')
+    }
+    
     return res
   }
 }
