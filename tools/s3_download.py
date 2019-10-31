@@ -22,7 +22,7 @@ def download_from_s3(bucket_location):
                 dirname, filename = os.path.split(base)
                 bucket = boto3.resource('s3').Bucket('enebular-world')
                 bucket.download_file(key,'agent/keys/enebular/' + filename )
-                directory = os.listdir('/agent/keys/enebular')
+                directory = os.listdir(bucket_location + '/agent/keys/enebular')
                 print(directory)
                 return True
     return False
