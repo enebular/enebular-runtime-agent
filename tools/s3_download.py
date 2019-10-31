@@ -35,7 +35,7 @@ def main():
     print("bucket:",args.bucket)
     print("bucket_key:",args.bucket_key)
     print("path:",args.path)
-
+    
     if not download_pub_key_from_s3(args.bucket,args.bucket_key,args.path):
         sys.exit(1)
 
