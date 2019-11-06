@@ -71,7 +71,7 @@ export default class AgentRunner {
       if (this._agentRunnerService) await this._agentRunnerService.cleanup()
       process.exit(code)
     })
-    await this._agentCoreManager.startAgentCore(this._portBasePath, userInfo)
+    await this._agentCoreManager.startAgentCore(this._portBasePath)
     this._agentRunnerService = new AgentRunnerService(
       this._agentCoreManager,
       this._log

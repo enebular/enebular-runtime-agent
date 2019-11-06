@@ -150,4 +150,11 @@ export function getUserInfo(user: string): UserInfo {
   }
 }
 
+export function getUserHome(user: string): string {
+  const getentResult = execReturnStdout(`getent passwd ${user}`)
+  if (!getentResult) {
+    throw new Error(`Failed to get home directory of user ${user}`)
+  }
+  return getentResult.split(':')[5]
+}
 
