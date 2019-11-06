@@ -38,6 +38,7 @@ definitions:
     - step: &set-pub-key
         name: Set the key
         image: python:3.5.1
+        deployment: test_pub_key_download
         script:
           - mkdir -p agent/keys
           - mkdir -p agent/keys/enebular
@@ -48,6 +49,7 @@ definitions:
     - step: &set-pub-key-staging
         name: Set the key
         image: python:3.5.1
+        deployment: Staging_pub_key_download
         script:
           - mkdir -p agent/keys
           - mkdir -p agent/keys/enebular
@@ -58,6 +60,7 @@ definitions:
     - step: &set-pub-key-release
         name: Set the key
         image: python:3.5.1
+        deployment: Production_pub_key_download
         script:
           - mkdir -p agent/keys
           - mkdir -p agent/keys/enebular
@@ -79,8 +82,9 @@ definitions:
         artifacts:
           - dist/**
     - step: &upload
-        name: Upload
+        name: Upload (Staging)
         image: python:3.5.1
+        deployment: Staging
         script:
           - pip install boto3==1.3.0
           - cp -r dist ${BITBUCKET_TAG}
@@ -90,6 +94,7 @@ definitions:
     - step: &upload-release
         name: Upload (Production)
         image: python:3.5.1
+        deployment: production
         trigger: manual
         script:
           - pip install boto3==1.3.0
@@ -105,19 +110,16 @@ pipelines:
     - step: *build-test
   tags:
     '[0-9]*.[0-9]*.[0-9]*':
-      - deployment: Production
       - step: *build-test
       - step: *set-pub-key-release
       - step: *pack
       - step: *upload-release
     '[0-9]*.[0-9]*.[0-9]*-rc*':
-      # - step: *build-test
-      - deployment: Staging
+      - step: *build-test
       - step: *set-pub-key-staging
       - step: *pack
       - step: *upload
     'dev-test-*':
-      - deployment: develop_s3
       - step: *build-test
       - step: *set-pub-key
       - step: *pack
