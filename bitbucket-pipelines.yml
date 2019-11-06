@@ -82,9 +82,8 @@ definitions:
         artifacts:
           - dist/**
     - step: &upload
-        name: Upload (Staging)
+        name: Upload
         image: python:3.5.1
-        deployment: Staging
         script:
           - pip install boto3==1.3.0
           - cp -r dist ${BITBUCKET_TAG}
@@ -94,7 +93,6 @@ definitions:
     - step: &upload-release
         name: Upload (Production)
         image: python:3.5.1
-        deployment: production
         trigger: manual
         script:
           - pip install boto3==1.3.0
