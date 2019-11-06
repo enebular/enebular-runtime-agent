@@ -38,7 +38,6 @@ definitions:
     - step: &set-pub-key
         name: Set the key
         image: python:3.5.1
-        deployment: develop_s3
         script:
           - mkdir -p agent/keys
           - mkdir -p agent/keys/enebular
@@ -49,7 +48,6 @@ definitions:
     - step: &set-pub-key-staging
         name: Set the key
         image: python:3.5.1
-        deployment: Staging
         script:
           - mkdir -p agent/keys
           - mkdir -p agent/keys/enebular
@@ -60,7 +58,6 @@ definitions:
     - step: &set-pub-key-release
         name: Set the key
         image: python:3.5.1
-        deployment: Production
         script:
           - mkdir -p agent/keys
           - mkdir -p agent/keys/enebular
@@ -108,16 +105,19 @@ pipelines:
     - step: *build-test
   tags:
     '[0-9]*.[0-9]*.[0-9]*':
+      deployment: Production
       - step: *build-test
       - step: *set-pub-key-release
       - step: *pack
       - step: *upload-release
     '[0-9]*.[0-9]*.[0-9]*-rc*':
       # - step: *build-test
+      deployment: Staging
       - step: *set-pub-key-staging
       - step: *pack
       - step: *upload
     'dev-test-*':
+      deployment: develop_s3
       - step: *build-test
       - step: *set-pub-key
       - step: *pack

@@ -61,10 +61,6 @@ def main():
     parser.add_argument("bucket_key", help="Name of the S3 Bucket key")
     args = parser.parse_args()
 
-    print("bucket:\n" + args.bucket)
-    print("artefact:\n" + args.artefact)
-    print("bucket_key:\n" + args.bucket_key)
-
     if not upload_to_s3(args.bucket, args.artefact, args.bucket_key):
         sys.exit(1)
 
