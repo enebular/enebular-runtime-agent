@@ -1,13 +1,30 @@
 /* @flow */
+import path from 'path'
 import PelionConnector from './pelion-connector'
+import {
+  startup as runnerStartup,
+  shutdown as runnerShutdown
+} from '../../../agent/lib/runner/index'
 
 const pelionConnector = new PelionConnector()
 
+function startCore(): boolean {
+  const startCore = process.argv.filter(arg => arg === '--start-core')
+  return startCore.length > 0 ? true : false
+}
+
 async function startup() {
+  const portBasePath = path.resolve(__dirname, '../')
+  if (!startCore()) {
+    return runnerStartup(portBasePath)
+  }
   return pelionConnector.startup()
 }
 
 async function shutdown() {
+  if (!startCore()) {
+    return runnerShutdown()
+  }
   return pelionConnector.shutdown()
 }
 

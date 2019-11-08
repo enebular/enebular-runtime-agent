@@ -1,6 +1,6 @@
 {
   "name": "enebular-mbed-agent",
-  "version": "2.8.0",
+  "version": "2.9.0",
   "description": "The 'mbed' port of enebular-agent for enebular",
   "main": "lib/index.js",
   "bin": {
@@ -13,7 +13,7 @@
     "lint": "eslint src",
     "flow": "flow",
     "test": "test/bash/env.bash && test/bash/commandline-opts.bash",
-    "dev": "DEBUG=debug ./bin/enebular-mbed-agent --dev-mode"
+    "dev": "DEBUG=debug ./bin/enebular-pelion-agent --dev-mode"
   },
   "author": "",
   "license": "MIT",

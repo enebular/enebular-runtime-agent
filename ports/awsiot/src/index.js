@@ -4,6 +4,10 @@ import path from 'path'
 import awsIot from 'aws-iot-device-sdk'
 import { version as agentVer } from 'enebular-runtime-agent/package.json'
 import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
+import {
+  startup as runnerStartup,
+  shutdown as runnerShutdown
+} from '../../../agent/lib/runner/index'
 
 const MODULE_NAME = 'aws-iot'
 
@@ -371,10 +375,20 @@ function onConnectorInit() {
   info('Agent started')
 }
 
+function startCore(): boolean {
+  const startCore = process.argv.filter(arg => arg === '--start-core')
+  return startCore.length > 0 ? true : false
+}
+
 async function startup() {
+  const portBasePath = path.resolve(__dirname, '../')
+  if (!startCore()) {
+    return runnerStartup(portBasePath)
+  }
+
   connector = new ConnectorService(onConnectorInit, onConnectorRegisterConfig)
   agent = new EnebularAgent({
-    portBasePath: path.resolve(__dirname, '../'),
+    portBasePath: portBasePath,
     connector: connector
   })
 
@@ -382,6 +396,10 @@ async function startup() {
 }
 
 async function shutdown() {
+  if (!startCore()) {
+    return runnerShutdown()
+  }
+
   shutdownRequested = true
   await agent.shutdown()
   if (awsIotConnected) {

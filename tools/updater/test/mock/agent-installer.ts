@@ -23,13 +23,35 @@ export default class MockAgentInstaller implements AgentInstallerIf {
     }
   }
   public async build(
-    agentInfo: AgentInfo,
+    port: string,
     newAgentInfo: AgentInfo,
-    userInfo: UserInfo
+    userInfo: UserInfo,
+    mbed_cloud_dev_credentials_path?: string
   ): Promise<void> {
     this.attemptBuild = true
     if (this.failBuild) {
       throw new Error('Agent Build failed.')
     }
+  }
+
+  public async installRuntimeDependencies(
+    port: string,
+    newAgentInfo: AgentInfo,
+    userInfo: UserInfo,
+  ): Promise<void> {
+  }
+
+  public async bundle2PAL(
+    installPath: string,
+    bundlePath: string,
+    userInfo: UserInfo
+  ): Promise<void> {
+  }
+
+  public async installPAL(
+    installPath: string,
+    palPath: string,
+    userInfo: UserInfo
+  ): Promise<void> {
   }
 }

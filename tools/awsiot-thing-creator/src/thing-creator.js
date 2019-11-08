@@ -79,9 +79,7 @@ export default class ThingCreator {
         })
         .promise()
     } catch (err) {
-      throw new Error(
-        'Failed to attach policy to role, reason: ' + err.message
-      )
+      throw new Error('Failed to attach policy to role, reason: ' + err.message)
     }
   }
 
@@ -218,8 +216,12 @@ export default class ThingCreator {
     try {
       await iot.describeThing({ thingName: thingName }).promise()
     } catch (err) {
-      if (err.code === 'ResourceNotFoundException')
+      if (err.code === 'ResourceNotFoundException') {
         return false
+      }
+      throw new Error(
+        `Failed to check existence of ${thingName}, reason: ${err.message}`
+      )
     }
     return true
   }
@@ -247,7 +249,9 @@ export default class ThingCreator {
 
     let endPoint
     try {
-      endPoint = await iot.describeEndpoint({ endpointType: "iot:Data-ATS" }).promise()
+      endPoint = await iot
+        .describeEndpoint({ endpointType: 'iot:Data-ATS' })
+        .promise()
     } catch (err) {
       throw new Error(
         `Get AWS IoT unique endpoint failed. Please check your aws iot configuration, reason: ${

@@ -986,8 +986,9 @@ def checkToolchainEnv(toolchain):
     required=False,
     type= int
 )
+@click.option('-d', '--debug', is_flag=True, help='Debug build')
 @pass_config
-def fullbuild(config, target_name, toolchain, external,name, keep_sources, numOfBuildThreads):
+def fullbuild(config, target_name, toolchain, external,name, keep_sources, numOfBuildThreads, debug):
     """deploy and build target files"""
     config.target_name = target_name
     logger.info('fullBuild running for target = %s with toolchain = %s', target_name, toolchain)
@@ -1004,14 +1005,11 @@ def fullbuild(config, target_name, toolchain, external,name, keep_sources, numOf
     out_dir_name = '__' + target.name
     parent_dir = os.path.normpath(os.path.join(PAL_PLATFORM_ROOT, os.pardir))
     out_dir = os.path.join(parent_dir, out_dir_name)
-    isDebug = 1 # build debug version
     output = os.path.join(parent_dir, "out")
     if os.path.exists(output):
         shutil.rmtree(output)
 
-    runCmakeAndMake(out_dir, isDebug, toolchain, output, envPair, external, name, numOfBuildThreads)  # CMAKE + build debug version
-
-    isDebug = 0 # generate and build release version
+    isDebug = debug # generate and build release version
     if os.path.exists(out_dir):
         shutil.rmtree(out_dir)
     ctx.invoke(generate,target_name=target_name)

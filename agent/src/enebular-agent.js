@@ -17,6 +17,9 @@ import AiModelManager from './ai-model-manager'
 import LogManager from './log-manager'
 import NodeREDController from './node-red-controller'
 import MonitorManager from './monitor-manager'
+import RemoteLogin from './remote-login'
+import AgentRunnerManager from './agent-runner-manager'
+import { getUserHome } from './utils'
 
 export type EnebularAgentConfig = {
   NODE_RED_DIR: string,
@@ -94,6 +97,8 @@ export default class EnebularAgent extends EventEmitter {
   _agentInfoManager: AgentInfoManager
   _assetManager: AssetManager
   _aiModelManager: AiModelManager
+  _agentRunnerManager: AgentRunnerManager
+  _remoteLogin: RemoteLogin
 
   _connectionId: ?string
   _deviceId: ?string
@@ -226,6 +231,15 @@ export default class EnebularAgent extends EventEmitter {
       }
     )
 
+    this._agentRunnerManager = new AgentRunnerManager(this._log, this._logManager)
+
+    this._remoteLogin = new RemoteLogin(
+      this._deviceStateManager,
+      this._connectorMessenger,
+      this._agentRunnerManager,
+      this._log
+    )
+
     this._deviceAuth = new DeviceAuthMediator(this._messageEmitter, this._log)
     this._deviceAuth.on('accessTokenUpdate', accessToken =>
       this._onAccessTokenUpdate(accessToken)
@@ -320,6 +334,20 @@ export default class EnebularAgent extends EventEmitter {
       return this._commandLine.processCommand()
     }
 
+    if (process.getuid() === 0) {
+      // drop process privileges
+      const user = this._config.get('ENEBULAR_AGENT_USER')
+      process.initgroups(user, user)
+      process.setgid(user)
+      process.setuid(user)
+      process.env['HOME'] = getUserHome(user)
+      process.env['USER'] = user
+      process.env['LOGNAME'] = user
+      if (process.env['USERNAME']) {
+        process.env['USERNAME'] = user
+      }
+    }
+
     this._init()
     if (this._config.get('ENEBULAR_DAEMON_MODE')) {
       this._createPIDFile()
@@ -331,6 +359,7 @@ export default class EnebularAgent extends EventEmitter {
     await this._assetManager.setup()
     await this._aiModelManager.setup()
     await this._nodeRed.setup()
+    await this._remoteLogin.setup()
     this._nodeRed.activate(true)
 
     if (this._connector.init) {
@@ -338,7 +367,6 @@ export default class EnebularAgent extends EventEmitter {
     }
 
     await this._nodeRed.startService()
-
     return true
   }
 
