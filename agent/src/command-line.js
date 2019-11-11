@@ -12,9 +12,11 @@ export default class CommandLine {
   _commandOptions: Object
   _configOptionMap: Object = {}
 
-  constructor(config: Config) {
+  constructor(config: Config, allowUnknownOption = false) {
     this._config = config
     commander.version(pkg.version, '-v, --version')
+    if (allowUnknownOption)
+      commander.allowUnknownOption()
 
     this.addConfigOption('ENEBULAR_DEV_MODE', '--dev-mode')
 
@@ -27,6 +29,9 @@ export default class CommandLine {
     this.addConfigOption('NODE_RED_COMMAND', '--node-red-command <command>')
     this.addConfigOption('ENEBULAR_ENABLE_SYSLOG', '--enable-syslog')
     this.addConfigOption('ENEBULAR_DAEMON_MODE', '--daemon-mode')
+    this.addConfigOption('ENEBULAR_AGENT_USER', '--user <user>')
+    // Only because of help menu is needed to display them
+    commander.option('--start-core', 'Run enebular-agent core')
 
     commander.on('command:*', () => {
       if (!process.env.ENEBULAR_TEST && commander.args.length > 0) {
@@ -112,8 +117,8 @@ export default class CommandLine {
     console.log('')
   }
 
-  parse() {
-    commander.parse(process.argv)
+  parse(args?: Array<string>) {
+    commander.parse(args ? args: process.argv)
   }
 
   hasCommand() {

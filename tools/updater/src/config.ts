@@ -1,4 +1,5 @@
 import * as path from 'path'
+import { Utils } from './utils'
 
 export interface ConfigItem {
   value: string | number | boolean
@@ -41,8 +42,14 @@ export default class Config {
       },
       ENEBULAR_AGENT_DOWNLOAD_PATH: {
         value:
-          'http://enebular-agent-update-youxin-test.s3-website-ap-southeast-2.amazonaws.com',
+          'https://s3-ap-northeast-1.amazonaws.com/download.enebular.com/enebular-agent',
         description: 'the URL PATH to download enebular-agent',
+        userExpose: true
+      },
+      ENEBULAR_AGENT_TEST_DOWNLOAD_PATH: {
+        value:
+          'https://s3-ap-northeast-1.amazonaws.com/download.enebular.com/enebular-agent-staging',
+        description: 'the URL PATH to download test enebular-agent',
         userExpose: true
       },
       ENEBULAR_AGENT_GITHUB_API_PATH: {
@@ -51,7 +58,7 @@ export default class Config {
         userExpose: true
       },
       ENEBULAR_AGENT_DOWNLOAD_FROM_GITHUB: {
-        value: true,
+        value: false,
         description: 'download enebular-agent from github',
         userExpose: true
       },
@@ -104,6 +111,21 @@ export default class Config {
         value: 'https://nodejs.org/dist',
         description: 'NodeJS download base URL',
         userExpose: true
+      },
+      ENEBULAR_AGENT_UPDATER_LOG_FILE: {
+        value: `/tmp/enebular-agent-updater-${Utils.randomString()}.log`,
+        description: 'updater log file path',
+        userExpose: false
+      },
+      REMOTE_MAINTENANCE_USER_NAME: {
+        value: 'enebular-remote-admin',
+        description: 'username to be set when creating remote maintenance user',
+        userExpose: false
+      },
+      REMOTE_MAINTENANCE_USER_PASSWORD: {
+        value: 'enebular',
+        description: 'password to be set when creating remote maintenance user',
+        userExpose: false
       }
     }
   }
@@ -167,15 +189,13 @@ export default class Config {
   }
 
   public getOverriddenItems(): ConfigItems {
-    let ret: ConfigItems = {}
-    Object.entries(this._items).map(
-      (entry): void => {
-        const key = entry[0]
-        if (entry[1].override) {
-          ret[key] = this._items[key]
-        }
+    const ret: ConfigItems = {}
+    Object.entries(this._items).map((entry): void => {
+      const key = entry[0]
+      if (entry[1].override) {
+        ret[key] = this._items[key]
       }
-    )
+    })
     return ret
   }
 
@@ -206,24 +226,20 @@ export default class Config {
   }
 
   public importConfigStrings(items: ConfigStrings): void {
-    Object.keys(items).forEach(
-      (key): void => {
-        // modify only, we don't create new config item.
-        if (key in this._items) {
-          this.setAutoDetectType(key, items[key])
-        }
+    Object.keys(items).forEach((key): void => {
+      // modify only, we don't create new config item.
+      if (key in this._items) {
+        this.setAutoDetectType(key, items[key])
       }
-    )
+    })
   }
 
   public importConfigAnyTypes(items: ConfigAnyTypes): void {
-    Object.keys(items).forEach(
-      (key): void => {
-        // modify only, we don't create new config item.
-        if (key in this._items) {
-          this.set(key, items[key])
-        }
+    Object.keys(items).forEach((key): void => {
+      // modify only, we don't create new config item.
+      if (key in this._items) {
+        this.set(key, items[key])
       }
-    )
+    })
   }
 }

@@ -23,6 +23,11 @@ export default class Config {
         description: 'Run as daemon',
         userExpose: true
       },
+      ENEBULAR_AGENT_USER: {
+        value: 'enebular',
+        description: 'User to run as',
+        userExpose: true
+      },
       ENEBULAR_CONFIG_PATH: {
         value: p.resolve(portBasePath, '.enebular-config.json'),
         description: 'Enebular config file path',
@@ -87,6 +92,11 @@ export default class Config {
         value: 60 * 3 + 1,
         description: '',
         userExpose: false
+      },
+      ENEBULAR_MONITOR_STATE_PATH: {
+        value: p.resolve(portBasePath, '.enebular-monitor.json'),
+        description: 'Monitor state file path',
+        userExpose: true
       },
       ENEBULAR_DEVICE_STATE_REFRESH_INTERVAL: {
         value: 60 * 60 * 12,
@@ -239,6 +249,14 @@ export default class Config {
       }
     })
     return items
+  }
+
+  isOverridden(key: string): boolean {
+    return this.getItem(key).override ? true : false
+  }
+
+  getItem(key: string): ConfigItem {
+    return this._items[key]
   }
 
   addItem(key: string, value: any, description: string, userExpose: boolean) {

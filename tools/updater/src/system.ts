@@ -41,6 +41,7 @@ export interface SystemIf {
     nodejsVersion: string
   }
   installDebianPackages(packages: string[]): Promise<void>
+  updatePackageLists(): Promise<void>
   installPythonPackages(packages: string[], userInfo: UserInfo): Promise<void>
   updateNodeJSVersionInSystemd(
     user: string,
@@ -48,11 +49,15 @@ export interface SystemIf {
     newVersion: string,
     file?: string
   ): Promise<void>
+
+  getArch(): string
+  updateRunningUserToRootInSystemd(user: string, file?: string)
+  reverseRunningUserToRootInSystemd(user: string, file?: string)
 }
 
 export class System implements SystemIf {
   private _log: Log
-  private _pipRetryCount: number = 0
+  private _pipRetryCount = 0
 
   public constructor(log: Log) {
     this._log = log
@@ -129,12 +134,69 @@ export class System implements SystemIf {
     const tmpFile = '/tmp/enebular-agent-systemd-config-' + Utils.randomString()
 
     try {
-      let content = fs.readFileSync(serviceFile, 'utf8')
+      const content = fs.readFileSync(serviceFile, 'utf8')
       fs.writeFileSync(tmpFile, content.replace(envToReplace, newEnv), 'utf8')
       await Utils.mv(tmpFile, serviceFile)
     } catch (err) {
       throw new Error(
         `Failed to update nodejs version in systemd: ${err.message}`
+      )
+    }
+  }
+
+  public async updateRunningUserToRootInSystemd(user: string, file?: string) {
+    const serviceFile = file
+      ? file
+      : `/etc/systemd/system/enebular-agent-${user}.service`
+    const userToReplace = `User=${user}`
+    const newUser = 'User=root'
+    const tmpFile = '/tmp/enebular-agent-systemd-config-' + Utils.randomString()
+
+    try {
+      let content = fs.readFileSync(serviceFile, 'utf8')
+      content = content.replace(userToReplace, newUser)
+      const lines = content.split(/\r?\n/)
+      const index = lines.findIndex((line) => {
+          return line.startsWith('ExecStart=')
+      })
+      if (index === -1 ) {
+        `Failed to update running user in systemd: cannot find ExecStart`
+      }
+      const newExecStart = `${lines[index]} --user ${user}`
+      content = content.replace(lines[index], newExecStart)
+      fs.writeFileSync(tmpFile, content, 'utf8')
+      await Utils.mv(tmpFile, serviceFile)
+    } catch (err) {
+      throw new Error(
+        `Failed to update running user in systemd: ${err.message}`
+      )
+    }
+  }
+
+  public async reverseRunningUserToRootInSystemd(user: string, file?: string) {
+    const serviceFile = file
+      ? file
+      : `/etc/systemd/system/enebular-agent-${user}.service`
+    const userToReplace = 'User=root'
+    const newUser = `User=${user}`
+    const tmpFile = '/tmp/enebular-agent-systemd-config-' + Utils.randomString()
+
+    try {
+      let content = fs.readFileSync(serviceFile, 'utf8')
+      content = content.replace(userToReplace, newUser)
+      const lines = content.split(/\r?\n/)
+      const index = lines.findIndex((line) => {
+          return line.startsWith('ExecStart=')
+      })
+      if (index === -1 ) {
+        `Failed to reverse running user in systemd: cannot find ExecStart`
+      }
+      content = content.replace(` --user ${user}`, '')
+      fs.writeFileSync(tmpFile, content, 'utf8')
+      await Utils.mv(tmpFile, serviceFile)
+    } catch (err) {
+      throw new Error(
+        `Failed to reverse running user in systemd: ${err.message}`
       )
     }
   }
@@ -170,6 +232,29 @@ export class System implements SystemIf {
     }
     if (!user) {
       throw new Error('Failed to find agent user in systemd')
+    }
+    if (user === 'root') {
+      const ret = Utils.execReturnStdout(
+        `systemctl show --no-pager -p ExecStart ${serviceName}`
+      )
+      if (ret) {
+        let execStartArgvStr = ret.split(';')[1].trim()
+        if (!execStartArgvStr.startsWith('argv[]')) {
+          throw new Error('Failed to find user in systemd, syntax error')
+        }
+        execStartArgvStr = execStartArgvStr.slice(execStartArgvStr.indexOf('=') + 1)
+        const execStartArgv = execStartArgvStr.split(' ')
+        const index = execStartArgv.findIndex((arg) => {
+            return arg === '--user'
+        })
+        if (index === -1 || execStartArgv.length < (index + 1)) {
+          throw new Error('Failed to find --user <user> in systemd')
+        }
+        user = execStartArgv[index + 1]
+      }
+      else {
+        throw new Error('Failed to find user in systemd')
+      }
     }
     return user
   }
@@ -283,6 +368,28 @@ export class System implements SystemIf {
     }
   }
 
+  public getArch(): string {
+    let arch = Utils.execReturnStdout('uname -m')
+    if (!arch) {
+      throw new Error('Failed to get arch from system')
+    }
+    arch = arch.trim()
+    switch (arch) {
+      case 'x86_64':
+      case 'amd64':
+        arch = 'x64'
+        break
+      case 'i386':
+      case 'i686':
+        arch = 'x86'
+        break
+      case 'aarch64':
+        arch = 'arm64'
+        break
+    }
+    return arch
+  }
+
   public async installDebianPackages(packages: string[]): Promise<void> {
     for (let i = 0; i < packages.length; i++) {
       const ret = Utils.execReturnStdout(
@@ -298,15 +405,26 @@ export class System implements SystemIf {
     }
   }
 
-  public async installPythonPackages(packages: string[], userInfo: UserInfo): Promise<void> {
+  public async updatePackageLists(): Promise<void> {
+    try {
+      await Utils.spawn('apt-get', ['update'], this._log)
+    } catch (err) {
+      throw new Error(`Failed to apt-get update`)
+    }
+  }
+
+  public async installPythonPackages(
+    packages: string[],
+    userInfo: UserInfo
+  ): Promise<void> {
     return new Promise(
       async (resolve, reject): Promise<void> => {
-        let pipEnv: NodeJS.ProcessEnv = {}
+        const pipEnv: NodeJS.ProcessEnv = {}
         pipEnv['PYTHONUSERBASE'] = `/home/${userInfo.user}/.local`
         pipEnv['PYTHONPATH'] = `/usr/lib/python2.7`
         let options = ['install']
         options = options.concat(packages)
-        options.push("--user")
+        options.push('--user')
         try {
           await Utils.spawn('pip', options, this._log, {
             uid: userInfo.uid,
@@ -325,16 +443,17 @@ export class System implements SystemIf {
               try {
                 await this.installPythonPackages(packages, userInfo)
                 resolve()
-              }
-              catch (err) {
+              } catch (err) {
                 reject(err)
               }
             }, 1000)
           } else {
             this._pipRetryCount = 0
-            reject(new Error(
-              `Failed to install python ${packages.join(' ')}: ${err.message}`
-            ))
+            reject(
+              new Error(
+                `Failed to install python ${packages.join(' ')}: ${err.message}`
+              )
+            )
           }
         }
       }

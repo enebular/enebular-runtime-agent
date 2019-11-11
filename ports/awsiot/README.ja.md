@@ -32,21 +32,27 @@ cd ports/awsiot
 npm install
 ```
 
-4 . AWS IoTポートのディレクトリに、「example」というAWS IoTポートをラップするモジュールがあります。exampleモジュールのディレクトリに移動し、モジュールをインストールします。
-※exampleモジュールの `package.json`ファイルには、Node-REDディレクトリを指定する環境変数が設定されています。
+4 . このデバイスで使用するAWS IoT Thing用の証明書ファイルをAWSのコンソールなどから入手し、AWS IoTポートのディレクトリにコピーします。
+
+5 . このデバイスで使用するAWS IoT Thingの接続情報をAWSのコンソールなどから取得します。証明書ファイルの正しいパスを含めて、この接続情報でAWS IoTポートのディレクトリに `config.json`ファイルを用意します。
+    `config.json`のフォーマットは下記のとおりです。
 
 ```
-cd ports/awsiot/example
-npm install
+{
+  "host": "<THING SHADOW REST API ENDPOINT>",
+  "port": 8883,
+  "clientId": "<THING NAME>",
+  "thingName": "<THING NAME>",
+  "caCert": "./certs/<ROOT CERTIFICATE>",
+  "clientCert": "./certs/<THING CERT>",
+  "privateKey": "./certs/<THING PRIVATE KEY>",
+  "topic": "aws/things/<THING NAME>/shadow/update"
+}
 ```
-
-5 . このデバイスで使用するAWS IoT Thing用の証明書ファイルをAWSのコンソールなどから入手し、exampleモジュールのディレクトリにコピーします。
-
-6 . このデバイスで使用するAWS IoT Thingの接続情報をAWSのコンソールなどから取得します。証明書ファイルの正しいパスを含めて、この接続情報でexampleモジュールの `config.json`ファイルを更新します。
 
 ## 実行
 
-上記のセットアップが完了したら、exampleモジュールのディレクトリから`npm run start`コマンドでenebular-agentが起動できます。
+上記のセットアップが完了したら、AWS IoTポートのディレクトリから`npm run start`コマンドでenebular-agentが起動できます。
 
 デフォルトの状態ではコンソールにログを出力しませんが、`DEBUG`環境変数を` info`または `debug`のいずれかに設定することで出力するようにできます。
 

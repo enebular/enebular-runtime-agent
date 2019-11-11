@@ -368,7 +368,10 @@ test.serial(
       }
       else if (msg.topic == 'deviceState/device/update') {
         const result = msg.body.updates.map(update => {
-          if (update.type === 'reported' && update.path === 'monitoring') {
+          if (
+            update.type === 'reported' &&
+            update.path === 'monitoring.enable'
+          ) {
             monitoringStateUpdateReceived = true
           }
           return {

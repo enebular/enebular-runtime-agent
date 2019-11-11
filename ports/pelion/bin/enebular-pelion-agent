@@ -21,3 +21,4 @@ agent.startup().then(ret => {
   console.error(`Agent startup failed: ${err}`)
   process.exit(1)
 })
+
