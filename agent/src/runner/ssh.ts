@@ -71,6 +71,9 @@ export class SSH extends EventEmitter {
   }
 
   public init(): void {
+    if (fs.existsSync(this._privateKeyPath)) {
+      fs.unlinkSync(this._privateKeyPath)
+    }
     this.statusUpdate()
   }
 
