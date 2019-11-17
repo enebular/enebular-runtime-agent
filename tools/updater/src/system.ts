@@ -154,16 +154,22 @@ export class System implements SystemIf {
 
     try {
       let content = fs.readFileSync(serviceFile, 'utf8')
-      content = content.replace(userToReplace, newUser)
+      if (content.includes(userToReplace)) {
+        content = content.replace(userToReplace, newUser)
+      }
       const lines = content.split(/\r?\n/)
       const index = lines.findIndex((line) => {
           return line.startsWith('ExecStart=')
       })
       if (index === -1 ) {
-        `Failed to update running user in systemd: cannot find ExecStart`
+        throw new Error(
+          `Failed to update running user in systemd: cannot find ExecStart`
+        )
       }
-      const newExecStart = `${lines[index]} --user ${user}`
-      content = content.replace(lines[index], newExecStart)
+      if (!lines[index].includes(`--user ${user}`)) {
+        const newExecStart = `${lines[index]} --user ${user}`
+        content = content.replace(lines[index], newExecStart)
+      }
       fs.writeFileSync(tmpFile, content, 'utf8')
       await Utils.mv(tmpFile, serviceFile)
     } catch (err) {
@@ -183,15 +189,21 @@ export class System implements SystemIf {
 
     try {
       let content = fs.readFileSync(serviceFile, 'utf8')
-      content = content.replace(userToReplace, newUser)
+      if (content.includes(userToReplace)) {
+        content = content.replace(userToReplace, newUser)
+      }
       const lines = content.split(/\r?\n/)
       const index = lines.findIndex((line) => {
           return line.startsWith('ExecStart=')
       })
       if (index === -1 ) {
-        `Failed to reverse running user in systemd: cannot find ExecStart`
+        throw new Error(
+          `Failed to reverse running user in systemd: cannot find ExecStart`
+        )
       }
-      content = content.replace(` --user ${user}`, '')
+      if (content.includes(` --user ${user}`)) {
+        content = content.replace(` --user ${user}`, '')
+      }
       fs.writeFileSync(tmpFile, content, 'utf8')
       await Utils.mv(tmpFile, serviceFile)
     } catch (err) {
