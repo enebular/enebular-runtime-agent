@@ -75,6 +75,7 @@
     "string-argv": "^0.1.1",
     "unix-dgram": "^2.0.3",
     "winston": "^3.2.1",
+    "winston-compat": "^0.1.4",
     "winston-syslog": "^2.3.0"
   },
   "ava": {
