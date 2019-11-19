@@ -574,7 +574,7 @@ post_install() {
 USER=enebular
 PORT=awsiot
 RELEASE_VERSION="latest-release"
-SUPPORTED_NODE_VERSION="v9.2.1"
+SUPPORTED_NODE_VERSION="v12.13.0"
 ENEBULAR_BASE_URL="https://enebular.com/api/v1"
 MBED_CLOUD_MODE=developer
 
