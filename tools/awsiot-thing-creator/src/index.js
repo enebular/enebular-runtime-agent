@@ -6,7 +6,6 @@ const config: ThingCreatorConfig = {
   awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
   awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   awsIotRegion: process.env.AWS_IOT_REGION,
-  disableRuleCreation: process.env.DISABLE_RULE_CREATION
 }
 
 function main() {
