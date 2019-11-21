@@ -177,11 +177,11 @@ export class AgentInstaller implements AgentInstallerIf {
           this._fetchRetryCount++
           if (this._fetchRetryCount <= this._maxFetchRetryCount) {
             this._log.debug(
-              `Failed to fetch agent, retry in 1 second ... ${err.message}`
+              `Failed to fetch agent, retry in 3 second ... ${err.message}`
             )
             setTimeout(async (): Promise<void> => {
               resolve(await this._fetchWithRetry(url, path, userInfo))
-            }, 1000)
+            }, 3000)
           } else {
             this._fetchRetryCount = 0
             this._log.error(
@@ -251,14 +251,14 @@ export class AgentInstaller implements AgentInstallerIf {
     installPath: string,
     userInfo: UserInfo
   ): Promise<void> {
-    await Utils.taskAsync(
+    await Utils.taskAsyncWithRetry(
       'Building awsiot port',
       this._log,
       async (): Promise<void> => {
         return this._buildNpmPackage(`${installPath}/ports/awsiot`, userInfo)
       }
     )
-    await Utils.taskAsync(
+    await Utils.taskAsyncWithRetry(
       'Building awsiot-thing-creator',
       this._log,
       async (): Promise<void> => {
@@ -469,22 +469,28 @@ export class AgentInstaller implements AgentInstallerIf {
     if (newAgentInfo.version.lessThanOrEquals(new AgentVersion(2, 8, 0))) return
 
     if (!this._systemPackageListsUpdated) {
-      await Utils.taskAsync(
+      await Utils.taskAsyncWithRetry(
         `Updating system package lists`,
         this._log,
         async (): Promise<void> => {
           await this._system.updatePackageLists()
-        }
+        },
+        false,
+        3,
+        10
       )
       this._systemPackageListsUpdated = true
     }
 
-    await Utils.taskAsync(
+    await Utils.taskAsyncWithRetry(
       `Install Debian dependencies`,
       this._log,
       async (): Promise<void> => {
         await this._system.installDebianPackages(['openssh-server'])
-      }
+      },
+      false,
+      3,
+      10
     )
 
     const remoteMaintenanceUser = this._config.getString('REMOTE_MAINTENANCE_USER_NAME')
@@ -559,34 +565,40 @@ export class AgentInstaller implements AgentInstallerIf {
     }
 
     if (!this._systemPackageListsUpdated) {
-      await Utils.taskAsync(
+      await Utils.taskAsyncWithRetry(
         `Updating system package lists`,
         this._log,
         async (): Promise<void> => {
           await this._system.updatePackageLists()
-        }
+        },
+        false,
+        3,
+        10
       )
       this._systemPackageListsUpdated = true
     }
 
-    await Utils.taskAsync(
+    await Utils.taskAsyncWithRetry(
       `Install Debian dependencies`,
       this._log,
       async (): Promise<void> => {
         await this._system.installDebianPackages(['build-essential', 'python'])
-      }
+      },
+      false,
+      3,
+      10
     )
 
     this._npmBuildEnv['PATH'] = `${nodejsPath}/bin:${process.env['PATH']}`
-    await Utils.taskAsync(
-      `Building agent ${newAgentInfo.version} `,
+    await Utils.taskAsyncWithRetry(
+      `Building agent ${newAgentInfo.version}`,
       this._log,
       async (): Promise<void> => {
         return this._buildNpmPackage(`${installPath}/agent`, userInfo)
       }
     )
 
-    await Utils.taskAsync(
+    await Utils.taskAsyncWithRetry(
       `Building Node-RED`,
       this._log,
       async (): Promise<void> => {
@@ -597,7 +609,7 @@ export class AgentInstaller implements AgentInstallerIf {
     if (port == 'awsiot') {
       await this._buildAWSIoT(installPath, userInfo)
     } else {
-      await Utils.taskAsync(
+      await Utils.taskAsyncWithRetry(
         'Building pelion port ',
         this._log,
         async (): Promise<void> => {
@@ -611,7 +623,7 @@ export class AgentInstaller implements AgentInstallerIf {
       this._binBuildEnv['PYTHONPATH'] = `/usr/lib/python2.7`
 
       if (newAgentInfo.version.greaterThan(new AgentVersion(2, 3, 0))) {
-        await Utils.taskAsync(
+        await Utils.taskAsyncWithRetry(
           'Checking dependencies for mbed-cloud-connector',
           this._log,
           async (): Promise<void> => {
@@ -624,7 +636,10 @@ export class AgentInstaller implements AgentInstallerIf {
               ['mbed-cli', 'click', 'requests'],
               userInfo
             )
-          }
+          },
+          false,
+          3,
+          10
         )
 
         await this._buildMbedCloudConnector(
@@ -638,7 +653,7 @@ export class AgentInstaller implements AgentInstallerIf {
          * mbed deploy install packages using root permission, we install them using
          * user permission in prior to mbed deploy.
          */
-        await Utils.taskAsync(
+        await Utils.taskAsyncWithRetry(
           'Checking dependencies for mbed-cloud-connector-fcc',
           this._log,
           async (): Promise<void> => {
