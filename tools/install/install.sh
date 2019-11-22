@@ -537,7 +537,6 @@ post_install() {
       proc_retry \
         'cmd_wrapper run_as_user "${USER}" "(cd ${INSTALL_DIR}/tools/awsiot-thing-creator && npm run start)"
         "${NODE_ENV_PATH}
-        DISABLE_RULE_CREATION=${AWS_IOT_DISABLE_RULE_CREATION}
         AWS_IOT_THING_NAME=${AWS_IOT_THING_NAME} AWS_IOT_REGION=${AWS_IOT_REGION}
         AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}"' \
         '_err Creating AWS IoT thing failed.'
@@ -578,7 +577,6 @@ RELEASE_VERSION="latest-release"
 SUPPORTED_NODE_VERSION="v9.2.1"
 ENEBULAR_BASE_URL="https://enebular.com/api/v1"
 MBED_CLOUD_MODE=developer
-AWS_IOT_DISABLE_RULE_CREATION=false
 
 UPDATER_DOWNLOAD_PATH="https://s3-ap-northeast-1.amazonaws.com/download.enebular.com/enebular-agent"
 UPDATER_TEST_DOWNLOAD_PATH="https://s3-ap-northeast-1.amazonaws.com/download.enebular.com/enebular-agent-staging"
@@ -628,10 +626,6 @@ case $i in
   ;;
   --aws-iot-thing-name=*)
   AWS_IOT_THING_NAME="${i#*=}"
-  shift
-  ;;
-  --aws-iot-disable-rule-creation)
-  AWS_IOT_DISABLE_RULE_CREATION=true
   shift
   ;;
   --mbed-cloud-dev-cred=*)

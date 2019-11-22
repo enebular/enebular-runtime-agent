@@ -50,13 +50,6 @@ npm install
 }
 ```
 
-6 . エージェントがAWS IoTから突然に切断した場合をenebularが検知できるように、AWS IoTで以下のルールを追加します。このステップはオプションです。
-
-- Rule query statement: `SELECT * FROM 'enebular/things/+/shadow/update'`
-- Action:
-  - Type: Republish messages to an AWS IoT topic (AWS IOT REPUBLISH)
-  - Topic: `$$aws/things/${topic(3)}/shadow/update`
-
 ## 実行
 
 上記のセットアップが完了したら、AWS IoTポートのディレクトリから`npm run start`コマンドでenebular-agentが起動できます。
