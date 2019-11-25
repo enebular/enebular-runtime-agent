@@ -28,6 +28,7 @@ _exit() {
 
 _err() {
   >&2 echo -e "\033[31mERROR: $@\033[0m"
+  echo $@ >> ${LOG_FILE}
 }
 
 has() {
@@ -237,8 +238,11 @@ install_nodejs() {
   fi
 
   _task "Downloading ${DOWNLOAD_URL}"
-  if ! download ${DOWNLOAD_URL} ${TEMP_NODE_GZ}; then 
-    _err "Download ${DOWNLOAD_URL} failed"
+  if ! (
+    proc_retry \
+    "download ${DOWNLOAD_URL} ${TEMP_NODE_GZ}" \
+    "_err Download ${DOWNLOAD_URL} failed"
+  ); then
     return 4
   fi
   _echo_g "OK"
@@ -246,7 +250,7 @@ install_nodejs() {
   _task "Checking integrity"
   local CHECKSUM
   CHECKSUM="$(get_node_checksum "${DOWNLOAD_PATH}SHASUMS256.txt" "${DOWNLOAD_FILE_NAME}")"
-  if ! compare_checksum "${TEMP_NODE_GZ}" "${CHECKSUM}"; then 
+  if ! compare_checksum "${TEMP_NODE_GZ}" "${CHECKSUM}"; then
     return 5
   fi
   _echo_g "OK"
@@ -336,6 +340,33 @@ get_download_info_s3() {
   eval ${VERSION}="'${VERSION_INFO}'"
 }
 
+#args: command, error commond, retry count max, delay
+proc_retry() {
+  local retry_count_max
+  retry_count_max=${3:-3}
+  local delay
+  delay=${4:-3}
+
+  local i
+  for ((i = 0; i <= 3; i++)); do
+    if ! eval $1; then
+      eval $2
+    else
+      break
+    fi
+    if [ $i -lt ${retry_count_max} ]; then
+      _echo "Retry count $((i + 1)). Retry processing after ${delay} seconds"
+      sleep ${delay}
+    fi
+  done
+  if [ $i -le ${retry_count_max} ]; then
+    return 0
+  else
+    _err "Exit retry"
+    return 1
+  fi
+}
+
 #args: port, user, install_dir, release_version, node_env_path(return value)
 do_install() {
   local PORT
@@ -396,8 +427,12 @@ do_install() {
   _echo_g "OK"
 
   _task "Downloading updater version ${ACTUAL_VERSION}"
-  if ! download ${UPDATER_DOWNLOAD_URL} ${TEMP_UPDATER_TARBALL}; then 
-    _err "Download ${UPDATER_DOWNLOAD_URL} failed"
+
+  if ! (
+    proc_retry \
+    "download ${UPDATER_DOWNLOAD_URL} ${TEMP_UPDATER_TARBALL}" \
+    "_err Download ${UPDATER_DOWNLOAD_URL} failed"
+  ); then
     _exit 1
   fi
   tar -tzf ${TEMP_UPDATER_TARBALL} >/dev/null 
@@ -498,12 +533,14 @@ post_install() {
   fi
   if [ ! -z ${AWS_IOT_THING_NAME} ] && [ ${PORT} == 'awsiot' ]; then
     _task Creating AWS IoT thing
-    cmd_wrapper run_as_user ${USER} "(cd ${INSTALL_DIR}/tools/awsiot-thing-creator && npm run start)" "${NODE_ENV_PATH} \
-        AWS_IOT_THING_NAME=${AWS_IOT_THING_NAME} AWS_IOT_REGION=${AWS_IOT_REGION} \
-        AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}"
-    EXIT_CODE=$?
-    if [ "$EXIT_CODE" -ne 0 ]; then
-      _err "Creating AWS IoT thing failed."
+    if ! (
+      proc_retry \
+        'cmd_wrapper run_as_user "${USER}" "(cd ${INSTALL_DIR}/tools/awsiot-thing-creator && npm run start)"
+        "${NODE_ENV_PATH}
+        AWS_IOT_THING_NAME=${AWS_IOT_THING_NAME} AWS_IOT_REGION=${AWS_IOT_REGION}
+        AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}"' \
+        '_err Creating AWS IoT thing failed.'
+    ); then
       _exit 1
     fi
     _echo_g "OK"
