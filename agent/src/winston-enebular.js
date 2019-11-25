@@ -87,12 +87,13 @@ util.inherits(Enebular, Transport)
 
 Enebular.prototype.name = 'enebular'
 
-Enebular.prototype.log = function(level, msg, meta, callback) {
+Enebular.prototype.log = function(info, callback) {
+  const { level, message, ...meta } = info
   let output = compat.log({
     colorize: false,
     json: true,
     level: level,
-    message: msg,
+    message: message,
     meta: meta,
     stringify: true,
     timestamp: true,
