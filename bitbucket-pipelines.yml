@@ -139,7 +139,7 @@ pipelines:
       - step: *pack
       - step: *upload
     'dev-test-*':
-    #  - step: *build-test
+      - step: *build-test
       - step: *upload-installsh
       - step: *set-pub-key
       - step: *pack
