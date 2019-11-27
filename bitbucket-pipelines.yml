@@ -133,8 +133,8 @@ pipelines:
       - step: *pack
       - step: *upload-release
     '[0-9]*.[0-9]*.[0-9]*-rc*':
-      - step: *upload-installsh-staging
       - step: *build-test
+      - step: *upload-installsh-staging
       - step: *set-pub-key-staging
       - step: *pack
       - step: *upload
