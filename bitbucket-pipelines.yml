@@ -134,13 +134,13 @@ pipelines:
       - step: *upload-release
     '[0-9]*.[0-9]*.[0-9]*-rc*':
       - step: *build-test
-      - step: *upload-installsh-staging
       - step: *set-pub-key-staging
       - step: *pack
+      - step: *upload-installsh-staging
       - step: *upload
     'dev-test-*':
       - step: *build-test
-      - step: *upload-installsh
       - step: *set-pub-key
       - step: *pack
+      - step: *upload-installsh
       - step: *upload
