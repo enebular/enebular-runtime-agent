@@ -115,7 +115,7 @@ definitions:
         artifacts:
           - '**'
     - step: &upload-installsh-staging
-        name: Upload-install.sh (test)
+        name: Upload-install.sh (Staging)
         image: python:3.5.1
         deployment: Staging
         script:
@@ -133,14 +133,14 @@ pipelines:
       - step: *pack
       - step: *upload-release
     '[0-9]*.[0-9]*.[0-9]*-rc*':
+      - step: *upload-installsh-staging
       - step: *build-test
       - step: *set-pub-key-staging
       - step: *pack
       - step: *upload
-      - step: *upload-installsh-staging
     'dev-test-*':
     #  - step: *build-test
+      - step: *upload-installsh
       - step: *set-pub-key
       - step: *pack
       - step: *upload
-      - step: *upload-installsh
