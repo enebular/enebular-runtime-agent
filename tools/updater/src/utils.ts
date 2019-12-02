@@ -185,6 +185,54 @@ export class Utils {
     }
   }
 
+  public static async taskAsyncWithRetry(
+    name: string,
+    log: Log,
+    cb: () => Promise<boolean> | Promise<{}> | Promise<void>,
+    ignore = false,
+    retryCountMax: number = 3,
+    delaySec: number = 3
+  ): Promise<void> {
+    let result = false
+
+    const sleep = async(_delay) => {
+      return new Promise(resolve => {setTimeout(() => {resolve(true)}, _delay)})
+    }
+
+    log.info(`==== ${name} ====`)
+
+    let retryCount
+    let error
+    for (retryCount = 0; retryCount <= retryCountMax; retryCount++) {
+      try {
+        await cb()
+        result = true
+        log.info(Utils.echoGreen('OK'))
+      } catch (err) {
+        error = err
+        log.error(`task ${name} failed, reason: ${err.message}`)
+        if (ignore) {
+          result = true
+          log.info(Utils.echoYellow('N/A'))
+        } else {
+          result = false
+          log.info(Utils.echoRed('Failed'))
+        }
+      }
+      if (result) {
+        break
+      } else {
+        if (retryCount < retryCountMax) {
+          log.info(`Retry count ${retryCount + 1} . Retry processing after ${delaySec} seconds`)
+          await sleep(delaySec * 1000)
+        }
+      }
+    }
+    if (retryCount > retryCountMax) {
+      throw error
+    }
+  }
+
   public static task(
     name: string,
     log: Log,

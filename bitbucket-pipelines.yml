@@ -105,6 +105,24 @@ definitions:
           - python tools/s3_upload.py ${ENEBULAR_AGENT_S3_BUCKET} ${LATEST_RELEASE_INFO} ${ENEBULAR_AGENT_S3_DIR}/${LATEST_RELEASE_INFO}
         artifacts:
           - dist/**
+    - step: &upload-installsh
+        name: Upload-install.sh (test)
+        image: python:3.5.1
+        deployment: test_installsh_upload
+        script:
+          - pip install boto3==1.3.0
+          - python tools/s3_upload.py ${ENEBULAR_AGENT_S3_BUCKET} "tools/install/install.sh" ${ENEBULAR_AGENT_S3_INSTALLSH_DIR}
+        artifacts:
+          - '**'
+    - step: &upload-installsh-staging
+        name: Upload-install.sh (Staging)
+        image: python:3.5.1
+        deployment: Staging
+        script:
+          - pip install boto3==1.3.0
+          - python tools/s3_upload.py ${ENEBULAR_AGENT_S3_BUCKET} "tools/install/install.sh" ${ENEBULAR_AGENT_S3_INSTALLSH_DIR}
+        artifacts:
+          - '**'
 pipelines:
   default: 
     - step: *build-test
@@ -118,9 +136,11 @@ pipelines:
       - step: *build-test
       - step: *set-pub-key-staging
       - step: *pack
+      - step: *upload-installsh-staging
       - step: *upload
     'dev-test-*':
       - step: *build-test
       - step: *set-pub-key
       - step: *pack
+      - step: *upload-installsh
       - step: *upload

@@ -139,7 +139,6 @@ ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E 
 The install script requires access to the following AWS services.
 
 - **IoT Core** - for adding the Thing and associated certificates, policies and rules
-- **IAM** - for the creation of roles used with rule actions
 
 ### Pelion Connection Mode Selection and Credentials Install
 
