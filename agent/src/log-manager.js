@@ -175,9 +175,9 @@ export default class LogManager {
   }
 
   async shutdown() {
-    this._loggers.close()
     if (this._enebularTransport) {
       await this._enebularTransport.cleanUp()
     }
+    this._loggers.close()
   }
 }
