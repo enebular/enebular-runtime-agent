@@ -466,5 +466,7 @@ Enebular.prototype.close = async function() {
 }
 
 Enebular.prototype.cleanUp = async function() {
+  this._active = true
   await this._send()
+  this._active = false
 }
