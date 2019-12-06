@@ -166,6 +166,7 @@ export default class ProcessManager extends EventEmitter {
   public async stop(): Promise<void> {
     return new Promise((resolve, reject): void => {
       const cproc = this._cproc
+      this._retryCount = 0
       if (cproc) {
         this._stopRequested = true
         this._info(`Shutting down ${this._name}...`)
