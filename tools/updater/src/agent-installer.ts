@@ -634,7 +634,7 @@ export class AgentInstaller implements AgentInstallerIf {
               'python-pip'
             ])
             return this._system.installPythonPackages(
-              ['mbed-cli', 'click', 'requests'],
+              ['mbed-cli==1.10.1', 'click', 'requests'],
               userInfo
             )
           },
