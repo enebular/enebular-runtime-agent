@@ -959,7 +959,7 @@ export default class NodeREDController {
     }
 
     this._enableRequest()
-    this._processPendingFlowChanges()
+    await this._processPendingFlowChanges()
   }
 
   async _startService(editSession: EditSession) {
