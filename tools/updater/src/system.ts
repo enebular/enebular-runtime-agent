@@ -420,8 +420,14 @@ export class System implements SystemIf {
     return new Promise(
       async (resolve, reject): Promise<void> => {
         const pipEnv: NodeJS.ProcessEnv = {}
-        pipEnv['PYTHONUSERBASE'] = `/home/${userInfo.user}/.local`
+        const userHome = Utils.getUserHome(userInfo.user)
+        pipEnv['PYTHONUSERBASE'] = `${userHome}/.local`
         pipEnv['PYTHONPATH'] = `/usr/lib/python2.7`
+        // default process envs
+        pipEnv['PATH'] = `/usr/local/bin:/bin:/usr/bin`
+        pipEnv['USER'] = userInfo.user
+        pipEnv['LOGNAME'] = userInfo.user
+        pipEnv['HOME'] = userHome
         let options = ['install']
         options = options.concat(packages)
         options.push('--user')
