@@ -34,9 +34,15 @@ function run {
   echo $cmd
   eval $cmd
   last_pid=$!
-  sleep 2 
+  if [ -z $2 ]; then
+    sleep 2
+  else
+    sleep $2
+  fi
+
   ret=`ps -p $last_pid | grep -o $last_pid | wc -l`
   if [ $ret -eq 1 ]; then
-    kill -KILL $last_pid
+    kill $last_pid
+    sleep 2
   fi
 }

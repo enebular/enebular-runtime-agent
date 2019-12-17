@@ -362,11 +362,12 @@ export default class EnebularAgent extends EventEmitter {
     await this._remoteLogin.setup()
     this._nodeRed.activate(true)
 
+    await this._nodeRed.startService()
+
     if (this._connector.init) {
       await this._connector.init()
     }
 
-    await this._nodeRed.startService()
     return true
   }
 

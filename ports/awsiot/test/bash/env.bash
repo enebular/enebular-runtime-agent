@@ -17,9 +17,9 @@ run "$BIN"
 exists "agent takes NODE_RED_COMMAND env" "node-red-command-overide"
 
 BIN='DEBUG="debug" AWSIOT_CONFIG_FILE="/awsiot-config-file-overide" '${AGENT_BIN}''
-run "$BIN"
+run "$BIN" 6
 exists "agent takes AWSIOT_CONFIG_FILE env" "awsiot-config-file-overide"
 
 BIN='DEBUG="debug" ENEBULAR_CONFIG_PATH="/enebular-config-file-overide" '${AGENT_BIN}''
-run "$BIN"
+run "$BIN" 6
 exists "agent takes ENEBULAR_CONFIG_PATH env" "enebular-config-file-overide"
