@@ -126,6 +126,14 @@ export class Utils {
     }
   }
 
+  public static getUserHome(user: string): string {
+    const getentResult = Utils.execReturnStdout(`getent passwd ${user}`)
+    if (!getentResult) {
+      throw new Error(`Failed to get home directory of user ${user}`)
+    }
+    return getentResult.split(':')[5]
+  }
+
   public static polling(
     callback: () => Promise<boolean>,
     initialDelay: number,
