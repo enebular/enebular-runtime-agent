@@ -75,5 +75,47 @@ test('System.3: reverse running user changed in systemd config file', async t =>
   t.true(data.indexOf('--user enebular') === -1)
   const expectedData = await readFile('./test/data/enebular-agent-enebular.service', 'utf8')
   t.true(expectedData === data)
-  /* fs.unlinkSync(tmp) */
+  fs.unlinkSync(tmp)
 })
+
+test('System.4: update systemd running user handles config file that already up-to-date', async t => {
+  const system = new System(log)
+  const systemConfigSample = path.resolve(
+    './test/data/enebular-agent-enebular.service.root'
+  )
+  const tmp = `/tmp/systemd-config-tmp-${Utils.randomString()}`
+
+  await writeFile(tmp, await readFile(systemConfigSample, 'utf8'), 'utf8')
+
+  await system.updateRunningUserToRootInSystemd('enebular', tmp)
+
+  const data = await readFile(tmp, 'utf8')
+  t.true(data.indexOf('User=root') > -1)
+  t.true(data.indexOf('--user enebular') > -1)
+  console.log(data)
+  const expectedData = await readFile('./test/data/enebular-agent-enebular.service.root', 'utf8')
+  t.true(expectedData === data)
+  fs.unlinkSync(tmp)
+})
+
+test('System.5: reverse running user changed in systemd handles config file that already up-to-date', async t => {
+  const system = new System(log)
+  const systemConfigSample = path.resolve(
+    './test/data/enebular-agent-enebular.service'
+  )
+  const tmp = `/tmp/systemd-config-tmp-${Utils.randomString()}`
+  const user = 'enebular'
+
+  await writeFile(tmp, await readFile(systemConfigSample, 'utf8'), 'utf8')
+  await system.reverseRunningUserToRootInSystemd(user, tmp)
+
+  const data = await readFile(tmp, 'utf8')
+  t.true(data.indexOf(`User=${user}`) > -1)
+  t.true(data.indexOf('--user enebular') === -1)
+  const expectedData = await readFile('./test/data/enebular-agent-enebular.service', 'utf8')
+  t.true(expectedData === data)
+  fs.unlinkSync(tmp)
+})
+
+
+
