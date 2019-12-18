@@ -82,7 +82,7 @@ module.exports = {
       )
     }
     Helper.addRunAsRoot(migration)
-    Helper.addNodeJSChange(migration, 'v9.2.1', 'v12.13.0')
+    Helper.addNodeJSChange(migration, 'v9.2.1', 'v12.14.0')
   },
   down: (): void => {}
 }

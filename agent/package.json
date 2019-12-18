@@ -19,7 +19,7 @@
     "test:serial": "ava --serial"
   },
   "engines": {
-    "node": "12.13.0"
+    "node": "12.14.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.2.3",
