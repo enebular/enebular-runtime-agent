@@ -1,0 +1,19 @@
+[Unit]
+Description=Enebular agent
+Documentation=https://docs.enebular.com/
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+User=root
+Environment=PATH=/home/enebular/nodejs-v9.2.1/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+Environment='ENEBULAR_DEV_MODE=true'
+PIDFile=/home/enebular/enebular-runtime-agent/ports/pelion/.enebular-agent.pid
+
+ExecStart=/home/enebular/enebular-runtime-agent/ports/pelion/bin/enebular-pelion-agent --user enebular --enable-syslog --daemon-mode --user enebular --user enebular
+ExecStop=/home/enebular/enebular-runtime-agent/ports/pelion/bin/enebular-pelion-agent kill
+Restart=on-failure
+RestartSec=60s
+
+[Install]
+WantedBy=multi-user.target network-online.target

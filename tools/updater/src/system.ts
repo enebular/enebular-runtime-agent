@@ -53,6 +53,7 @@ export interface SystemIf {
   getArch(): string
   updateRunningUserToRootInSystemd(user: string, file?: string)
   reverseRunningUserToRootInSystemd(user: string, file?: string)
+  removeExtraUserInSystemd(user: string, file?: string)
 }
 
 export class System implements SystemIf {
@@ -209,6 +210,38 @@ export class System implements SystemIf {
     } catch (err) {
       throw new Error(
         `Failed to reverse running user in systemd: ${err.message}`
+      )
+    }
+  }
+
+  public async removeExtraUserInSystemd(user: string, file?: string) {
+    const serviceFile = file
+      ? file
+      : `/etc/systemd/system/enebular-agent-${user}.service`
+    const tmpFile = '/tmp/enebular-agent-systemd-config-' + Utils.randomString()
+
+    try {
+      let content = fs.readFileSync(serviceFile, 'utf8')
+      const lines = content.split(/\r?\n/)
+      const index = lines.findIndex((line) => {
+          return line.startsWith('ExecStart=')
+      })
+      if (index === -1 ) {
+        throw new Error(
+          `Failed to remove extra --user in systemd: cannot find ExecStart`
+        )
+      }
+      const regex = new RegExp(` --user ${user}`, "g")
+      const count = (lines[index].match(regex) || []).length
+      if (count > 1) {
+        const newExecStart = lines[index].replace(regex, '') + ` --user ${user}`
+        content = content.replace(lines[index], newExecStart)
+        fs.writeFileSync(tmpFile, content, 'utf8')
+        await Utils.mv(tmpFile, serviceFile)
+      }
+    } catch (err) {
+      throw new Error(
+        `Failed to remove extra --user in systemd: ${err.message}`
       )
     }
   }
