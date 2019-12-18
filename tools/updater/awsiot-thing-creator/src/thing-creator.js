@@ -41,7 +41,9 @@ export default class ThingCreator {
     }
 
     console.log('Creating thing: ' + thingName)
-    console.log('path: ' + configSavePath)
+    configSavePath = configSavePath || path.resolve('../../ports/awsiot')
+    
+    console.log('configSavePath: ' + configSavePath)
 
     const iot = new IoT({
       apiVersion: '2015-05-28',
