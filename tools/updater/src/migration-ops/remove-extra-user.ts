@@ -9,7 +9,7 @@ export default class RemoveExtraUser extends MigrationOp {
     super(name, { type: 'remove extra user' }, { type: 'remove extra user' }, optional)
   }
 
-  public do(context: MigrateContext): void {
-    context.system.removeExtraUserInSystemd(context.userInfo.user)
+  public async do(context: MigrateContext): Promise<void> {
+    return context.system.removeExtraUserInSystemd(context.userInfo.user)
   }
 }
