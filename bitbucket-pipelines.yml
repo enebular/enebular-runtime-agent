@@ -16,7 +16,7 @@ definitions:
           - (cd agent && npm i && . /tmp/check_lock_file.sh)
           - (cd ports/awsiot && npm i && . /tmp/check_lock_file.sh)
           - (cd ports/pelion && npm i && . /tmp/check_lock_file.sh)
-          - (cd tools/awsiot-thing-creator && npm i && . /tmp/check_lock_file.sh)
+          - (cd tools/updater/awsiot-thing-creator && npm i && . /tmp/check_lock_file.sh)
           - (cd tools/updater && npm i && . /tmp/check_lock_file.sh)
           # test
           - (cd agent && npm run test:serial)
@@ -30,7 +30,7 @@ definitions:
           - (cd agent && rm -rf node_modules)
           - (cd ports/awsiot && rm -rf node_modules)
           - (cd ports/pelion && rm -rf node_modules)
-          - (cd tools/awsiot-thing-creator && rm -rf node_modules)
+          - (cd tools/updater/awsiot-thing-creator && rm -rf node_modules)
           - (cd tools/updater && rm -rf node_modules)
           - rm -rf .git
         artifacts:

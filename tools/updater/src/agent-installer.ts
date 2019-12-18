@@ -263,7 +263,7 @@ export class AgentInstaller implements AgentInstallerIf {
       this._log,
       async (): Promise<void> => {
         return this._buildNpmPackage(
-          `${installPath}/tools/awsiot-thing-creator`,
+          `/tmp/enebular-agent-updater.XXXXXXXXX/awsiot-thing-creator`,
           userInfo
         )
       }

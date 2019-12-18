@@ -509,6 +509,20 @@ do_install() {
     _err "Updater install failed."
     _exit 1
   fi
+  if [ ! -z ${AWS_IOT_THING_NAME} ] && [ ${PORT} == 'awsiot' ]; then
+    _task Creating AWS IoT thing
+    if ! (
+      proc_retry \
+        'cmd_wrapper run_as_user "${USER}" "(cd ${TEMP_UPDATER_DST}/awsiot-thing-creator && npm run start)"
+        "${NODE_ENV_PATH}
+        AWS_IOT_THING_NAME=${AWS_IOT_THING_NAME} AWS_IOT_REGION=${AWS_IOT_REGION}
+        AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}"' \
+        '_err Creating AWS IoT thing failed.'
+    ); then
+      _exit 1
+    fi
+    _echo_g "OK"
+  fi
   rm -rf "${TEMP_UPDATER_DST}"
   eval "$5='${NODE_ENV}'"
 }
@@ -531,21 +545,6 @@ post_install() {
     fi
     _echo_g "OK"
   fi
-  if [ ! -z ${AWS_IOT_THING_NAME} ] && [ ${PORT} == 'awsiot' ]; then
-    _task Creating AWS IoT thing
-    if ! (
-      proc_retry \
-        'cmd_wrapper run_as_user "${USER}" "(cd ${INSTALL_DIR}/tools/awsiot-thing-creator && npm run start)"
-        "${NODE_ENV_PATH}
-        AWS_IOT_THING_NAME=${AWS_IOT_THING_NAME} AWS_IOT_REGION=${AWS_IOT_REGION}
-        AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}"' \
-        '_err Creating AWS IoT thing failed.'
-    ); then
-      _exit 1
-    fi
-    _echo_g "OK"
-  fi
-
   if [ ! -z ${LICENSE_KEY} ]; then
     _task "Creating activation configuration file"
     cmd_wrapper run_as_user ${USER} 'echo "{\"enebularBaseURL\": \"'${ENEBULAR_BASE_URL}'\",\"licenseKey\": \"'${LICENSE_KEY}'\"}" \
