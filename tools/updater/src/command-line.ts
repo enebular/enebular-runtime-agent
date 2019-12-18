@@ -13,6 +13,7 @@ interface ConfigOptionMap {
 export default class CommandLine {
   private _command?: string
   private _installPath?: string
+  private _updaterPath?: string
   private _installPort?: string
   private _commandOptions: ConfigOptionMap = {}
   private _config: Config
@@ -59,12 +60,13 @@ export default class CommandLine {
     })
 
     this._commander
-      .command('install <port> <path>')
-      .description('install enebular-agent <port> <path>')
-      .action((port, path, options) => {
+      .command('install <port> <path> <upath>')
+      .description('install enebular-agent <port> <path> <upath>')
+      .action((port, path, upath, options) => {
         this._command = 'install'
         this._installPort = port
         this._installPath = path
+        this._updaterPath = upath
         this._commandOptions = options
       })
       .option(
@@ -97,7 +99,7 @@ export default class CommandLine {
         }
 
         const pelionMode = this._config.getString('PELION_MODE')
-        if (!this._installPath || !this._installPort) {
+        if (!this._installPath || !this._installPort || !this._updaterPath) {
           return false
         }
         try {
@@ -127,7 +129,8 @@ export default class CommandLine {
           await installer.download(this._installPath, userInfo)
           const agentInfo = AgentInfo.createFromSource(
               system,
-              this._installPath
+              this._installPath,
+              this._updaterPath
             )
           await installer.build(
             this._installPort,

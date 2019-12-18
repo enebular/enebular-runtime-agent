@@ -365,7 +365,7 @@ export default class AgentUpdater {
 
     if (!agentInfo) {
       Utils.task(`Checking enebular-agent by path`, this._log, (): void => {
-        agentInfo = AgentInfo.createFromSource(this._system, agentPath)
+        agentInfo = AgentInfo.createFromSource(this._system, agentPath, '')
       })
     }
 
@@ -374,7 +374,8 @@ export default class AgentUpdater {
     await this._installer.download(this._newAgentInstallPath, this._userInfo)
     const newAgentInfo = AgentInfo.createFromSource(
       this._system,
-      this._newAgentInstallPath
+      this._newAgentInstallPath,
+      ''
     )
     this._preUpdateCheck(newAgentInfo, agentInfo)
 

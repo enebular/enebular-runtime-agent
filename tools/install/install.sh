@@ -503,7 +503,7 @@ do_install() {
   NODE_ENV="PATH=${NODE_PATH}:/bin:/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 
   env ENEBULAR_AGENT_UPDATER_LOG_FILE=${LOG_FILE} ${NODE_ENV} ${DEBUG_ENV} \
-    /bin/bash -c "${TEMP_UPDATER_DST}/bin/enebular-agent-update install "${PORT}" "${INSTALL_DIR}" \
+    /bin/bash -c "${TEMP_UPDATER_DST}/bin/enebular-agent-update install "${PORT}" "${INSTALL_DIR}" "${TEMP_UPDATER_DST}" \
     --user=${USER} --release-version=${RELEASE_VERSION} ${UPDATER_PARAMETER[*]}"
   if [ "$?" -ne 0 ]; then
     _err "Updater install failed."

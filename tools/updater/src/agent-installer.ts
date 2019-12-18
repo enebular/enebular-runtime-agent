@@ -249,6 +249,7 @@ export class AgentInstaller implements AgentInstallerIf {
 
   private async _buildAWSIoT(
     installPath: string,
+    updaterlPath: string,
     userInfo: UserInfo
   ): Promise<void> {
     await Utils.taskAsyncWithRetry(
@@ -263,7 +264,7 @@ export class AgentInstaller implements AgentInstallerIf {
       this._log,
       async (): Promise<void> => {
         return this._buildNpmPackage(
-          `/tmp/enebular-agent-updater.XXXXXXXXX/awsiot-thing-creator`,
+          `${updaterlPath}/awsiot-thing-creator`,
           userInfo
         )
       }
@@ -607,7 +608,7 @@ export class AgentInstaller implements AgentInstallerIf {
     )
 
     if (port == 'awsiot') {
-      await this._buildAWSIoT(installPath, userInfo)
+      await this._buildAWSIoT(installPath, newAgentInfo.upath, userInfo)
     } else {
       await Utils.taskAsyncWithRetry(
         'Building pelion port ',

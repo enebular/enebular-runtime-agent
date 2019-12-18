@@ -30,7 +30,8 @@ export interface SystemIf {
   ): { agentPath: string; agentPort: string }
   getAgentUserFromSystemd(serviceName: string): string
   scanAgentSource(
-    path: string
+    path: string,
+    upath: string
   ): {
     version: string
     awsiot: boolean
@@ -294,7 +295,8 @@ export class System implements SystemIf {
   }
 
   public scanAgentSource(
-    path: string
+    path: string,
+    upath: string
   ): {
     version: string
     awsiot: boolean
@@ -325,7 +327,7 @@ export class System implements SystemIf {
         fs.existsSync(`${path}/ports/local/node_modules`),
       awsiotThingCreator: 
         fs.existsSync(`${path}/tools/awsiot-thing-creator/node_modules`) ||
-        fs.existsSync(`${path}/tools/updater/awsiot-thing-creator/node_modules`),
+        fs.existsSync(`${upath}/awsiot-thing-creator/node_modules`),
       mbedCloudConnector: fs.existsSync(
         `${path}/tools/mbed-cloud-connector/out/Release/enebular-agent-mbed-cloud-connector.elf`
       ),
