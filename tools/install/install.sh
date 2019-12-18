@@ -514,7 +514,7 @@ do_install() {
     if ! (
       proc_retry \
         'cmd_wrapper run_as_user "${USER}" "(cd ${TEMP_UPDATER_DST}/awsiot-thing-creator && npm run start)"
-        "${NODE_ENV_PATH}
+        "${NODE_ENV}
         AWS_IOT_THING_NAME=${AWS_IOT_THING_NAME} AWS_IOT_REGION=${AWS_IOT_REGION}
         AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}"' \
         '_err Creating AWS IoT thing failed.'
