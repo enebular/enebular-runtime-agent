@@ -511,16 +511,29 @@ do_install() {
   fi
   if [ ! -z ${AWS_IOT_THING_NAME} ] && [ ${PORT} == 'awsiot' ]; then
     _task Creating AWS IoT thing
-    if ! (
-      proc_retry \
-        'cmd_wrapper run_as_user "${USER}" "(cd ${TEMP_UPDATER_DST}/awsiot-thing-creator && npm run start)"
-        "${NODE_ENV}
-        AWS_IOT_THING_NAME=${AWS_IOT_THING_NAME} AWS_IOT_REGION=${AWS_IOT_REGION}
-        AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-        AWS_IOT_CONFIG_SAVE_PATH=${INSTALL_DIR}/ports/awsiot"' \
-        '_err Creating AWS IoT thing failed.'
-    ); then
-      _exit 1
+    if [ -d ${TEMP_UPDATER_DST}/awsiot-thing-creator ]; then
+      if ! (
+        proc_retry \
+          'cmd_wrapper run_as_user "${USER}" "(cd ${TEMP_UPDATER_DST}/awsiot-thing-creator && npm run start)"
+          "${NODE_ENV}
+          AWS_IOT_THING_NAME=${AWS_IOT_THING_NAME} AWS_IOT_REGION=${AWS_IOT_REGION}
+          AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+          AWS_IOT_CONFIG_SAVE_PATH=${INSTALL_DIR}/ports/awsiot"' \
+          '_err Creating AWS IoT thing failed.'
+      ); then
+        _exit 1
+      fi
+    else
+      if ! (
+        proc_retry \
+          'cmd_wrapper run_as_user "${USER}" "(cd ${INSTALL_DIR}/tools/awsiot-thing-creator && npm run start)"
+          "${NODE_ENV}
+          AWS_IOT_THING_NAME=${AWS_IOT_THING_NAME} AWS_IOT_REGION=${AWS_IOT_REGION}
+          AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}"' \
+         '_err Creating AWS IoT thing failed.'
+      ); then
+        _exit 1
+      fi
     fi
     _echo_g "OK"
   fi
