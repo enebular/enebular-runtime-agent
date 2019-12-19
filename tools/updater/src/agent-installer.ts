@@ -263,6 +263,7 @@ export class AgentInstaller implements AgentInstallerIf {
       'Building awsiot-thing-creator',
       this._log,
       async (): Promise<void> => {
+        if (updaterlPath === '')  return
         return this._buildNpmPackage(
           `${updaterlPath}/awsiot-thing-creator`,
           userInfo
