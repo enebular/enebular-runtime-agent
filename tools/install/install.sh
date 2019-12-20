@@ -560,8 +560,8 @@ post_install() {
     LAUNCH_ENV=${LAUNCH_ENV#*:}
     LAUNCH_ENV=${LAUNCH_ENV#*\"}
     LAUNCH_ENV=${LAUNCH_ENV%*\"}
-    LAUNCH_ENV="/home/${USER}/nodejs-${LAUNCH_ENV}"
-    if [ ! ${LAUNCH_ENV} = ${NODE_ENV_PATH}]; then
+    LAUNCH_ENV="/home/${USER}/nodejs-v${LAUNCH_ENV}/bin"
+    if [ ! ${LAUNCH_ENV} == ${NODE_ENV_PATH} ]; then
       rm -rf "${NODE_ENV_PATH}"
     fi
     if [ ! -z ${ENEBULAR_DEV_MODE} ]; then
