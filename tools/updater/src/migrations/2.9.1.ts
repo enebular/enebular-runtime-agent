@@ -81,7 +81,6 @@ module.exports = {
         `${context['newPortBasePath']}/.pelion-connector`
       )
     }
-    Helper.addRunAsRoot(migration)
   },
   down: (): void => {}
 }

@@ -3,6 +3,7 @@ import Copy from './copy'
 import AwsiotConfigCopy from './awsiot-config-copy'
 import NodeJSChange from './nodejs-change'
 import RunAsRoot from './run-as-root'
+import RemoveExtraUser from './remove-extra-user'
 
 export default class Helper {
   public static addFileCopy(
@@ -46,6 +47,16 @@ export default class Helper {
     migration.push(
       new RunAsRoot(
         `run enebular-agent as root`,
+      )
+    )
+  }
+
+  public static addRemoveExtraUser(
+    migration: Migration,
+  ): void {
+    migration.push(
+      new RemoveExtraUser(
+        `remove extra --user in config file`,
       )
     )
   }
