@@ -263,7 +263,7 @@ export class AgentInstaller implements AgentInstallerIf {
       this._log,
       async (): Promise<void> => {
         return this._buildNpmPackage(
-          `${__dirname}/../awsiot-thing-creator`,
+          `${__dirname}/../../awsiot-thing-creator`,
           userInfo
         )
       }
