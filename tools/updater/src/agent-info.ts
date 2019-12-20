@@ -31,7 +31,6 @@ export interface ComponentsInstalled {
 
 export class AgentInfo {
   public path: string
-  public upath: string
   public version: AgentVersion
   public nodejsVersion: string
   public installed: ComponentsInstalled
@@ -39,7 +38,6 @@ export class AgentInfo {
 
   public constructor(
     path: string,
-    upath: string,
     version: AgentVersion,
     awsiot: boolean,
     pelion: boolean,
@@ -50,7 +48,6 @@ export class AgentInfo {
     systemd?: SystemdAgentInfo
   ) {
     this.path = path
-    this.upath = upath
     this.version = version
     this.installed = {
       awsiot: awsiot,
@@ -88,7 +85,6 @@ export class AgentInfo {
   public static createFromSource(
     system: SystemIf,
     path: string,
-    upath: string,
     systemd?: SystemdAgentInfo
   ): AgentInfo {
     const {
@@ -99,7 +95,7 @@ export class AgentInfo {
       mbedCloudConnector,
       mbedCloudConnectorFCC,
       nodejsVersion
-    } = system.scanAgentSource(path,upath)
+    } = system.scanAgentSource(path)
 
     const agentVersion = AgentVersion.parse(version)
     if (!agentVersion) {
@@ -107,7 +103,6 @@ export class AgentInfo {
     }
     return new AgentInfo(
       path,
-      upath,
       agentVersion,
       awsiot,
       pelion,
@@ -154,7 +149,7 @@ export class AgentInfo {
       active: system.isServiceActive(serviceName),
       failed: system.isServiceFailed(serviceName)
     }
-    return AgentInfo.createFromSource(system, agentPath, '', systemd)
+    return AgentInfo.createFromSource(system, agentPath, systemd)
   }
 
   public prettyStatus(log: Log): void {
