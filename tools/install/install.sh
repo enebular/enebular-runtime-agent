@@ -556,7 +556,14 @@ post_install() {
   if [ -z ${NO_STARTUP_REGISTER} ]; then
     _task "Registering startup service"
     local LAUNCH_ENV
-    LAUNCH_ENV=${NODE_ENV_PATH}
+    LAUNCH_ENV=`grep \"node\": ${INSTALL_DIR}/agent/package.json`
+    LAUNCH_ENV=${LAUNCH_ENV#*:}
+    LAUNCH_ENV=${LAUNCH_ENV#*\"}
+    LAUNCH_ENV=${LAUNCH_ENV%*\"}
+    LAUNCH_ENV="/home/${USER}/nodejs-${LAUNCH_ENV}"
+    if [ ! ${LAUNCH_ENV} = ${NODE_ENV_PATH}]; then
+      rm -rf "${NODE_ENV_PATH}"
+    fi
     if [ ! -z ${ENEBULAR_DEV_MODE} ]; then
       LAUNCH_ENV="${LAUNCH_ENV} ENEBULAR_DEV_MODE=true"
     fi
