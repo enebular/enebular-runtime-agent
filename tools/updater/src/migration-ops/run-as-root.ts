@@ -10,19 +10,19 @@ export default class RunAsRoot extends MigrationOp {
   ) {
     super(name, { type: 'run as root' }, { type: 'run as root' }, optional)
 
-    this.reverse = (): void => {
+    this.reverse = async (): Promise<void> => {
       if (this._context) {
-        this._context.system.reverseRunningUserToRootInSystemd(
+        await this._context.system.reverseRunningUserToRootInSystemd(
           this._context.userInfo.user
         )
       }
     }
   }
 
-  public do(context: MigrateContext): void {
-    context.system.updateRunningUserToRootInSystemd(
+  public async do(context: MigrateContext): Promise<void> {
+    this._context = context
+    return context.system.updateRunningUserToRootInSystemd(
       context.userInfo.user
     )
-    this._context = context
   }
 }
