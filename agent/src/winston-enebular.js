@@ -3,7 +3,7 @@
 import util from 'util'
 import fs from 'fs'
 import winston from 'winston'
-import common from 'winston/lib/winston/common'
+import compat from 'winston-compat'
 import type AgentManagerMediator from './agent-manager-mediator'
 
 export type WinstonEnebularConfig = {
@@ -87,12 +87,13 @@ util.inherits(Enebular, Transport)
 
 Enebular.prototype.name = 'enebular'
 
-Enebular.prototype.log = function(level, msg, meta, callback) {
-  let output = common.log({
+Enebular.prototype.log = function(info, callback) {
+  const { level, message, ...meta } = info
+  let output = compat.log({
     colorize: false,
     json: true,
     level: level,
-    message: msg,
+    message: message,
     meta: meta,
     stringify: true,
     timestamp: true,
@@ -465,5 +466,8 @@ Enebular.prototype.close = async function() {
 }
 
 Enebular.prototype.cleanUp = async function() {
+  let __active = this._active
+  this._active = true
   await this._send()
+  this._active = __active
 }

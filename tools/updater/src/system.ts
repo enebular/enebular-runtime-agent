@@ -409,7 +409,7 @@ export class System implements SystemIf {
   private _getSupportedNodeJSVersion(agentVersion: string): string {
     switch (agentVersion) {
       default:
-        return 'v9.2.1'
+        return 'v12.14.0'
     }
   }
 

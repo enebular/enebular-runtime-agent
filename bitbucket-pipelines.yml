@@ -1,5 +1,5 @@
 image: 
-  name: node:9.2.1
+  name: node:12.13.0
   run-as-user: 1000
 
 definitions: 

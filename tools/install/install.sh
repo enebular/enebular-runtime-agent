@@ -287,15 +287,14 @@ ensure_nodejs_version() {
   if [ -z "${NODE_PATH}" ]; then
     local NODE_VERSION
     NODE_VERSION="${SUPPORTED_NODE_VERSION}"
-    local NODE_VERSION_PATH
-    NODE_VERSION_PATH="/home/${USER}/nodejs-${NODE_VERSION}"
-    install_nodejs "${NODE_VERSION}" "${NODE_VERSION_PATH}"
+    UPDATER_NODE_PATH="/home/${USER}/nodejs-${NODE_VERSION}"
+    install_nodejs "${NODE_VERSION}" "${UPDATER_NODE_PATH}"
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
       _err "Node installation failed"
       return 1
     fi
-    NODE_PATH="${NODE_VERSION_PATH}/bin"
+    NODE_PATH="${UPDATER_NODE_PATH}/bin"
   fi
   eval "$1='${NODE_PATH}'"
 }
@@ -569,7 +568,15 @@ post_install() {
   if [ -z ${NO_STARTUP_REGISTER} ]; then
     _task "Registering startup service"
     local LAUNCH_ENV
-    LAUNCH_ENV=${NODE_ENV_PATH}
+    LAUNCH_ENV=`grep \"node\": ${INSTALL_DIR}/agent/package.json`
+    LAUNCH_ENV=${LAUNCH_ENV#*:}
+    LAUNCH_ENV=${LAUNCH_ENV#*\"}
+    LAUNCH_ENV=${LAUNCH_ENV%*\"}
+    LAUNCH_ENV="/home/${USER}/nodejs-v${LAUNCH_ENV}/bin"
+    LAUNCH_ENV="PATH=${LAUNCH_ENV}:/bin:/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+    if [ ! ${LAUNCH_ENV} == ${NODE_ENV_PATH} ]; then
+      rm -rf "${UPDATER_NODE_PATH}"
+    fi
     if [ ! -z ${ENEBULAR_DEV_MODE} ]; then
       LAUNCH_ENV="${LAUNCH_ENV} ENEBULAR_DEV_MODE=true"
     fi
@@ -587,7 +594,7 @@ post_install() {
 USER=enebular
 PORT=awsiot
 RELEASE_VERSION="latest-release"
-SUPPORTED_NODE_VERSION="v9.2.1"
+SUPPORTED_NODE_VERSION="v12.14.0"
 ENEBULAR_BASE_URL="https://enebular.com/api/v1"
 MBED_CLOUD_MODE=developer
 
