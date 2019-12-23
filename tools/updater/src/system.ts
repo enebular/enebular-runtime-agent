@@ -356,9 +356,9 @@ export class System implements SystemIf {
       pelion:
         fs.existsSync(`${path}/ports/pelion/node_modules`) ||
         fs.existsSync(`${path}/ports/local/node_modules`),
-      awsiotThingCreator: fs.existsSync(
-        `${path}/tools/awsiot-thing-creator/node_modules`
-      ),
+      awsiotThingCreator: 
+        fs.existsSync(`${path}/tools/awsiot-thing-creator/node_modules`) ||
+        fs.existsSync(`${__dirname}/../../awsiot-thing-creator/node_modules`),
       mbedCloudConnector: fs.existsSync(
         `${path}/tools/mbed-cloud-connector/out/Release/enebular-agent-mbed-cloud-connector.elf`
       ),
