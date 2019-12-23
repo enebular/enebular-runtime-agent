@@ -568,11 +568,10 @@ post_install() {
   if [ -z ${NO_STARTUP_REGISTER} ]; then
     _task "Registering startup service"
     local LAUNCH_ENV
-    LAUNCH_ENV=`grep \"node\": ${INSTALL_DIR}/agent/package.json`
-    LAUNCH_ENV=${LAUNCH_ENV#*:}
+    LAUNCH_ENV=`grep SUPPORTED_NODE_VERSION= ${INSTALL_DIR}/tools/install/install.sh`
     LAUNCH_ENV=${LAUNCH_ENV#*\"}
     LAUNCH_ENV=${LAUNCH_ENV%*\"}
-    LAUNCH_ENV="/home/${USER}/nodejs-v${LAUNCH_ENV}/bin"
+    LAUNCH_ENV="/home/${USER}/nodejs-${LAUNCH_ENV}/bin"
     LAUNCH_ENV="PATH=${LAUNCH_ENV}:/bin:/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
     if [ ! ${LAUNCH_ENV} == ${NODE_ENV_PATH} ]; then
       rm -rf "${UPDATER_NODE_PATH}"
