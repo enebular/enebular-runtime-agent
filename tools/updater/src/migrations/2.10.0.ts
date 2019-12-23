@@ -81,7 +81,6 @@ module.exports = {
         `${context['newPortBasePath']}/.pelion-connector`
       )
     }
-    Helper.addRunAsRoot(migration)
     Helper.addNodeJSChange(migration, 'v9.2.1', 'v12.14.0')
   },
   down: (): void => {}
