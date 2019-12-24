@@ -546,12 +546,6 @@ export default class NodeREDController {
             // report deploying
             this._setFlowState('deploying', null)
 
-            try {
-              await this.removeFlow()
-            } catch (err) {
-              this.info('Existing flow remove failed: ' + err.message)
-            }
-
             // deploy
             this.info(`Deploying flow '${pendingAssetId}'...`)
             try {
@@ -753,9 +747,9 @@ export default class NodeREDController {
       const flows = flowPackage.flow || flowPackage.flows
       updates.push(
         new Promise((resolve, reject) => {
-          const flowFilePath = path.join(this._getDataDir(), 'flows.json')
+          const flowFilePath = path.join(this._getDataDir(), 'new-flows.json')
           fs.writeFile(flowFilePath, JSON.stringify(flows), err =>
-            err ? reject(err) : resolve()
+            err ? resolve(new Error(err)) : resolve(null)
           )
         })
       )
@@ -764,7 +758,7 @@ export default class NodeREDController {
       let creds = flowPackage.cred || flowPackage.creds
       updates.push(
         new Promise((resolve, reject) => {
-          const credFilePath = path.join(this._getDataDir(), 'flows_cred.json')
+          const credFilePath = path.join(this._getDataDir(), 'new-flows_cred.json')
           const editSessionRequested = this._flowPackageContainsEditSession(
             flowPackage
           )
@@ -797,15 +791,11 @@ export default class NodeREDController {
 
               creds = { $: encryptCredential(defaultKey, creds) }
             } catch (err) {
-              throw new Error(
-                'encrypt credential and create flows_cred.json failed',
-                err
-              )
+              resolve(new Error('encrypt credential and create flows_cred.json failed'))
             }
           }
-
           fs.writeFile(credFilePath, JSON.stringify(creds), err =>
-            err ? reject(err) : resolve()
+            err ? resolve(new Error(err)) : resolve(null)
           )
         })
       )
@@ -819,8 +809,8 @@ export default class NodeREDController {
             aiNodesDir,
             this._stateAiModelsPath
           )
-            .then(() => resolve())
-            .catch(err => reject(err))
+            .then(() => resolve(null))
+            .catch(err => resolve(new Error(err)))
         })
       )
     }
@@ -829,7 +819,7 @@ export default class NodeREDController {
         const aiPackageJSONFilePath = path.join(
           this._getDataDir(),
           'node-red-enebular-ai-nodes',
-          'package.json'
+          'new-package.json'
         )
         let nodeType = 'default'
         if (flowPackage.handlers) {
@@ -854,7 +844,7 @@ export default class NodeREDController {
           2
         )
         fs.writeFile(aiPackageJSONFilePath, aiPackageJSON, err =>
-          err ? reject(err) : resolve()
+          err ? resolve(new Error(err)) : resolve(null)
         )
       })
     )
@@ -864,7 +854,7 @@ export default class NodeREDController {
           const packageJSONFilePath = path.join(
             this._getDataDir(),
             'enebular-agent-dynamic-deps',
-            'package.json'
+            'new-package.json'
           )
           if (
             Object.keys(flowPackage.packages).includes(
@@ -892,13 +882,89 @@ export default class NodeREDController {
             2
           )
           fs.writeFile(packageJSONFilePath, packageJSON, err =>
-            err ? reject(err) : resolve()
+            err ? resolve(new Error(err)) : resolve(null)
           )
         })
       )
     }
+    var errorFlag = false;
     await Promise.all(updates)
+    .then( function ( error ) {
+      error.forEach(function(value) {
+        if(value != null) {
+          errorFlag = true;
+        }
+      });
+    } )
+
+    if(errorFlag == true) {
+      // Delete downloaded new file
+      var filePath;
+      filePath = path.join(this._getDataDir(), 'new-flows.json');
+      if(await this._isExistFile(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      filePath = path.join(this._getDataDir(), 'new-flows_cred.json');
+      if(await this._isExistFile(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      filePath = path.resolve(this._getAiNodesDir(), 'nodes', `new-enebular-ai-node.html`);
+      if(await this._isExistFile(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      filePath = path.resolve(this._getAiNodesDir(), 'nodes', `new-enebular-ai-node.js`);
+      if(await this._isExistFile(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      filePath = path.join(this._getDataDir(), 'node-red-enebular-ai-nodes', 'new-package.json');
+      if(await this._isExistFile(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      filePath = path.join(this._getDataDir(), 'enebular-agent-dynamic-deps', 'new-package.json');
+      if(await this._isExistFile(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      
+      throw new Error(`Failed update flow package`)
+    } else {
+      // rename downloaded new file
+      var filePath;
+      filePath = path.join(this._getDataDir(), 'new-flows.json');
+      if(await this._isExistFile(filePath)) {
+        fs.renameSync(filePath, path.join(this._getDataDir(), 'flows.json'));
+      }
+      filePath = path.join(this._getDataDir(), 'new-flows_cred.json');
+      if(await this._isExistFile(filePath)) {
+        fs.renameSync(filePath, path.join(this._getDataDir(), 'flows_cred.json'));
+      }
+      filePath = path.resolve(this._getAiNodesDir(), 'nodes', `new-enebular-ai-node.html`);
+      if(await this._isExistFile(filePath)) {
+        fs.renameSync(filePath, path.resolve(this._getAiNodesDir(), 'nodes', `enebular-ai-node.html`));
+      }
+      filePath = path.resolve(this._getAiNodesDir(), 'nodes', `new-enebular-ai-node.js`);
+      if(await this._isExistFile(filePath)) {
+        fs.renameSync(filePath, path.resolve(this._getAiNodesDir(), 'nodes', `enebular-ai-node.js`));
+
+      }
+      filePath = path.join(this._getDataDir(), 'node-red-enebular-ai-nodes', 'new-package.json');
+      if(await this._isExistFile(filePath)) {
+        fs.renameSync(filePath, path.join(this._getDataDir(), 'node-red-enebular-ai-nodes', 'package.json'));
+      }
+      filePath = path.join(this._getDataDir(), 'enebular-agent-dynamic-deps', 'new-package.json');
+      if(await this._isExistFile(filePath)) {
+        fs.renameSync(filePath, path.join(this._getDataDir(), 'enebular-agent-dynamic-deps', 'package.json'));
+      }
+    }
+
     await this._resolveDependency()
+  }
+  async _isExistFile(path) {
+    try {
+      fs.statSync(path);
+      return true;
+    } catch (error) {
+      return false;
+    }
   }
 
   async _resolveDependency() {
