@@ -572,6 +572,9 @@ post_install() {
     LAUNCH_ENV=${LAUNCH_ENV#*:}
     LAUNCH_ENV=${LAUNCH_ENV#*\"}
     LAUNCH_ENV=${LAUNCH_ENV%*\"}
+    if [ -z ${LAUNCH_ENV} ]; then
+      LAUNCH_ENV="9.2.1"
+    fi
     LAUNCH_ENV="/home/${USER}/nodejs-v${LAUNCH_ENV}/bin"
     LAUNCH_ENV="PATH=${LAUNCH_ENV}:/bin:/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
     if [ ! ${LAUNCH_ENV} == ${NODE_ENV_PATH} ]; then
