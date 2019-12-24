@@ -546,12 +546,6 @@ export default class NodeREDController {
             // report deploying
             this._setFlowState('deploying', null)
 
-            try {
-              await this.removeFlow()
-            } catch (err) {
-              this.info('Existing flow remove failed: ' + err.message)
-            }
-
             // deploy
             this.info(`Deploying flow '${pendingAssetId}'...`)
             try {
@@ -907,27 +901,27 @@ export default class NodeREDController {
       // Delete downloaded new file
       var filePath;
       filePath = path.join(this._getDataDir(), 'new-flows.json');
-      if(this._isExistFile(filePath)) {
+      if(await this._isExistFile(filePath)) {
         fs.unlinkSync(filePath);
       }
       filePath = path.join(this._getDataDir(), 'new-flows_cred.json');
-      if(this._isExistFile(filePath)) {
+      if(await this._isExistFile(filePath)) {
         fs.unlinkSync(filePath);
       }
       filePath = path.resolve(this._getAiNodesDir(), 'nodes', `new-enebular-ai-node.html`);
-      if(this._isExistFile(filePath)) {
+      if(await this._isExistFile(filePath)) {
         fs.unlinkSync(filePath);
       }
       filePath = path.resolve(this._getAiNodesDir(), 'nodes', `new-enebular-ai-node.js`);
-      if(this._isExistFile(filePath)) {
+      if(await this._isExistFile(filePath)) {
         fs.unlinkSync(filePath);
       }
       filePath = path.join(this._getDataDir(), 'node-red-enebular-ai-nodes', 'new-package.json');
-      if(this._isExistFile(filePath)) {
+      if(await this._isExistFile(filePath)) {
         fs.unlinkSync(filePath);
       }
       filePath = path.join(this._getDataDir(), 'enebular-agent-dynamic-deps', 'new-package.json');
-      if(this._isExistFile(filePath)) {
+      if(await this._isExistFile(filePath)) {
         fs.unlinkSync(filePath);
       }
       
