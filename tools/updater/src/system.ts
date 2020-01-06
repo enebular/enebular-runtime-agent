@@ -35,6 +35,7 @@ export interface SystemIf {
     version: string
     awsiot: boolean
     pelion: boolean
+    pelionMode: string | undefined
     awsiotThingCreator: boolean
     mbedCloudConnector: boolean
     mbedCloudConnectorFCC: boolean
@@ -332,6 +333,7 @@ export class System implements SystemIf {
     version: string
     awsiot: boolean
     pelion: boolean
+    pelionMode: string | undefined
     awsiotThingCreator: boolean
     mbedCloudConnector: boolean
     mbedCloudConnectorFCC: boolean
@@ -350,12 +352,24 @@ export class System implements SystemIf {
       pkg.engines && pkg.engines.node
         ? `v${pkg.engines.node}`
         : this._getSupportedNodeJSVersion(pkg.version)
+    const pelion = fs.existsSync(`${path}/ports/pelion/node_modules`) ||
+        fs.existsSync(`${path}/ports/local/node_modules`)
+    let pelionMode
+    if (pelion) {
+      const modeInfoPath = `${path}/ports/pelion/.pelion-connector/mode.info`
+      if (fs.existsSync(modeInfoPath)) {
+        pelionMode = fs.readFileSync(modeInfoPath, 'utf8')
+        pelionMode = pelionMode.trim()
+        if (pelionMode !== 'developer' && pelionMode !== 'factory') {
+          throw new Error(`mode.info format error: ${pelionMode}`)
+        }
+      }
+    }
     return {
       version: pkg.version,
       awsiot: fs.existsSync(`${path}/ports/awsiot/node_modules`),
-      pelion:
-        fs.existsSync(`${path}/ports/pelion/node_modules`) ||
-        fs.existsSync(`${path}/ports/local/node_modules`),
+      pelion: pelion,
+      pelionMode: pelionMode,
       awsiotThingCreator: 
         fs.existsSync(`${path}/tools/awsiot-thing-creator/node_modules`) ||
         fs.existsSync(`${__dirname}/../../awsiot-thing-creator/node_modules`),

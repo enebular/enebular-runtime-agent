@@ -28,6 +28,7 @@ static void *network_interface = &_network_interface;
 static bool enable_log_console;
 static bool enable_debug_logging;
 static char server_socket[256] = { 0 };
+static char mbed_cloud_dev_credentials_path[256] = { 0 };
 
 EnebularAgentMbedCloudConnector *connector;
 
@@ -128,10 +129,12 @@ static void print_usage(void)
         "Usage: " PROGRAM_NAME " [options]\n"
         "\n"
         "Options:\n"
-        "    -h --help          Show this help\n"
-        "    -v --version       Show version information\n"
-        "    -c --console       Enable logging to the console\n"
-        "    -d --debug         Enable debug logging\n"
+        "    -h --help            Show this help\n"
+        "    -v --version         Show version information\n"
+        "    -c --console         Enable logging to the console\n"
+        "    -d --debug           Enable debug logging\n"
+        "    -s --server-socket   Server socket path to connect\n"
+        "    -m --dev-credentials Path of mbed_cloud_dev_credentials.c file\n"
         "\n"
     );
 }
@@ -150,13 +153,14 @@ static int parse_args(int argc, char * const *argv)
         {"console",         0, NULL, 'c'},
         {"debug",           0, NULL, 'd'},
         {"server-socket",   required_argument, NULL, 's'},
+        {"dev-credentials", required_argument, NULL, 'm'},
         {0, 0, 0, 0}
     };
     int c;
 
     while (1) {
 
-        c = getopt_long(argc, argv, "hvcds:", options, NULL);
+        c = getopt_long(argc, argv, "hvcds:m:", options, NULL);
         if (c == -1)
             break;
 
@@ -180,6 +184,11 @@ static int parse_args(int argc, char * const *argv)
 
             case 's':
                 strncpy(server_socket, optarg, sizeof(server_socket));
+                break;
+
+            case 'm':
+                strncpy(mbed_cloud_dev_credentials_path, optarg,
+                        sizeof(mbed_cloud_dev_credentials_path));
                 break;
 
             default:
@@ -211,13 +220,22 @@ int main(int argc, char **argv)
     setvbuf(stdout, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
 
+#if MBED_CONF_APP_DEVELOPER_MODE == 1
+    if (mbed_cloud_dev_credentials_path[0] == '\0') {
+        fprintf(stderr, "mbed_cloud_dev_credentials.c path is required in developer mode\n");
+        print_usage();
+        return EXIT_FAILURE;
+    }
+#endif
+
     if (!init()) {
         fprintf(stderr, "Base initialization failed\n");
         return EXIT_FAILURE;
     }
 
     try {
-        connector = new EnebularAgentMbedCloudConnector(server_socket);
+        connector = new EnebularAgentMbedCloudConnector(server_socket,
+                mbed_cloud_dev_credentials_path);
     } catch (...) {
         fprintf(stderr, "An unexpected runtime error occured\n");
         return EXIT_FAILURE;

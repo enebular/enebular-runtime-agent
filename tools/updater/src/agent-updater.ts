@@ -184,14 +184,19 @@ export default class AgentUpdater {
           `Updating enebular-agent pelion port is only supported from version 2.4.0`
         )
       }
-      // TODO: this won't be needed once we've added `show mode`command line option to mbed-cloud-counnector
-      if (
-        !agentInfo.version.greaterThan(new AgentVersion(2, 4, 0)) &&
-        !this._config.isOverridden('PELION_MODE')
-      ) {
-        throw new Error(
-          `Updating enebular-agent pelion port in 2.4.0 requires --pelion-mode to be set (developer or factory)`
-        )
+      if (agentInfo.version.lessThanOrEquals(new AgentVersion(2, 9, 0))) {
+        if (!this._config.isOverridden('PELION_MODE')) {
+          throw new Error(
+            `Updating enebular-agent pelion port requires --pelion-mode to be set (developer or factory)`
+          )
+        }
+      }
+      else {
+        const pelionMode = agentInfo.installed.pelionMode
+        if (!pelionMode) {
+          throw new Error(`Missing pelion mode information`)
+        }
+        this._config.set('PELION_MODE', pelionMode)
       }
     }
   }
@@ -235,21 +240,6 @@ export default class AgentUpdater {
     agentInfo: AgentInfo,
     newAgentInfo: AgentInfo
   ): Promise<void> {
-    const mbedCloudDevCredsPath = `${agentInfo.path}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c`
-
-    const port = agentInfo.detectPortType()
-    await this._installer.build(
-      port,
-      newAgentInfo,
-      this._userInfo,
-      mbedCloudDevCredsPath
-    )
-    await this._installer.installRuntimeDependencies(
-      port,
-      newAgentInfo,
-      this._userInfo
-    )
-
     try {
       await this._configAndStartNewAgent(
         agentInfo,
@@ -371,7 +361,7 @@ export default class AgentUpdater {
 
     agentInfo.prettyStatus(this._log)
 
-    await this._installer.download(this._newAgentInstallPath, this._userInfo)
+    const packageType = await this._installer.download(this._newAgentInstallPath, this._userInfo)
     const newAgentInfo = AgentInfo.createFromSource(
       this._system,
       this._newAgentInstallPath
@@ -393,9 +383,26 @@ export default class AgentUpdater {
         // a rare chance was a updated version without being started.
         // TODO: should we follow another restore here.
         await this._startAgent(agentInfo.version, agentInfo.path)
-      }
-      return true
+      } return true
     }
+
+    const port = agentInfo.detectPortType()
+    const mbedCloudDevCredsPath = `${agentInfo.path}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c`
+    if (packageType !== 'binary') {
+      await this._installer.build(
+        port,
+        newAgentInfo,
+        this._userInfo,
+        mbedCloudDevCredsPath
+      )
+    }
+
+    await this._installer.installRuntimeDependencies(
+      port,
+      newAgentInfo,
+      this._userInfo,
+      mbedCloudDevCredsPath
+    )
 
     await this._postInstall(agentInfo, newAgentInfo)
 

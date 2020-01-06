@@ -390,6 +390,29 @@ export class Utils {
     )
   }
 
+  public static createSoftLinkRelativePath(
+    path: string,
+    bin: string,
+    link: string,
+    log?: Log,
+    userInfo?: UserInfo
+  ): Promise<void> {
+    return Utils.spawn(
+      'ln',
+      ['-s', bin, link],
+      log,
+      userInfo
+        ? {
+            cwd: path,
+            uid: userInfo.uid,
+            gid: userInfo.gid
+          }
+        : {
+            cwd: path
+          }
+    )
+  }
+
   public static passwd(
     username: string,
     password: string,
