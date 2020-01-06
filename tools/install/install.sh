@@ -287,15 +287,14 @@ ensure_nodejs_version() {
   if [ -z "${NODE_PATH}" ]; then
     local NODE_VERSION
     NODE_VERSION="${SUPPORTED_NODE_VERSION}"
-    local NODE_VERSION_PATH
-    NODE_VERSION_PATH="/home/${USER}/nodejs-${NODE_VERSION}"
-    install_nodejs "${NODE_VERSION}" "${NODE_VERSION_PATH}"
+    UPDATER_NODE_PATH="/home/${USER}/nodejs-${NODE_VERSION}"
+    install_nodejs "${NODE_VERSION}" "${UPDATER_NODE_PATH}"
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
       _err "Node installation failed"
       return 1
     fi
-    NODE_PATH="${NODE_VERSION_PATH}/bin"
+    NODE_PATH="${UPDATER_NODE_PATH}/bin"
   fi
   eval "$1='${NODE_PATH}'"
 }
@@ -509,6 +508,34 @@ do_install() {
     _err "Updater install failed."
     _exit 1
   fi
+  if [ ! -z ${AWS_IOT_THING_NAME} ] && [ ${PORT} == 'awsiot' ]; then
+    _task Creating AWS IoT thing
+    if [ -d ${TEMP_UPDATER_DST}/awsiot-thing-creator ]; then
+      if ! (
+        proc_retry \
+          'cmd_wrapper run_as_user "${USER}" "(cd ${TEMP_UPDATER_DST}/awsiot-thing-creator && npm run start)"
+          "${NODE_ENV}
+          AWS_IOT_THING_NAME=${AWS_IOT_THING_NAME} AWS_IOT_REGION=${AWS_IOT_REGION}
+          AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+          AWS_IOT_CONFIG_SAVE_PATH=${INSTALL_DIR}/ports/awsiot"' \
+          '_err Creating AWS IoT thing failed.'
+      ); then
+        _exit 1
+      fi
+    else
+      if ! (
+        proc_retry \
+          'cmd_wrapper run_as_user "${USER}" "(cd ${INSTALL_DIR}/tools/awsiot-thing-creator && npm run start)"
+          "${NODE_ENV}
+          AWS_IOT_THING_NAME=${AWS_IOT_THING_NAME} AWS_IOT_REGION=${AWS_IOT_REGION}
+          AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}"' \
+         '_err Creating AWS IoT thing failed.'
+      ); then
+        _exit 1
+      fi
+    fi
+    _echo_g "OK"
+  fi
   rm -rf "${TEMP_UPDATER_DST}"
   eval "$5='${NODE_ENV}'"
 }
@@ -531,21 +558,6 @@ post_install() {
     fi
     _echo_g "OK"
   fi
-  if [ ! -z ${AWS_IOT_THING_NAME} ] && [ ${PORT} == 'awsiot' ]; then
-    _task Creating AWS IoT thing
-    if ! (
-      proc_retry \
-        'cmd_wrapper run_as_user "${USER}" "(cd ${INSTALL_DIR}/tools/awsiot-thing-creator && npm run start)"
-        "${NODE_ENV_PATH}
-        AWS_IOT_THING_NAME=${AWS_IOT_THING_NAME} AWS_IOT_REGION=${AWS_IOT_REGION}
-        AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}"' \
-        '_err Creating AWS IoT thing failed.'
-    ); then
-      _exit 1
-    fi
-    _echo_g "OK"
-  fi
-
   if [ ! -z ${LICENSE_KEY} ]; then
     _task "Creating activation configuration file"
     cmd_wrapper run_as_user ${USER} 'echo "{\"enebularBaseURL\": \"'${ENEBULAR_BASE_URL}'\",\"licenseKey\": \"'${LICENSE_KEY}'\"}" \
@@ -556,7 +568,18 @@ post_install() {
   if [ -z ${NO_STARTUP_REGISTER} ]; then
     _task "Registering startup service"
     local LAUNCH_ENV
-    LAUNCH_ENV=${NODE_ENV_PATH}
+    LAUNCH_ENV=`grep \"node\": ${INSTALL_DIR}/agent/package.json`
+    LAUNCH_ENV=${LAUNCH_ENV#*:}
+    LAUNCH_ENV=${LAUNCH_ENV#*\"}
+    LAUNCH_ENV=${LAUNCH_ENV%*\"}
+    if [ -z ${LAUNCH_ENV} ]; then
+      LAUNCH_ENV="9.2.1"
+    fi
+    LAUNCH_ENV="/home/${USER}/nodejs-v${LAUNCH_ENV}/bin"
+    LAUNCH_ENV="PATH=${LAUNCH_ENV}:/bin:/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+    if [ ! ${LAUNCH_ENV} == ${NODE_ENV_PATH} ]; then
+      rm -rf "${UPDATER_NODE_PATH}"
+    fi
     if [ ! -z ${ENEBULAR_DEV_MODE} ]; then
       LAUNCH_ENV="${LAUNCH_ENV} ENEBULAR_DEV_MODE=true"
     fi
@@ -574,7 +597,7 @@ post_install() {
 USER=enebular
 PORT=awsiot
 RELEASE_VERSION="latest-release"
-SUPPORTED_NODE_VERSION="v9.2.1"
+SUPPORTED_NODE_VERSION="v12.14.0"
 ENEBULAR_BASE_URL="https://enebular.com/api/v1"
 MBED_CLOUD_MODE=developer
 

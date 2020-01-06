@@ -18,62 +18,75 @@ export default class LogManager {
     this._transports = {}
 
     if (config.get('ENEBULAR_ENABLE_CONSOLE_LOG')) {
+      const logFormat = winston.format.printf((info) => {
+        const { level, message, ...meta } = info
+        let output = ''
+        if (meta.context) {
+          output += meta.context + ': '
+          delete meta.context
+        }
+        if (meta.module) {
+          output += meta.module + ': '
+          delete meta.module
+        }
+        output += message
+        if (meta && Object.keys(meta).length > 0) {
+          // If meta carries unhandled exception data serialize the stack nicely
+          if (Object.keys(meta).length >= 5 && meta.date && meta.process && meta.os && meta.trace && meta.stack) {
+            var stack = meta.stack
+            delete meta.stack
+            delete meta.trace
+            output += ' ' + JSON.stringify(meta, null, 4)
+            if (stack) {
+              output += '\n' + stack + '\n'
+            }
+          } else {
+             output += ' ' + JSON.stringify(meta)
+          }
+        }
+        return output
+      })
+
       this.addTransport(
         new winston.transports.Console({
           name: 'console',
           level: level,
-          colorize: true,
           handleExceptions: true,
           humanReadableUnhandledException: true,
-          formatter: options => {
-            let output = ''
-            if (options.meta) {
-              if (options.meta.context) {
-                output += options.meta.context + ': '
-                delete options.meta.context
-              }
-              if (options.meta.module) {
-                output += options.meta.module + ': '
-                delete options.meta.module
-              }
-            }
-            output += options.message
-            // output += ' (' + options.level + ')';
-            if (options.meta && Object.keys(options.meta).length > 0) {
-              // If meta carries unhandled exception data serialize the stack nicely
-              if (
-                Object.keys(options.meta).length >= 5 &&
-                options.meta.hasOwnProperty('date') &&
-                options.meta.hasOwnProperty('process') &&
-                options.meta.hasOwnProperty('os') &&
-                options.meta.hasOwnProperty('trace') &&
-                options.meta.hasOwnProperty('stack')
-              ) {
-                var stack = options.meta.stack
-                delete options.meta.stack
-                delete options.meta.trace
-                output += ' ' + JSON.stringify(options.meta, null, 4)
-                if (stack) {
-                  output += '\n' + stack.join('\n')
-                }
-              } else {
-                output += ' ' + JSON.stringify(options.meta)
-              }
-            }
-            return output
-          }
+          format: winston.format.combine(
+            winston.format.colorize(),
+            logFormat
+          )
         })
       )
     }
 
     if (config.get('ENEBULAR_ENABLE_FILE_LOG')) {
+      const logFormat = winston.format.printf((info) => {
+        let output = ''
+        if (info.timestamp) {
+          output += info.timestamp + ' - '
+	}
+        output += info.level + ': ' + info.message
+        if (info.module) {
+          output += ' module=' + info.module
+        }
+        if (info.context) {
+          output += ', context=' + info.context
+        }
+        return output
+      })
+
       this.addTransport(
         new winston.transports.File({
           name: 'file',
           level: level,
           filename: config.get('ENEBULAR_LOG_FILE_PATH'),
           handleExceptions: true,
-          json: false
+          format: winston.format.combine(
+            winston.format.timestamp(),
+            logFormat
+          )
         })
       )
     }
@@ -119,15 +132,16 @@ export default class LogManager {
   }
 
   addLogger(id: string, transports: ?(string[])): winston.Logger {
+    const maskFormat = winston.format(info => {
+      info.context = id
+      return info
+    })
     let options = {
       transports: [],
-      rewriters: [
-        function(level, msg, meta) {
-          /* include the logger id in the meta as 'context' field */
-          meta.context = id
-          return meta
-        }
-      ]
+      format: winston.format.combine(
+        maskFormat(),
+        winston.format.simple()
+      )
     }
     transports = transports || ['console']
     transports.forEach(transport => {
@@ -161,9 +175,9 @@ export default class LogManager {
   }
 
   async shutdown() {
-    this._loggers.close()
     if (this._enebularTransport) {
       await this._enebularTransport.cleanUp()
     }
+    this._loggers.close()
   }
 }

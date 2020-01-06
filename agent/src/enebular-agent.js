@@ -362,24 +362,33 @@ export default class EnebularAgent extends EventEmitter {
     await this._remoteLogin.setup()
     this._nodeRed.activate(true)
 
+    await this._nodeRed.startService()
+
     if (this._connector.init) {
       await this._connector.init()
     }
 
-    await this._nodeRed.startService()
     return true
   }
 
   async shutdown() {
+    await this.shutdownManager()
+    await this.shutdownMonitor()
+  }
+
+  async shutdownManager() {
     this._deviceAuth.endAuthAttempt()
     await this._nodeRed.shutdownService()
     this._nodeRed.activate(false)
     this._assetManager.activate(false)
     this._deviceStateManager.activate(false)
     this._aiModelManager.activate(false)
-    await this._logManager.shutdown()
+  }
+
+  async shutdownMonitor() {
     this._monitoringShutdown = true
     this._updateMonitoringActiveState()
+    await this._logManager.shutdown()
     if (this._config.get('ENEBULAR_DAEMON_MODE')) {
       this._removePIDFile()
     }

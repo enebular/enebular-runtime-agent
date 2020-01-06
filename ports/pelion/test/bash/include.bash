@@ -42,6 +42,7 @@ function run {
 
   ret=`ps -p $last_pid | grep -o $last_pid | wc -l`
   if [ $ret -eq 1 ]; then
-    kill -KILL $last_pid
+    kill $last_pid
+    sleep 2
   fi
 }

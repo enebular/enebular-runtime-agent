@@ -132,7 +132,7 @@ export async function createAiNodeDefinition(nodes, aiNodeDir, statePath) {
     <p>enebular AI node to work with enebular AI Models<br/></p>
   </script>`
   await fsWriteFileAsync(
-    path.resolve(aiNodeDir, 'nodes', `enebular-ai-node.html`),
+    path.resolve(aiNodeDir, 'nodes', `new-enebular-ai-node.html`),
     htmlFile
   )
 
@@ -265,7 +265,7 @@ module.exports = function(RED) {
   RED.nodes.registerType('enebular-ai-node', main)
 }`
   await fsWriteFileAsync(
-    path.resolve(aiNodeDir, 'nodes', `enebular-ai-node.js`),
+    path.resolve(aiNodeDir, 'nodes', `new-enebular-ai-node.js`),
     jsFile
   )
 }

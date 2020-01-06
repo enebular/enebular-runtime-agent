@@ -1,6 +1,6 @@
 {
   "name": "enebular-agent-updater",
-  "version": "2.9.1",
+  "version": "2.10.0",
   "description": "The client to update enebular-agent",
   "repository": "enebular/enebular-agent-updater",
   "main": "lib/src/index.js",
@@ -20,7 +20,7 @@
   "author": "",
   "license": "ISC",
   "engines": {
-    "node": "9.2.1"
+    "node": "12.14.0"
   },
   "devDependencies": {
     "@types/node": "^11.9.4",

@@ -401,12 +401,13 @@ async function shutdown() {
   }
 
   shutdownRequested = true
-  await agent.shutdown()
+  await agent.shutdownManager()
   if (awsIotConnected) {
     canRegisterThingShadow = false
     updateThingShadowRegisterState()
     await endThingShadow()
   }
+  await agent.shutdownMonitor()
 }
 
 async function exit() {

@@ -77,7 +77,8 @@ export class Migrator implements MigratorIf {
     start: AgentVersion,
     end: AgentVersion
   ): string[] {
-    return migrationFiles.filter((file): boolean => {
+    let migrateFilesInfo: Array< { version: AgentVersion, fullPath: string } > = []
+    migrationFiles.forEach((file): void => {
       const fileName = path.basename(file)
       if (path.extname(fileName).toLowerCase() === '.js') {
         const version = fileName.slice(0, -3)
@@ -85,18 +86,28 @@ export class Migrator implements MigratorIf {
         if (migrationVersion) {
           // We allow same version force update.
           if (start.equals(end) && migrationVersion.equals(start)) {
-            return true
+            migrateFilesInfo.push({ version: migrationVersion, fullPath: file})
+            return
           }
           if (
             migrationVersion.greaterThan(start) &&
             migrationVersion.lessThanOrEquals(end)
           ) {
-            return true
+            migrateFilesInfo.push({ version: migrationVersion, fullPath: file})
+            return
           }
         }
       }
-      return false
     })
+    return migrateFilesInfo.sort((a, b) => {
+      if (a.version.lessThan(b.version)) {
+        return -1
+      }
+      if (a.version.greaterThan(b.version)) {
+        return 1
+      }
+      return 0
+    }).map(info => info.fullPath)
   }
 
   private async _createMigrationFromFile(
@@ -174,7 +185,7 @@ export class Migrator implements MigratorIf {
           throw new Error(`Migration only supports upgrade.`)
         }
         const migrationFilePath = this._config.getString('MIGRATION_FILE_PATH')
-        let migrationFiles = fs.readdirSync(migrationFilePath).sort()
+        let migrationFiles = fs.readdirSync(migrationFilePath)
         migrationFiles = migrationFiles.map((file): string => {
           return path.resolve(migrationFilePath, file)
         })

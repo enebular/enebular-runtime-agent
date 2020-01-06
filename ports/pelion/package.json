@@ -1,6 +1,6 @@
 {
   "name": "enebular-mbed-agent",
-  "version": "2.9.1",
+  "version": "2.10.0",
   "description": "The 'mbed' port of enebular-agent for enebular",
   "main": "lib/index.js",
   "bin": {
@@ -18,7 +18,7 @@
   "author": "",
   "license": "MIT",
   "engines": {
-    "node": "9.2.1"
+    "node": "12.14.0"
   },
   "devDependencies": {
     "@babel/core": "^7.2.2",
