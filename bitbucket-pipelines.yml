@@ -114,8 +114,6 @@ definitions:
           - AGENT_NAME=enebular-agent-${BITBUCKET_TAG}
           - tar --exclude="./dist" --transform "flags=S;s,^\.,${AGENT_NAME}," -czf /tmp/${AGENT_NAME}-linux-arm64.tar.gz .
           - mv /tmp/${AGENT_NAME}-linux-arm64.tar.gz dist/
-        services:
-          - docker
         artifacts:
           - dist/**
     - step: &upload
