@@ -160,7 +160,7 @@ definitions:
           - '**'
 pipelines:
   default: 
-#    - step: *build-test
+    - step: *build-test
   tags:
     '[0-9]*.[0-9]*.[0-9]*':
       - step: *build-test
