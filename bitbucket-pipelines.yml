@@ -106,7 +106,7 @@ definitions:
     - step: &pack-arm64
         name: Pack (arm64)
         script:
-          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i ysuematsu/enebular-arm64v8:node-12.14.0 /usr/bin/qemu-aarch64-static -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent.sh"
+          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i ysuematsu/enebular-arm64v8:node-12.14.0 -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent.sh"
           - rm -rf .git
           - mkdir -p dist
           - AGENT_NAME=enebular-agent-${BITBUCKET_TAG}
@@ -192,11 +192,11 @@ pipelines:
 #      - step: *set-pub-key
 #      - step: *pack-prebuilt
       - parallel:
-          - step: *pack-x64
+#          - step: *pack-x64
           - step: *pack-armv7l
           - step: *pack-arm64
-      - step: *upload-installsh
-      - step: *upload
+#      - step: *upload-installsh
+#      - step: *upload
 definitions:
   services:
     docker:
