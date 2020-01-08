@@ -105,15 +105,15 @@ definitions:
           - dist/**
     - step: &pack-arm64
         name: Pack (arm64)
-        image: ysuematsu/enebular-arm64v8:node-12.14.0
         script:
-          - chmod 777 pack_enebular_agent.sh
-          - ./pack_enebular_agent.sh
+          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i ysuematsu/enebular-arm64v8:node-12.14.0 /usr/bin/qemu-aarch64-static -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent.sh"
           - rm -rf .git
           - mkdir -p dist
           - AGENT_NAME=enebular-agent-${BITBUCKET_TAG}
           - tar --exclude="./dist" --transform "flags=S;s,^\.,${AGENT_NAME}," -czf /tmp/${AGENT_NAME}-linux-arm64.tar.gz .
           - mv /tmp/${AGENT_NAME}-linux-arm64.tar.gz dist/
+        services:
+          - docker
         artifacts:
           - dist/**
     - step: &upload
