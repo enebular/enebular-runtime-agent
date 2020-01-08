@@ -81,7 +81,7 @@ definitions:
         name: Pack (x64)
         image: suyouxin/enebular-x64:node-9.2.1
         script:
-          - ./pack_enebular_agent.sh
+          - sudo ./pack_enebular_agent.sh
           - rm -rf .git
           - mkdir -p dist
           - AGENT_NAME=enebular-agent-${BITBUCKET_TAG}
@@ -187,13 +187,13 @@ pipelines:
       - step: *upload-installsh
       - step: *upload
     'multi-arch-test-*':
-      - step: *build-test
-      - step: *set-pub-key
-      - step: *pack-prebuilt
+#      - step: *build-test
+#      - step: *set-pub-key
+#      - step: *pack-prebuilt
       - parallel:
           - step: *pack-x64
-          - step: *pack-armv7l
-          - step: *pack-arm64
+#          - step: *pack-armv7l
+#          - step: *pack-arm64
       - step: *upload
 definitions:
   services:
