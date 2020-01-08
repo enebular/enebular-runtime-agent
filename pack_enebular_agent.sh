@@ -5,7 +5,7 @@ set -e
 (cd agent && npm i --production)
 (cd ports/awsiot && npm i --production)
 (cd ports/pelion && npm i --production)
-(cd tools/awsiot-thing-creator && npm i --production)
+(cd tools/updater/awsiot-thing-creator && npm i --production)
 
 (cd tools/mbed-cloud-connector-fcc && mbed config root . && mbed deploy -v \
 && python pal-platform/pal-platform.py -v deploy --target=x86_x64_NativeLinux_mbedtls generate \
