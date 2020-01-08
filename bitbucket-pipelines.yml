@@ -1,5 +1,5 @@
 image: 
-  name: node:12.13.0
+  name: node:12.14.0
   run-as-user: 1000
 
 definitions: 
@@ -93,7 +93,7 @@ definitions:
     - step: &pack-armv7l
         name: Pack (armv7l)
         script:
-          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -i suyouxin/enebular-arm32v7:node-9.2.1 /usr/bin/qemu-arm-static -execve /bin/bash -c ./pack_enebular_agent.sh
+          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -i ysuematsu/enebular-arm32v7:node-12.14.0 /usr/bin/qemu-arm-static -execve /bin/bash -c ./pack_enebular_agent.sh
           - rm -rf .git
           - mkdir -p dist
           - AGENT_NAME=enebular-agent-${BITBUCKET_TAG}
@@ -106,7 +106,7 @@ definitions:
     - step: &pack-arm64
         name: Pack (arm64)
         script:
-          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i suyouxin/enebular-arm64v8:node-9.2.1 /usr/bin/qemu-aarch64-static -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent.sh"
+          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i ysuematsu/enebular-arm64v8:node-12.14.0 /usr/bin/qemu-aarch64-static -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent.sh"
           - rm -rf .git
           - mkdir -p dist
           - AGENT_NAME=enebular-agent-${BITBUCKET_TAG}
@@ -192,13 +192,13 @@ pipelines:
       - step: *upload-installsh
       - step: *upload
     'multi-arch-test-*':
-#      - step: *build-test
-#      - step: *set-pub-key
-#      - step: *pack-prebuilt
+      - step: *build-test
+      - step: *set-pub-key
+      - step: *pack-prebuilt
       - parallel:
           - step: *pack-x64
-#          - step: *pack-armv7l
-#          - step: *pack-arm64
+          - step: *pack-armv7l
+          - step: *pack-arm64
       - step: *upload
 definitions:
   services:
