@@ -23,6 +23,12 @@ export default class MockAgentInstaller implements AgentInstallerIf {
     }
     return 'prebuilt'
   }
+
+  public async buildAWSIoTThingCreator(
+    userInfo: UserInfo
+  ): Promise<void> {
+  }
+
   public async build(
     port: string,
     newAgentInfo: AgentInfo,
