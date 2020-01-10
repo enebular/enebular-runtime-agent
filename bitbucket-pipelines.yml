@@ -34,7 +34,7 @@ definitions:
           - (cd tools/updater && rm -rf node_modules)
           - rm -rf .git
         artifacts:
-          - - tools/updater/awsiot-thing-creator/lib/**
+          - tools/updater/awsiot-thing-creator/lib/**
     - step: &set-pub-key
         name: Set the key
         image: python:3.5.1
