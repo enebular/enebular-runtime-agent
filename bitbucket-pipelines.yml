@@ -4,6 +4,10 @@ image:
 
 definitions: 
   steps:
+    - step: &nop
+        name: No Process
+        script:
+          - echo 'No Process'
     - step: &build-test
         name: Build and test
         script:
@@ -169,7 +173,7 @@ definitions:
           - '**'
 pipelines:
   default: 
-    - step: *build-test
+    - step: *nop
   tags:
     '[0-9]*.[0-9]*.[0-9]*':
       - step: *build-test
