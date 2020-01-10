@@ -16,9 +16,6 @@ import Log from './log'
 
 export interface AgentInstallerIf {
   download(installPath: string, userInfo: UserInfo): Promise<string>
-  buildAWSIoTThingCreator(
-    userInfo: UserInfo
-  ): Promise<void>
   build(
     port: string,
     newAgentInfo: AgentInfo,
@@ -609,21 +606,6 @@ export class AgentInstaller implements AgentInstallerIf {
     await Utils.spawn(`useradd`, ['-m', '-G', 'sudo', '-r', username], this._log)
     await Utils.spawn(`usermod`, ['-L', username], this._log)
     return Utils.passwd(username, password, this._log)
-  }
-
-  public async buildAWSIoTThingCreator(
-    userInfo: UserInfo
-  ): Promise<void> {
-    await Utils.taskAsyncWithRetry(
-      'Building awsiot-thing-creator',
-      this._log,
-      async (): Promise<void> => {
-        return this._buildNpmPackage(
-          `${__dirname}/../../awsiot-thing-creator`,
-          userInfo
-        )
-      }
-    )
   }
   
   public async build(

@@ -77,6 +77,7 @@ definitions:
           - tar --transform "flags=S;s,^\.,${AGENT_NAME}," -czf /tmp/${AGENT_NAME}-prebuilt.tar.gz .
           - mv /tmp/${AGENT_NAME}-prebuilt.tar.gz dist/
           - UPDATER_NAME=enebular-agent-updater-${BITBUCKET_TAG}
+          - (cd tools/updater/awsiot-thing-creator && npm i --production)
           - (cd tools/updater && npm i --production && tar --transform "s,^\.,${UPDATER_NAME}," -czf /tmp/${UPDATER_NAME}.tar.gz .)
           - mv /tmp/${UPDATER_NAME}.tar.gz dist/
         artifacts:
@@ -192,14 +193,14 @@ pipelines:
       - step: *upload-installsh
       - step: *upload
     'multi-arch-test-*':
-      - step: *build-test
-      - step: *set-pub-key
+#      - step: *build-test
+#      - step: *set-pub-key
       - step: *pack-prebuilt
       - parallel:
-          - step: *pack-x64
-          - step: *pack-armv7l
-          - step: *pack-arm64
-      - step: *upload-installsh
+#          - step: *pack-x64
+#          - step: *pack-armv7l
+#          - step: *pack-arm64
+#      - step: *upload-installsh
       - step: *upload
 definitions:
   services:

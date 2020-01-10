@@ -395,12 +395,6 @@ export default class AgentUpdater {
         this._userInfo,
         mbedCloudDevCredsPath
       )
-    } else {
-      if (port == 'awsiot') {
-        await this._installer.buildAWSIoTThingCreator(
-          this._userInfo
-        )
-      }
     }
 
     await this._installer.installRuntimeDependencies(
