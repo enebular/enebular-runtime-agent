@@ -196,7 +196,7 @@ pipelines:
 #      - step: *build-test
 #      - step: *set-pub-key
       - step: *pack-prebuilt
-      - parallel:
+#      - parallel:
 #          - step: *pack-x64
 #          - step: *pack-armv7l
 #          - step: *pack-arm64
