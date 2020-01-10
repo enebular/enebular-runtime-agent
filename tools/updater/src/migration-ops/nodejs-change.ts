@@ -18,10 +18,9 @@ export default class NodeJSChange extends MigrationOp {
     const desired: NodeJSState = { type: 'nodejs', version: newVersion }
     super(name, current, desired, optional)
 
-    this.reverse = (): void => {
+    this.reverse = async (): Promise<void> => {
       if (this._context) {
-        // TODO: make it generic
-        this._context.system.updateNodeJSVersionInSystemd(
+        await this._context.system.updateNodeJSVersionInSystemd(
           this._context.userInfo.user,
           (this._desiredState as NodeJSState).version,
           (this._currentState as NodeJSState).version
@@ -30,12 +29,12 @@ export default class NodeJSChange extends MigrationOp {
     }
   }
 
-  public do(context: MigrateContext): void {
-    context.system.updateNodeJSVersionInSystemd(
+  public async do(context: MigrateContext): Promise<void> {
+    this._context = context
+    return context.system.updateNodeJSVersionInSystemd(
       context.userInfo.user,
       (this._currentState as NodeJSState).version,
       (this._desiredState as NodeJSState).version
     )
-    this._context = context
   }
 }

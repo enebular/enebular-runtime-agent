@@ -213,4 +213,6 @@ export default class MockSystem implements SystemIf {
   public async updateRunningUserToRootInSystemd(user: string, file?: string) {}
 
   public async reverseRunningUserToRootInSystemd(user: string, file?: string) {}
+
+  public async removeExtraUserInSystemd(user: string, file?: string) {}
 }

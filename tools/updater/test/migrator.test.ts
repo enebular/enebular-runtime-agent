@@ -4,6 +4,10 @@ import * as fs from 'fs'
 import * as rimraf from 'rimraf'
 import test from 'ava'
 import AgentUpdater from '../src/agent-updater'
+import AgentVersion from '../src/agent-version'
+import Log from '../src/log'
+import Config from '../src/config'
+import Migrator from '../src/migrator'
 import Utils from '../src/utils'
 import Mockhelper from './helper/mock-helper'
 
@@ -236,4 +240,29 @@ test('Migrator.11: migrator handles run as root reversion when new agent fails t
   rimraf.sync(cache)
 })
 
+test('Migrator.12: migration file execution order is guaranteed ascending', async t => {
+  const { system } = Mockhelper.createDefaultMocks()
+  const migrator = new Migrator(system, new Config(), new Log('debug', true, 'fake'),
+     Utils.getUserInfo(os.userInfo().username))
+
+  function nonNull(version: AgentVersion | undefined): AgentVersion {
+    if (!version) throw new Error('null')
+    return version
+  }
+  const files = migrator["_getMigrationFilesBetweenTwoVersions"](
+      [
+        '10.1.1.js',
+        '9.10.9.js',
+        '9.10.10.js',
+        '9.8.10.js',
+        '9.5.1.js'
+      ],
+      nonNull(AgentVersion.parse('9.5.0')), nonNull(AgentVersion.parse('10.1.1')))
+
+  t.true(files[0] === '9.5.1.js')
+  t.true(files[1] === '9.8.10.js')
+  t.true(files[2] === '9.10.9.js')
+  t.true(files[3] === '9.10.10.js')
+  t.true(files[4] === '10.1.1.js')
+})
 

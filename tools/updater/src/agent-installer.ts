@@ -263,7 +263,7 @@ export class AgentInstaller implements AgentInstallerIf {
       this._log,
       async (): Promise<void> => {
         return this._buildNpmPackage(
-          `${installPath}/tools/awsiot-thing-creator`,
+          `${__dirname}/../../awsiot-thing-creator`,
           userInfo
         )
       }
@@ -630,10 +630,11 @@ export class AgentInstaller implements AgentInstallerIf {
             await this._system.installDebianPackages([
               'git',
               'cmake',
+              'python-dev',  // Required by mbed-cli, but not installed by default Jessie 8.11
               'python-pip'
             ])
             return this._system.installPythonPackages(
-              ['mbed-cli', 'click', 'requests'],
+              ['mbed-cli==1.10.1', 'click', 'requests'],
               userInfo
             )
           },

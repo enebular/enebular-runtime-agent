@@ -17,9 +17,9 @@ run "$BIN"
 exists "agent takes --node-red-command option" "node-red-command-override"
 
 BIN='DEBUG="debug" '${AGENT_BIN}' --enebular-config-file="/enebular-config-file-override"'
-run "$BIN"
+run "$BIN" 6
 exists "agent takes enebular-config-file option" "enebular-config-file-override"
 
 BIN='DEBUG="debug" '${AGENT_BIN}' --aws-iot-config-file="/aws-iot-config-override"'
-run "$BIN"
+run "$BIN" 6
 exists "agent takes aws-iot-config-file option" "aws-iot-config-override"
