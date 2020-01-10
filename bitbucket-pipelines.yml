@@ -193,7 +193,7 @@ pipelines:
       - step: *upload-installsh
       - step: *upload
     'multi-arch-test-*':
-#      - step: *build-test
+      - step: *build-test
 #      - step: *set-pub-key
       - step: *pack-prebuilt
 #      - parallel:
