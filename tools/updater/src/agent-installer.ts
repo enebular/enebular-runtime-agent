@@ -559,12 +559,11 @@ export class AgentInstaller implements AgentInstallerIf {
           if (!fs.existsSync(`${connectorPath}/out/Release/${dstPath}`)) {
             // binary
             try {
-              await Utils.mv(binPath, dstPath)
+              await Utils.mv(`${connectorPath}/out/Release/${binPath}`, `${connectorPath}/out/Release/${dstPath}`)
             } catch (err) {
               throw new Error(
-                `Failed to restore mbed-cloud-connector from ${binPath} to ${
-                  dstPath
-                }: ${err.message}`
+                `Failed to restore mbed-cloud-connector from ${connectorPath}/out/Release/${binPath} to
+                ${connectorPath}/out/Release/${dstPath}: ${err.message}`
               )
             }
           }
