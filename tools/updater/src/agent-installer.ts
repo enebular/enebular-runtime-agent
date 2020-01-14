@@ -548,18 +548,26 @@ export class AgentInstaller implements AgentInstallerIf {
 
     if (port == 'pelion') {
       const mode = this._config.getString('PELION_MODE')
+      
       await Utils.taskAsync(
-        `Creating mbed-cloud-connector symbolic link`,
+        `Renaming mbed-cloud-connector`,
         this._log,
         async (): Promise<void> => {
           const connectorPath = `${agentPath}/tools/mbed-cloud-connector`
           const binPath = `./enebular-agent-mbed-cloud-connector-${mode}.elf`
-          const symbolicLinkPath = `./enebular-agent-mbed-cloud-connector.elf`
-          if (!fs.existsSync(`${connectorPath}/out/Release/${binPath}`)) {
-            throw new Error(`Missing mbed-cloud-connector ${mode} executable.`)
+          const dstPath = `./enebular-agent-mbed-cloud-connector.elf`
+          if (!fs.existsSync(`${connectorPath}/out/Release/${dstPath}`)) {
+            // binary
+            try {
+              await Utils.mv(binPath, dstPath)
+            } catch (err) {
+              throw new Error(
+                `Failed to restore mbed-cloud-connector from ${binPath} to ${
+                  dstPath
+                }: ${err.message}`
+              )
+            }
           }
-          await Utils.createSoftLinkRelativePath(`${connectorPath}/out/Release`,
-              binPath, symbolicLinkPath, this._log)
         }
       )
 
