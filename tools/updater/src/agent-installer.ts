@@ -414,12 +414,6 @@ export class AgentInstaller implements AgentInstallerIf {
         if (!fs.existsSync(outputAbsolutePath)) {
           throw new Error('Missing mbed-cloud-connector executable.')
         }
-        const mode = factoryMode ? 'factory' : 'developer'
-        const outputFileNameWithMode = `enebular-agent-mbed-cloud-connector-${mode}.elf`
-        const outputWithModeAbsolutePath = `${outputPath}/${outputFileNameWithMode}`
-        await Utils.mv(outputAbsolutePath, outputWithModeAbsolutePath)
-        await Utils.createSoftLinkRelativePath(outputPath,
-            `./${outputFileNameWithMode}`, `./${outputFileName}`, this._log)
       }
     )
   }
