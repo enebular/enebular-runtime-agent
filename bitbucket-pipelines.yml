@@ -200,15 +200,15 @@ pipelines:
       - step: *upload-installsh
       - step: *upload
     'dev-test-*':
-      - step: *build-test
-      - step: *set-pub-key
-      - step: *pack-prebuilt
+#      - step: *build-test
+#      - step: *set-pub-key
+#      - step: *pack-prebuilt
       - parallel:
-          - step: *pack-x64
+#          - step: *pack-x64
           - step: *pack-armv7l
-          - step: *pack-arm64
-      - step: *upload-installsh
-      - step: *upload
+#          - step: *pack-arm64
+#      - step: *upload-installsh
+#      - step: *upload
 definitions:
   services:
     docker:
