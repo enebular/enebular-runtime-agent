@@ -40,7 +40,8 @@ public:
     /**
      * Constructor
      */
-    EnebularAgentMbedCloudClient(EnebularAgentMbedCloudConnector * connector);
+    EnebularAgentMbedCloudClient(EnebularAgentMbedCloudConnector * connector,
+            const char* mbed_cloud_dev_credentials_path);
 
     /**
      * Deconstructor
@@ -143,6 +144,7 @@ private:
     bool _registered_state_updated;
     queue<agent_msg_t> _agent_man_msgs;
     char *_agent_info;
+    const char *_mbed_cloud_dev_credentials_path;
     pthread_mutex_t _lock;
 
     M2MResource *_deploy_flow_download_url_res;

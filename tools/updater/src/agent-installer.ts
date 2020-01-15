@@ -15,7 +15,7 @@ import { SystemIf } from './system'
 import Log from './log'
 
 export interface AgentInstallerIf {
-  download(installPath: string, userInfo: UserInfo): Promise<void>
+  download(installPath: string, userInfo: UserInfo): Promise<string>
   build(
     port: string,
     newAgentInfo: AgentInfo,
@@ -26,6 +26,7 @@ export interface AgentInstallerIf {
     port: string,
     newAgentInfo: AgentInfo,
     userInfo: UserInfo,
+    devCredsPath?: string
   ): Promise<void>
   bundle2PAL(
     installPath: string,
@@ -66,12 +67,14 @@ export class AgentInstaller implements AgentInstallerIf {
   private _binBuildEnv: NodeJS.ProcessEnv = {}
   private _log: Log
   private _system: SystemIf
+  private _arch: string
   private _systemPackageListsUpdated = false
 
   public constructor(config: Config, log: Log, system: SystemIf) {
     this._config = config
     this._log = log
     this._system = system
+    this._arch = this._system.getArch()
   }
 
   private _download(url: string, path: string): Promise<{}> {
@@ -184,7 +187,7 @@ export class AgentInstaller implements AgentInstallerIf {
             }, 3000)
           } else {
             this._fetchRetryCount = 0
-            this._log.error(
+            this._log.debug(
               `Failed to to fetch agent, retry count(${this._maxFetchRetryCount}) reaches max ${err.message}`
             )
             resolve(false)
@@ -322,7 +325,7 @@ export class AgentInstaller implements AgentInstallerIf {
       }
     )
 
-    Utils.task(`Verifying mbed-cloud-connector`, this._log, (): void => {
+    Utils.task(`Verifying mbed-cloud-connector-fcc`, this._log, (): void => {
       if (
         !fs.existsSync(
           fccPath +
@@ -401,25 +404,28 @@ export class AgentInstaller implements AgentInstallerIf {
       }
     )
 
-    Utils.task(`Verifying mbed-cloud-connector`, this._log, (): void => {
-      if (
-        !fs.existsSync(
-          connectorPath + '/out/Release/enebular-agent-mbed-cloud-connector.elf'
-        )
-      ) {
-        throw new Error('Verifying mbed-cloud-connector failed.')
+    await Utils.taskAsync(
+      `Verifying mbed-cloud-connector`,
+      this._log,
+      async (): Promise<void> => {
+        const outputPath = connectorPath + '/out/Release'
+        const outputFileName = 'enebular-agent-mbed-cloud-connector.elf'
+        const outputAbsolutePath = `${outputPath}/${outputFileName}`
+        if (!fs.existsSync(outputAbsolutePath)) {
+          throw new Error('Missing mbed-cloud-connector executable.')
+        }
       }
-    })
+    )
   }
 
-  private async _downloadAndExtract(
+  private async _downloadNodeJSAndExtract(
     url: string,
     tallballPath: string,
     installPath: string,
     userInfo: UserInfo
   ): Promise<void> {
     await Utils.taskAsync(
-      `Fetching enebular-agent`,
+      `Fetching nodejs`,
       this._log,
       async (): Promise<void> => {
         if (!(await this._fetchWithRetry(url, tallballPath, userInfo))) {
@@ -429,7 +435,7 @@ export class AgentInstaller implements AgentInstallerIf {
     )
 
     await Utils.taskAsync(
-      `Extracting enebular-agent`,
+      `Extracting nodejs`,
       this._log,
       async (): Promise<void> => {
         await this._extract(tallballPath, installPath, userInfo)
@@ -439,17 +445,17 @@ export class AgentInstaller implements AgentInstallerIf {
   }
 
   private _getNodeJSDownloadURL(version: string): string {
-    const arch = this._system.getArch()
     const platform = os.platform()
     return `${this._config.getString(
       'NODE_JS_DOWNLOAD_BASE_URL'
-    )}/${version}/node-${version}-${platform}-${arch}.tar.gz`
+    )}/${version}/node-${version}-${platform}-${this._arch}.tar.gz`
   }
 
   public async installRuntimeDependencies(
     port: string,
     newAgentInfo: AgentInfo,
     userInfo: UserInfo,
+    devCredsPath?: string
   ): Promise<void> {
     const nodejsPath = path.resolve(
       `/home/${userInfo.user}/nodejs-${newAgentInfo.nodejsVersion}`
@@ -458,7 +464,7 @@ export class AgentInstaller implements AgentInstallerIf {
       this._log.info(
         `Installing nodejs-${newAgentInfo.nodejsVersion} to ${nodejsPath} ...`
       )
-      await this._downloadAndExtract(
+      await this._downloadNodeJSAndExtract(
         this._getNodeJSDownloadURL(newAgentInfo.nodejsVersion),
         '/tmp/nodejs-' + Utils.randomString(),
         nodejsPath,
@@ -516,12 +522,12 @@ export class AgentInstaller implements AgentInstallerIf {
       )
     }
 
+    const agentPath = newAgentInfo.path
     await Utils.taskAsync(
       `Applying file permissions`,
       this._log,
       async (): Promise<void> => {
         const rootInfo = Utils.getUserInfo('root')
-        const agentPath = newAgentInfo.path
         await Utils.chown(this._log, nodejsPath, rootInfo)
         await Utils.chown(this._log, agentPath, rootInfo)
         await Utils.chown(this._log, `${agentPath}/node-red/.node-red-config`, userInfo)
@@ -533,6 +539,68 @@ export class AgentInstaller implements AgentInstallerIf {
         await Utils.chmod(this._log, `${agentPath}/agent/keys/enebular`, '0600')
       }
     )
+
+    if (port == 'pelion') {
+      const mode = this._config.getString('PELION_MODE')
+      
+      await Utils.taskAsync(
+        `Renaming mbed-cloud-connector`,
+        this._log,
+        async (): Promise<void> => {
+          const connectorPath = `${agentPath}/tools/mbed-cloud-connector`
+          const binPath = `./enebular-agent-mbed-cloud-connector-${mode}.elf`
+          const dstPath = `./enebular-agent-mbed-cloud-connector.elf`
+          if (!fs.existsSync(`${connectorPath}/out/Release/${dstPath}`)) {
+            // binary
+            try {
+              await Utils.mv(`${connectorPath}/out/Release/${binPath}`, `${connectorPath}/out/Release/${dstPath}`)
+            } catch (err) {
+              throw new Error(
+                `Failed to restore mbed-cloud-connector from ${connectorPath}/out/Release/${binPath} to
+                ${connectorPath}/out/Release/${dstPath}: ${err.message}`
+              )
+            }
+          }
+        }
+      )
+
+      await Utils.taskAsync(
+        `Creating mbed-cloud-connector mode.info`,
+        this._log,
+        async (): Promise<void> => {
+        const pelionDatePath = `${agentPath}/ports/pelion/.pelion-connector`
+        if (!fs.existsSync(pelionDatePath)) {
+          await Utils.mkdirp(this._log, pelionDatePath, userInfo)
+        }
+
+        const modeFile = `${pelionDatePath}/mode.info`
+        fs.writeFileSync(modeFile, mode, 'utf8')
+        await Utils.chown(this._log, modeFile, userInfo)
+      })
+
+      if (mode === 'developer') {
+        if (devCredsPath) {
+          const credsPath = `${agentPath}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c`
+          if (!fs.existsSync(credsPath)) {
+            await Utils.taskAsync(
+              'Copy mbed-cloud-connector developer credentials',
+              this._log,
+              async (): Promise<void> => {
+                return Utils.copy(
+                  this._log,
+                  devCredsPath,
+                  credsPath
+                )
+              }
+            )
+          }
+        } else {
+          throw new Error(
+            'mbed cloud dev credentials c file is required in developer mode.'
+          )
+        }
+      }
+    }
   }
 
   private async _createRemoteMaintenanceUser(username: string, password: string) {
@@ -561,7 +629,7 @@ export class AgentInstaller implements AgentInstallerIf {
       this._log.info(
         `Installing nodejs-${newAgentInfo.nodejsVersion} to ${nodejsPath} ...`
       )
-      await this._downloadAndExtract(
+      await this._downloadNodeJSAndExtract(
         this._getNodeJSDownloadURL(newAgentInfo.nodejsVersion),
         '/tmp/nodejs-' + Utils.randomString(),
         nodejsPath,
@@ -693,77 +761,74 @@ export class AgentInstaller implements AgentInstallerIf {
 
   private _getAgentName(version: string, kind: string): string {
     if (kind === 'binary') {
-      const arch = this._system.getArch()
       const platform = os.platform()
-      return `enebular-agent-${version}-${platform}-${arch}.tar.gz`
+      return `enebular-agent-${version}-${platform}-${this._arch}.tar.gz`
     }
     return `enebular-agent-${version}-prebuilt.tar.gz`
+  }
+
+  private async _downloadEnebularAgentAndExtract(
+    downloadPath: string,
+    version: string,
+    tallballPath: string,
+    installPath: string,
+    userInfo: UserInfo
+  ): Promise<string> {
+    let packageType = 'binary'
+    await Utils.taskAsync(
+      `Fetching enebular-agent`,
+      this._log,
+      async (): Promise<void> => {
+        let fileName = this._getAgentName(version, packageType)
+        let url = `${downloadPath}/${version}/${fileName}`
+
+        if (!(await this._fetchWithRetry(url, tallballPath, userInfo))) {
+          this._log.debug(`No suitable binary package for ${this._arch}, try prebuilt package`)
+          packageType = 'prebuilt'
+          fileName = this._getAgentName(version, packageType)
+          url = `${downloadPath}/${version}/${fileName}`
+          if (!(await this._fetchWithRetry(url, tallballPath, userInfo))) {
+            throw new Error(`Failed to fetch agent`)
+          }
+        }
+      }
+    )
+
+    await Utils.taskAsync(
+      `Extracting enebular-agent`,
+      this._log,
+      async (): Promise<void> => {
+        await this._extract(tallballPath, installPath, userInfo)
+      }
+    )
+    fs.unlinkSync(tallballPath)
+    return packageType
   }
 
   public async download(
     installPath: string,
     userInfo: UserInfo
-  ): Promise<void> {
-    let url
-    if (this._config.getBoolean('ENEBULAR_AGENT_DOWNLOAD_FROM_GITHUB')) {
-      await Utils.taskAsync(
-        `Fetching enebular-agent version from github`,
-        this._log,
-        async (): Promise<void> => {
-          const apiPath = this._config.getString(
-            'ENEBULAR_AGENT_GITHUB_API_PATH'
-          )
-          const getVersionURL =
-            this._config.getString('ENEBULAR_AGENT_VERSION') == 'latest'
-              ? `${apiPath}/releases/latest`
-              : `${apiPath}/releases/tags/${this._config.getString(
-                  'ENEBULAR_AGENT_VERSION'
-                )}`
-          let info
-          try {
-            info = await Utils.fetchJSON(getVersionURL, {})
-          } catch (err) {
-            throw new Error(
-              `Failed to get version ${this._config.getString(
-                'ENEBULAR_AGENT_VERSION'
-              )} from github.`
-            )
-          }
-          const assets = (info as GithubVersionRsp).assets
-          if (assets && assets.length > 0) {
-            url = assets[0].browser_download_url
-          }
-          if (!url) {
-            throw new Error(
-              `Updater only support install from prebuilt package, please check your github releases.`
-            )
-          }
-        }
-      )
-    } else {
-      let version = this._config.getString('ENEBULAR_AGENT_VERSION')
-      let downloadPath = this._config.getString('ENEBULAR_AGENT_DOWNLOAD_PATH')
-      if (version === 'latest') {
-        let info
-        try {
-          info = await Utils.fetchJSON(`${downloadPath}/latest.info`, {})
-        } catch (err) {
-          throw new Error(`Failed to get latest version info from s3`)
-        }
-        version = (info as LatestReleaseInfo).version
-      } else {
-        if (AgentVersion.parse(version) == undefined) {
-          downloadPath = this._config.getString(
-            'ENEBULAR_AGENT_TEST_DOWNLOAD_PATH'
-          )
-        }
+  ): Promise<string> {
+    let downloadPath = this._config.getString('ENEBULAR_AGENT_DOWNLOAD_PATH')
+    let version = this._config.getString('ENEBULAR_AGENT_VERSION')
+    if (version === 'latest') {
+      let info
+      try {
+        info = await Utils.fetchJSON(`${downloadPath}/latest.info`, {})
+      } catch (err) {
+        throw new Error(`Failed to get latest version info from s3`)
       }
-      const fileName = this._getAgentName(version, 'prebuilt')
-      url = `${downloadPath}/${version}/${fileName}`
+      version = (info as LatestReleaseInfo).version
+    } else {
+      if (AgentVersion.parse(version) == undefined) {
+        downloadPath = this._config.getString(
+          'ENEBULAR_AGENT_TEST_DOWNLOAD_PATH'
+        )
+      }
     }
-
-    await this._downloadAndExtract(
-      url,
+    return await this._downloadEnebularAgentAndExtract(
+      downloadPath,
+      version,
       '/tmp/enebular-runtime-agent-' + Utils.randomString(),
       installPath,
       userInfo

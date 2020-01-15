@@ -3,9 +3,9 @@
 #include <stdlib.h>
 #include <time.h>
 #include <pthread.h>
-#include "factory_configurator_client.h"
 #include "enebular_agent_mbed_cloud_connector.h"
 #include "enebular_agent_mbed_cloud_client.h"
+#include "enebular_agent_fcc_dev_flow.h"
 
 #define OBJECT_ID_DEPLOY_FLOW           (26242)
 #define OBJECT_ID_REGISTER              (26243)
@@ -73,13 +73,15 @@ void EnebularAgentMbedCloudClientCallback::value_updated(M2MBase *base, M2MBase:
     logger->log_console(INFO, "Client: unexpected client callback: %s", base->uri_path());
 }
 
-EnebularAgentMbedCloudClient::EnebularAgentMbedCloudClient(EnebularAgentMbedCloudConnector * connector):
+EnebularAgentMbedCloudClient::EnebularAgentMbedCloudClient(EnebularAgentMbedCloudConnector * connector,
+        const char* mbed_cloud_dev_credentials_path):
     _connector(connector),
     _clientCallback(new EnebularAgentMbedCloudClientCallback()),
     _logger(Logger::get_instance()),
     _connecting(false),
     _registered(false),
-    _registered_state_updated(false)
+    _registered_state_updated(false),
+    _mbed_cloud_dev_credentials_path(mbed_cloud_dev_credentials_path)
 {
     pthread_mutex_init(&_lock, NULL);
 }
@@ -373,7 +375,7 @@ bool EnebularAgentMbedCloudClient::init_fcc()
 
 #if MBED_CONF_APP_DEVELOPER_MODE == 1
     _logger->log(INFO, "Client: Starting developer flow...");
-    status = fcc_developer_flow();
+    status = enebular_agent_fcc_dev_flow(_mbed_cloud_dev_credentials_path);
     if (status == FCC_STATUS_KCM_FILE_EXIST_ERROR) {
         _logger->log(INFO, "Client: Developer credentials already exist");
     } else if (status != FCC_STATUS_SUCCESS) {

@@ -17,11 +17,13 @@ export default class MockAgentInstaller implements AgentInstallerIf {
   public async download(
     installPath: string,
     userInfo: UserInfo
-  ): Promise<void> {
+  ): Promise<string> {
     if (this.failInstall) {
       throw new Error('Agent Install failed.')
     }
+    return 'prebuilt'
   }
+
   public async build(
     port: string,
     newAgentInfo: AgentInfo,
@@ -38,6 +40,7 @@ export default class MockAgentInstaller implements AgentInstallerIf {
     port: string,
     newAgentInfo: AgentInfo,
     userInfo: UserInfo,
+    devCredsPath?: string
   ): Promise<void> {
   }
 

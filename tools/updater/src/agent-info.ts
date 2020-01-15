@@ -24,6 +24,7 @@ export interface SystemdAgentInfo {
 export interface ComponentsInstalled {
   awsiot: boolean
   pelion: boolean
+  pelionMode?: string
   awsiotThingCreator: boolean
   mbedCloudConnector: boolean
   mbedCloudConnectorFCC: boolean
@@ -41,6 +42,7 @@ export class AgentInfo {
     version: AgentVersion,
     awsiot: boolean,
     pelion: boolean,
+    pelionMode: string | undefined,
     awsiotThingCreator: boolean,
     mbedCloudConnector: boolean,
     mbedCloudConnectorFCC: boolean,
@@ -52,6 +54,7 @@ export class AgentInfo {
     this.installed = {
       awsiot: awsiot,
       pelion: pelion,
+      pelionMode: pelionMode,
       awsiotThingCreator: awsiotThingCreator,
       mbedCloudConnector: mbedCloudConnector,
       mbedCloudConnectorFCC: mbedCloudConnectorFCC
@@ -74,6 +77,10 @@ export class AgentInfo {
     }
   }
 
+  public detectPelionMode(): string | undefined {
+    return this.installed.pelionMode
+  }
+
   public isServiceRegistered(): boolean {
     return this.systemd ? true : false
   }
@@ -91,6 +98,7 @@ export class AgentInfo {
       version,
       awsiot,
       pelion,
+      pelionMode,
       awsiotThingCreator,
       mbedCloudConnector,
       mbedCloudConnectorFCC,
@@ -106,6 +114,7 @@ export class AgentInfo {
       agentVersion,
       awsiot,
       pelion,
+      pelionMode,
       awsiotThingCreator,
       mbedCloudConnector,
       mbedCloudConnectorFCC,
