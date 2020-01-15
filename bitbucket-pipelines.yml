@@ -94,7 +94,6 @@ definitions:
         name: Pack (x64)
         image: enebularagentdevelopers/enebular-agent-x64:node-12.14.0
         script:
-          - chmod 777 pack_enebular_agent.sh
           - ./pack_enebular_agent.sh
           - rm -rf .git
           - mkdir -p dist
@@ -103,15 +102,15 @@ definitions:
           - mv /tmp/${AGENT_NAME}-linux-x64.tar.gz dist/
         artifacts:
           - dist/**
-    - step: &pack-armv7l
-        name: Pack (armv7l)
+    - step: &pack-arm32v7
+        name: Pack (arm32v7)
         script:
           - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i enebularagentdevelopers/enebular-agent-arm32v7:node-12.14.0 /usr/bin/qemu-arm-static -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent.sh"
           - rm -rf .git
           - mkdir -p dist
           - AGENT_NAME=enebular-agent-${BITBUCKET_TAG}
-          - tar --exclude="./dist" --transform "flags=S;s,^\.,${AGENT_NAME}," -czf /tmp/${AGENT_NAME}-linux-armv7l.tar.gz .
-          - mv /tmp/${AGENT_NAME}-linux-armv7l.tar.gz dist/
+          - tar --exclude="./dist" --transform "flags=S;s,^\.,${AGENT_NAME}," -czf /tmp/${AGENT_NAME}-linux-arm32v7.tar.gz .
+          - mv /tmp/${AGENT_NAME}-linux-arm32v7.tar.gz dist/
         services:
           - docker
         artifacts:
@@ -181,7 +180,7 @@ pipelines:
       - step: *pack-prebuilt
       - parallel:
           - step: *pack-x64
-          - step: *pack-armv7l
+          - step: *pack-arm32v7
           - step: *pack-arm64
       - step: *upload-release
     '[0-9]*.[0-9]*.[0-9]*-rc*':
@@ -190,7 +189,7 @@ pipelines:
       - step: *pack-prebuilt
       - parallel:
           - step: *pack-x64
-          - step: *pack-armv7l
+          - step: *pack-arm32v7
           - step: *pack-arm64
       - step: *upload-installsh-staging
       - step: *upload
@@ -204,8 +203,8 @@ pipelines:
 #      - step: *set-pub-key
 #      - step: *pack-prebuilt
       - parallel:
-#          - step: *pack-x64
-          - step: *pack-armv7l
+          - step: *pack-x64
+#          - step: *pack-arm32v7
 #          - step: *pack-arm64
 #      - step: *upload-installsh
 #      - step: *upload
