@@ -174,8 +174,8 @@ definitions:
     - step: &clamav-scan
           name: ClamAV scan
           script:
-            - apt-get -y update
-            - apt-get -y install clamav
+            - sudo apt-get -y update
+            - sudo apt-get -y install clamav
             - freshclam
             - clamscan --infected --remove --recursive ./
 pipelines:
