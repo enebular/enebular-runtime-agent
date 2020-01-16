@@ -182,9 +182,6 @@ definitions:
 pipelines:
   default: 
     - step: *nop
-  branches:
-    issue-448:
-    - step: *clamav-scan
   tags:
     '[0-9]*.[0-9]*.[0-9]*':
       - step: *build-test
