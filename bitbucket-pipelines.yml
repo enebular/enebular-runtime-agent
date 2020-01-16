@@ -173,7 +173,9 @@ definitions:
           - '**'
     - step: &clamav-scan
           name: ClamAV scan
+          image: atlassian/default-image:2
           script:
+            - apt-get -y update
             - apt-get -y install clamav
             - freshclam
             - clamscan --infected --remove --recursive ./
