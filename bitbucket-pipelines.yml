@@ -171,12 +171,23 @@ definitions:
           - python tools/s3_upload.py ${ENEBULAR_AGENT_S3_BUCKET} "tools/install/install.sh" ${ENEBULAR_AGENT_S3_INSTALLSH_DIR}
         artifacts:
           - '**'
+    - step: &clamav-scan
+          name: ClamAV scan
+          script:
+            - apt-get -y update
+            - apt-get -y install clamav
+            - freshclam
+            - clamscan --infected --remove --recursive ./
 pipelines:
   default: 
     - step: *nop
+  branches:
+    issue-448:
+    - step: *clamav-scan
   tags:
     '[0-9]*.[0-9]*.[0-9]*':
       - step: *build-test
+      - step: *clamav-scan
       - step: *set-pub-key-release
       - step: *pack-prebuilt
       - parallel:
@@ -186,6 +197,7 @@ pipelines:
       - step: *upload-release
     '[0-9]*.[0-9]*.[0-9]*-rc*':
       - step: *build-test
+      - step: *clamav-scan
       - step: *set-pub-key-staging
       - step: *pack-prebuilt
       - parallel:
