@@ -744,7 +744,7 @@ export class AgentInstaller implements AgentInstallerIf {
   ): Promise<string> {
     let packageType
     // Only jessie is not supported for binary-package
-    if(this._system.getOSVersion() === 'jessie') {
+    if(await this._system.getOSVersion() === 'jessie') {
       packageType = 'prebuilt'
     } else {
       packageType = 'binary'

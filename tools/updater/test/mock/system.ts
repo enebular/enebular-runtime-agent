@@ -212,7 +212,7 @@ export default class MockSystem implements SystemIf {
 
   public getArch(): string { throw new Error('not implemented')}
 
-  public getOSVersion(): string {return ''}
+  public async getOSVersion(): Promise<string> { return '' }
 
   public async updateRunningUserToRootInSystemd(user: string, file?: string) {}
 

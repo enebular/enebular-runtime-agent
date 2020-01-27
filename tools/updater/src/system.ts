@@ -50,7 +50,7 @@ export interface SystemIf {
     newVersion: string,
     file?: string
   ): Promise<void>
-  getOSVersion(): string
+  getOSVersion(): Promise<string>
   getArch(): string
   updateRunningUserToRootInSystemd(user: string, file?: string)
   reverseRunningUserToRootInSystemd(user: string, file?: string)
@@ -427,7 +427,7 @@ export class System implements SystemIf {
     }
   }
 
-  public getOSVersion(): string {
+  public async getOSVersion(): Promise<string>  {
     let ver = Utils.execReturnStdout('cat /etc/debian_version')
     if (!ver) {
       throw new Error('Failed to get os version from system')
@@ -446,7 +446,6 @@ export class System implements SystemIf {
         ver = 'buster'
         break
     }
-
     return ver
   }
 
