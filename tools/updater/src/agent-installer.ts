@@ -742,7 +742,14 @@ export class AgentInstaller implements AgentInstallerIf {
     installPath: string,
     userInfo: UserInfo
   ): Promise<string> {
-    let packageType = 'binary'
+    let packageType
+    // Only jessie is not supported for binary-package
+    if(this._system.getOSVersion() === 'jessie') {
+      packageType = 'prebuilt'
+    } else {
+      packageType = 'binary'
+    }
+    
     await Utils.taskAsync(
       `Fetching enebular-agent`,
       this._log,

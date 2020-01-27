@@ -50,7 +50,7 @@ export interface SystemIf {
     newVersion: string,
     file?: string
   ): Promise<void>
-
+  getOSVersion(): string
   getArch(): string
   updateRunningUserToRootInSystemd(user: string, file?: string)
   reverseRunningUserToRootInSystemd(user: string, file?: string)
@@ -425,6 +425,29 @@ export class System implements SystemIf {
       default:
         return 'v9.2.1'
     }
+  }
+
+  public getOSVersion(): string {
+    let ver = Utils.execReturnStdout('cat /etc/debian_version')
+    if (!ver) {
+      throw new Error('Failed to get os version from system')
+    }
+    ver = ver.trim()
+    let index = ver.indexOf('.')
+    ver = ver.slice( 0, index);
+    switch (ver) {
+      case '8':
+        ver = 'jessie'
+        break
+      case '9':
+        ver = 'stretch'
+        break
+      case '10':
+        ver = 'buster'
+        break
+    }
+
+    return ver
   }
 
   public getArch(): string {
