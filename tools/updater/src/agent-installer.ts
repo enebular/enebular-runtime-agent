@@ -722,38 +722,6 @@ export class AgentInstaller implements AgentInstallerIf {
           mbedCloudDevCredsPath
         )
 
-        /*
-         * The package list here comes from mbed-os/requirements.txt. In order to avoid
-         * mbed deploy install packages using root permission, we install them using
-         * user permission in prior to mbed deploy.
-         */
-        await Utils.taskAsyncWithRetry(
-          'Checking dependencies for mbed-cloud-connector-fcc',
-          this._log,
-          async (): Promise<void> => {
-            return this._system.installPythonPackages(
-              [
-                'colorama',
-                'PySerial',
-                'PrettyTable',
-                'Jinja2',
-                'IntelHex',
-                'junit-xml',
-                'pyYAML',
-                'requests',
-                'mbed-ls',
-                'mbed-host-tests',
-                'mbed-greentea',
-                'beautifulsoup4',
-                'fuzzywuzzy',
-                'pyelftools',
-                'jsonschema',
-                'future'
-              ],
-              userInfo
-            )
-          }
-        )
         await this._buildMbedCloudConnectorFCC(installPath, userInfo)
       }
     }
