@@ -183,20 +183,12 @@ export default class AgentUpdater {
         throw new Error(
           `Updating enebular-agent pelion port is only supported from version 2.4.0`
         )
-      }
-      if (agentInfo.version.lessThanOrEquals(new AgentVersion(2, 9, 0))) {
+      } else {
         if (!this._config.isOverridden('PELION_MODE')) {
           throw new Error(
             `Updating enebular-agent pelion port requires --pelion-mode to be set (developer or factory)`
           )
         }
-      }
-      else {
-        const pelionMode = agentInfo.installed.pelionMode
-        if (!pelionMode) {
-          throw new Error(`Missing pelion mode information`)
-        }
-        this._config.set('PELION_MODE', pelionMode)
       }
     }
   }
