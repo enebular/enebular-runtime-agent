@@ -706,8 +706,26 @@ export class AgentInstaller implements AgentInstallerIf {
               'python-dev',  // Required by mbed-cli, but not installed by default Jessie 8.11
               'python-pip'
             ])
+
+            // Install in advance to not process "Auto-installing missing Python modules"
+            await this._system.installPythonPackages(
+              [
+                'colorama<0.5,>=0.3',           // by mbed-os-tools requirements.txt
+                'Jinja2>=2.10.1,<2.11',         // by mbed-os requirements.txt
+                'pyYAML==4.2b1',                // by mbed-os requirements.txt
+                'mbed-ls>=1.5.1,<1.8',          // by mbed-os requirements.txt
+                'mbed-host-tests>=1.4.4,<1.6',  // by mbed-os requirements.txt
+                'mbed-greentea>=0.2.24,<1.8',   // by mbed-os requirements.txt
+                'fuzzywuzzy==0.17.0',           // Fixed with operable version
+                'pyelftools>=0.24,<=0.25',      // by mbed-os requirements.txt
+                'jsonschema==2.6.0',            // by mbed-os requirements.txt
+              ],
+              userInfo
+            )
+
+            // Install mbed-cli and Required packages
             return this._system.installPythonPackages(
-              ['mbed-cli==1.10.1', 'click', 'requests'],
+              ['mbed-cli==1.10.1', 'click==7.0', 'requests>=2.0,<3.0'], // Fixed with operable version
               userInfo
             )
           },
