@@ -1,9 +1,13 @@
 image: 
-  name: node:12.13.0
+  name: node:12.14.0
   run-as-user: 1000
 
 definitions: 
   steps:
+    - step: &nop
+        name: No Process
+        script:
+          - echo 'No Process'
     - step: &build-test
         name: Build and test
         script:
@@ -34,7 +38,11 @@ definitions:
           - (cd tools/updater && rm -rf node_modules)
           - rm -rf .git
         artifacts:
-          - '**'
+          - agent/lib/**
+          - ports/awsiot/lib/**
+          - ports/pelion/lib/**
+          - tools/updater/awsiot-thing-creator/lib/**
+          - tools/updater/lib/**
     - step: &set-pub-key
         name: Set the key
         image: python:3.5.1
@@ -45,7 +53,7 @@ definitions:
           - pip install boto3==1.3.0
           - python tools/s3_download.py ${ENEBULAR_AGENT_S3_PUB_KEY_BUCKET} ${ENEBULAR_AGENT_S3_PUB_KEY_DIR} "agent/keys/enebular/"
         artifacts:
-          - '**'
+          - agent/keys/**
     - step: &set-pub-key-staging
         name: Set the key
         image: python:3.5.1
@@ -56,7 +64,7 @@ definitions:
           - pip install boto3==1.3.0
           - python tools/s3_download.py ${ENEBULAR_AGENT_S3_PUB_KEY_BUCKET} ${ENEBULAR_AGENT_S3_PUB_KEY_DIR} "agent/keys/enebular/"
         artifacts:
-          - '**'
+          - agent/keys/**
     - step: &set-pub-key-release
         name: Set the key
         image: python:3.5.1
@@ -67,18 +75,58 @@ definitions:
           - pip install boto3==1.3.0
           - python tools/s3_download.py ${ENEBULAR_AGENT_S3_PUB_KEY_BUCKET} ${ENEBULAR_AGENT_S3_PUB_KEY_DIR} "agent/keys/enebular/"
         artifacts:
-          - '**'
-    - step: &pack
-        name: Pack
+          - agent/keys/**
+    - step: &pack-prebuilt
+        name: Pack (prebuilt & updater)
         script:
           - rm -rf .git
           - mkdir -p dist
           - AGENT_NAME=enebular-agent-${BITBUCKET_TAG}
-          - tar --transform "s,^\.,${AGENT_NAME}," -czf /tmp/${AGENT_NAME}-prebuilt.tar.gz .
+          - tar --transform "flags=S;s,^\.,${AGENT_NAME}," -czf /tmp/${AGENT_NAME}-prebuilt.tar.gz .
           - mv /tmp/${AGENT_NAME}-prebuilt.tar.gz dist/
           - UPDATER_NAME=enebular-agent-updater-${BITBUCKET_TAG}
+          - (cd tools/updater/awsiot-thing-creator && npm i --production)
           - (cd tools/updater && npm i --production && tar --transform "s,^\.,${UPDATER_NAME}," -czf /tmp/${UPDATER_NAME}.tar.gz .)
           - mv /tmp/${UPDATER_NAME}.tar.gz dist/
+        artifacts:
+          - dist/**
+    - step: &pack-x64
+        name: Pack (x64)
+        image: enebularagentdevelopers/enebular-agent-x64:node-12.14.0
+        script:
+          - chmod 777 pack_enebular_agent.sh
+          - ./pack_enebular_agent.sh
+          - rm -rf .git
+          - mkdir -p dist
+          - AGENT_NAME=enebular-agent-${BITBUCKET_TAG}
+          - tar --exclude="./dist" --transform "flags=S;s,^\.,${AGENT_NAME}," -czf /tmp/${AGENT_NAME}-linux-x64.tar.gz .
+          - mv /tmp/${AGENT_NAME}-linux-x64.tar.gz dist/
+        artifacts:
+          - dist/**
+    - step: &pack-armv7l
+        name: Pack (armv7l)
+        script:
+          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i enebularagentdevelopers/enebular-agent-arm32v7:node-12.14.0 /usr/bin/qemu-arm-static -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent.sh"
+          - rm -rf .git
+          - mkdir -p dist
+          - AGENT_NAME=enebular-agent-${BITBUCKET_TAG}
+          - tar --exclude="./dist" --transform "flags=S;s,^\.,${AGENT_NAME}," -czf /tmp/${AGENT_NAME}-linux-armv7l.tar.gz .
+          - mv /tmp/${AGENT_NAME}-linux-armv7l.tar.gz dist/
+        services:
+          - docker
+        artifacts:
+          - dist/**
+    - step: &pack-arm64
+        name: Pack (arm64)
+        script:
+          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i enebularagentdevelopers/enebular-agent-arm64v8:node-12.14.0 /usr/bin/qemu-aarch64-static -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent.sh"
+          - rm -rf .git
+          - mkdir -p dist
+          - AGENT_NAME=enebular-agent-${BITBUCKET_TAG}
+          - tar --exclude="./dist" --transform "flags=S;s,^\.,${AGENT_NAME}," -czf /tmp/${AGENT_NAME}-linux-arm64.tar.gz .
+          - mv /tmp/${AGENT_NAME}-linux-arm64.tar.gz dist/
+        services:
+          - docker
         artifacts:
           - dist/**
     - step: &upload
@@ -125,22 +173,43 @@ definitions:
           - '**'
 pipelines:
   default: 
-    - step: *build-test
+    - step: *nop
   tags:
     '[0-9]*.[0-9]*.[0-9]*':
       - step: *build-test
       - step: *set-pub-key-release
-      - step: *pack
+      - step: *pack-prebuilt
+      - parallel:
+          - step: *pack-x64
+          - step: *pack-armv7l
+          - step: *pack-arm64
       - step: *upload-release
     '[0-9]*.[0-9]*.[0-9]*-rc*':
       - step: *build-test
       - step: *set-pub-key-staging
-      - step: *pack
+      - step: *pack-prebuilt
+      - parallel:
+          - step: *pack-x64
+          - step: *pack-armv7l
+          - step: *pack-arm64
       - step: *upload-installsh-staging
+      - step: *upload
+    'dev-debug-*':
+      - step: *set-pub-key
+      - step: *pack-prebuilt
+      - step: *upload-installsh
       - step: *upload
     'dev-test-*':
       - step: *build-test
       - step: *set-pub-key
-      - step: *pack
+      - step: *pack-prebuilt
+      - parallel:
+          - step: *pack-x64
+          - step: *pack-armv7l
+          - step: *pack-arm64
       - step: *upload-installsh
       - step: *upload
+definitions:
+  services:
+    docker:
+      memory: 3072

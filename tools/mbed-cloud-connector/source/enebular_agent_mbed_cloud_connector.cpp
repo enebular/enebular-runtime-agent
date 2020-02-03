@@ -8,9 +8,10 @@
 
 #define MAX_EPOLL_EVENT_CNT (10)
 
-EnebularAgentMbedCloudConnector::EnebularAgentMbedCloudConnector(const char* server_socket):
+EnebularAgentMbedCloudConnector::EnebularAgentMbedCloudConnector(const char* server_socket,
+        const char* mbed_cloud_dev_credentials_path):
     _agent(new EnebularAgentInterface(this, server_socket)),
-    _mbed_cloud_client(new EnebularAgentMbedCloudClient(this)),
+    _mbed_cloud_client(new EnebularAgentMbedCloudClient(this, mbed_cloud_dev_credentials_path)),
     _logger(Logger::get_instance()),
     _started(false),
     _running(false),

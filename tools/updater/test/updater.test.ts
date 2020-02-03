@@ -246,7 +246,7 @@ test('Updater.14: Requuires --pelion-mode if current agent with pelion port and 
   let error = await t.throwsAsync(updater.update())
   t.true(
     error.message.startsWith(
-      'Updating enebular-agent pelion port in 2.4.0 requires --pelion-mode to be set'
+      'Updating enebular-agent pelion port requires --pelion-mode to be set'
     )
   )
 

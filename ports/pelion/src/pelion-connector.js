@@ -99,7 +99,7 @@ export default class PelionConnector extends LocalConnector {
         ProcessUtil.killProcessByPIDFile(this._pidFile)
       }
 
-      const startupCommand =
+      let startupCommand =
         this._agent.config.get('ENEBULAR_PELION_CONNECTOR_PATH') +
         ' -s ' +
         this._agent.config.get('ENEBULAR_LOCAL_CONNECTOR_SOCKET_PATH')
@@ -114,6 +114,19 @@ export default class PelionConnector extends LocalConnector {
         }
       } catch (err) {
         this._error('Failed to create connector data directory: ' + err)
+      }
+      const modePath = `${dataPath}/mode.info`
+      if (!fs.existsSync(modePath)) {
+        throw new Error('Failed to find mode.info file')
+      }
+      const mode = fs.readFileSync(modePath, 'utf8')
+      if (mode === 'developer') {
+        const devCredsPath = path.resolve(
+          this._portBasePath,
+          '../../',
+          'tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c'
+        )
+        startupCommand = startupCommand + ` -m ${devCredsPath}`
       }
 
       const [command, ...args] = startupCommand.split(/\s+/)

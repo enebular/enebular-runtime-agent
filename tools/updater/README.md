@@ -57,6 +57,13 @@ ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-update | sudo -E b
 
 Using the update script is recommended as it makes the update a quick one-step process, however the updater can also be set up manually from source and run directly on a target device as described below.
 
+Clone the enebular-agent project for the version you want to update.
+
+```sh
+(ex. update to 2.9.0)
+git clone https://xx_yyyy@bitbucket.org/technicalrockstars/enebular-runtime-agent.git -b 2.9.0
+```
+
 Go to the updater directory in the enebular-agent project.
 
 ```sh
@@ -70,9 +77,10 @@ npm install
 ```
 
 Run the updater.
+At this time, specify the environment variable `/ usr / sbin` with the command "env".
 
 ```sh
-sudo ./bin/enebular-agent-update
+sudo env PATH=$PATH:/usr/sbin ./bin/enebular-agent-update
 ```
 
 ## Confirmation

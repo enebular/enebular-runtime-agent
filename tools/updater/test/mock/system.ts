@@ -167,6 +167,7 @@ export default class MockSystem implements SystemIf {
     version: string
     awsiot: boolean
     pelion: boolean
+    pelionMode: string | undefined
     awsiotThingCreator: boolean
     mbedCloudConnector: boolean
     mbedCloudConnectorFCC: boolean
@@ -188,6 +189,7 @@ export default class MockSystem implements SystemIf {
       version: agentVersion,
       awsiot: this.port == 'awsiot',
       pelion: this.port == 'pelion',
+      pelionMode: 'developer',
       awsiotThingCreator: this.port == 'awsiot',
       mbedCloudConnector: this.port == 'pelion',
       mbedCloudConnectorFCC: this.port == 'pelion',
@@ -209,6 +211,8 @@ export default class MockSystem implements SystemIf {
   ): Promise<void> {}
 
   public getArch(): string { throw new Error('not implemented')}
+
+  public async getOSVersion(): Promise<string> { return '' }
 
   public async updateRunningUserToRootInSystemd(user: string, file?: string) {}
 
