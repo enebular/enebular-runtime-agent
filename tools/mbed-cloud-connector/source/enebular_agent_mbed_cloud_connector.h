@@ -24,7 +24,8 @@ public:
     /**
      * Constructor
      */
-    EnebularAgentMbedCloudConnector(const char* server_socket);
+    EnebularAgentMbedCloudConnector(const char* server_socket,
+            const char* mbed_cloud_dev_credentials_path);
 
     /**
      * Deconstructor

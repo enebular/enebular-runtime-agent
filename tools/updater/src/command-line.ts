@@ -36,10 +36,6 @@ export default class CommandLine {
       'ENEBULAR_AGENT_TEST_DOWNLOAD_PATH',
       '--agent-test-download-path <url>'
     )
-    this.addConfigOption(
-      'ENEBULAR_AGENT_GITHUB_API_PATH',
-      '--github-api-path <url>'
-    )
     this.addConfigOption('ENEBULAR_AGENT_USER', '--user <user>')
     this.addConfigOption(
       'PELION_MODE',
@@ -124,22 +120,26 @@ export default class CommandLine {
             }
           }
  
-          await installer.download(this._installPath, userInfo)
+          const packageType = await installer.download(this._installPath, userInfo)
           const agentInfo = AgentInfo.createFromSource(
               system,
               this._installPath
             )
-          await installer.build(
+          if (packageType !== 'binary') {
+            await installer.build(
+              this._installPort,
+              agentInfo,
+              userInfo,
+              this._commandOptions.pelionDevCred
+            )
+          }
+          await installer.installRuntimeDependencies(
             this._installPort,
             agentInfo,
             userInfo,
             this._commandOptions.pelionDevCred
           )
-          await installer.installRuntimeDependencies(
-            this._installPort,
-            agentInfo,
-            userInfo
-          )
+
           if (this._installPort === 'pelion' && pelionMode === 'factory') {
             if (this._commandOptions.pelionBundle) {
               await installer.bundle2PAL(
