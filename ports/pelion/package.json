@@ -1,6 +1,6 @@
 {
   "name": "enebular-mbed-agent",
-  "version": "2.11.0",
+  "version": "2.12.0",
   "description": "The 'mbed' port of enebular-agent for enebular",
   "main": "lib/index.js",
   "bin": {
