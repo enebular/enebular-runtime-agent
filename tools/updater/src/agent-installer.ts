@@ -472,7 +472,7 @@ export class AgentInstaller implements AgentInstallerIf {
       )
     }
 
-    if (newAgentInfo.version.lessThanOrEquals(new AgentVersion(2, 8, 0))) return
+    if (newAgentInfo.version.lessThan(new AgentVersion(2, 9, 0))) return
 
     if (!this._systemPackageListsUpdated) {
       await Utils.taskAsyncWithRetry(
