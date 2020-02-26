@@ -6,6 +6,7 @@ module.exports = {
         lines: 10,
         functions: 10
       }
-    }
+    },
+    testRegex: '/__tests__/(.*/|\\./).+\\.test\\.(js|ts)$'
   }
   
