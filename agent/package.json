@@ -15,8 +15,9 @@
     "lint:ts": "eslint src --ext .ts -c .eslintrc-ts.json",
     "lint-fix": "eslint src --ext .js --fix",
     "lint:ts-fix": "eslint src --ext .ts -c .eslintrc-ts.json --fix",
-    "test": "npm run build:ts && ava",
-    "test:serial": "ava --serial"
+    "test": "npm run build:ts && ava --serial && jest",
+    "test:ava": "ava --serial",
+    "test:jest": "jest --coverage"
   },
   "engines": {
     "node": "12.14.0"
@@ -32,6 +33,9 @@
     "@types/node": "^12.7.4",
     "@typescript-eslint/eslint-plugin": "^2.1.0",
     "@typescript-eslint/parser": "^2.2.0",
+    "@types/jest": "^24.0.12",
+    "jest": "^24.9.0",
+    "ts-jest": "^24.0.2",
     "ava": "^1.2.1",
     "babel-eslint": "^8.2.6",
     "eslint": "^6.3.0",
