@@ -5,7 +5,7 @@ module.exports = {
     collectCoverage: false,
     coverageDirectory: './coverage-agent',
     collectCoverageFrom: [
-      'lib/asset-manager.js',
+      "**/src/**/*.js",
       '!**/node_modules/**'
     ],
     coverageThreshold: {
@@ -15,5 +15,8 @@ module.exports = {
         lines: 0,
         functions: 0
       }
+    },
+    transform: {
+      "^.+\\.js$": '<rootDir>/node_modules/babel-jest',
     }
-  }
+}
