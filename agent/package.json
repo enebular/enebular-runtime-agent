@@ -15,9 +15,9 @@
     "lint:ts": "eslint src --ext .ts -c .eslintrc-ts.json",
     "lint-fix": "eslint src --ext .js --fix",
     "lint:ts-fix": "eslint src --ext .ts -c .eslintrc-ts.json --fix",
-    "test": "npm run build:ts && jest && ava --serial",
+    "test": "npm run build:ts && npm run test:jest && npm run test:ava",
     "test:ava": "ava --serial",
-    "test:jest": "jest --coverage"
+    "test:jest": "jest --runInBand --forceExit"
   },
   "engines": {
     "node": "12.14.0"
