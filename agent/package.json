@@ -15,7 +15,7 @@
     "lint:ts": "eslint src --ext .ts -c .eslintrc-ts.json",
     "lint-fix": "eslint src --ext .js --fix",
     "lint:ts-fix": "eslint src --ext .ts -c .eslintrc-ts.json --fix",
-    "test": "npm run build:ts && ava --serial && jest",
+    "test": "npm run build:ts && jest && ava --serial",
     "test:ava": "ava --serial",
     "test:jest": "jest --coverage"
   },
@@ -83,6 +83,9 @@
     "winston-syslog": "^2.3.0"
   },
   "ava": {
+    "files": [
+      "test/*.test.js"
+    ],
     "require": [
       "@babel/register"
     ]
