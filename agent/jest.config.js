@@ -7,6 +7,5 @@ module.exports = {
         functions: 10
       }
     },
-    testRegex: '/__tests__/(.*/|\\./).+\\.test\\.(js|ts)$'
+    testMatch : [ '**/__tests__/**/(*.)(test).js']
   }
-  
