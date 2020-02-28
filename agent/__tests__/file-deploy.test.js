@@ -2,7 +2,7 @@
 import AssetManager from '../src/asset-manager'
 import DeviceStateManagerMock from './mocks/device-state-manager-mock'
 import Config from '../src/config'
-import AgentManagerMediator from '../src/agent-manager-mediator'
+import AgentManagerMediatorMock from './mocks/agent-manager-mediator-mock'
 import EventEmitter from 'events'
 import ConnectorMessenger from '../src/connector-messenger'
 import ConnectorService from '../src/connector-service'
@@ -12,6 +12,7 @@ import LogManager from '../src/log-manager'
 //jest.mock('fs');
 //jest.mock('device-state-manager');
 jest.mock('child_process');
+jest.mock('request');
 
 var path = require('path');
 //var _log = require('winston');
@@ -38,7 +39,7 @@ describe('listFilesInDirectorySync', () => {
       'syslog'
     ])
     _messageEmitter = new EventEmitter()
-    _agentMan = new AgentManagerMediator(_log)
+    _agentMan = new AgentManagerMediatorMock(_log)
     _connector = new ConnectorService()
     _connectorMessenger = new ConnectorMessenger(
       _connector,
@@ -88,9 +89,16 @@ describe('listFilesInDirectorySync', () => {
         }
     }
     _deviceStateManager.__setState('desired', testObj)
-    
+
     _deviceStateManager._notifyStateChange('desired', 'assets')
 
     expect(2).toBe(2);
   });
 });
+
+function sleep(waitMsec) {
+  var startMsec = new Date();
+ 
+  // 指定ミリ秒間だけループさせる（CPUは常にビジー状態）
+  while (new Date() - startMsec < waitMsec);
+}
