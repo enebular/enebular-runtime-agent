@@ -1,6 +1,6 @@
 
 import AssetManager from '../src/asset-manager'
-import DeviceStateManager from '../node_module/__mock__/device-state-manager'
+import DeviceStateManagerMock from './mocks/device-state-manager-mock'
 import Config from '../src/config'
 import AgentManagerMediator from '../src/agent-manager-mediator'
 import EventEmitter from 'events'
@@ -8,13 +8,14 @@ import ConnectorMessenger from '../src/connector-messenger'
 import ConnectorService from '../src/connector-service'
 import LogManager from '../src/log-manager'
 
+
 //jest.mock('fs');
-jest.mock('device-state-manager');
+//jest.mock('device-state-manager');
 jest.mock('child_process');
 
 var path = require('path');
-var _log = require('winston');
-var _deviceStateManager = require('device-state-manager')
+//var _log = require('winston');
+//const DeviceStateManager = require('device-state-manager')
 
 describe('listFilesInDirectorySync', () => {
   let _assetManager;
@@ -24,6 +25,8 @@ describe('listFilesInDirectorySync', () => {
   let _agentMan;
   let _connectorMessenger;
   let _logManager;
+  let _log;
+  let _deviceStateManager;
 
   beforeEach(() => {
     _config = new Config(path.resolve(__dirname, '.'))
@@ -42,6 +45,12 @@ describe('listFilesInDirectorySync', () => {
       _log,
       _config.get('ENEBULAR_CONNECTOR_MESSENGER_REQ_RETYR_TIMEOUT')
     )
+    _deviceStateManager = new DeviceStateManagerMock(
+      _connectorMessenger,
+      _messageEmitter,
+      _config,
+      _log
+    )
   });
 
   test('asset-manager test', async () => {
@@ -53,7 +62,33 @@ describe('listFilesInDirectorySync', () => {
     )
 
     await _assetManager.setup()
+    _assetManager.activate(true)
 
+    let testObj = {
+        assets: {
+          "5b6aef66-909e-4ae8-8174-ab140c372935" : {
+            "updateId": "d8b121b9-dd3e-4deb-9df5-b052891f6cc5",
+            "ts": 1582791873608,
+            "config": {
+              "name": "file-test-hara2",
+              "type": "file",
+              "fileTypeConfig": {
+                "src": "internal",
+                "internalSrcConfig": {
+                  "stored": true,
+                  "key": "8fd1e77a-b8d1-4c5b-b084-ede655daabd0"
+                },
+                "filename": "test_hara2.txt.txt",
+                "integrity": "n4bQgYhMfWWaL+qgxVrQFaO/TxsrC4Is0V1sFbDwCgg=",
+                "size": 4
+              },
+              "destPath": "test_hara"
+            }
+          }
+        }
+    }
+    _deviceStateManager.__setState('desired', testObj)
+    
     _deviceStateManager._notifyStateChange('desired', 'assets')
 
     expect(2).toBe(2);
