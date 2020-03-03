@@ -96,12 +96,9 @@ export default class FileAsset extends Asset {
     // Donwload asset file data
     const path = this._filePath()
 
-//    this._debug(`Downloading ${url} to ${path} ...`)
-    console.log(`Downloading ${url} to ${path} ...`)
+    this._debug(`Downloading ${url} to ${path} ...`)
 
     await progressRequest(url, path, this)
-
-    console.log(`Downloading end!!!`)
   }
 
   async _verify() {

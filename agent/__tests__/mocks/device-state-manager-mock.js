@@ -1,29 +1,9 @@
 import DeviceStateManager from '../../src/device-state-manager'
 
 export default class DeviceStateManagerMock extends DeviceStateManager {
-    desiredPath = {}
-    reportedPath = {}
-    statePath = {}
-
     desired = {}
     reported = {}
     status = {}
-
-    __setPath (type, path) {
-        switch (type) {
-          case 'desired':
-            this.desiredPath = path
-            break;
-          case 'reported':
-            this.reportedPath = path
-            break;
-          case 'state':
-            this.statePath = path
-            break;
-          default:
-            break;
-        }
-    }
 
     __setState (type, state) {
       switch (type) {
@@ -52,6 +32,10 @@ export default class DeviceStateManagerMock extends DeviceStateManager {
           default:
             return {}
         }
+    }
+
+    canUpdateState(type) {
+      return true
     }
 }
   

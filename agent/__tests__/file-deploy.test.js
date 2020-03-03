@@ -9,12 +9,11 @@ import ConnectorService from '../src/connector-service'
 import LogManager from '../src/log-manager'
 import * as utils from '../src/utils'
 
-jest.mock('child_process');
-jest.unmock('request');
-jest.unmock('request-progress');
+jest.unmock('child_process');
 jest.unmock('fs');
 
-var path = require('path');
+const path = require('path');
+const fs = require('fs')
 
 describe('File Deploy Test', () => {
   let _assetManager;
@@ -51,16 +50,21 @@ describe('File Deploy Test', () => {
       _config,
       _log
     )
-    /*
+
     utilSpy = jest.spyOn(
       utils,
       'progressRequest'
-    ).mockImplementation((url, path, obj) => console.log('kkkkkkkkkkkkkkkk :' + url));
-    */
+    ).mockImplementation((url, path, obj) => {
+      fs.writeFileSync(
+        path,
+        'test',
+        'utf8'
+      )
+    });
   });
 
   afterEach(() => {
-//    utilSpy.mockRestore();
+    utilSpy.mockRestore();
   });
 
   test('normal test', async () => {
@@ -75,7 +79,7 @@ describe('File Deploy Test', () => {
     await _assetManager.setup()
     _assetManager.activate(true)
 
-    let testObj = {
+    let desiredObj = {
         assets: {
           "5b6aef66-909e-4ae8-8174-ab140c372935" : {
             "updateId": "d8b121b9-dd3e-4deb-9df5-b052891f6cc5",
@@ -98,17 +102,19 @@ describe('File Deploy Test', () => {
           }
         }
     }
-    _deviceStateManager.__setState('desired', testObj)
+    _deviceStateManager.__setState('desired', desiredObj)
 
     _deviceStateManager._notifyStateChange('desired', 'assets')
 
+    await sleep(2)
     expect(2).toBe(2);
   });
 });
 
-function sleep(waitMsec) {
-  var startMsec = new Date();
- 
-  // 指定ミリ秒間だけループさせる（CPUは常にビジー状態）
-  while (new Date() - startMsec < waitMsec);
+async function sleep(waitSeconds) {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      resolve()
+    }, waitSeconds * 1000)
+  }) 
 }
