@@ -2,12 +2,10 @@
 
 import fs from 'fs'
 import path from 'path'
-import util from 'util'
 import { spawn } from 'child_process'
-import request from 'request'
-import progress from 'request-progress'
 import diskusage from 'diskusage'
 import Asset from './asset'
+import { progressRequest } from './utils'
 
 export default class FileAsset extends Asset {
   _assetMan: AssetManager
@@ -97,50 +95,13 @@ export default class FileAsset extends Asset {
 
     // Donwload asset file data
     const path = this._filePath()
-    const onProgress = state => {
-      this._info(
-        util.format(
-          'Download progress: %f%% @ %fKB/s, %fsec',
-          state.percent ? Math.round(state.percent * 100) : 0,
-          state.speed ? Math.round(state.speed / 1024) : 0,
-          state.time.elapsed ? Math.round(state.time.elapsed) : 0
-        )
-      )
-    }
-    this._debug(`Downloading ${url} to ${path} ...`)
-    const that = this
-    await new Promise(function(resolve, reject) {
-      const fileStream = fs.createWriteStream(path)
-      fileStream.on('error', err => {
-        reject(err)
-      })
-      progress(request(url), {
-        delay: 5000,
-        throttle: 5000
-      })
-        .on('response', response => {
-          that._debug(
-            `Response: ${response.statusCode}: ${response.statusMessage}`
-          )
-          if (response.statusCode >= 400) {
-            reject(
-              new Error(
-                `Error response: ${response.statusCode}: ${
-                  response.statusMessage
-                }`
-              )
-            )
-          }
-        })
-        .on('progress', onProgress)
-        .on('error', err => {
-          reject(err)
-        })
-        .on('end', () => {
-          resolve()
-        })
-        .pipe(fileStream)
-    })
+
+//    this._debug(`Downloading ${url} to ${path} ...`)
+    console.log(`Downloading ${url} to ${path} ...`)
+
+    await progressRequest(url, path, this)
+
+    console.log(`Downloading end!!!`)
   }
 
   async _verify() {

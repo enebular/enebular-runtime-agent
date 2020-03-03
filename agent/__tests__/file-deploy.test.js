@@ -7,18 +7,16 @@ import EventEmitter from 'events'
 import ConnectorMessenger from '../src/connector-messenger'
 import ConnectorService from '../src/connector-service'
 import LogManager from '../src/log-manager'
+import * as utils from '../src/utils'
 
-
-//jest.mock('fs');
-//jest.mock('device-state-manager');
 jest.mock('child_process');
-jest.mock('request');
+jest.unmock('request');
+jest.unmock('request-progress');
+jest.unmock('fs');
 
 var path = require('path');
-//var _log = require('winston');
-//const DeviceStateManager = require('device-state-manager')
 
-describe('listFilesInDirectorySync', () => {
+describe('File Deploy Test', () => {
   let _assetManager;
   let _connector;
   let _config;
@@ -28,6 +26,7 @@ describe('listFilesInDirectorySync', () => {
   let _logManager;
   let _log;
   let _deviceStateManager;
+  let utilSpy
 
   beforeEach(() => {
     _config = new Config(path.resolve(__dirname, '.'))
@@ -52,9 +51,20 @@ describe('listFilesInDirectorySync', () => {
       _config,
       _log
     )
+    /*
+    utilSpy = jest.spyOn(
+      utils,
+      'progressRequest'
+    ).mockImplementation((url, path, obj) => console.log('kkkkkkkkkkkkkkkk :' + url));
+    */
   });
 
-  test('asset-manager test', async () => {
+  afterEach(() => {
+//    utilSpy.mockRestore();
+  });
+
+  test('normal test', async () => {
+
     _assetManager = new AssetManager(
       _deviceStateManager,
       _agentMan,
