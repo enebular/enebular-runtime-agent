@@ -7,6 +7,7 @@ import DummyAgent from './helpers/dummy-agent'
 
 jest.unmock('child_process');
 jest.unmock('fs');
+jest.setTimeout(10000) 
 
 const fs = require('fs')
 const path = require('path');
@@ -35,8 +36,9 @@ describe('File Deploy Test', () => {
     jest.restoreAllMocks()
     dummyAgent = null
     try {
-      fs.statSync(path);
-      fs.unlinkSync(path.resolve(__dirname, '.enebular-assets.json'));
+      let assetPath = path.resolve(__dirname, '.enebular-assets.json')
+      fs.statSync(assetPath)
+      fs.unlinkSync(assetPath)
     } catch (error) {
     }
 
@@ -45,7 +47,7 @@ describe('File Deploy Test', () => {
   afterAll(() => {
   })
 
-  test('Deploy - success', async () => {
+  test('Deploy - Success', async () => {
 
     const _deviceStateManager = dummyAgent.deviceStateManager()
     const _assetManager = dummyAgent.assetManager()
@@ -60,13 +62,32 @@ describe('File Deploy Test', () => {
 
     _deviceStateManager._notifyStateChange('desired', 'assets')
 
-    let result = await dummyAgent.waitReported(500)
+    let result = await dummyAgent.waitReported(1000)
     expect(result).toBe('deployed');
   });
 
-  test('Deploy - fail', async () => {
+  test('Deploy - Fail : no setup ', async () => {
+    const _assetManager = dummyAgent.assetManager()
 
-    expect(2).toBe(2);
+    expect(() => {_assetManager.activate(true)}).toThrowError('Attempted to activate asset-man when not initialized')
+  
+  });
+
+  test('Deploy - Fail : no activate ', async () => {
+    const _deviceStateManager = dummyAgent.deviceStateManager()
+    const _assetManager = dummyAgent.assetManager()
+
+    await _assetManager.setup()
+
+    await dummyAgent.sleep(1)
+
+    _deviceStateManager.__setState('desired', desired(0))
+    _deviceStateManager.__setState('reported', reported(0))
+
+    _deviceStateManager._notifyStateChange('desired', 'assets')
+
+    let result = await dummyAgent.waitReported(1000)
+    expect(result).toBe('timeout');
   });
 
 });
