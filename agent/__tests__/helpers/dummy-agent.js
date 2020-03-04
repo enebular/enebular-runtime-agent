@@ -1,7 +1,7 @@
 import AssetManager from '../../src/asset-manager'
-import DeviceStateManagerMock from '../mocks/device-state-manager-mock'
+import DeviceStateManagerMock from './dummy-device-state-manager'
 import Config from '../../src/config'
-import AgentManagerMediatorMock from '../mocks/agent-manager-mediator-mock'
+import AgentManagerMediatorMock from './dummy-agent-manager-mediator'
 import EventEmitter from 'events'
 
 const path = require('path');
@@ -12,8 +12,8 @@ export default class DummyAgent {
     _messageEmitter:EventEmitter
     _agentMan:AgentManagerMediator;
 
-    constructor() {
-        this._config = new Config(path.resolve(__dirname, '../'))
+    constructor(testPath) {
+        this._config = new Config(path.resolve(testPath, '.'))
         this._messageEmitter = new EventEmitter()
         this._agentMan = new AgentManagerMediatorMock(log)
         this._deviceStateManager = new DeviceStateManagerMock(null, this._messageEmitter, this._config, log)
@@ -28,44 +28,48 @@ export default class DummyAgent {
         return this._deviceStateManager;
     }
 
-    sleep(waitSeconds) {
+    async waitReported(timeout) {
+        let cur = 0
+        let deployResult = 'timeout'
+        while(1) {
+            let reported = this._deviceStateManager.getState('reported', 'assets')
+            if (reported) {
+                let reportedAssets = reported.assets || {}
+                for (const reportedAssetId in reportedAssets.assets) {
+                    if (!reportedAssets.assets.hasOwnProperty(reportedAssetId)) {
+                      continue
+                    }
+                    let found = false
+                    for (let asset of this._assetManager._assets) {
+                      if (asset.id() === reportedAssetId) {
+                        if( asset.state === 'deployed' ||
+                            asset.state === 'deployFail' ||
+                            asset.state === 'removing' ||
+                            asset.state === 'removeFail' ) {
+                            return asset.state
+                        }
+                        break
+                      }
+                    }
+                }
+            }
+
+            if(cur == timeout)  {
+                break
+            }
+            cur++
+
+            await this.sleep(1)
+        }
+
+        return deployResult
+    }
+
+    sleep(waitms) {
         return new Promise(resolve => {
           setTimeout(() => {
             resolve()
-          }, waitSeconds * 1000)
+          }, waitms)
         }) 
     }
-}
-
-export function desired(ptn) {
-    let desiredObj = {}
-    switch (ptn) {
-        case 0: // File Deploy normal
-            desiredObj = {
-                assets: {
-                "5b6aef66-909e-4ae8-8174-ab140c372935" : {
-                    "updateId": "d8b121b9-dd3e-4deb-9df5-b052891f6cc5",
-                    "ts": 1582791873608,
-                    "config": {
-                    "name": "file-test-hara2",
-                    "type": "file",
-                    "fileTypeConfig": {
-                        "src": "internal",
-                        "internalSrcConfig": {
-                        "stored": true,
-                        "key": "8fd1e77a-b8d1-4c5b-b084-ede655daabd0"
-                        },
-                        "filename": "test_hara2.txt.txt",
-                        "integrity": "n4bQgYhMfWWaL+qgxVrQFaO/TxsrC4Is0V1sFbDwCgg=",
-                        "size": 4
-                    },
-                    "destPath": "test_hara"
-                    }
-                }
-                }
-            }
-        default:
-            break;
-    }
-    return desiredObj;
 }

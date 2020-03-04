@@ -1,12 +1,15 @@
 import * as utils from '../src/utils'
-import { desired } from './helpers/dummy-data'
+import { 
+  desired,
+  reported
+} from './helpers/dummy-data'
 import DummyAgent from './helpers/dummy-agent'
 
 jest.unmock('child_process');
 jest.unmock('fs');
 
 const fs = require('fs')
-let dummyAgent = new DummyAgent()
+const path = require('path');
 
 const testFunc1 = jest.fn((url, path, obj) => {
   fs.writeFileSync(
@@ -18,16 +21,25 @@ const testFunc1 = jest.fn((url, path, obj) => {
 
 describe('File Deploy Test', () => {
   let utilSpy
+  let dummyAgent
 
   beforeAll(() => {
   });
 
   beforeEach(() => {
+    dummyAgent = new DummyAgent(__dirname)
     utilSpy = jest.spyOn(utils, 'progressRequest').mockImplementation(testFunc1);
   });
 
   afterEach(() => {
     jest.restoreAllMocks()
+    dummyAgent = null
+    try {
+      fs.statSync(path);
+      fs.unlinkSync(path.resolve(__dirname, '.enebular-assets.json'));
+    } catch (error) {
+    }
+
   });
   
   afterAll(() => {
@@ -41,14 +53,18 @@ describe('File Deploy Test', () => {
     await _assetManager.setup()
     _assetManager.activate(true)
 
+    await dummyAgent.sleep(1)
+
     _deviceStateManager.__setState('desired', desired(0))
+    _deviceStateManager.__setState('reported', reported(0))
+
     _deviceStateManager._notifyStateChange('desired', 'assets')
 
-    await dummyAgent.sleep(2)
-    expect(2).toBe(2);
+    let result = await dummyAgent.waitReported(500)
+    expect(result).toBe('deployed');
   });
 
-  test('Deploy - normal test', async () => {
+  test('Deploy - fail', async () => {
 
     expect(2).toBe(2);
   });
