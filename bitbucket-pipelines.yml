@@ -4,22 +4,6 @@ image:
 
 definitions: 
   steps:
-    - step: &nop
-        name: No Process
-        script:
-          - echo 'No Process'
-    - step: &test
-        name: test
-        script:
-          # test
-          - (cd agent && npm run test)
-          - (cd ports/awsiot
-            && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientId":"thing_name","thingName":"thing_name","caCert":"./certs/root_certificate","clientCert":"./certs/thing_cert","privateKey":"./certs/thing_private_key","topic":"aws/things/thing_name/shadow/update"}' > ./config.json
-            && npm run test && rm ./config.json)
-          - (cd ports/pelion && npm run test)
-          - (cd tools/updater && npm run test)
-        artifacts:
-          - '**'
     - step: &build-test
         name: Build and test
         script:
@@ -35,7 +19,7 @@ definitions:
           - (cd tools/updater/awsiot-thing-creator && npm i && . /tmp/check_lock_file.sh)
           - (cd tools/updater && npm i && . /tmp/check_lock_file.sh)
           # test
-          - (cd agent && npm run test:serial)
+          - (cd agent && npm run test)
           - (cd ports/awsiot
             && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientId":"thing_name","thingName":"thing_name","caCert":"./certs/root_certificate","clientCert":"./certs/thing_cert","privateKey":"./certs/thing_private_key","topic":"aws/things/thing_name/shadow/update"}' > ./config.json
             && npm run test && rm ./config.json)
@@ -186,7 +170,7 @@ definitions:
 pipelines:
   branches:
     issue-430:
-    - step: *test
+    - step: *build-test
   tags:
     '[0-9]*.[0-9]*.[0-9]*':
       - step: *build-test
