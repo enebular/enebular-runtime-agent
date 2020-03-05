@@ -185,9 +185,9 @@ pipelines:
   tags:
     '[0-9]*.[0-9]*.[0-9]*':
       - step: *build-test
-      - step: *clamav-scan
       - step: *set-pub-key-release
       - step: *pack-prebuilt
+      - step: *clamav-scan
       - parallel:
           - step: *pack-x64
           - step: *pack-armv7l
@@ -195,9 +195,9 @@ pipelines:
       - step: *upload-release
     '[0-9]*.[0-9]*.[0-9]*-rc*':
       - step: *build-test
-      - step: *clamav-scan
       - step: *set-pub-key-staging
       - step: *pack-prebuilt
+      - step: *clamav-scan
       - parallel:
           - step: *pack-x64
           - step: *pack-armv7l
