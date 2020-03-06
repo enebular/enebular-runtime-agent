@@ -1,9 +1,10 @@
 import * as utils from '../src/utils'
-import { 
-  desired,
-  reported
-} from './helpers/dummy-data'
 import DummyAgent from './helpers/dummy-agent'
+import {
+  deleteDir,
+  deleteFile,
+  getFileObj
+} from './helpers/utils'
 
 jest.unmock('child_process');
 jest.unmock('fs');
@@ -12,12 +13,9 @@ jest.setTimeout(10000)
 const fs = require('fs')
 const path = require('path');
 
-const testFunc1 = jest.fn((url, path, obj) => {
-  fs.writeFileSync(
-    path,
-    'test',
-    'utf8'
-  )
+const testFunc1 = jest.fn((url, destPath, obj) => {
+  let srcPath = path.resolve(__dirname, './data/TestFile.txt')
+  fs.copyFileSync(srcPath, destPath);
 })
 
 describe('File Deploy Test', () => {
@@ -35,12 +33,9 @@ describe('File Deploy Test', () => {
   afterEach(() => {
     jest.restoreAllMocks()
     dummyAgent = null
-    try {
-      let assetPath = path.resolve(__dirname, '.enebular-assets.json')
-      fs.statSync(assetPath)
-      fs.unlinkSync(assetPath)
-    } catch (error) {
-    }
+
+    deleteFile(path.resolve(__dirname, '.enebular-assets.json'))
+    deleteDir(path.resolve(__dirname, './assets'))
 
   });
   
@@ -52,13 +47,15 @@ describe('File Deploy Test', () => {
     const _deviceStateManager = dummyAgent.deviceStateManager()
     const _assetManager = dummyAgent.assetManager()
 
+    const fileObj = await getFileObj('TestFile.txt')
+    _deviceStateManager.__setState('desired', `assets.11111111-2222-3333-4444-555555555555.config.fileTypeConfig.filename`, fileObj.filename)
+    _deviceStateManager.__setState('desired', `assets.11111111-2222-3333-4444-555555555555.config.fileTypeConfig.integrity`, fileObj.integrity)
+    _deviceStateManager.__setState('desired', `assets.11111111-2222-3333-4444-555555555555.config.fileTypeConfig.size`, fileObj.size)
+
     await _assetManager.setup()
     _assetManager.activate(true)
 
     await dummyAgent.sleep(1)
-
-    _deviceStateManager.__setState('desired', desired(0))
-    _deviceStateManager.__setState('reported', reported(0))
 
     _deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -81,12 +78,9 @@ describe('File Deploy Test', () => {
 
     await dummyAgent.sleep(1)
 
-    _deviceStateManager.__setState('desired', desired(0))
-    _deviceStateManager.__setState('reported', reported(0))
-
     _deviceStateManager._notifyStateChange('desired', 'assets')
 
-    let result = await dummyAgent.waitReported(1000)
+    let result = await dummyAgent.waitReported(2000)
     expect(result).toBe('timeout');
   });
 
