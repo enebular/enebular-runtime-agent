@@ -15,11 +15,11 @@ let defaultDesiredAssets = {
                   "stored": true,
                   "key": "8fd1e77a-b8d1-4c5b-b084-ede655daabd0"
                   },
-                  "filename": "test.txt",
-                  "integrity": "n4bQgYhMfWWaL+qgxVrQFaO/TxsrC4Is0V1sFbDwCgg=",
-                  "size": 4
-          },
-          "destPath": "test_dir"
+                  "filename": "",
+                  "integrity": "",
+                  "size": 0
+              },
+              "destPath": ""
           }
       }
   } 

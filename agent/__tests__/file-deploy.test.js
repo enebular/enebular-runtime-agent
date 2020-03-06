@@ -13,8 +13,10 @@ jest.setTimeout(10000)
 const fs = require('fs')
 const path = require('path');
 
+let useTestFile = 'default'
+
 const testFunc1 = jest.fn((url, destPath, obj) => {
-  let srcPath = path.resolve(__dirname, './data/TestFile.txt')
+  let srcPath = path.resolve(__dirname, `./data/${useTestFile}`)
   fs.copyFileSync(srcPath, destPath);
 })
 
@@ -44,23 +46,36 @@ describe('File Deploy Test', () => {
 
   test('Deploy - Success', async () => {
 
-    const _deviceStateManager = dummyAgent.deviceStateManager()
-    const _assetManager = dummyAgent.assetManager()
+    const deviceStateManager = dummyAgent.deviceStateManager()
+    const assetManager = dummyAgent.assetManager()
 
-    const fileObj = await getFileObj('TestFile.txt')
-    _deviceStateManager.__setState('desired', `assets.11111111-2222-3333-4444-555555555555.config.fileTypeConfig.filename`, fileObj.filename)
-    _deviceStateManager.__setState('desired', `assets.11111111-2222-3333-4444-555555555555.config.fileTypeConfig.integrity`, fileObj.integrity)
-    _deviceStateManager.__setState('desired', `assets.11111111-2222-3333-4444-555555555555.config.fileTypeConfig.size`, fileObj.size)
+    useTestFile = 'TestFile.txt'
+    let testDir = 'test_dir'
+    const fileObj = await getFileObj(useTestFile)
+    deviceStateManager.__setState('desired', `assets.11111111-2222-3333-4444-555555555555.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `assets.11111111-2222-3333-4444-555555555555.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `assets.11111111-2222-3333-4444-555555555555.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `assets.11111111-2222-3333-4444-555555555555.config.destPath`, testDir)
 
-    await _assetManager.setup()
-    _assetManager.activate(true)
+    await assetManager.setup()
+    assetManager.activate(true)
 
     await dummyAgent.sleep(1)
 
-    _deviceStateManager._notifyStateChange('desired', 'assets')
+    deviceStateManager._notifyStateChange('desired', 'assets')
 
     let result = await dummyAgent.waitReported(1000)
     expect(result).toBe('deployed');
+  
+    var isExist;
+    try {
+      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
+      isExist = true;
+    } catch(err) {
+      isExist = false;
+    }
+
+    expect(isExist).toBe(true)
   });
 
   test('Deploy - Fail : no setup ', async () => {
