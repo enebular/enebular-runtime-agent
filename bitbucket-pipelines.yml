@@ -19,7 +19,7 @@ definitions:
           - (cd tools/updater/awsiot-thing-creator && npm i && . /tmp/check_lock_file.sh)
           - (cd tools/updater && npm i && . /tmp/check_lock_file.sh)
           # test
-          - (cd agent && npm run test:ava)
+          - (cd agent && npm run test:ava && npm run test:jest)
           - (cd ports/awsiot
             && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientId":"thing_name","thingName":"thing_name","caCert":"./certs/root_certificate","clientCert":"./certs/thing_cert","privateKey":"./certs/thing_private_key","topic":"aws/things/thing_name/shadow/update"}' > ./config.json
             && npm run test && rm ./config.json)
