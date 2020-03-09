@@ -14,6 +14,8 @@ const fs = require('fs')
 const path = require('path');
 
 let useTestFile = 'default'
+const testAssetID = '5b6aef66-909e-4ae8-8174-ab140c372935'
+let reportedTimeout = 3000
 
 const testFunc1 = jest.fn((url, destPath, obj) => {
   let srcPath = path.resolve(__dirname, `./data/${useTestFile}`)
@@ -44,27 +46,26 @@ describe('File Deploy Test', () => {
   afterAll(() => {
   })
 
-  test('Deploy - Success', async () => {
+  test('Paramater Test - normal (Exec:none, Hook:none)', async () => {
 
     const deviceStateManager = dummyAgent.deviceStateManager()
     const assetManager = dummyAgent.assetManager()
 
-    useTestFile = 'TestFile.txt'
-    let testDir = 'test_dir'
+    useTestFile = 'no-exec-file.txt'
+    let testDir = 'testDir'
     const fileObj = await getFileObj(useTestFile)
-    deviceStateManager.__setState('desired', `assets.11111111-2222-3333-4444-555555555555.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.11111111-2222-3333-4444-555555555555.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.11111111-2222-3333-4444-555555555555.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.11111111-2222-3333-4444-555555555555.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
 
     await assetManager.setup()
     assetManager.activate(true)
-
     await dummyAgent.sleep(1)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
-    let result = await dummyAgent.waitReported(1000)
+    let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployed');
   
     var isExist;
@@ -78,6 +79,52 @@ describe('File Deploy Test', () => {
     expect(isExist).toBe(true)
   });
 
+  test('Paramater Test - integrity error (Exec:none, Hook:none)', async () => {
+
+    const deviceStateManager = dummyAgent.deviceStateManager()
+    const assetManager = dummyAgent.assetManager()
+
+    useTestFile = 'no-exec-file.txt'
+    let testDir = 'testDir'
+    const fileObj = await getFileObj(useTestFile)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, 'error-integrity')
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+
+    await assetManager.setup()
+    assetManager.activate(true)
+    await dummyAgent.sleep(1)
+
+    deviceStateManager._notifyStateChange('desired', 'assets')
+
+    let result = await dummyAgent.waitReported(reportedTimeout)
+    expect(result).toBe('deployFail');
+  });
+
+  test('Paramater Test - size error (Exec:none, Hook:none)', async () => {
+
+    const deviceStateManager = dummyAgent.deviceStateManager()
+    const assetManager = dummyAgent.assetManager()
+
+    useTestFile = 'no-exec-file.txt'
+    let testDir = 'testDir'
+    const fileObj = await getFileObj(useTestFile)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, 141010411520)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+
+    await assetManager.setup()
+    assetManager.activate(true)
+    await dummyAgent.sleep(1)
+
+    deviceStateManager._notifyStateChange('desired', 'assets')
+
+    let result = await dummyAgent.waitReported(reportedTimeout)
+    expect(result).toBe('deployFail');
+  });
+/*
   test('Deploy - Fail : no setup ', async () => {
     const _assetManager = dummyAgent.assetManager()
 
@@ -99,4 +146,5 @@ describe('File Deploy Test', () => {
     expect(result).toBe('timeout');
   });
 
+*/
 });

@@ -1,10 +1,13 @@
 import DeviceStateManager from '../../src/device-state-manager'
 import objectPath from 'object-path'
 
+const testUpdateID = 'd8b121b9-dd3e-4deb-9df5-b052891f6cc5'
+const testKey = '8fd1e77a-b8d1-4c5b-b084-ede655daabd0'
+
 let defaultDesiredAssets = { 
   assets: {
-      "11111111-2222-3333-4444-555555555555" : {
-          "updateId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      "5b6aef66-909e-4ae8-8174-ab140c372935" : {
+          "updateId": testUpdateID,
           "ts": 1582791873608,
           "config": {
               "name": "file-deploy-test",
@@ -12,8 +15,8 @@ let defaultDesiredAssets = {
               "fileTypeConfig": {
                   "src": "internal",
                   "internalSrcConfig": {
-                  "stored": true,
-                  "key": "8fd1e77a-b8d1-4c5b-b084-ede655daabd0"
+                      "stored": true,
+                      "key": testKey
                   },
                   "filename": "",
                   "integrity": "",
@@ -28,25 +31,25 @@ let defaultDesiredAssets = {
 let defaultReportedAssets = {
   assets: {
       assets: {
-          "11111111-2222-3333-4444-555555555555": {
-              "updateId": "0f0c14af-5c9f-4831-8018-05dfc739472c",
-              "state": "deployed",
+          "5b6aef66-909e-4ae8-8174-ab140c372935": {
+              "updateId": "",
+              "state": "",
               "config": {
-                "name": "file-test-hara2",
-                "type": "file",
+                "name": "",
+                "type": "",
                 "fileTypeConfig": {
-                  "integrity": "n4bQgYhMfWWaL+qgxVrQFaO/TxsrC4Is0V1sFbDwCgg=",
+                  "integrity": "",
                   "internalSrcConfig": {
-                    "key": "8fd1e77a-b8d1-4c5b-b084-ede655daabd0",
+                    "key": "",
                     "stored": true
                   },
-                  "filename": "test_hara2.txt.txt",
-                  "size": 4,
-                  "src": "internal"
+                  "filename": "",
+                  "size": 0,
+                  "src": ""
                 },
-                "destPath": "test_hara"
+                "destPath": ""
               },
-              "ts": 1583230604886
+              "ts": 0
           }
       }
   }
