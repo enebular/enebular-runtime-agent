@@ -169,7 +169,7 @@ definitions:
           - '**'
 pipelines:
   branches:
-    develop:
+    issue-430:
     - step: *build-test
   tags:
     '[0-9]*.[0-9]*.[0-9]*':

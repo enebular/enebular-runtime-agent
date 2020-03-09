@@ -145,7 +145,7 @@ describe('File Deploy Test', () => {
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.exec`, true)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:1})
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:2})
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
@@ -181,7 +181,7 @@ describe('File Deploy Test', () => {
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.exec`, true)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:1, args:'aaa bbb', envs:['TEST_ENV_VAR1=1','TEST_ENV_VAR2=2']})
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:2, args:'aaa bbb', envs:['TEST_ENV_VAR1=1','TEST_ENV_VAR2=2']})
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
@@ -217,7 +217,7 @@ describe('File Deploy Test', () => {
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.exec`, true)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:1, args:'0'})
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:2, args:'1'})
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
@@ -253,7 +253,7 @@ describe('File Deploy Test', () => {
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.exec`, true)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:1, args:'2'})
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:2, args:'3'})
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
@@ -261,7 +261,7 @@ describe('File Deploy Test', () => {
     let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployFail');
   });
-*/
+
   test('Paramater Test - assetPath normal (Exec:no, Hook:Pre-Deploy)', async () => {
 
     const deviceStateManager = dummyAgent.deviceStateManager()
@@ -284,7 +284,7 @@ describe('File Deploy Test', () => {
       {
         "stage": "preDeploy",
         "type": "asset",
-        "maxTime": 1,
+        "maxTime": 2,
         "assetTypeConfig": {
           "assetPath": "../data/exec-file-wait.sh"
         }
@@ -299,6 +299,264 @@ describe('File Deploy Test', () => {
 
   });
 
+  test('Paramater Test - assetPath error (Exec:no, Hook:Pre-Deploy)', async () => {
+
+    const deviceStateManager = dummyAgent.deviceStateManager()
+    const assetManager = dummyAgent.assetManager()
+    
+    await assetManager.setup()
+    assetManager.activate(true)
+    await dummyAgent.sleep(1)
+
+    useTestFile = 'no-exec-file.txt'
+    let testDir = 'testDir'
+    let fileObj = await getFileObj(useTestFile)
+    deviceStateManager.__defaultState('desired')
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+
+    let hookObj = [
+      {
+        "stage": "preDeploy",
+        "type": "asset",
+        "maxTime": 2,
+        "assetTypeConfig": {
+          "assetPath": "../data/not-exist-file.sh"
+        }
+      }
+    ]
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.hooks`, hookObj)
+
+    deviceStateManager._notifyStateChange('desired', 'assets')
+
+    let result = await dummyAgent.waitReported(reportedTimeout)
+    expect(result).toBe('deployFail');
+
+  });
+
+  test('Paramater Test - less than maxTime (Exec:no, Hook:Pre-Deploy)', async () => {
+
+    const deviceStateManager = dummyAgent.deviceStateManager()
+    const assetManager = dummyAgent.assetManager()
+    
+    await assetManager.setup()
+    assetManager.activate(true)
+    await dummyAgent.sleep(1)
+
+    useTestFile = 'no-exec-file.txt'
+    let testDir = 'testDir'
+    let fileObj = await getFileObj(useTestFile)
+    deviceStateManager.__defaultState('desired')
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+
+    let hookObj = [
+      {
+        "stage": "preDeploy",
+        "type": "asset",
+        "maxTime": 2,
+        "assetTypeConfig": {
+          "assetPath": "../data/exec-file-wait.sh"
+        }
+      }
+    ]
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.hooks`, hookObj)
+
+    deviceStateManager._notifyStateChange('desired', 'assets')
+
+    let result = await dummyAgent.waitReported(reportedTimeout)
+    expect(result).toBe('deployed');
+
+  });
+
+  test('Paramater Test - over maxTime (Exec:no, Hook:Pre-Deploy)', async () => {
+
+    const deviceStateManager = dummyAgent.deviceStateManager()
+    const assetManager = dummyAgent.assetManager()
+    
+    await assetManager.setup()
+    assetManager.activate(true)
+    await dummyAgent.sleep(1)
+
+    useTestFile = 'no-exec-file.txt'
+    let testDir = 'testDir'
+    let fileObj = await getFileObj(useTestFile)
+    deviceStateManager.__defaultState('desired')
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+
+    let hookObj = [
+      {
+        "stage": "preDeploy",
+        "type": "asset",
+        "maxTime": 0,
+        "assetTypeConfig": {
+          "assetPath": "../data/exec-file-wait.sh"
+        }
+      }
+    ]
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.hooks`, hookObj)
+
+    deviceStateManager._notifyStateChange('desired', 'assets')
+
+    let result = await dummyAgent.waitReported(reportedTimeout)
+    expect(result).toBe('deployFail');
+
+  });
+*/
+test('Paramater Test - assetPath normal (Exec:no, Hook:Post-Deploy)', async () => {
+
+  const deviceStateManager = dummyAgent.deviceStateManager()
+  const assetManager = dummyAgent.assetManager()
+  
+  await assetManager.setup()
+  assetManager.activate(true)
+  await dummyAgent.sleep(1)
+
+  useTestFile = 'no-exec-file.txt'
+  let testDir = 'testDir'
+  let fileObj = await getFileObj(useTestFile)
+  deviceStateManager.__defaultState('desired')
+  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+
+  let hookObj = [
+    {
+      "stage": "postDeploy",
+      "type": "asset",
+      "maxTime": 2,
+      "assetTypeConfig": {
+        "assetPath": "../data/exec-file-wait.sh"
+      }
+    }
+  ]
+  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.hooks`, hookObj)
+
+  deviceStateManager._notifyStateChange('desired', 'assets')
+
+  let result = await dummyAgent.waitReported(reportedTimeout)
+  expect(result).toBe('deployed');
+
+});
+
+test('Paramater Test - assetPath error (Exec:no, Hook:Post-Deploy)', async () => {
+
+  const deviceStateManager = dummyAgent.deviceStateManager()
+  const assetManager = dummyAgent.assetManager()
+  
+  await assetManager.setup()
+  assetManager.activate(true)
+  await dummyAgent.sleep(1)
+
+  useTestFile = 'no-exec-file.txt'
+  let testDir = 'testDir'
+  let fileObj = await getFileObj(useTestFile)
+  deviceStateManager.__defaultState('desired')
+  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+
+  let hookObj = [
+    {
+      "stage": "postDeploy",
+      "type": "asset",
+      "maxTime": 2,
+      "assetTypeConfig": {
+        "assetPath": "../data/not-exist-file.sh"
+      }
+    }
+  ]
+  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.hooks`, hookObj)
+
+  deviceStateManager._notifyStateChange('desired', 'assets')
+
+  let result = await dummyAgent.waitReported(reportedTimeout)
+  expect(result).toBe('deployFail');
+
+});
+
+test('Paramater Test - less than maxTime (Exec:no, Hook:Post-Deploy)', async () => {
+
+  const deviceStateManager = dummyAgent.deviceStateManager()
+  const assetManager = dummyAgent.assetManager()
+  
+  await assetManager.setup()
+  assetManager.activate(true)
+  await dummyAgent.sleep(1)
+
+  useTestFile = 'no-exec-file.txt'
+  let testDir = 'testDir'
+  let fileObj = await getFileObj(useTestFile)
+  deviceStateManager.__defaultState('desired')
+  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+
+  let hookObj = [
+    {
+      "stage": "postDeploy",
+      "type": "asset",
+      "maxTime": 2,
+      "assetTypeConfig": {
+        "assetPath": "../data/exec-file-wait.sh"
+      }
+    }
+  ]
+  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.hooks`, hookObj)
+
+  deviceStateManager._notifyStateChange('desired', 'assets')
+
+  let result = await dummyAgent.waitReported(reportedTimeout)
+  expect(result).toBe('deployed');
+
+});
+
+test('Paramater Test - over maxTime (Exec:no, Hook:Post-Deploy)', async () => {
+
+  const deviceStateManager = dummyAgent.deviceStateManager()
+  const assetManager = dummyAgent.assetManager()
+  
+  await assetManager.setup()
+  assetManager.activate(true)
+  await dummyAgent.sleep(1)
+
+  useTestFile = 'no-exec-file.txt'
+  let testDir = 'testDir'
+  let fileObj = await getFileObj(useTestFile)
+  deviceStateManager.__defaultState('desired')
+  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+
+  let hookObj = [
+    {
+      "stage": "postDeploy",
+      "type": "asset",
+      "maxTime": 0,
+      "assetTypeConfig": {
+        "assetPath": "../data/exec-file-wait.sh"
+      }
+    }
+  ]
+  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.hooks`, hookObj)
+
+  deviceStateManager._notifyStateChange('desired', 'assets')
+
+  let result = await dummyAgent.waitReported(reportedTimeout)
+  expect(result).toBe('deployFail');
+
+});
 /*
 
   test('Deploy - Fail : no setup ', async () => {

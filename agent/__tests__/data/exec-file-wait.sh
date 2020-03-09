@@ -2,7 +2,7 @@
 #! /bin/bash
 
 count=0
-tmp_num=0
+tmp_num=1
 
 if [ $# -gt 0 ]; then
     tmp_num=$1
