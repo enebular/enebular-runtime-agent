@@ -5,20 +5,20 @@ const testUpdateID = 'd8b121b9-dd3e-4deb-9df5-b052891f6cc5'
 const testKey = '8fd1e77a-b8d1-4c5b-b084-ede655daabd0'
 
 export default class DeviceStateManagerMock extends DeviceStateManager {
-    desired = {}
-    reported = {}
-    status = {}
+    _desired = {}
+    _reported = {}
+    _status = {}
 
     __setState (type, path, state) {
       switch (type) {
         case 'desired':
-          objectPath.set(this.desired, path, state)
+          objectPath.set(this._desired, path, state)
           break;
         case 'reported':
-          objectPath.set(this.reported, path, state)
+          objectPath.set(this._reported, path, state)
           break;
         case 'state':
-          objectPath.set(this.status, path, state)
+          objectPath.set(this._status, path, state)
           break;
         default:
           break;
@@ -28,11 +28,11 @@ export default class DeviceStateManagerMock extends DeviceStateManager {
     getState(type, path) {
         switch (type) {
           case 'desired':
-            return this.desired
+            return this._desired
           case 'reported':
-            return this.reported
+            return this._reported
           case 'state':
-            return this.status
+            return this._status
           default:
             return {}
         }
@@ -64,7 +64,7 @@ export default class DeviceStateManagerMock extends DeviceStateManager {
                 }
             } 
           }
-          this.desired = defaultDesiredAssets
+          this._desired = defaultDesiredAssets
           break;
         case 'reported':
           let defaultReportedAssets = {
@@ -93,11 +93,11 @@ export default class DeviceStateManagerMock extends DeviceStateManager {
                 }
             }
           }
-          this.reported = defaultReportedAssets
+          this._reported = defaultReportedAssets
           break;
         case 'state':
           let defaultStatusAssets = {}
-          this.status = defaultStatusAssets
+          this._status = defaultStatusAssets
           break;
         default:
           break;
@@ -118,7 +118,7 @@ export default class DeviceStateManagerMock extends DeviceStateManager {
         console.log('state: ' + JSON.stringify(state, null, 2))
       }
       */
-      objectPath.set(this.reported, path, state)
+      objectPath.set(this._reported, path, state)
   }
 }
   

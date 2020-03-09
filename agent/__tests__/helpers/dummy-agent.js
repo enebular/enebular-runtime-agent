@@ -10,14 +10,14 @@ const log = require('winston')
 export default class DummyAgent {
     _config: Config
     _messageEmitter:EventEmitter
-    _agentMan:AgentManagerMediator;
+    _agentManagerMediator:AgentManagerMediator;
 
     constructor(testPath) {
         this._config = new Config(path.resolve(testPath, '.'))
         this._messageEmitter = new EventEmitter()
-        this._agentMan = new AgentManagerMediatorMock(log)
+        this._agentManagerMediator = new AgentManagerMediatorMock(log)
         this._deviceStateManager = new DeviceStateManagerMock(null, this._messageEmitter, this._config, log)
-        this._assetManager = new AssetManager(this._deviceStateManager, this._agentMan, this._config, log)
+        this._assetManager = new AssetManager(this._deviceStateManager, this._agentManagerMediator, this._config, log)
     }
 
     assetManager() {
@@ -26,6 +26,10 @@ export default class DummyAgent {
 
     deviceStateManager() {
         return this._deviceStateManager;
+    }
+    
+    AgentManagerMediator() {
+        return this._agentManagerMediator;
     }
 
     async waitReported(timeout) {
