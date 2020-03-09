@@ -1,14 +1,17 @@
-declare -i COUNTER
-declare -i TMP_NUM
-COUNTER=0
-TMP_NUM=3
+
+#! /bin/bash
+
+count=0
+tmp_num=1
 
 if [ $# -gt 0 ]; then
-    TMP_NUM=$1
+    tmp_num=$1
 fi
 
-while [ "$COUNTER" -lt "$TMP_NUM" ]
+while [ $count -lt $tmp_num ]
 do
 sleep 1
-let COUNTER++
+count=`expr $count + 1`
 done
+
+echo "exec file ended"

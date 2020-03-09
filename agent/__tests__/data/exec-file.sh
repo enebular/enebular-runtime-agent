@@ -1,1 +1,1 @@
-echo "file execution test success!!"
+echo "file execution test is OK"

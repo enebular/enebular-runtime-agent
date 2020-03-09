@@ -12,7 +12,7 @@ if [ $1 != "aaa" ]; then
     do
     sleep 1
     done
-else
+fi
 
 if [ $2 != "bbb" ]; then
   echo "[error]param2 is $2"
@@ -20,7 +20,7 @@ if [ $2 != "bbb" ]; then
     do
     sleep 1
     done
-else
+fi
 
 if [ ${TEST_ENV_VAR1} != 1 ]; then
   echo "[error]TEST_ENV_VAR1 is ${TEST_ENV_VAR1}"
@@ -28,7 +28,7 @@ if [ ${TEST_ENV_VAR1} != 1 ]; then
     do
     sleep 1
     done
-else
+fi
 
 if [ ${TEST_ENV_VAR2} != 2 ]; then
   echo "[error]TEST_ENV_VAR2 is ${TEST_ENV_VAR2}"
@@ -36,6 +36,6 @@ if [ ${TEST_ENV_VAR2} != 2 ]; then
     do
     sleep 1
     done
-else
+fi
 
-echo "[success] param test is OK"
+echo "arg/env param test is OK"
