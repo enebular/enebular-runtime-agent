@@ -4,63 +4,10 @@ import objectPath from 'object-path'
 const testUpdateID = 'd8b121b9-dd3e-4deb-9df5-b052891f6cc5'
 const testKey = '8fd1e77a-b8d1-4c5b-b084-ede655daabd0'
 
-let defaultDesiredAssets = { 
-  assets: {
-      "5b6aef66-909e-4ae8-8174-ab140c372935" : {
-          "updateId": testUpdateID,
-          "ts": 1582791873608,
-          "config": {
-              "name": "file-deploy-test",
-              "type": "file",
-              "fileTypeConfig": {
-                  "src": "internal",
-                  "internalSrcConfig": {
-                      "stored": true,
-                      "key": testKey
-                  },
-                  "filename": "",
-                  "integrity": "",
-                  "size": 0
-              },
-              "destPath": ""
-          }
-      }
-  } 
-}
-
-let defaultReportedAssets = {
-  assets: {
-      assets: {
-          "5b6aef66-909e-4ae8-8174-ab140c372935": {
-              "updateId": "",
-              "state": "",
-              "config": {
-                "name": "",
-                "type": "",
-                "fileTypeConfig": {
-                  "integrity": "",
-                  "internalSrcConfig": {
-                    "key": "",
-                    "stored": true
-                  },
-                  "filename": "",
-                  "size": 0,
-                  "src": ""
-                },
-                "destPath": ""
-              },
-              "ts": 0
-          }
-      }
-  }
-}
-
-let defaultStatusAssets = {}
-
 export default class DeviceStateManagerMock extends DeviceStateManager {
-    desired = defaultDesiredAssets
-    reported = defaultReportedAssets
-    status = defaultStatusAssets
+    desired = {}
+    reported = {}
+    status = {}
 
     __setState (type, path, state) {
       switch (type) {
@@ -91,15 +38,65 @@ export default class DeviceStateManagerMock extends DeviceStateManager {
         }
     }
 
-    __clearState (type) {
+    __defaultState (type) {
       switch (type) {
         case 'desired':
+          let defaultDesiredAssets = { 
+            assets: {
+                "5b6aef66-909e-4ae8-8174-ab140c372935" : {
+                    "updateId": testUpdateID,
+                    "ts": 1582791873608,
+                    "config": {
+                        "name": "file-deploy-test",
+                        "type": "file",
+                        "fileTypeConfig": {
+                            "src": "internal",
+                            "internalSrcConfig": {
+                                "stored": true,
+                                "key": testKey
+                            },
+                            "filename": "",
+                            "integrity": "",
+                            "size": 0
+                        },
+                        "destPath": ""
+                    }
+                }
+            } 
+          }
           this.desired = defaultDesiredAssets
           break;
         case 'reported':
+          let defaultReportedAssets = {
+            assets: {
+                assets: {
+                    "5b6aef66-909e-4ae8-8174-ab140c372935": {
+                        "updateId": "",
+                        "state": "",
+                        "config": {
+                          "name": "",
+                          "type": "",
+                          "fileTypeConfig": {
+                            "integrity": "",
+                            "internalSrcConfig": {
+                              "key": "",
+                              "stored": true
+                            },
+                            "filename": "",
+                            "size": 0,
+                            "src": ""
+                          },
+                          "destPath": ""
+                        },
+                        "ts": 0
+                    }
+                }
+            }
+          }
           this.reported = defaultReportedAssets
           break;
         case 'state':
+          let defaultStatusAssets = {}
           this.status = defaultStatusAssets
           break;
         default:

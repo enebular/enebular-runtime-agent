@@ -51,17 +51,18 @@ describe('File Deploy Test', () => {
     const deviceStateManager = dummyAgent.deviceStateManager()
     const assetManager = dummyAgent.assetManager()
 
+    await assetManager.setup()
+    assetManager.activate(true)
+    await dummyAgent.sleep(1)
+
     useTestFile = 'no-exec-file.txt'
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
+    deviceStateManager.__defaultState('desired')
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
-
-    await assetManager.setup()
-    assetManager.activate(true)
-    await dummyAgent.sleep(1)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -84,17 +85,18 @@ describe('File Deploy Test', () => {
     const deviceStateManager = dummyAgent.deviceStateManager()
     const assetManager = dummyAgent.assetManager()
 
+    await assetManager.setup()
+    assetManager.activate(true)
+    await dummyAgent.sleep(1)
+
     useTestFile = 'no-exec-file.txt'
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
+    deviceStateManager.__defaultState('desired')
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, 'error-integrity')
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
-
-    await assetManager.setup()
-    assetManager.activate(true)
-    await dummyAgent.sleep(1)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -107,17 +109,18 @@ describe('File Deploy Test', () => {
     const deviceStateManager = dummyAgent.deviceStateManager()
     const assetManager = dummyAgent.assetManager()
 
+    await assetManager.setup()
+    assetManager.activate(true)
+    await dummyAgent.sleep(1)
+
     useTestFile = 'no-exec-file.txt'
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
+    deviceStateManager.__defaultState('desired')
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, 141010411520)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
-
-    await assetManager.setup()
-    assetManager.activate(true)
-    await dummyAgent.sleep(1)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -130,19 +133,20 @@ describe('File Deploy Test', () => {
     const deviceStateManager = dummyAgent.deviceStateManager()
     const assetManager = dummyAgent.assetManager()
 
+    await assetManager.setup()
+    assetManager.activate(true)
+    await dummyAgent.sleep(1)
+
     useTestFile = 'exec-file.sh'
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
+    deviceStateManager.__defaultState('desired')
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.exec`, true)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:1})
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
-
-    await assetManager.setup()
-    assetManager.activate(true)
-    await dummyAgent.sleep(1)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -165,19 +169,20 @@ describe('File Deploy Test', () => {
     const deviceStateManager = dummyAgent.deviceStateManager()
     const assetManager = dummyAgent.assetManager()
 
+    await assetManager.setup()
+    assetManager.activate(true)
+    await dummyAgent.sleep(1)
+
     useTestFile = 'exec-file-arg-env.sh'
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
+    deviceStateManager.__defaultState('desired')
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.exec`, true)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:1, args:'aaa bbb', envs:['TEST_ENV_VAR1=1','TEST_ENV_VAR2=2']})
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
-
-    await assetManager.setup()
-    assetManager.activate(true)
-    await dummyAgent.sleep(1)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -200,19 +205,20 @@ describe('File Deploy Test', () => {
     const deviceStateManager = dummyAgent.deviceStateManager()
     const assetManager = dummyAgent.assetManager()
 
+    await assetManager.setup()
+    assetManager.activate(true)
+    await dummyAgent.sleep(1)
+
     useTestFile = 'exec-file-wait.sh'
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
+    deviceStateManager.__defaultState('desired')
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.exec`, true)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:1, args:'0'})
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
-
-    await assetManager.setup()
-    assetManager.activate(true)
-    await dummyAgent.sleep(1)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -235,9 +241,14 @@ describe('File Deploy Test', () => {
     const deviceStateManager = dummyAgent.deviceStateManager()
     const assetManager = dummyAgent.assetManager()
 
+    await assetManager.setup()
+    assetManager.activate(true)
+    await dummyAgent.sleep(1)
+
     useTestFile = 'exec-file-wait.sh'
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
+    deviceStateManager.__defaultState('desired')
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
@@ -245,53 +256,51 @@ describe('File Deploy Test', () => {
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:1, args:'2'})
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
 
-    await assetManager.setup()
-    assetManager.activate(true)
-    await dummyAgent.sleep(1)
-
     deviceStateManager._notifyStateChange('desired', 'assets')
 
     let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployFail');
   });
 */
-test('Paramater Test - assetPath normal (Exec:no, Hook:Pre-Deploy)', async () => {
+  test('Paramater Test - assetPath normal (Exec:no, Hook:Pre-Deploy)', async () => {
 
-  const deviceStateManager = dummyAgent.deviceStateManager()
-  const assetManager = dummyAgent.assetManager()
+    const deviceStateManager = dummyAgent.deviceStateManager()
+    const assetManager = dummyAgent.assetManager()
+    
+    await assetManager.setup()
+    assetManager.activate(true)
+    await dummyAgent.sleep(1)
 
-  useTestFile = 'no-exec-file.txt'
-  let testDir = 'testDir'
-  let fileObj = await getFileObj(useTestFile)
-  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    useTestFile = 'no-exec-file.txt'
+    let testDir = 'testDir'
+    let fileObj = await getFileObj(useTestFile)
+    deviceStateManager.__defaultState('desired')
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
 
-  let hookObj = [
-    {
-      "stage": "preDeploy",
-      "type": "asset",
-      "maxTime": 3,
-      "assetTypeConfig": {
-        "assetPath": "../data/exec-file-wait.sh"
+    let hookObj = [
+      {
+        "stage": "preDeploy",
+        "type": "asset",
+        "maxTime": 1,
+        "assetTypeConfig": {
+          "assetPath": "../data/exec-file-wait.sh"
+        }
       }
-    }
-  ]
-  deviceStateManager.__setState('desired', `assets.${testAssetID}.config.hooks`, hookObj)
+    ]
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.hooks`, hookObj)
 
-  await assetManager.setup()
-  assetManager.activate(true)
-  await dummyAgent.sleep(1)
+    deviceStateManager._notifyStateChange('desired', 'assets')
 
- deviceStateManager._notifyStateChange('desired', 'assets')
+    let result = await dummyAgent.waitReported(reportedTimeout)
+    expect(result).toBe('deployed');
 
-  let result = await dummyAgent.waitReported(reportedTimeout)
-  expect(result).toBe('deployed');
-
-});
+  });
 
 /*
+
   test('Deploy - Fail : no setup ', async () => {
     const _assetManager = dummyAgent.assetManager()
 

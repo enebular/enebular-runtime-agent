@@ -2,7 +2,7 @@
 #! /bin/bash
 
 count=0
-tmp_num=1
+tmp_num=0
 
 if [ $# -gt 0 ]; then
     tmp_num=$1
@@ -14,4 +14,4 @@ sleep 1
 count=`expr $count + 1`
 done
 
-echo "exec file ended"
+echo "execution file ended"
