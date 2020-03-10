@@ -3,6 +3,9 @@ import DeviceStateManagerMock from './dummy-device-state-manager'
 import Config from '../../src/config'
 import AgentManagerMediatorMock from './dummy-agent-manager-mediator'
 import EventEmitter from 'events'
+import {
+    isEmpty
+} from './utils'
 
 const path = require('path');
 const log = require('winston')
@@ -39,16 +42,18 @@ export default class DummyAgent {
             let reported = this._deviceStateManager.getState('reported', 'assets')
             if (reported) {
                 let reportedAssets = reported.assets || {}
-                for (const reportedAssetId in reportedAssets.assets) {
-                    if (!reportedAssets.assets.hasOwnProperty(reportedAssetId)) {
-                      continue
+                if(JSON.stringify(reportedAssets.assets) === '{}') {
+                    if(this._deviceStateManager._reportedOp === 'remove') {
+                        return this._deviceStateManager._reportedOp
                     }
+                    break
+                }
+                for (const reportedAssetId in reportedAssets.assets) {
                     let found = false
                     for (let asset of this._assetManager._assets) {
                       if (asset.id() === reportedAssetId) {
                         if( asset.state === 'deployed' ||
                             asset.state === 'deployFail' ||
-                            asset.state === 'removing' ||
                             asset.state === 'removeFail' ) {
                             return asset.state
                         }

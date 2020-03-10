@@ -7,6 +7,7 @@ const testKey = '8fd1e77a-b8d1-4c5b-b084-ede655daabd0'
 export default class DeviceStateManagerMock extends DeviceStateManager {
     _desired = {}
     _reported = {}
+    _reportedOp = ''
     _status = {}
 
     __setState (type, path, state) {
@@ -94,6 +95,7 @@ export default class DeviceStateManagerMock extends DeviceStateManager {
             }
           }
           this._reported = defaultReportedAssets
+          this._reportedOp = ''
           break;
         case 'state':
           let defaultStatusAssets = {}
@@ -119,6 +121,11 @@ export default class DeviceStateManagerMock extends DeviceStateManager {
       }
       */
       objectPath.set(this._reported, path, state)
+      this._reportedOp = op
   }
+
+    getReportedOp() {
+      return this._reportedOp
+    }
 }
   

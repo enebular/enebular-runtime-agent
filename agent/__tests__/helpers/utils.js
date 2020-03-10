@@ -34,6 +34,15 @@ export async function getFileObj(fileName) {
     return fileObj
 }
 
+export async function isEmpty(obj) {
+  if (0 === Object.keys(obj).length) {
+    console.log('aaaaaa')
+    return true
+  }
+  console.log('length: ' + Object.keys(obj).length)
+  return false;
+}
+
 async function _getIntegrity(path) {
     return new Promise((resolve, reject) => {
       const hash = crypto.createHash('sha256')
