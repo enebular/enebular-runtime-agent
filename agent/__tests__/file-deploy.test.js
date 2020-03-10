@@ -3,7 +3,7 @@ import DummyAgent from './helpers/dummy-agent'
 import {
   deleteDir,
   deleteFile,
-  getFileObj
+  getFileObj,
 } from './helpers/utils'
 
 const fs = require('fs')
@@ -64,7 +64,7 @@ describe('File Deploy Test', () => {
   
   afterAll(() => {
   })
-
+/*
   test('Paramater Test - normal (Exec:no, Hook:no)', async () => {
 
     const deviceStateManager = dummyAgent.deviceStateManager()
@@ -792,12 +792,9 @@ describe('File Deploy Test', () => {
     expect(result).toBe('deployFail');
 
   });
+*/
+  test('Composite Test - file remove', async () => {
 
-  test('Error Injection Test - Post-Deploy error', async () => {
-
-    jest.spyOn(utils, 'execSpawn').mockImplementation(execSpawnMock);
-    execSpawnErrorFlag = true
-    
     const deviceStateManager = dummyAgent.deviceStateManager()
     const assetManager = dummyAgent.assetManager()
 
@@ -813,23 +810,41 @@ describe('File Deploy Test', () => {
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
-    let hookObj = [
-      {
-        "stage": "postDeploy",
-        "type": "asset",
-        "maxTime": 2,
-        "assetTypeConfig": {
-          "assetPath": "../data/exec-file-wait.sh"
-        }
-      }
-    ]
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.hooks`, hookObj)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
     let result = await dummyAgent.waitReported(reportedTimeout)
-    expect(result).toBe('deployFail');
+    expect(result).toBe('deployed');
 
+    var isExist;
+    try {
+      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
+      isExist = true;
+    } catch(err) {
+      isExist = false;
+    }
+
+    expect(isExist).toBe(true)
+
+    await dummyAgent.sleep(1000)
+    
+    deviceStateManager.__defaultState('desired')
+    deviceStateManager.__setState('desired', `assets`, {})
+
+    deviceStateManager._notifyStateChange('desired', 'assets')
+
+    await dummyAgent.sleep(1000)
+    result = await dummyAgent.waitReported(reportedTimeout)
+    expect(result).toBe('remove');
+  
+    try {
+      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
+      isExist = true;
+    } catch(err) {
+      isExist = false;
+    }
+
+    expect(isExist).toBe(false)
   });
 /*
 
