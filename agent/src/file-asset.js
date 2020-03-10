@@ -2,10 +2,10 @@
 
 import fs from 'fs'
 import path from 'path'
-import { spawn } from 'child_process'
 import diskusage from 'diskusage'
 import Asset from './asset'
 import { progressRequest } from './utils'
+import { execSpawn } from './utils'
 
 export default class FileAsset extends Asset {
   _assetMan: AssetManager
@@ -135,42 +135,8 @@ export default class FileAsset extends Asset {
     const args = this._execArgsArray(this._execArgs())
     const env = this._execEnvObj(this._execEnvs())
     const cwd = this._destDirPath()
-    const that = this
-    await new Promise((resolve, reject) => {
-      const cproc = spawn(that._filePath(), args, {
-        stdio: 'pipe',
-        env: env,
-        cwd: cwd
-      })
-      const timeoutID = setTimeout(() => {
-        that._info('Execution went over time limit')
-        cproc.kill()
-      }, that._execMaxTime() * 1000)
-      cproc.stdout.on('data', data => {
-        let str = data.toString().replace(/(\n|\r)+$/, '')
-        that._info('Asset: ' + str)
-      })
-      cproc.stderr.on('data', data => {
-        let str = data.toString().replace(/(\n|\r)+$/, '')
-        that._info('Asset: ' + str)
-      })
-      cproc.on('error', err => {
-        clearTimeout(timeoutID)
-        reject(err)
-      })
-      cproc.once('exit', (code, signal) => {
-        clearTimeout(timeoutID)
-        if (code !== null) {
-          if (code === 0) {
-            resolve()
-          } else {
-            reject(new Error('Execution ended with failure exit code: ' + code))
-          }
-        } else {
-          reject(new Error('Execution ended with signal: ' + signal))
-        }
-      })
-    })
+
+    await execSpawn(args, env, cwd, this)
 
     this._debug('Executed file')
   }

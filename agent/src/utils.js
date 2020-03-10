@@ -6,6 +6,7 @@ import request from 'request'
 import progress from 'request-progress'
 import fs from 'fs'
 import util from 'util'
+import { spawn } from 'child_process'
 
 export interface UserInfo {
   user: string,
@@ -210,4 +211,44 @@ export async function progressRequest(url, path, obj) {
   })
 }
 
+export async function execSpawn(args, env, cwd, obj) {
 
+  const that = obj
+
+  await new Promise((resolve, reject) => {
+    const cproc = spawn(that._filePath(), args, {
+      stdio: 'pipe',
+      env: env,
+      cwd: cwd
+    })
+    const timeoutID = setTimeout(() => {
+      that._info('Execution went over time limit')
+      cproc.kill()
+    }, that._execMaxTime() * 1000)
+    cproc.stdout.on('data', data => {
+      let str = data.toString().replace(/(\n|\r)+$/, '')
+      that._info('Output: ' + str)
+    })
+    cproc.stderr.on('data', data => {
+      let str = data.toString().replace(/(\n|\r)+$/, '')
+      that._info('Output: ' + str)
+    })
+    cproc.on('error', err => {
+      clearTimeout(timeoutID)
+      reject(err)
+    })
+    cproc.once('exit', (code, signal) => {
+      clearTimeout(timeoutID)
+      if (code !== null) {
+        if (code === 0) {
+          resolve()
+        } else {
+          reject(new Error('Execution ended with failure exit code: ' + code))
+        }
+      } else {
+        reject(new Error('Execution ended with signal: ' + signal))
+      }
+    })
+  })
+
+}

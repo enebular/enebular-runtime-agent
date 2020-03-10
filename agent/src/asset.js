@@ -6,7 +6,7 @@ import crypto from 'crypto'
 import mkdirp from 'mkdirp'
 import rimraf from 'rimraf'
 import stringArgv from 'string-argv'
-import { spawn } from 'child_process'
+import { execSpawn } from './utils'
 
 export default class Asset {
   _type: string
@@ -152,44 +152,8 @@ export default class Asset {
     const args = this._execArgsArray(hook.assetTypeConfig.args)
     const env = this._execEnvObj(hook.assetTypeConfig.envs)
     const cwd = this._destDirPath()
-    const that = this
-    await new Promise((resolve, reject) => {
-      const cproc = spawn(assetPath, args, {
-        stdio: 'pipe',
-        env: env,
-        cwd: cwd
-      })
-      const timeoutID = setTimeout(() => {
-        that._info('Asset execution went over time limit')
-        cproc.kill()
-      }, hook.maxTime * 1000)
-      cproc.stdout.on('data', data => {
-        let str = data.toString().replace(/(\n|\r)+$/, '')
-        that._info('Asset output: ' + str)
-      })
-      cproc.stderr.on('data', data => {
-        let str = data.toString().replace(/(\n|\r)+$/, '')
-        that._info('Asset output: ' + str)
-      })
-      cproc.on('error', err => {
-        clearTimeout(timeoutID)
-        reject(err)
-      })
-      cproc.once('exit', (code, signal) => {
-        clearTimeout(timeoutID)
-        if (code !== null) {
-          if (code === 0) {
-            resolve()
-          } else {
-            reject(
-              new Error('Asset execution ended with failure exit code: ' + code)
-            )
-          }
-        } else {
-          reject(new Error('Asset execution ended with signal: ' + signal))
-        }
-      })
-    })
+
+    await execSpawn(args, env, cwd, this)
 
     this._debug('Asset executed')
   }
