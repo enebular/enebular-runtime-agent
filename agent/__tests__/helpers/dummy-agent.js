@@ -41,7 +41,6 @@ export default class DummyAgent {
         while(1) {
             let reported = this._deviceStateManager.getState('reported', 'assets')
             if (reported) {
-                console.log('reported: ' + JSON.stringify(reported, null, 2))
                 if(JSON.stringify(reported.assets) === '{}') {
                     if(this._deviceStateManager._reportedOp === 'remove') {
                         return this._deviceStateManager._reportedOp

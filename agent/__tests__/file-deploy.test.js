@@ -71,7 +71,7 @@ describe('File Deploy Test', () => {
   
   afterAll(() => {
   })
-/*
+
   test('Paramater Test - normal (Exec:no, Hook:no)', async () => {
 
     const deviceStateManager = dummyAgent.deviceStateManager()
@@ -976,7 +976,7 @@ describe('File Deploy Test', () => {
     expect(result).toBe('removeFail');
 
   });
-*/
+
   test('Composite Test - re-deploy same asset', async () => {
 
     const deviceStateManager = dummyAgent.deviceStateManager()
