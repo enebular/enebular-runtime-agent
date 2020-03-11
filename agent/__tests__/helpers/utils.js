@@ -29,18 +29,7 @@ export async function getFileObj(fileName) {
         size: fileSize
     }
 
-//    console.log('fileObj: ' + JSON.stringify(fileObj, null, 2))
-
     return fileObj
-}
-
-export async function isEmpty(obj) {
-  if (0 === Object.keys(obj).length) {
-    console.log('aaaaaa')
-    return true
-  }
-  console.log('length: ' + Object.keys(obj).length)
-  return false;
 }
 
 async function _getIntegrity(path) {

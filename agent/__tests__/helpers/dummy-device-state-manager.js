@@ -69,7 +69,6 @@ export default class DeviceStateManagerMock extends DeviceStateManager {
           break;
         case 'reported':
           let defaultReportedAssets = {
-            assets: {
                 assets: {
                     "5b6aef66-909e-4ae8-8174-ab140c372935": {
                         "updateId": "",
@@ -92,7 +91,6 @@ export default class DeviceStateManagerMock extends DeviceStateManager {
                         "ts": 0
                     }
                 }
-            }
           }
           this._reported = defaultReportedAssets
           this._reportedOp = ''
@@ -120,7 +118,13 @@ export default class DeviceStateManagerMock extends DeviceStateManager {
         console.log('state: ' + JSON.stringify(state, null, 2))
       }
       */
-      objectPath.set(this._reported, path, state)
+     let tempReported = {
+        assets: {
+            assets: {}
+        }
+      }
+      objectPath.set(tempReported, path, state)
+      this._reported = tempReported.assets || {}
       this._reportedOp = op
   }
 

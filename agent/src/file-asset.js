@@ -136,7 +136,7 @@ export default class FileAsset extends Asset {
     const env = this._execEnvObj(this._execEnvs())
     const cwd = this._destDirPath()
 
-    await execSpawn(args, env, cwd, this)
+    await execSpawn(args, env, cwd, this._filePath(), this._execMaxTime(), this)
 
     this._debug('Executed file')
   }

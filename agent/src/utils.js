@@ -211,12 +211,12 @@ export async function progressRequest(url, path, obj) {
   })
 }
 
-export async function execSpawn(args, env, cwd, obj) {
+export async function execSpawn(args, env, cwd, path, maxTime, obj) {
 
   const that = obj
 
   await new Promise((resolve, reject) => {
-    const cproc = spawn(that._filePath(), args, {
+    const cproc = spawn(path, args, {
       stdio: 'pipe',
       env: env,
       cwd: cwd
@@ -224,7 +224,7 @@ export async function execSpawn(args, env, cwd, obj) {
     const timeoutID = setTimeout(() => {
       that._info('Execution went over time limit')
       cproc.kill()
-    }, that._execMaxTime() * 1000)
+    }, maxTime * 1000)
     cproc.stdout.on('data', data => {
       let str = data.toString().replace(/(\n|\r)+$/, '')
       that._info('Output: ' + str)

@@ -153,7 +153,7 @@ export default class Asset {
     const env = this._execEnvObj(hook.assetTypeConfig.envs)
     const cwd = this._destDirPath()
 
-    await execSpawn(args, env, cwd, this)
+    await execSpawn(args, env, cwd, assetPath, hook.maxTime, this)
 
     this._debug('Asset executed')
   }
