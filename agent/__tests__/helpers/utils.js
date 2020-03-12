@@ -5,7 +5,6 @@ const fs = require('fs');
 const path = require('path');
 
 export function deleteDir(dir) {
-    console.log('deleteDir:' + dir)
     fsex.removeSync(dir)
 }
 

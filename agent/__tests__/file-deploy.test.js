@@ -5,6 +5,7 @@ import {
   deleteFile,
   getFileObj,
 } from './helpers/utils'
+import mkdirp from 'mkdirp'
 
 const fs = require('fs')
 const path = require('path');
@@ -818,7 +819,7 @@ describe('File Deploy Test', () => {
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
     deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
 
-    let useTestFile2 = 'exec-file.sh'
+    let useTestFile2 = 'no-exec-file.txt'
     let testDir2 = 'soconcdDir'
     let fileObj2 = await getFileObj(useTestFile2)
     let testAssetID2 = "1f84bc92-3242-4ffb-af26-93b79f72b81f"
@@ -1027,7 +1028,156 @@ describe('File Deploy Test', () => {
     expect(isExist).toBe(true)
   });
 
-/*
+  test('Composite Test - re-deploy same asset and not same asset', async () => {
+
+    const deviceStateManager = dummyAgent.deviceStateManager()
+    const assetManager = dummyAgent.assetManager()
+
+    await assetManager.setup()
+    assetManager.activate(true)
+
+
+    let useTestFile = 'no-exec-file.txt'
+    let testDir = 'testDir'
+    let fileObj = await getFileObj(useTestFile)
+    deviceStateManager.__defaultState('desired')
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+
+    deviceStateManager._notifyStateChange('desired', 'assets')
+
+    let result = await dummyAgent.waitReported(reportedTimeout)
+    expect(result).toBe('deployed');
+  
+    var isExist;
+    try {
+      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
+      isExist = true;
+    } catch(err) {
+      isExist = false;
+    }
+
+    expect(isExist).toBe(true)
+
+    useTestFile = 'exec-file.sh'
+    fileObj = await getFileObj(useTestFile)
+    let testAssetID2 = "1f84bc92-3242-4ffb-af26-93b79f72b81f"
+    let assetObj = {
+        "updateId": "f1d375aa-97fe-4acf-94c1-641221e3516d",
+        "ts": 1583486570186,
+        "config": {
+            "name": "file-deploy-test2",
+            "type": "file",
+            "fileTypeConfig": {
+                "src": "internal",
+                "internalSrcConfig": {
+                    "stored": true,
+                    "key": "9437c557-5955-4984-a13d-2dc723223cee"
+                },
+                "filename": fileObj.filename,
+                "integrity": fileObj.integrity,
+                "size": fileObj.size,
+                "exec": true,
+                "execConfig": {
+                  "maxTime": 2
+                }
+            },
+            "destPath": testDir
+        }
+    }
+    deviceStateManager.__setState('desired', `assets.${testAssetID2}`, assetObj)
+
+    deviceStateManager._notifyStateChange('desired', 'assets')
+    await dummyAgent.sleep(3000)
+
+    result = await dummyAgent.waitReported(reportedTimeout)
+    expect(result).toBe('deployed');
+  
+    isExist;
+    try {
+      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
+      isExist = true;
+    } catch(err) {
+      isExist = false;
+    }
+
+    expect(isExist).toBe(true)
+  });
+
+  test('Composite Test - boot process (Asset is not saved)', async () => {
+
+    const deviceStateManager = dummyAgent.deviceStateManager()
+    const assetManager = dummyAgent.assetManager()
+
+    let useTestFile = 'no-exec-file.txt'
+    let testDir = 'testDir'
+    let fileObj = await getFileObj(useTestFile)
+    deviceStateManager.__defaultState('desired')
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+
+    await assetManager.setup()
+    assetManager.activate(true)
+
+    let result = await dummyAgent.waitReported(reportedTimeout)
+    expect(result).toBe('deployed');
+
+    var isExist;
+    try {
+      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
+      isExist = true;
+    } catch(err) {
+      isExist = false;
+    }
+
+    expect(isExist).toBe(true)
+  });
+  
+  test('Composite Test - boot process (Asset is already saved)', async () => {
+
+    const deviceStateManager = dummyAgent.deviceStateManager()
+    const assetManager = dummyAgent.assetManager()
+
+
+    let useTestFile = 'no-exec-file.txt'
+    let testDir = 'testDir'
+    let fileObj = await getFileObj(useTestFile)
+    deviceStateManager.__defaultState('desired')
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+
+    let srcPath = path.resolve(__dirname, './data/.enebular-assets.json')
+    let dstPath = path.resolve(__dirname, '.enebular-assets.json')
+    fs.copyFileSync(srcPath, dstPath);
+    
+    let destDir = path.resolve(__dirname, './assets/testDir')
+    mkdirp.sync(destDir)
+    srcPath = path.resolve(__dirname, './data/no-exec-file.txt')
+    dstPath = destDir + '/no-exec-file.txt'
+    fs.copyFileSync(srcPath, dstPath);
+
+    await assetManager.setup()
+    assetManager.activate(true)
+
+    let result = await dummyAgent.waitReported(reportedTimeout)
+    expect(result).toBe('deployed');
+
+    var isExist;
+    try {
+      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
+      isExist = true;
+    } catch(err) {
+      isExist = false;
+    }
+
+    expect(isExist).toBe(true)
+  });
 
   test('Deploy - Fail : no setup ', async () => {
     const _assetManager = dummyAgent.assetManager()
@@ -1049,6 +1199,4 @@ describe('File Deploy Test', () => {
     let result = await dummyAgent.waitReported(2000)
     expect(result).toBe('timeout');
   });
-
-*/
 });

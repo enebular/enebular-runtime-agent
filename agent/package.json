@@ -15,7 +15,7 @@
     "lint:ts": "eslint src --ext .ts -c .eslintrc-ts.json",
     "lint-fix": "eslint src --ext .js --fix",
     "lint:ts-fix": "eslint src --ext .ts -c .eslintrc-ts.json --fix",
-    "test": "npm run test:jest && npm run test:ava",
+    "test": "npm run test:ava && npm run test:jest",
     "test:ava": "ava --serial",
     "test:jest": "jest --runInBand --forceExit"
   },
