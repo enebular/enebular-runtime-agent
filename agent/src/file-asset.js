@@ -2,12 +2,10 @@
 
 import fs from 'fs'
 import path from 'path'
-import util from 'util'
-import { spawn } from 'child_process'
-import request from 'request'
-import progress from 'request-progress'
 import diskusage from 'diskusage'
 import Asset from './asset'
+import { progressRequest } from './utils'
+import { execSpawn } from './utils'
 
 export default class FileAsset extends Asset {
   _assetMan: AssetManager
@@ -97,50 +95,10 @@ export default class FileAsset extends Asset {
 
     // Donwload asset file data
     const path = this._filePath()
-    const onProgress = state => {
-      this._info(
-        util.format(
-          'Download progress: %f%% @ %fKB/s, %fsec',
-          state.percent ? Math.round(state.percent * 100) : 0,
-          state.speed ? Math.round(state.speed / 1024) : 0,
-          state.time.elapsed ? Math.round(state.time.elapsed) : 0
-        )
-      )
-    }
+
     this._debug(`Downloading ${url} to ${path} ...`)
-    const that = this
-    await new Promise(function(resolve, reject) {
-      const fileStream = fs.createWriteStream(path)
-      fileStream.on('error', err => {
-        reject(err)
-      })
-      progress(request(url), {
-        delay: 5000,
-        throttle: 5000
-      })
-        .on('response', response => {
-          that._debug(
-            `Response: ${response.statusCode}: ${response.statusMessage}`
-          )
-          if (response.statusCode >= 400) {
-            reject(
-              new Error(
-                `Error response: ${response.statusCode}: ${
-                  response.statusMessage
-                }`
-              )
-            )
-          }
-        })
-        .on('progress', onProgress)
-        .on('error', err => {
-          reject(err)
-        })
-        .on('end', () => {
-          resolve()
-        })
-        .pipe(fileStream)
-    })
+
+    await progressRequest(url, path, this)
   }
 
   async _verify() {
@@ -177,42 +135,8 @@ export default class FileAsset extends Asset {
     const args = this._execArgsArray(this._execArgs())
     const env = this._execEnvObj(this._execEnvs())
     const cwd = this._destDirPath()
-    const that = this
-    await new Promise((resolve, reject) => {
-      const cproc = spawn(that._filePath(), args, {
-        stdio: 'pipe',
-        env: env,
-        cwd: cwd
-      })
-      const timeoutID = setTimeout(() => {
-        that._info('Execution went over time limit')
-        cproc.kill()
-      }, that._execMaxTime() * 1000)
-      cproc.stdout.on('data', data => {
-        let str = data.toString().replace(/(\n|\r)+$/, '')
-        that._info('Asset: ' + str)
-      })
-      cproc.stderr.on('data', data => {
-        let str = data.toString().replace(/(\n|\r)+$/, '')
-        that._info('Asset: ' + str)
-      })
-      cproc.on('error', err => {
-        clearTimeout(timeoutID)
-        reject(err)
-      })
-      cproc.once('exit', (code, signal) => {
-        clearTimeout(timeoutID)
-        if (code !== null) {
-          if (code === 0) {
-            resolve()
-          } else {
-            reject(new Error('Execution ended with failure exit code: ' + code))
-          }
-        } else {
-          reject(new Error('Execution ended with signal: ' + signal))
-        }
-      })
-    })
+
+    await execSpawn(args, env, cwd, this._filePath(), this._execMaxTime(), this)
 
     this._debug('Executed file')
   }

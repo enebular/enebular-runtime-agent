@@ -1,0 +1,1 @@
+echo "file execution test is OK"

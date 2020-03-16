@@ -5,15 +5,13 @@ import rimraf from 'rimraf'
 import fs from 'fs'
 import mkdirp from 'mkdirp'
 import path from 'path'
-import request from 'request'
-import progress from 'request-progress'
-import util from 'util'
 import extract from 'extract-zip'
 import Asset from './asset'
 import type AiModelManager from './ai-model-manager'
 import Container from './container'
 import type { ContainerConfig } from './container'
 import { delay } from './utils'
+import { progressRequest } from './utils'
 
 export default class AiModelAsset extends Asset {
   _aiModelMan: AiModelManager
@@ -306,48 +304,10 @@ export default class AiModelAsset extends Asset {
 
     // Download asset file data
     const path = this._filePath()
-    const onProgress = state => {
-      this._info(
-        util.format(
-          'Download progress: %f%% @ %fKB/s, %fsec',
-          state.percent ? Math.round(state.percent * 100) : 0,
-          state.speed ? Math.round(state.speed / 1024) : 0,
-          state.time.elapsed ? Math.round(state.time.elapsed) : 0
-        )
-      )
-    }
+
     this._debug(`Downloading model ${url} to ${path} ...`)
-    const that = this
-    await new Promise(function(resolve, reject) {
-      const fileStream = fs.createWriteStream(path)
-      fileStream.on('error', err => {
-        reject(err)
-      })
-      progress(request(url), {
-        delay: 5000,
-        throttle: 5000
-      })
-        .on('response', response => {
-          that._debug(
-            `Response: ${response.statusCode}: ${response.statusMessage}`
-          )
-          if (response.statusCode >= 400) {
-            reject(
-              new Error(
-                `Error response: ${response.statusCode}: ${response.statusMessage}`
-              )
-            )
-          }
-        })
-        .on('progress', onProgress)
-        .on('error', err => {
-          reject(err)
-        })
-        .on('end', () => {
-          resolve()
-        })
-        .pipe(fileStream)
-    })
+
+    await progressRequest(url, path, this)
   }
 
   async _verify() {
