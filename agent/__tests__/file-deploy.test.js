@@ -95,16 +95,7 @@ describe('File Deploy Test', () => {
 
     let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployed');
-  
-    var isExist;
-    try {
-      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
-      isExist = true;
-    } catch(err) {
-      isExist = false;
-    }
-
-    expect(isExist).toBe(true)
+    expect(() => {fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`))}).not.toThrowError()
   });
 
   test('Paramater Test - integrity error (Exec:no, Hook:no)', async () => {
@@ -179,16 +170,7 @@ describe('File Deploy Test', () => {
 
     let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployed');
-  
-    var isExist;
-    try {
-      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
-      isExist = true;
-    } catch(err) {
-      isExist = false;
-    }
-
-    expect(isExist).toBe(true)
+    expect(() => {fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`))}).not.toThrowError()
   });
 
   test('Paramater Test - args envs normal (Exec:yes, Hook:no)', async () => {
@@ -215,16 +197,7 @@ describe('File Deploy Test', () => {
 
     let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployed');
-  
-    var isExist;
-    try {
-      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
-      isExist = true;
-    } catch(err) {
-      isExist = false;
-    }
-
-    expect(isExist).toBe(true)
+    expect(() => {fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`))}).not.toThrowError()
   });
 
   test('Paramater Test - less than maxTime (Exec:yes, Hook:no)', async () => {
@@ -251,16 +224,7 @@ describe('File Deploy Test', () => {
 
     let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployed');
-  
-    var isExist;
-    try {
-      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
-      isExist = true;
-    } catch(err) {
-      isExist = false;
-    }
-
-    expect(isExist).toBe(true)
+    expect(() => {fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`))}).not.toThrowError()
   });
 
   test('Paramater Test - over maxTime (Exec:yes, Hook:no)', async () => {
@@ -322,16 +286,7 @@ describe('File Deploy Test', () => {
 
     let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployed');
-
-    var isExist;
-    try {
-      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
-      isExist = true;
-    } catch(err) {
-      isExist = false;
-    }
-
-    expect(isExist).toBe(true)
+    expect(() => {fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`))}).not.toThrowError()
   });
 
   test('Paramater Test - assetPath error (Exec:no, Hook:Pre-Deploy)', async () => {
@@ -403,16 +358,7 @@ describe('File Deploy Test', () => {
 
     let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployed');
-
-    var isExist;
-    try {
-      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
-      isExist = true;
-    } catch(err) {
-      isExist = false;
-    }
-
-    expect(isExist).toBe(true)
+    expect(() => {fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`))}).not.toThrowError()
   });
 
   test('Paramater Test - over maxTime (Exec:no, Hook:Pre-Deploy)', async () => {
@@ -484,16 +430,7 @@ describe('File Deploy Test', () => {
 
     let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployed');
-
-    var isExist;
-    try {
-      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
-      isExist = true;
-    } catch(err) {
-      isExist = false;
-    }
-
-    expect(isExist).toBe(true)
+    expect(() => {fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`))}).not.toThrowError()
   });
 
   test('Paramater Test - assetPath error (Exec:no, Hook:Post-Deploy)', async () => {
@@ -565,16 +502,7 @@ describe('File Deploy Test', () => {
 
     let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployed');
-
-    var isExist;
-    try {
-      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
-      isExist = true;
-    } catch(err) {
-      isExist = false;
-    }
-
-    expect(isExist).toBe(true)
+    expect(() => {fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`))}).not.toThrowError()
   });
 
   test('Paramater Test - over maxTime (Exec:no, Hook:Post-Deploy)', async () => {
@@ -656,26 +584,7 @@ describe('File Deploy Test', () => {
 
     let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployed');
-
-    var isExist;
-    try {
-      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
-      isExist = true;
-    } catch(err) {
-      isExist = false;
-    }
-
-    expect(isExist).toBe(true)
-
-    var isExist;
-    try {
-      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
-      isExist = true;
-    } catch(err) {
-      isExist = false;
-    }
-
-    expect(isExist).toBe(true)
+    expect(() => {fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`))}).not.toThrowError()
   });
 
   test('Error Injection Test - download file error', async () => {
@@ -701,7 +610,6 @@ describe('File Deploy Test', () => {
 
     let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployFail');
-
   });
 
   test('Error Injection Test - get URL error', async () => {
@@ -729,7 +637,6 @@ describe('File Deploy Test', () => {
 
     let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployFail');
-
   });
 
   test('Error Injection Test - Deployed File execution error', async () => {
@@ -759,7 +666,6 @@ describe('File Deploy Test', () => {
 
     let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployFail');
-
   });
 
   test('Error Injection Test - Pre-Deploy error', async () => {
@@ -798,7 +704,6 @@ describe('File Deploy Test', () => {
 
     let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployFail');
-
   });
 
   test('Composite Test - Multiple Assets deploy', async () => {
@@ -848,31 +753,13 @@ describe('File Deploy Test', () => {
 
     let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployed');
-
-    var isExist;
-    try {
-      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
-      isExist = true;
-    } catch(err) {
-      isExist = false;
-    }
-
-    expect(isExist).toBe(true)
+    expect(() => {fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`))}).not.toThrowError()
 
     await dummyAgent.sleep(1000)
 
     result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployed');
-
-    try {
-      fs.statSync(path.resolve(__dirname, `./assets/${testDir2}/${useTestFile2}`));
-      isExist = true;
-    } catch(err) {
-      isExist = false;
-    }
-
-    expect(isExist).toBe(true)
-
+    expect(() => {fs.statSync(path.resolve(__dirname, `./assets/${testDir2}/${useTestFile2}`))}).not.toThrowError()
   });
 
   test('Composite Test - file remove', async () => {
@@ -897,16 +784,7 @@ describe('File Deploy Test', () => {
 
     let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployed');
-
-    var isExist;
-    try {
-      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
-      isExist = true;
-    } catch(err) {
-      isExist = false;
-    }
-
-    expect(isExist).toBe(true)
+    expect(() => {fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`))}).not.toThrowError()
 
     await dummyAgent.sleep(1000)
     
@@ -918,15 +796,7 @@ describe('File Deploy Test', () => {
     await dummyAgent.sleep(1000)
     result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('remove');
-  
-    try {
-      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
-      isExist = true;
-    } catch(err) {
-      isExist = false;
-    }
-
-    expect(isExist).toBe(false)
+    expect(() => {fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`))}).toThrowError()
   });
 
   test('Composite Test - file remove error', async () => {
@@ -954,16 +824,7 @@ describe('File Deploy Test', () => {
 
     let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployed');
-
-    var isExist;
-    try {
-      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
-      isExist = true;
-    } catch(err) {
-      isExist = false;
-    }
-
-    expect(isExist).toBe(true)
+    expect(() => {fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`))}).not.toThrowError()
 
     await dummyAgent.sleep(1000)
     
@@ -1000,32 +861,14 @@ describe('File Deploy Test', () => {
 
     let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployed');
-  
-    var isExist;
-    try {
-      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
-      isExist = true;
-    } catch(err) {
-      isExist = false;
-    }
-
-    expect(isExist).toBe(true)
+    expect(() => {fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`))}).not.toThrowError()
 
     deviceStateManager._notifyStateChange('desired', 'assets')
     await dummyAgent.sleep(1000)
 
     result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployed');
-  
-    isExist;
-    try {
-      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
-      isExist = true;
-    } catch(err) {
-      isExist = false;
-    }
-
-    expect(isExist).toBe(true)
+    expect(() => {fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`))}).not.toThrowError()
   });
 
   test('Composite Test - re-deploy same asset and not same asset', async () => {
@@ -1050,16 +893,7 @@ describe('File Deploy Test', () => {
 
     let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployed');
-  
-    var isExist;
-    try {
-      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
-      isExist = true;
-    } catch(err) {
-      isExist = false;
-    }
-
-    expect(isExist).toBe(true)
+    expect(() => {fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`))}).not.toThrowError()
 
     useTestFile = 'exec-file.sh'
     fileObj = await getFileObj(useTestFile)
@@ -1094,16 +928,7 @@ describe('File Deploy Test', () => {
 
     result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployed');
-  
-    isExist;
-    try {
-      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
-      isExist = true;
-    } catch(err) {
-      isExist = false;
-    }
-
-    expect(isExist).toBe(true)
+    expect(() => {fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`))}).not.toThrowError()
   });
 
   test('Composite Test - boot process (Asset is not saved)', async () => {
@@ -1125,18 +950,9 @@ describe('File Deploy Test', () => {
 
     let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployed');
-
-    var isExist;
-    try {
-      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
-      isExist = true;
-    } catch(err) {
-      isExist = false;
-    }
-
-    expect(isExist).toBe(true)
+    expect(() => {fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`))}).not.toThrowError()
   });
-  
+
   test('Composite Test - boot process (Asset is already saved)', async () => {
 
     const deviceStateManager = dummyAgent.deviceStateManager()
@@ -1167,16 +983,7 @@ describe('File Deploy Test', () => {
 
     let result = await dummyAgent.waitReported(reportedTimeout)
     expect(result).toBe('deployed');
-
-    var isExist;
-    try {
-      fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`));
-      isExist = true;
-    } catch(err) {
-      isExist = false;
-    }
-
-    expect(isExist).toBe(true)
+    expect(() => {fs.statSync(path.resolve(__dirname, `./assets/${testDir}/${useTestFile}`))}).not.toThrowError()
   });
 
   test('Deploy - Fail : no setup ', async () => {
@@ -1199,4 +1006,5 @@ describe('File Deploy Test', () => {
     let result = await dummyAgent.waitReported(2000)
     expect(result).toBe('timeout');
   });
+
 });
