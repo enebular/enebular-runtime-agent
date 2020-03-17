@@ -553,12 +553,17 @@ export default class NodeREDController {
                 this._flowState.assetId,
                 this._flowState.updateId
               )
-              await this.fetchAndUpdateFlow(downloadUrl)
-              if (this._isFlowEnabled()) {
-                await this._restartService()
+              const flowPackage = await this.fetchAndUpdateFlow(downloadUrl)
+              if (this._flowPackageContainsEditSession(flowPackage)) {
+                await this._restartInEditorMode(flowPackage.editSession)
               } else {
-                this.info('Skipped Node-RED restart since flow is disabled')
+                if (this._isFlowEnabled()) {
+                  await this._restartService()
+                } else {
+                  this.info('Skipped Node-RED restart since flow is disabled')
+                }
               }
+
               this.info(`Deployed flow '${pendingAssetId}'`)
               this._flowState.updateAttemptCount = 0
               this._setFlowState('deployed', null)
