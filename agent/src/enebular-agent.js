@@ -684,7 +684,6 @@ export default class EnebularAgent extends EventEmitter {
           }
         }
         break
-      case 'deploy':
       case 'deviceStateChange':
         this._monitorManager.refreshMonitoringInterval()
         break
