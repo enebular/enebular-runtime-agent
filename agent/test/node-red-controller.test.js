@@ -506,49 +506,6 @@ test.serial(
   }
 )
 
-test.serial(
-  'NodeRedController.8: Agent handles both deploy methods correctly',
-  async t => {
-    // update the flow
-    const expectedFlowName = 'flow1.json'
-    const expectedFlowJson = fs.readFileSync(
-      path.join(__dirname, 'data', expectedFlowName),
-      'utf8'
-    )
-    const url =
-      'http://127.0.0.1:' +
-      DummyServerPort +
-      '/test/download-flow?flow=' +
-      expectedFlowName
-
-    const ctrlMsgHandler = new DummyCtrlMsgHandler()
-
-    await createAgentRunningWithTestNodeRedSettings(t, ctrlMsgHandler, {
-      ENEBULAR_FLOW_STATE_PATH: '/tmp/enebular-flow-' + Utils.randomString(),
-    })
-
-    // old method
-    connector.sendMessage('deploy', {
-      downloadUrl: url
-    })
-
-    let callback = async () => {
-      const api = new NodeRedAdminApi('http://127.0.0.1:' + NodeRedPort)
-      const flow = await api.getFlow()
-      if (flow) {
-        t.truthy(flow)
-        const expectedFlow = JSON.parse(expectedFlowJson)
-        return Utils.jsonEquals(expectedFlow, flow)
-      }
-      return false
-    }
-
-    // give it 2s to shutdown
-    t.true(await polling(callback, 2000, 500, 30000))
-
-    await DeployFlowCtrlMsg(t, ctrlMsgHandler)
-  }
-)
 
 test.serial(
   'NodeRedController.9: Agent refreshes uninitialised states when state is changed',
