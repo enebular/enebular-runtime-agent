@@ -7,7 +7,6 @@
 #include "enebular_agent_mbed_cloud_client.h"
 #include "enebular_agent_fcc_dev_flow.h"
 
-#define OBJECT_ID_DEPLOY_FLOW           (26242)
 #define OBJECT_ID_REGISTER              (26243)
 #define OBJECT_ID_AUTH_TOKEN            (26244)
 #define OBJECT_ID_AGENT_INFO            (26246)
