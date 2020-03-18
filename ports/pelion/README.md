@@ -15,21 +15,21 @@ Please read [enebular-docs](https://docs.enebular.com/) for more info.
 
 ```
 cd agent
-npm install
+npm ci && npm run build
 ```
 
 2 . Install the Node-RED instance.
 
 ```
 cd node-red
-npm install
+npm ci
 ```
 
 3 . Install the Pelion port's modules.
 
 ```
 cd ports/pelion
-npm install
+npm ci && npm run build
 ```
 
 4 . Setup the mbed-cloud-connector in the tools directory by following its [readme file](../../tools/mbed-cloud-connector/README.md).
