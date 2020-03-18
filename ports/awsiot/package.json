@@ -7,7 +7,6 @@
     "enebular-awsiot-agent": "./bin/enebular-awsiot-agent"
   },
   "scripts": {
-    "prepare": "npm run build",
     "build": "babel src -d lib",
     "start": "node lib/index.js",
     "lint": "eslint src",
