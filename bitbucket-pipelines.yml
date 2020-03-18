@@ -88,7 +88,7 @@ definitions:
           - dist/**
     - step: &pack-x64
         name: Pack (x64)
-        image: enebularagentdevelopers/enebular-agent-x64:node-12.14.0
+        image: ysuematsu/enebular-x64:node-12.14.0
         script:
           - chmod 777 pack_enebular_agent.sh
           - ./pack_enebular_agent.sh
@@ -207,15 +207,15 @@ pipelines:
       - step: *upload-installsh
       - step: *upload
     'dev-test-*':
-      - step: *build-test
-      - step: *set-pub-key
-      - step: *pack-prebuilt
+#      - step: *build-test
+#      - step: *set-pub-key
+#      - step: *pack-prebuilt
       - parallel:
           - step: *pack-x64
-          - step: *pack-armv7l
-          - step: *pack-arm64
-      - step: *upload-installsh
-      - step: *upload
+#          - step: *pack-armv7l
+#          - step: *pack-arm64
+#      - step: *upload-installsh
+#      - step: *upload
 definitions:
   services:
     docker:
