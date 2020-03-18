@@ -224,13 +224,22 @@ export class AgentInstaller implements AgentInstallerIf {
     )
   }
 
-  private _buildNpmPackage(path: string, userInfo: UserInfo): Promise<void> {
-    return Utils.spawn('npm', ['i', '--production'], this._log, {
-      cwd: path,
-      env: this._npmBuildEnv,
-      uid: userInfo.uid,
-      gid: userInfo.gid
-    })
+  private _buildNpmPackage(path: string, userInfo: UserInfo, newAgentInfo: AgentInfo): Promise<void> {
+    if (newAgentInfo.version.lessThan(new AgentVersion(2, 10, 0))) {
+      return Utils.spawn('npm', ['i', '--production'], this._log, {
+        cwd: path,
+        env: this._npmBuildEnv,
+        uid: userInfo.uid,
+        gid: userInfo.gid
+      })
+    } else {
+      return Utils.spawn('npm', ['ci', '--production'], this._log, {
+        cwd: path,
+        env: this._npmBuildEnv,
+        uid: userInfo.uid,
+        gid: userInfo.gid
+      })
+    }
   }
 
   private _buildConnector(
@@ -252,13 +261,14 @@ export class AgentInstaller implements AgentInstallerIf {
 
   private async _buildAWSIoT(
     installPath: string,
-    userInfo: UserInfo
+    userInfo: UserInfo,
+    newAgentInfo: AgentInfo
   ): Promise<void> {
     await Utils.taskAsyncWithRetry(
       'Building awsiot port',
       this._log,
       async (): Promise<void> => {
-        return this._buildNpmPackage(`${installPath}/ports/awsiot`, userInfo)
+        return this._buildNpmPackage(`${installPath}/ports/awsiot`, userInfo, newAgentInfo)
       }
     )
     await Utils.taskAsyncWithRetry(
@@ -267,7 +277,8 @@ export class AgentInstaller implements AgentInstallerIf {
       async (): Promise<void> => {
         return this._buildNpmPackage(
           `${__dirname}/../../awsiot-thing-creator`,
-          userInfo
+          userInfo,
+          newAgentInfo
         )
       }
     )
@@ -667,7 +678,7 @@ export class AgentInstaller implements AgentInstallerIf {
       `Building agent ${newAgentInfo.version}`,
       this._log,
       async (): Promise<void> => {
-        return this._buildNpmPackage(`${installPath}/agent`, userInfo)
+        return this._buildNpmPackage(`${installPath}/agent`, userInfo, newAgentInfo)
       }
     )
 
@@ -675,18 +686,18 @@ export class AgentInstaller implements AgentInstallerIf {
       `Building Node-RED`,
       this._log,
       async (): Promise<void> => {
-        return this._buildNpmPackage(`${installPath}/node-red`, userInfo)
+        return this._buildNpmPackage(`${installPath}/node-red`, userInfo, newAgentInfo)
       }
     )
 
     if (port == 'awsiot') {
-      await this._buildAWSIoT(installPath, userInfo)
+      await this._buildAWSIoT(installPath, userInfo, newAgentInfo)
     } else {
       await Utils.taskAsyncWithRetry(
         'Building pelion port ',
         this._log,
         async (): Promise<void> => {
-          return this._buildNpmPackage(`${installPath}/ports/pelion`, userInfo)
+          return this._buildNpmPackage(`${installPath}/ports/pelion`, userInfo, newAgentInfo)
         }
       )
       this._binBuildEnv[

@@ -4,7 +4,6 @@
   "description": "The enebular-agent core for enebular",
   "main": "lib/index",
   "scripts": {
-    "prepare": "npm run build",
     "build": "npm run build:clean && npm run build:lib && npm run build:flow && npm run build:ts",
     "build:clean": "rimraf lib",
     "build:lib": "babel -d lib src",
