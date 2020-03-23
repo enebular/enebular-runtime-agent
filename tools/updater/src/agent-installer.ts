@@ -225,7 +225,7 @@ export class AgentInstaller implements AgentInstallerIf {
   }
 
   private _buildNpmPackage(path: string, userInfo: UserInfo, newAgentInfo: AgentInfo): Promise<void> {
-    if (newAgentInfo.version.lessThan(new AgentVersion(2, 10, 0))) {
+    if (newAgentInfo.version.lessThan(new AgentVersion(2, 13, 0))) {
       return Utils.spawn('npm', ['i', '--production'], this._log, {
         cwd: path,
         env: this._npmBuildEnv,
