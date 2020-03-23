@@ -1002,6 +1002,23 @@ test.serial(
   }
 )
 
+test.serial(
+  'NodeRedController.23: Agent starts/shutdowns node-red correctly',
+  async t => {
+    const configFile = Utils.createDummyEnebularConfig({}, DummyServerPort)
+    const ret = await createConnectedAgent(
+      t,
+      Utils.addNodeRedPortToConfig(
+        { ENEBULAR_CONFIG_PATH: configFile },
+        NodeRedPort
+      )
+    )
+    agent = ret.agent
 
+    t.true(await nodeRedIsAlive(NodeRedPort))
+    await agent.shutdown()
+    t.true(await nodeRedIsDead(NodeRedPort))
+  }
+)
 
 
