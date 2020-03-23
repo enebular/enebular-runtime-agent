@@ -4,7 +4,6 @@
   "description": "The utility to create AWS IoT thing from API",
   "main": "lib/index",
   "scripts": {
-    "prepare": "npm run build",
     "build": "npm run build:clean && npm run build:lib && npm run build:flow",
     "build:clean": "rimraf lib",
     "build:lib": "babel -d lib src",
