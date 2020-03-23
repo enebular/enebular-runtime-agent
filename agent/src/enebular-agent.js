@@ -215,7 +215,6 @@ export default class EnebularAgent extends EventEmitter {
     this._nodeRed = new NodeREDController(
       this._deviceStateManager,
       this._connectorMessenger,
-      this._messageEmitter,
       this._config,
       this._log,
       this._logManager,
@@ -684,6 +683,7 @@ export default class EnebularAgent extends EventEmitter {
           }
         }
         break
+      case 'deploy':
       case 'deviceStateChange':
         this._monitorManager.refreshMonitoringInterval()
         break
