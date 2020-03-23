@@ -11,7 +11,6 @@ definitions:
           - (npm -v | xargs echo npm version:)
           - echo 'if ((`git diff package-lock.json | wc -l` != 0)); then echo "package-lock.file is required to be committed" && (exit 1); fi;' > /tmp/check_lock_file.sh
           # install & build
-# TODO: change npm i to npm ci once ci is available
           - (cd node-red && npm ci)
           - (cd agent && npm ci && npm run build && . /tmp/check_lock_file.sh)
           - (cd ports/awsiot && npm ci && npm run build && . /tmp/check_lock_file.sh)
