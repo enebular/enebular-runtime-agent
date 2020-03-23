@@ -1,6 +1,5 @@
 /* @flow */
 import fs from 'fs'
-import EventEmitter from 'events'
 import path from 'path'
 import { spawn, type ChildProcess } from 'child_process'
 import fetch from 'isomorphic-fetch'
@@ -85,7 +84,6 @@ export default class NodeREDController {
   constructor(
     deviceStateMan: DeviceStateManager,
     connectorMessenger: ConnectorMessenger,
-    emitter: EventEmitter,
     config: Config,
     log: Logger,
     logManager: LogManager,
@@ -122,8 +120,6 @@ export default class NodeREDController {
     this._deviceStateMan.on('stateChange', params =>
       this._handleDeviceStateChange(params)
     )
-
-    this._registerHandler(emitter)
 
     this._log = log
     this._logManager = logManager
@@ -553,12 +549,17 @@ export default class NodeREDController {
                 this._flowState.assetId,
                 this._flowState.updateId
               )
-              await this.fetchAndUpdateFlow(downloadUrl)
-              if (this._isFlowEnabled()) {
-                await this._restartService()
+              const flowPackage = await this.fetchAndUpdateFlow(downloadUrl)
+              if (this._flowPackageContainsEditSession(flowPackage)) {
+                await this._restartInEditorMode(flowPackage.editSession)
               } else {
-                this.info('Skipped Node-RED restart since flow is disabled')
+                if (this._isFlowEnabled()) {
+                  await this._restartService()
+                } else {
+                  this.info('Skipped Node-RED restart since flow is disabled')
+                }
               }
+
               this.info(`Deployed flow '${pendingAssetId}'`)
               this._flowState.updateAttemptCount = 0
               this._setFlowState('deployed', null)
@@ -646,11 +647,6 @@ export default class NodeREDController {
     return this._flowState.enable || this._flowState.enable === undefined
   }
 
-  _registerHandler(emitter: EventEmitter) {
-    emitter.on('update-flow', params => this.cmdFetchAndUpdateFlow(params))
-    emitter.on('deploy', params => this.cmdFetchAndUpdateFlow(params))
-  }
-
   async _queueAction(promiseFunction: () => Promise<any>) {
     return new Promise((resolve, reject) => {
       this.debug('Queuing action')
@@ -683,22 +679,6 @@ export default class NodeREDController {
       this._processNextAction()
     }
     return true
-  }
-
-  async cmdFetchAndUpdateFlow(params: { downloadUrl: string }) {
-    this._flowState.controlSrc = 'cmd'
-    try {
-      const flowPackage = await this.fetchAndUpdateFlow(params.downloadUrl)
-      if (this._flowPackageContainsEditSession(flowPackage)) {
-        await this._restartInEditorMode(flowPackage.editSession)
-      } else {
-        await this._restartService()
-      }
-    } catch (err) {
-      this.error('Update flow failed: ' + err.message)
-    }
-    this._updateFlowStatusState()
-    this._saveFlowState()
   }
 
   async fetchAndUpdateFlow(downloadUrl: string) {

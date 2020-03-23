@@ -147,7 +147,6 @@ private:
     const char *_mbed_cloud_dev_credentials_path;
     pthread_mutex_t _lock;
 
-    M2MResource *_deploy_flow_download_url_res;
     M2MResource *_register_connection_id_res;
     M2MResource *_register_device_id_res;
     M2MResource *_register_auth_request_url_res;
@@ -211,7 +210,6 @@ private:
         execute_callback execute_cb,
         uint32_t max_age);
 
-    void deploy_flow_download_url_cb(const char *name);
     void register_connection_id_cb(const char *name);
     void register_device_id_cb(const char *name);
     void register_auth_request_url_cb(const char *name);
