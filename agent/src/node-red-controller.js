@@ -1,6 +1,5 @@
 /* @flow */
 import fs from 'fs'
-import EventEmitter from 'events'
 import path from 'path'
 import { spawn, type ChildProcess } from 'child_process'
 import fetch from 'isomorphic-fetch'
@@ -85,7 +84,6 @@ export default class NodeREDController {
   constructor(
     deviceStateMan: DeviceStateManager,
     connectorMessenger: ConnectorMessenger,
-    emitter: EventEmitter,
     config: Config,
     log: Logger,
     logManager: LogManager,
