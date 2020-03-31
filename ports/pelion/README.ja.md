@@ -15,21 +15,21 @@ Pelionポートを使用すると、enebular-agentをArm Pelionの接続で使�
 
 ```
 cd agent
-npm install
+npm ci && npm run build
 ```
 
 2 . Node-REDのインスタンスをインストールします。
 
 ```
 cd node-red
-npm install
+npm ci
 ```
 
 3 . Pelionポートのモジュールをインストールします。
 
 ```
 cd ports/pelion
-npm install
+npm ci && npm run build
 ```
 
 4 . toolsディレクトリに含まれているmbed-cloud-connectorを[readmeファイル](../../tools/mbed-cloud-connector/README.ja.md)に従ってセットアップします。

@@ -1,10 +1,10 @@
 #!/bin/bash
 set -e
 
-(cd node-red && npm i --production)
-(cd agent && npm i --production)
-(cd ports/awsiot && npm i --production)
-(cd ports/pelion && npm i --production)
+(cd node-red && npm ci --production)
+(cd agent && npm ci --production)
+(cd ports/awsiot && npm ci --production)
+(cd ports/pelion && npm ci --production)
 
 (cd tools/mbed-cloud-connector-fcc && mbed config root . && mbed deploy -v \
 && python pal-platform/pal-platform.py -v deploy --target=x86_x64_NativeLinux_mbedtls generate \

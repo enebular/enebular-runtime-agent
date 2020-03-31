@@ -2,6 +2,11 @@
 import fetch from 'isomorphic-fetch'
 import crypto from 'crypto'
 import { execSync } from 'child_process'
+import request from 'request'
+import progress from 'request-progress'
+import fs from 'fs'
+import util from 'util'
+import { spawn } from 'child_process'
 
 export interface UserInfo {
   user: string,
@@ -158,3 +163,92 @@ export function getUserHome(user: string): string {
   return getentResult.split(':')[5]
 }
 
+export async function progressRequest(url, path, obj) {
+  const that = obj
+
+  const onProgress = state => {
+    that._info(
+      util.format(
+        'Download progress: %f%% @ %fKB/s, %fsec',
+        state.percent ? Math.round(state.percent * 100) : 0,
+        state.speed ? Math.round(state.speed / 1024) : 0,
+        state.time.elapsed ? Math.round(state.time.elapsed) : 0
+      )
+    )
+  }
+
+  await new Promise(function(resolve, reject) {
+    const fileStream = fs.createWriteStream(path)
+    fileStream.on('error', err => {
+      reject(err)
+    })
+    progress(request(url), {
+      delay: 5000,
+      throttle: 5000
+    })
+      .on('response', response => {
+        that._debug(
+          `Response: ${response.statusCode}: ${response.statusMessage}`
+        )
+        if (response.statusCode >= 400) {
+          reject(
+            new Error(
+              `Error response: ${response.statusCode}: ${
+                response.statusMessage
+              }`
+            )
+          )
+        }
+      })
+      .on('progress', onProgress)
+      .on('error', err => {
+        reject(err)
+      })
+      .on('end', () => {
+        resolve()
+      })
+      .pipe(fileStream)
+  })
+}
+
+export async function execSpawn(args, env, cwd, path, maxTime, obj) {
+
+  const that = obj
+
+  await new Promise((resolve, reject) => {
+    const cproc = spawn(path, args, {
+      stdio: 'pipe',
+      env: env,
+      cwd: cwd
+    })
+    const timeoutID = setTimeout(() => {
+      that._info('Execution went over time limit')
+      cproc.kill()
+    }, maxTime * 1000)
+    cproc.stdout.on('data', data => {
+      let str = data.toString().replace(/(\n|\r)+$/, '')
+      that._info('Output: ' + str)
+    })
+    cproc.stderr.on('data', data => {
+      let str = data.toString().replace(/(\n|\r)+$/, '')
+      that._info('Output: ' + str)
+    })
+    cproc.on('error', err => {
+      clearTimeout(timeoutID)
+      reject(err)
+    })
+    cproc.once('exit', (code, signal) => {
+      clearTimeout(timeoutID)
+      if (code !== null) {
+        if (code === 0) {
+          resolve()
+        } else {
+          reject(new Error('Execution ended with failure exit code: ' + code))
+        }
+      } else {
+        reject(new Error('Execution ended with signal: ' + signal))
+      }
+    })
+  })
+
+}

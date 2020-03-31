@@ -15,21 +15,21 @@ AWS IoTポートを使用すると、enebular-agentをAWS IoTの接続で使用�
 
 ```
 cd agent
-npm install
+npm ci && npm run build
 ```
 
 2 . Node-REDのインスタンスをインストールします。
 
 ```
 cd node-red
-npm install
+npm ci
 ```
 
 3 . AWS IoTポートのモジュールをインストールします。
 
 ```
 cd ports/awsiot
-npm install
+npm ci && npm run build
 ```
 
 4 . このデバイスで使用するAWS IoT Thing用の証明書ファイルをAWSのコンソールなどから入手し、AWS IoTポートのディレクトリにコピーします。

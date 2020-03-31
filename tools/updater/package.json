@@ -1,11 +1,10 @@
 {
   "name": "enebular-agent-updater",
-  "version": "2.12.0",
+  "version": "2.13.0",
   "description": "The client to update enebular-agent",
   "repository": "enebular/enebular-agent-updater",
   "main": "lib/src/index.js",
   "scripts": {
-    "prepare": "npm run build",
     "start": "node lib/src/index.js",
     "build": "npm run build:clean && tsc -p tsconfig.build.json",
     "build:clean": "rimraf lib",

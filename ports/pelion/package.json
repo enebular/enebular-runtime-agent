@@ -1,13 +1,12 @@
 {
   "name": "enebular-mbed-agent",
-  "version": "2.12.0",
+  "version": "2.13.0",
   "description": "The 'mbed' port of enebular-agent for enebular",
   "main": "lib/index.js",
   "bin": {
     "enebular-mbed-agent": "./bin/enebular-mbed-agent"
   },
   "scripts": {
-    "prepare": "npm run build",
     "build": "babel src -d lib",
     "start": "node lib/index.js",
     "lint": "eslint src",
