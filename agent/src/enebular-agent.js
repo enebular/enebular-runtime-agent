@@ -687,6 +687,9 @@ export default class EnebularAgent extends EventEmitter {
       case 'deviceStateChange':
         this._monitorManager.refreshMonitoringInterval()
         break
+      case 'deviceCommandSend':
+        console.log('****************deviceCommandSend received!!!!!!!!!!!!!!!!!!!!')
+        break
       default:
         break
     }
