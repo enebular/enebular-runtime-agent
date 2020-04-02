@@ -9,6 +9,7 @@ import EnebularActivator from './enebular-activator'
 import DeviceAuthMediator from './device-auth-mediator'
 import AgentManagerMediator from './agent-manager-mediator'
 import DeviceStateManager from './device-state-manager'
+import DeviceCommandManager from './device-command-manager'
 import AgentInfoManager from './agent-info-manager'
 import AssetManager from './asset-manager'
 import CommandLine from './command-line'
@@ -94,6 +95,7 @@ export default class EnebularAgent extends EventEmitter {
   _deviceAuth: DeviceAuthMediator
   _agentMan: AgentManagerMediator
   _deviceStateManager: DeviceStateManager
+  _deviceCommandManager: DeviceCommandManager 
   _agentInfoManager: AgentInfoManager
   _assetManager: AssetManager
   _aiModelManager: AiModelManager
@@ -186,6 +188,12 @@ export default class EnebularAgent extends EventEmitter {
       this._log
     )
 
+    this._deviceCommandManager = new DeviceCommandManager(
+      this._connectorMessenger,
+      this._messageEmitter,
+      this._log
+    )
+
     this._monitorManager = new MonitorManager(
       this._deviceStateManager,
       this._logManager,
@@ -214,6 +222,7 @@ export default class EnebularAgent extends EventEmitter {
 
     this._nodeRed = new NodeREDController(
       this._deviceStateManager,
+      this._deviceCommandManager,
       this._connectorMessenger,
       this._config,
       this._log,
@@ -686,9 +695,6 @@ export default class EnebularAgent extends EventEmitter {
       case 'deploy':
       case 'deviceStateChange':
         this._monitorManager.refreshMonitoringInterval()
-        break
-      case 'deviceCommandSend':
-        console.log('****************deviceCommandSend received!!!!!!!!!!!!!!!!!!!!')
         break
       default:
         break

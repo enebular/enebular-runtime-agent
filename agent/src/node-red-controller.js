@@ -10,6 +10,7 @@ import { createAiNodeDefinition } from './createAiNodeDefinition'
 import type { Logger } from 'winston'
 import type LogManager from './log-manager'
 import type DeviceStateManager from './device-state-manager'
+import type DeviceCommandManager from './device-command-manager'
 import type ConnectorMessenger from './connector-messenger'
 import type Config from './config'
 
@@ -54,6 +55,7 @@ type FlowStatus = {
 
 export default class NodeREDController {
   _deviceStateMan: DeviceStateManager
+  _deviceCommandMan: DeviceCommandManager
   _connectorMessenger: ConnectorMessenger
   _flowStateFilePath: string
   _flowStartTimeout: number
@@ -83,6 +85,7 @@ export default class NodeREDController {
 
   constructor(
     deviceStateMan: DeviceStateManager,
+    deviceCommandMan: DeviceCommandManager,
     connectorMessenger: ConnectorMessenger,
     config: Config,
     log: Logger,
@@ -97,6 +100,7 @@ export default class NodeREDController {
     }
 
     this._deviceStateMan = deviceStateMan
+    this._deviceCommandMan = deviceCommandMan
     this._connectorMessenger = connectorMessenger
     this._dir = nodeRedConfig.dir
     this._dataDir = nodeRedConfig.dataDir
@@ -119,6 +123,9 @@ export default class NodeREDController {
 
     this._deviceStateMan.on('stateChange', params =>
       this._handleDeviceStateChange(params)
+    )
+    this._deviceCommandMan.on('command', params =>
+      this._handleDeviceCommandSend(params)
     )
 
     this._log = log
@@ -246,6 +253,21 @@ export default class NodeREDController {
       default:
         break
     }
+  }
+
+  async _handleDeviceCommandSend(params: { op: string, body: Object }) {
+    switch (params.op) {
+      case 'deployCancel':
+        this._commandDeployCancel(params.body)
+        break
+      default:
+        break
+    }
+  }
+  
+  _commandDeployCancel(body: Object) {
+    this.debug('deployCancel: ' + JSON.stringify(body, null, 2))
+    
   }
 
   _updateFlowFromDesiredState() {
