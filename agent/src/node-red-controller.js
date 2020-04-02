@@ -1,5 +1,5 @@
 /* @flow */
-import fs from 'fs'
+import fs from 'fs-extra'
 import path from 'path'
 import { spawn, type ChildProcess } from 'child_process'
 import fetch from 'isomorphic-fetch'
@@ -82,6 +82,7 @@ export default class NodeREDController {
   _flowStatus: FlowStatus = { state: 'stopped' }
   _pendingEnableRequest: boolean = false
   _stateAiModelsPath: string
+  _cancelRequest: Object = {}
 
   constructor(
     deviceStateMan: DeviceStateManager,
@@ -261,7 +262,7 @@ export default class NodeREDController {
     switch (params.op) {
       case 'deployCancel':
         try {
-          await this._commandDeployCancel(params.body)
+          await this._commandDeployCancel(params.id, params.body)
           result = 'canceled'
         } catch(err) {
           message = err.message
@@ -284,9 +285,16 @@ export default class NodeREDController {
     this._deviceCommandMan.sendCommandResponse(params.op, params.id, responseBody)
   }
   
-  async _commandDeployCancel(body: Object) {
+  async _commandDeployCancel(id: string, body: Object) {
     this.debug('deployCancel: ' + JSON.stringify(body, null, 2))
 
+    if (!this._cancelRequest.hasOwnProperty(id.toString())) {
+      // register cancel request
+      this._cancelRequest[id] = body
+    }
+    
+
+    delete this._requests[message.id]
   }
 
   _updateFlowFromDesiredState() {
@@ -590,20 +598,32 @@ export default class NodeREDController {
                 this._flowState.assetId,
                 this._flowState.updateId
               )
-              const flowPackage = await this.fetchAndUpdateFlow(downloadUrl)
-              if (this._flowPackageContainsEditSession(flowPackage)) {
-                await this._restartInEditorMode(flowPackage.editSession)
-              } else {
-                if (this._isFlowEnabled()) {
-                  await this._restartService()
-                } else {
-                  this.info('Skipped Node-RED restart since flow is disabled')
-                }
+              const deployParam = {
+                url: downloadUrl,
+                assetId: this._flowState.assetId,
+                updateId: this._flowState.updateId
               }
-
-              this.info(`Deployed flow '${pendingAssetId}'`)
-              this._flowState.updateAttemptCount = 0
-              this._setFlowState('deployed', null)
+              const flowPackage = await this.fetchAndUpdateFlow(deployParam)
+              if(!Object.keys(flowPackage).length) {
+                // deploy cancel
+                this.info('deploy cancel')
+                this._flowState.updateAttemptCount = 0
+                this._setFlowState('deployFail', 'deploy cancel')
+              } else {
+                if (this._flowPackageContainsEditSession(flowPackage)) {
+                  await this._restartInEditorMode(flowPackage.editSession)
+                } else {
+                  if (this._isFlowEnabled()) {
+                    await this._restartService()
+                  } else {
+                    this.info('Skipped Node-RED restart since flow is disabled')
+                  }
+                }
+  
+                this.info(`Deployed flow '${pendingAssetId}'`)
+                this._flowState.updateAttemptCount = 0
+                this._setFlowState('deployed', null)
+              }
             } catch (err) {
               this.error('Error occured during deploy: ' + err.message)
               if (this._flowState.pendingChange === null) {
@@ -722,21 +742,25 @@ export default class NodeREDController {
     return true
   }
 
-  async fetchAndUpdateFlow(downloadUrl: string) {
-    return this._queueAction(() => this._fetchAndUpdateFlow(downloadUrl))
+  async fetchAndUpdateFlow(deployParam: Object) {
+    return this._queueAction(() => this._fetchAndUpdateFlow(deployParam))
   }
 
-  async _fetchAndUpdateFlow(downloadUrl: string): Promise<Object> {
+  async _fetchAndUpdateFlow(deployParam: Object): Promise<Object> {
     this.info('Updating flow')
 
-    const flowPackage = await this._downloadPackage(downloadUrl)
+    let flowPackage = await this._downloadPackage(deployParam.url)
     let editSessionRequested = this._flowPackageContainsEditSession(flowPackage)
     if (editSessionRequested && !this._allowEditSessions) {
       this.info('Edit session flow deploy requested but not allowed')
       throw new Error('Start agent in --dev-mode to allow edit session.')
     }
 
-    await this._updatePackage(flowPackage)
+    let result = await this._updatePackage(flowPackage, deployParam)
+    if(result === false) {
+      // cancel occured
+      flowPackage = {}
+    }
     return flowPackage
   }
 
@@ -761,7 +785,7 @@ export default class NodeREDController {
     return res.json()
   }
 
-  async _updatePackage(flowPackage: NodeRedFlowPackage) {
+  async _updatePackage(flowPackage: NodeRedFlowPackage, deployParam: Object): boolean  {
     this.info('Updating package', flowPackage)
     const updates = []
     if (flowPackage.flow || flowPackage.flows) {
@@ -875,7 +899,7 @@ export default class NodeREDController {
           const packageJSONFilePath = path.join(
             this._getDataDir(),
             'enebular-agent-dynamic-deps',
-            'new-package.json'
+            'package.json'
           )
           if (
             Object.keys(flowPackage.packages).includes(
@@ -908,7 +932,7 @@ export default class NodeREDController {
         })
       )
     }
-    var errorFlag = false;
+    let errorFlag = false;
     await Promise.all(updates)
     .then( function ( error ) {
       error.forEach(function(value) {
@@ -918,67 +942,83 @@ export default class NodeREDController {
       });
     } )
 
-    if(errorFlag == true) {
-      // Delete downloaded new file
-      var filePath;
-      filePath = path.join(this._getDataDir(), 'new-flows.json');
-      if(await this._isExistFile(filePath)) {
-        fs.unlinkSync(filePath);
+    if(errorFlag === false) {
+      try {
+        let result = await this._resolveDependency(deployParam)
+        if(result === true) {
+          // rename downloaded new file
+          await this.renameDownloadNewFile()
+          return true
+        } else {
+          // Delete downloaded new file
+          await this.deleteDownloadNewFile()
+          return false
+        }
+      } catch(err) {
+        // Delete downloaded new file
+        await this.deleteDownloadNewFile()
+        throw new Error('Resolve dependency failed: ' + err.message)
       }
-      filePath = path.join(this._getDataDir(), 'new-flows_cred.json');
-      if(await this._isExistFile(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-      filePath = path.resolve(this._getAiNodesDir(), 'nodes', `new-enebular-ai-node.html`);
-      if(await this._isExistFile(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-      filePath = path.resolve(this._getAiNodesDir(), 'nodes', `new-enebular-ai-node.js`);
-      if(await this._isExistFile(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-      filePath = path.join(this._getDataDir(), 'node-red-enebular-ai-nodes', 'new-package.json');
-      if(await this._isExistFile(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-      filePath = path.join(this._getDataDir(), 'enebular-agent-dynamic-deps', 'new-package.json');
-      if(await this._isExistFile(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-      
-      throw new Error(`Failed update flow package`)
     } else {
-      // rename downloaded new file
-      var filePath;
-      filePath = path.join(this._getDataDir(), 'new-flows.json');
-      if(await this._isExistFile(filePath)) {
-        fs.renameSync(filePath, path.join(this._getDataDir(), 'flows.json'));
-      }
-      filePath = path.join(this._getDataDir(), 'new-flows_cred.json');
-      if(await this._isExistFile(filePath)) {
-        fs.renameSync(filePath, path.join(this._getDataDir(), 'flows_cred.json'));
-      }
-      filePath = path.resolve(this._getAiNodesDir(), 'nodes', `new-enebular-ai-node.html`);
-      if(await this._isExistFile(filePath)) {
-        fs.renameSync(filePath, path.resolve(this._getAiNodesDir(), 'nodes', `enebular-ai-node.html`));
-      }
-      filePath = path.resolve(this._getAiNodesDir(), 'nodes', `new-enebular-ai-node.js`);
-      if(await this._isExistFile(filePath)) {
-        fs.renameSync(filePath, path.resolve(this._getAiNodesDir(), 'nodes', `enebular-ai-node.js`));
-
-      }
-      filePath = path.join(this._getDataDir(), 'node-red-enebular-ai-nodes', 'new-package.json');
-      if(await this._isExistFile(filePath)) {
-        fs.renameSync(filePath, path.join(this._getDataDir(), 'node-red-enebular-ai-nodes', 'package.json'));
-      }
-      filePath = path.join(this._getDataDir(), 'enebular-agent-dynamic-deps', 'new-package.json');
-      if(await this._isExistFile(filePath)) {
-        fs.renameSync(filePath, path.join(this._getDataDir(), 'enebular-agent-dynamic-deps', 'package.json'));
-      }
+      // Delete downloaded new file
+      await this.deleteDownloadNewFile()
+      throw new Error(`Failed update flow package`)
     }
-
-    await this._resolveDependency()
   }
+
+  async renameDownloadNewFile() {
+    let filePath;
+    filePath = path.join(this._getDataDir(), 'new-flows.json');
+    if(await this._isExistFile(filePath)) {
+      fs.renameSync(filePath, path.join(this._getDataDir(), 'flows.json'));
+    }
+    filePath = path.join(this._getDataDir(), 'new-flows_cred.json');
+    if(await this._isExistFile(filePath)) {
+      fs.renameSync(filePath, path.join(this._getDataDir(), 'flows_cred.json'));
+    }
+    filePath = path.resolve(this._getAiNodesDir(), 'nodes', `new-enebular-ai-node.html`);
+    if(await this._isExistFile(filePath)) {
+      fs.renameSync(filePath, path.resolve(this._getAiNodesDir(), 'nodes', `enebular-ai-node.html`));
+    }
+    filePath = path.resolve(this._getAiNodesDir(), 'nodes', `new-enebular-ai-node.js`);
+    if(await this._isExistFile(filePath)) {
+      fs.renameSync(filePath, path.resolve(this._getAiNodesDir(), 'nodes', `enebular-ai-node.js`));
+
+    }
+    filePath = path.join(this._getDataDir(), 'node-red-enebular-ai-nodes', 'new-package.json');
+    if(await this._isExistFile(filePath)) {
+      fs.renameSync(filePath, path.join(this._getDataDir(), 'node-red-enebular-ai-nodes', 'package.json'));
+    }
+  }
+
+  async deleteDownloadNewFile() {
+    let filePath;
+    filePath = path.join(this._getDataDir(), 'new-flows.json');
+    if(await this._isExistFile(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+    filePath = path.join(this._getDataDir(), 'new-flows_cred.json');
+    if(await this._isExistFile(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+    filePath = path.resolve(this._getAiNodesDir(), 'nodes', `new-enebular-ai-node.html`);
+    if(await this._isExistFile(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+    filePath = path.resolve(this._getAiNodesDir(), 'nodes', `new-enebular-ai-node.js`);
+    if(await this._isExistFile(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+    filePath = path.join(this._getDataDir(), 'node-red-enebular-ai-nodes', 'new-package.json');
+    if(await this._isExistFile(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+    filePath = path.join(this._getDataDir(), 'enebular-agent-dynamic-deps', 'new-package.json');
+    if(await this._isExistFile(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  }
+
   async _isExistFile(path) {
     try {
       fs.statSync(path);
@@ -988,15 +1028,60 @@ export default class NodeREDController {
     }
   }
 
-  async _resolveDependency() {
-    return new Promise((resolve, reject) => {
+  async _isExistCancelRequest(assetId: string, updateId: string) :boolean {
+    let result = true
+    for (let id in this._cancelRequest) {
+      if (!this._cancelRequest.hasOwnProperty(id)) {
+        continue
+      }
+      if( assetId === this._cancelRequest[id].assetId &&
+          updateId === this._cancelRequest[id].updateId) {
+          console.log('***************Found!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+          result = true
+          break
+      }
+    }
+    return result
+  }
+
+  async _resolveDependency(deployParam: Object): boolean {
+    let srcDir = path.join(this._getDataDir(), 'node_modules')
+    let dstDir = path.join(this._getDataDir(), 'tmp')
+    fs.copySync(srcDir, dstDir)
+
+    let ret = await new Promise((resolve, reject) => {
       const cproc = spawn('npm', ['install', 'enebular-agent-dynamic-deps'], {
         stdio: 'inherit',
         cwd: this._getDataDir()
       })
-      cproc.on('error', reject)
-      cproc.once('exit', resolve)
+      cproc.on('error', err => {
+        clearInterval(timer)
+        reject(err)
+      })
+      cproc.once('exit', (code, signal) => {
+        clearInterval(timer)
+        if (code !== null) {
+          if (code === 0) {
+            resolve('success')
+          } else {
+            reject(new Error('Execution ended with failure exit code: ' + code))
+          }
+        } else {
+          console.log('KKKKKKKKKKKKKKKKKKKKKKKKKKKKK')
+          resolve('cancel')
+        }
+      })
+      const timer = setInterval(() => {
+        if(this._isExistCancelRequest(deployParam.assetId, deployParam.updateId) === true) {
+          cproc.kill('SIGTERM')
+        }
+      }, 1000)
     })
+
+    if(ret === 'cancel') {
+      return false
+    }
+    return true
   }
 
   _createPIDFile(pid: string) {

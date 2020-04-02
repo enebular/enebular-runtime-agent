@@ -83,7 +83,5 @@ export default class DeviceCommandManager extends EventEmitter {
       'command/response',
       { cmd: resCmd }
     )
-    
   }
-
 }
