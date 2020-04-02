@@ -255,19 +255,38 @@ export default class NodeREDController {
     }
   }
 
-  async _handleDeviceCommandSend(params: { op: string, body: Object }) {
+  async _handleDeviceCommandSend(params: { op: string, id: string, body: Object }) {
+    let result
+    let message
     switch (params.op) {
       case 'deployCancel':
-        this._commandDeployCancel(params.body)
+        try {
+          await this._commandDeployCancel(params.body)
+          result = 'canceled'
+        } catch(err) {
+          message = err.message
+          result = 'cancelFail'
+        }
         break
       default:
         break
     }
+
+    // send response
+    const responseBody = {
+      assetId: params.body.assetId,
+      updateId: params.body.updateId,
+      result: result
+    }
+    if(result === 'cancelFail') {
+      responseBody.message = message
+    }
+    this._deviceCommandMan.sendCommandResponse(params.op, params.id, responseBody)
   }
   
-  _commandDeployCancel(body: Object) {
+  async _commandDeployCancel(body: Object) {
     this.debug('deployCancel: ' + JSON.stringify(body, null, 2))
-    
+
   }
 
   _updateFlowFromDesiredState() {

@@ -41,109 +41,49 @@ export default class DeviceCommandManager extends EventEmitter {
     this._log.error(msg, ...args)
   }
 
-  _notifyCommand(op: string, body: Object) {
-    this.emit('command', { op, body })
+  _isSupportedStateType(type: string): boolean {
+    switch (type) {
+      case 'req':
+        return true
+      default:
+        return false
+    }
+  }
+
+  _notifyCommand(op: string, id: string, body: Object) {
+    this.emit('command', { op, id, body })
   }
 
   _handleDeviceCommandSend(params: Object) {
+    console.log('****************deviceCommandSend received!!!!!!!!!!!!!!!!!!!!')
     this._debug('devide command: ' + JSON.stringify(params, null, 2))
 
     const { type, op, id, body } = params.cmd
-    // パラメータチェック
-
-
-    this._notifyCommand(op, body)
-  }
-/*
-  async _sendStateUpdates() {
-    if (this._sendingStateUpdates) {
+    if (!this._isSupportedStateType(type)) {
+      this._info('Unsupported state type: ' + type)
       return
     }
-    this._sendingStateUpdates = true
 
-    while (this._stateUpdates.length > 0 && this._active) {
-      let updates = this._stateUpdates
-      let updatesLen = updates.length
-      this._stateUpdates = []
-
-      this._debug(`Sending ${updatesLen} state updates...`)
-
-      try {
-        let requestedUpdates = updates.map(update => ({
-          type: update.type,
-          op: update.op,
-          path: update.path,
-          state: update.state,
-          extRef: update.extRef
-        }))
-        let updateResults = await this._connectorMessenger.sendRequest(
-          'deviceState/device/update',
-          { updates: requestedUpdates }
-        )
-        updateResults = updateResults.updates
-        const len = updateResults.length
-        for (let i = 0; i < len; i++) {
-          const updateResult = updateResults[i]
-          if (updateResult.success) {
-            this._debug(`Update ${i + 1}/${updatesLen} sent successfully`)
-            updates.shift()
-          } else {
-            throw new Error(
-              `Update ${i + 1}/${updatesLen} send failed: ` +
-                updateResult.message
-            )
-          }
-        }
-        await delay(1 * 1000)
-      } catch (err) {
-        this._error('Failed to send state updates: ' + err.message)
-        const pauseSec = 60
-        this._info(`Pausing state updates send for ${pauseSec} seconds`)
-        await delay(pauseSec * 1000)
-      }
-
-      this._stateUpdates = updates.concat(this._stateUpdates)
-    }
-
-    this._sendingStateUpdates = false
-
+    this._notifyCommand(op, id, body)
   }
-
-  updateState(
-    type: string,
+  
+  async sendCommandResponse(
     op: string,
-    path: ?string,
-    state: ?Object,
-    extRef: ?Object
-  ) {
-    if (!this._isWritableStateType(type)) {
-      throw new Error('Attempted to update unwritable state type: ' + type)
-    }
-    if (!this.canUpdateState(type)) {
-      throw new Error('Attempted to update state when not functional')
-    }
-
-    // Apply update (ignoring meta as we're not attempting to maintain it for
-    // local changes for the time being)
-    let newState
-    try {
-      newState = this._newStateWithChanges(type, op, path, state, null)
-    } catch (err) {
-      this._error('Failed to apply state changes: ' + err.message)
-      return
-    }
-
-    this._setStateForType(type, newState)
-
-    // Push update
-    this._stateUpdates.push({
-      type: type,
+    id: string,
+    body: Object
+  ) {    
+    const resCmd = {
+      type: 'res',
       op: op,
-      path: path,
-      state: state,
-      extRef: extRef
-    })
-    this._sendStateUpdates()
+      id: id,
+      body: body
+    }
+
+    await this._connectorMessenger.sendRequest(
+      'command/response',
+      { cmd: resCmd }
+    )
+    
   }
-  */
+
 }
