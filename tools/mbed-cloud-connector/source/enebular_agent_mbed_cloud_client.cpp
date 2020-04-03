@@ -7,14 +7,12 @@
 #include "enebular_agent_mbed_cloud_client.h"
 #include "enebular_agent_fcc_dev_flow.h"
 
-#define OBJECT_ID_DEPLOY_FLOW           (26242)
 #define OBJECT_ID_REGISTER              (26243)
 #define OBJECT_ID_AUTH_TOKEN            (26244)
 #define OBJECT_ID_AGENT_INFO            (26246)
 #define OBJECT_ID_DEVICE_STATE          (26247)
 #define OBJECT_ID_ENEBULAR_MSG          (26248)
 
-#define RESOURCE_ID_DOWNLOAD_URL            (26241)
 #define RESOURCE_ID_CONNECTION_ID           (26241)
 #define RESOURCE_ID_DEVICE_ID               (26242)
 #define RESOURCE_ID_AUTH_REQUEST_URL        (26243)
@@ -97,11 +95,6 @@ EnebularAgentMbedCloudClient::~EnebularAgentMbedCloudClient()
 
 void EnebularAgentMbedCloudClient::setup_objects()
 {
-    _deploy_flow_download_url_res = add_rw_resource(
-        OBJECT_ID_DEPLOY_FLOW, 0, RESOURCE_ID_DOWNLOAD_URL, "download_url",
-        M2MResourceInstance::STRING, NULL, false,
-        value_updated_callback(this, &EnebularAgentMbedCloudClient::deploy_flow_download_url_cb), 0);
-
     _register_connection_id_res = add_rw_resource(
         OBJECT_ID_REGISTER, 0, RESOURCE_ID_CONNECTION_ID, "connection_id",
         M2MResourceInstance::STRING, NULL, false,
@@ -153,19 +146,6 @@ void EnebularAgentMbedCloudClient::setup_objects()
         value_updated_callback(this, &EnebularAgentMbedCloudClient::enebular_msg_from_device_cb), 0);
 }
 
-void EnebularAgentMbedCloudClient::process_deploy_flow_update()
-{
-    char msg[1024*4];
-
-    snprintf(msg, sizeof(msg)-1,
-        "{"
-            "\"downloadUrl\": \"%s\""
-        "}",
-        _deploy_flow_download_url_res->get_value_string().c_str());
-    msg[sizeof(msg)-1] = '\0';
-
-    queue_agent_man_msg("deploy", msg);
-}
 
 void EnebularAgentMbedCloudClient::process_register_update()
 {
@@ -239,15 +219,6 @@ void EnebularAgentMbedCloudClient::process_device_state_change()
 {
     queue_agent_man_msg("deviceStateChange",
         _device_state_change_res->get_value_string().c_str());
-}
-
-/* Note: called from separate thread */
-void EnebularAgentMbedCloudClient::deploy_flow_download_url_cb(const char *name)
-{
-    _logger->log_console(DEBUG, "Client: deploy_flow_download_url: %s",
-        _deploy_flow_download_url_res->get_value_string().c_str());
-
-    process_deploy_flow_update();
 }
 
 /* Note: called from separate thread */

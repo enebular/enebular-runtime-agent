@@ -4,26 +4,21 @@ image:
 
 definitions: 
   steps:
-    - step: &nop
-        name: No Process
-        script:
-          - echo 'No Process'
     - step: &build-test
         name: Build and test
         script:
           - (node -v | xargs echo nodejs version:)
           - (npm -v | xargs echo npm version:)
           - echo 'if ((`git diff package-lock.json | wc -l` != 0)); then echo "package-lock.file is required to be committed" && (exit 1); fi;' > /tmp/check_lock_file.sh
-          # build
-# TODO: change npm i to npm ci once ci is available
-          - (cd node-red && npm i)
-          - (cd agent && npm i && . /tmp/check_lock_file.sh)
-          - (cd ports/awsiot && npm i && . /tmp/check_lock_file.sh)
-          - (cd ports/pelion && npm i && . /tmp/check_lock_file.sh)
-          - (cd tools/updater/awsiot-thing-creator && npm i && . /tmp/check_lock_file.sh)
-          - (cd tools/updater && npm i && . /tmp/check_lock_file.sh)
+          # install & build
+          - (cd node-red && npm ci)
+          - (cd agent && npm ci && npm run build && . /tmp/check_lock_file.sh)
+          - (cd ports/awsiot && npm ci && npm run build && . /tmp/check_lock_file.sh)
+          - (cd ports/pelion && npm ci && npm run build && . /tmp/check_lock_file.sh)
+          - (cd tools/updater/awsiot-thing-creator && npm ci && npm run build && . /tmp/check_lock_file.sh)
+          - (cd tools/updater && npm ci && npm run build && . /tmp/check_lock_file.sh)
           # test
-          - (cd agent && npm run test:serial)
+          - (cd agent && npm run test)
           - (cd ports/awsiot
             && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientId":"thing_name","thingName":"thing_name","caCert":"./certs/root_certificate","clientCert":"./certs/thing_cert","privateKey":"./certs/thing_private_key","topic":"aws/things/thing_name/shadow/update"}' > ./config.json
             && npm run test && rm ./config.json)
@@ -85,8 +80,8 @@ definitions:
           - tar --transform "flags=S;s,^\.,${AGENT_NAME}," -czf /tmp/${AGENT_NAME}-prebuilt.tar.gz .
           - mv /tmp/${AGENT_NAME}-prebuilt.tar.gz dist/
           - UPDATER_NAME=enebular-agent-updater-${BITBUCKET_TAG}
-          - (cd tools/updater/awsiot-thing-creator && npm i --production)
-          - (cd tools/updater && npm i --production && tar --transform "s,^\.,${UPDATER_NAME}," -czf /tmp/${UPDATER_NAME}.tar.gz .)
+          - (cd tools/updater/awsiot-thing-creator && npm ci --production)
+          - (cd tools/updater && npm ci --production && tar --transform "s,^\.,${UPDATER_NAME}," -czf /tmp/${UPDATER_NAME}.tar.gz .)
           - mv /tmp/${UPDATER_NAME}.tar.gz dist/
         artifacts:
           - dist/**
@@ -171,14 +166,24 @@ definitions:
           - python tools/s3_upload.py ${ENEBULAR_AGENT_S3_BUCKET} "tools/install/install.sh" ${ENEBULAR_AGENT_S3_INSTALLSH_DIR}
         artifacts:
           - '**'
+    - step: &clamav-scan
+          name: ClamAV scan
+          image: atlassian/default-image:2
+          script:
+            - apt-get -y update
+            - apt-get -y install clamav
+            - freshclam
+            - clamscan --infected --remove --recursive ./
 pipelines:
-  default: 
-    - step: *nop
+  branches:
+    develop:
+    - step: *build-test
   tags:
     '[0-9]*.[0-9]*.[0-9]*':
       - step: *build-test
       - step: *set-pub-key-release
       - step: *pack-prebuilt
+      - step: *clamav-scan
       - parallel:
           - step: *pack-x64
           - step: *pack-armv7l
@@ -188,6 +193,7 @@ pipelines:
       - step: *build-test
       - step: *set-pub-key-staging
       - step: *pack-prebuilt
+      - step: *clamav-scan
       - parallel:
           - step: *pack-x64
           - step: *pack-armv7l

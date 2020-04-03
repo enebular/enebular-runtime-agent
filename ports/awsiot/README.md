@@ -15,21 +15,21 @@ Please read [enebular-docs](https://docs.enebular.com/) for more info.
 
 ```
 cd agent
-npm install
+npm ci && npm run build
 ```
 
 2 . Install the Node-RED instance.
 
 ```
 cd node-red
-npm install
+npm ci
 ```
 
 3 . Install the AWS IoT port's modules.
 
 ```
 cd ports/awsiot
-npm install
+npm ci && npm run build
 ```
 
 4 . Obtain the AWS IoT thing cert files to be used with this device (from the AWS console etc) and copy them to the AWS IoT port's directory.
