@@ -209,8 +209,8 @@ pipelines:
       - step: *build-test
       - step: *set-pub-key
       - step: *pack-prebuilt
-      - parallel:
-          - step: *pack-x64
+#      - parallel:
+#          - step: *pack-x64
 #          - step: *pack-armv7l
 #          - step: *pack-arm64
       - step: *upload-installsh
