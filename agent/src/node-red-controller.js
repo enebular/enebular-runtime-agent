@@ -1068,7 +1068,7 @@ export default class NodeREDController {
     }
   }
 
-  async _isExistFile(path) {
+  async _isExistFile(path): boolean {
     try {
       fs.statSync(path);
       return true;
@@ -1089,28 +1089,34 @@ export default class NodeREDController {
   async _resolveDependency(deployParam: Object): boolean {
     let bsDir = path.join(this._getDataDir(), 'node_modules')
     let bkDir = path.join(this._getDataDir(), 'tmp')
-    fs.copySync(bsDir, bkDir)
+    if(await this._isExistFile(bsDir)) {
+      fs.copySync(bsDir, bkDir)
+    }
 
     let ret = await new Promise((resolve, reject) => {
       const cproc = spawn('npm', ['install', 'enebular-agent-dynamic-deps'], {
         stdio: 'inherit',
         cwd: this._getDataDir()
       })
-      cproc.on('error', err => {
+      cproc.on('error', async err => {
         clearInterval(timer)
         fs.removeSync(bsDir)
-        fs.copySync(bkDir, bsDir)
+        if(await this._isExistFile(bkDir)) {
+          fs.copySync(bkDir, bsDir)
+        }
         fs.removeSync(bkDir)
         reject(err)
       })
-      cproc.once('exit', (code, signal) => {
+      cproc.once('exit', async (code, signal) => {
         clearInterval(timer)
         if (code !== null) {
           if (code === 0) {
             resolve('success')
           } else {
             fs.removeSync(bsDir)
-            fs.copySync(bkDir, bsDir)
+            if(await this._isExistFile(bkDir)) {
+              fs.copySync(bkDir, bsDir)
+            }
             fs.removeSync(bkDir)
             reject(new Error('Execution ended with failure exit code: ' + code))
           }
@@ -1129,7 +1135,9 @@ export default class NodeREDController {
 
     if(ret === 'cancel') {
       fs.removeSync(bsDir)
-      fs.copySync(bkDir, bsDir)
+      if(await this._isExistFile(bkDir)) {
+        fs.copySync(bkDir, bsDir)
+      }
       fs.removeSync(bkDir)
       return false
     }
