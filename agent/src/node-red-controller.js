@@ -83,6 +83,7 @@ export default class NodeREDController {
   _pendingEnableRequest: boolean = false
   _stateAiModelsPath: string
   _cancelRequest: Object = {}
+  _deployRequest: Array<Object> = []
 
   constructor(
     deviceStateMan: DeviceStateManager,
@@ -267,6 +268,7 @@ export default class NodeREDController {
         } catch(err) {
           message = err.message
           result = 'cancelFail'
+          console.log('***************************** message: ' + message)
         }
         break
       default:
@@ -288,13 +290,53 @@ export default class NodeREDController {
   async _commandDeployCancel(id: string, body: Object) {
     this.debug('deployCancel: ' + JSON.stringify(body, null, 2))
 
-    if (!this._cancelRequest.hasOwnProperty(id.toString())) {
-      // register cancel request
-      this._cancelRequest[id] = body
+    if(this._deployRequest.length === 0) {
+      throw new Error('Flow deploy request is none')
+    }
+
+    if(Object.keys(_cancelRequest).length) {
+      throw new Error('Cancel reauest is already')
+    }
+
+    // debug
+    /*
+    let testBody = {}
+    this._deployRequest.forEach(item => {
+      testBody = {
+        assetId: item.assetId,
+        updateId: item.updateId
+      }
+    })
+    */
+
+    if(this._isExistDeployRequest(body) === false) {
+      throw new Error('No matching flow found')
     }
     
+    // register cancel request
+    this._cancelRequest = body
 
-    delete this._requests[message.id]
+    // wait cancel process
+    await new Promise(resolve => {
+      const timer = setInterval(() => {
+        if(this._isExistDeployRequest(body) === true) {
+          clearInterval(timer)
+          resolve()
+        }
+      }, 100)
+    }) 
+    this._cancelRequest = {}
+  }
+
+  _isExistDeployRequest(ids: Object) : boolean {
+    let isExist = false
+    this._deployRequest.forEach(item => {
+      if(item.assetId === ids.assetId && item.updateId === ids.updateId) {
+        isExist = true
+      }
+    })
+
+    return isExist
   }
 
   _updateFlowFromDesiredState() {
@@ -579,6 +621,12 @@ export default class NodeREDController {
             this._flowState.assetId = pendingAssetId
             this._flowState.updateId = pendingUpdateId
 
+            // Push flow info
+            this._deployRequest.push({
+              assetId: pendingAssetId,
+              updateId: pendingUpdateId
+            })
+
             // Handle too many attempts
             if (this._flowState.updateAttemptCount > 3) {
               this.info(`Deploy failed maximum number of times (3)`)
@@ -641,6 +689,7 @@ export default class NodeREDController {
                 this.info('Deploy failed, but new change already pending.')
               }
             }
+            this._deployRequest.pop()
             break
 
           case 'remove':
@@ -1028,26 +1077,19 @@ export default class NodeREDController {
     }
   }
 
-  async _isExistCancelRequest(assetId: string, updateId: string) :boolean {
-    let result = true
-    for (let id in this._cancelRequest) {
-      if (!this._cancelRequest.hasOwnProperty(id)) {
-        continue
-      }
-      if( assetId === this._cancelRequest[id].assetId &&
-          updateId === this._cancelRequest[id].updateId) {
-          console.log('***************Found!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-          result = true
-          break
-      }
+  _isExistCancelRequest(assetId: string, updateId: string) :boolean {
+    if( assetId === this._cancelRequest.assetId &&
+      updateId === this._cancelRequest.updateId) {
+      console.log('***************Found!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+      return true
     }
-    return result
+    return false
   }
 
   async _resolveDependency(deployParam: Object): boolean {
-    let srcDir = path.join(this._getDataDir(), 'node_modules')
-    let dstDir = path.join(this._getDataDir(), 'tmp')
-    fs.copySync(srcDir, dstDir)
+    let bsDir = path.join(this._getDataDir(), 'node_modules')
+    let bkDir = path.join(this._getDataDir(), 'tmp')
+    fs.copySync(bsDir, bkDir)
 
     let ret = await new Promise((resolve, reject) => {
       const cproc = spawn('npm', ['install', 'enebular-agent-dynamic-deps'], {
@@ -1056,6 +1098,9 @@ export default class NodeREDController {
       })
       cproc.on('error', err => {
         clearInterval(timer)
+        fs.removeSync(bsDir)
+        fs.copySync(bkDir, bsDir)
+        fs.removeSync(bkDir)
         reject(err)
       })
       cproc.once('exit', (code, signal) => {
@@ -1064,23 +1109,31 @@ export default class NodeREDController {
           if (code === 0) {
             resolve('success')
           } else {
+            fs.removeSync(bsDir)
+            fs.copySync(bkDir, bsDir)
+            fs.removeSync(bkDir)
             reject(new Error('Execution ended with failure exit code: ' + code))
           }
         } else {
-          console.log('KKKKKKKKKKKKKKKKKKKKKKKKKKKKK')
           resolve('cancel')
         }
       })
       const timer = setInterval(() => {
-        if(this._isExistCancelRequest(deployParam.assetId, deployParam.updateId) === true) {
+        let ret = this._isExistCancelRequest(deployParam.assetId, deployParam.updateId)
+        if(ret === true) {
           cproc.kill('SIGTERM')
-        }
-      }, 1000)
+          clearInterval(timer)
+       }
+      }, 100)
     })
 
     if(ret === 'cancel') {
+      fs.removeSync(bsDir)
+      fs.copySync(bkDir, bsDir)
+      fs.removeSync(bkDir)
       return false
     }
+    fs.removeSync(bkDir)
     return true
   }
 
