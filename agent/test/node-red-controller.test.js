@@ -138,7 +138,7 @@ async function createAgentRunningWithDeployedFlow(
     }
 
     // give it 2s to start
-    t.true(await polling(callback, 2000, 500, 30000))
+    t.true(await polling(callback, 2000, 500, 50000))
     const api = new NodeRedAdminApi('http://127.0.0.1:' + NodeRedPort)
     const flow = await api.getFlow()
     t.truthy(flow)
