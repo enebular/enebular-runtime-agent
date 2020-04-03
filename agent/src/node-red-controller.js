@@ -268,7 +268,6 @@ export default class NodeREDController {
         } catch(err) {
           message = err.message
           result = 'cancelFail'
-          console.log('***************************** message: ' + message)
         }
         break
       default:
@@ -288,13 +287,13 @@ export default class NodeREDController {
   }
   
   async _commandDeployCancel(id: string, body: Object) {
-    this.debug('deployCancel: ' + JSON.stringify(body, null, 2))
+    let cancelIds = body
 
     if(this._deployRequest.length === 0) {
       throw new Error('Flow deploy request is none')
     }
 
-    if(Object.keys(_cancelRequest).length) {
+    if(Object.keys(this._cancelRequest).length) {
       throw new Error('Cancel reauest is already')
     }
 
@@ -307,19 +306,20 @@ export default class NodeREDController {
         updateId: item.updateId
       }
     })
+    cancelIds = testBody
     */
 
-    if(this._isExistDeployRequest(body) === false) {
+    if(this._isExistDeployRequest(cancelIds) === false) {
       throw new Error('No matching flow found')
     }
     
     // register cancel request
-    this._cancelRequest = body
+    this._cancelRequest = cancelIds
 
     // wait cancel process
     await new Promise(resolve => {
       const timer = setInterval(() => {
-        if(this._isExistDeployRequest(body) === true) {
+        if(this._isExistDeployRequest(cancelIds) === true) {
           clearInterval(timer)
           resolve()
         }
