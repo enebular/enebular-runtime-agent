@@ -1080,7 +1080,6 @@ export default class NodeREDController {
   _isExistCancelRequest(assetId: string, updateId: string) :boolean {
     if( assetId === this._cancelRequest.assetId &&
       updateId === this._cancelRequest.updateId) {
-      console.log('***************Found!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
       return true
     }
     return false
