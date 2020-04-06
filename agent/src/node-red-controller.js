@@ -312,7 +312,7 @@ export default class NodeREDController {
           clearInterval(timer)
           resolve()
         }
-      }, 1000)
+      }, 100)
     }) 
     this._cancelRequest = {}
   }
@@ -1074,6 +1074,16 @@ export default class NodeREDController {
     return false
   }
 
+  async _restoreDirectory(baseDir: string, backupDir: string) {
+    console.log('baseDir :' + baseDir)
+    console.log('backupDir :' + backupDir)
+    fs.removeSync(baseDir)
+    if(await this._isExistFile(backupDir)) {
+      fs.copySync(backupDir, baseDir)
+    }
+    fs.removeSync(backupDir)
+  }
+
   async _resolveDependency(deployParam: Object): boolean {
     let bsDir = path.join(this._getDataDir(), 'node_modules')
     let bkDir = path.join(this._getDataDir(), 'tmp')
@@ -1088,11 +1098,7 @@ export default class NodeREDController {
       })
       cproc.on('error', async err => {
         clearInterval(timer)
-        fs.removeSync(bsDir)
-        if(await this._isExistFile(bkDir)) {
-          fs.copySync(bkDir, bsDir)
-        }
-        fs.removeSync(bkDir)
+        await this._restoreDirectory(bsDir, bkDir)
         reject(err)
       })
       cproc.once('exit', async (code, signal) => {
@@ -1101,11 +1107,7 @@ export default class NodeREDController {
           if (code === 0) {
             resolve('success')
           } else {
-            fs.removeSync(bsDir)
-            if(await this._isExistFile(bkDir)) {
-              fs.copySync(bkDir, bsDir)
-            }
-            fs.removeSync(bkDir)
+            await this._restoreDirectory(bsDir, bkDir)
             reject(new Error('Execution ended with failure exit code: ' + code))
           }
         } else {
@@ -1122,11 +1124,7 @@ export default class NodeREDController {
     })
 
     if(ret === 'cancel') {
-      fs.removeSync(bsDir)
-      if(await this._isExistFile(bkDir)) {
-        fs.copySync(bkDir, bsDir)
-      }
-      fs.removeSync(bkDir)
+      await this._restoreDirectory(bsDir, bkDir)
       return false
     }
     fs.removeSync(bkDir)
