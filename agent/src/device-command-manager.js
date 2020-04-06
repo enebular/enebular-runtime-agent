@@ -58,8 +58,20 @@ export default class DeviceCommandManager extends EventEmitter {
     this._debug('devide command: ' + JSON.stringify(params, null, 2))
 
     const { type, op, id, body } = params.cmd
+
+    // Parameter Check
     if (!this._isSupportedStateType(type)) {
       this._info('Unsupported state type: ' + type)
+      return
+    }
+
+    if(op === undefined || id === undefined || body === undefined) {
+      this._info('Parameter error')
+      return
+    }
+
+    if (id > 65535) {
+      this._info('id error : ' + id)
       return
     }
 

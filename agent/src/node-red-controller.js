@@ -257,7 +257,9 @@ export default class NodeREDController {
     }
   }
 
-  async _handleDeviceCommandSend(params: { op: string, id: string, body: Object }) {
+  async _handleDeviceCommandSend(params: Object) {
+    console.log('_handleDeviceCommandSend: ' + JSON.stringify(params, null, 2))
+
     let result
     let message
     switch (params.op) {
@@ -271,7 +273,8 @@ export default class NodeREDController {
         }
         break
       default:
-        break
+        this.info('Unsupported operation: ' + params.op)
+        return
     }
 
     // send response
@@ -289,6 +292,10 @@ export default class NodeREDController {
   
   async _commandDeployCancel(id: string, body: Object) {
     let cancelIds = body
+
+    if(!body.hasOwnProperty('assetId') || !body.hasOwnProperty('updateId')) {
+      throw new Error('Parameter error')
+    }
 
     if(this._deployRequest.length === 0) {
       throw new Error('Flow deploy request is none')
