@@ -211,8 +211,8 @@ pipelines:
       - step: *pack-prebuilt
       - parallel:
           - step: *pack-x64
-#          - step: *pack-armv7l
-#          - step: *pack-arm64
+          - step: *pack-armv7l
+          - step: *pack-arm64
       - step: *upload-installsh
       - step: *upload
 definitions:

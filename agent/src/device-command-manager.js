@@ -78,6 +78,8 @@ export default class DeviceCommandManager extends EventEmitter {
       body: body
     }
 
+    this._debug('cancel reuponse: ' + JSON.stringify(resCmd, null, 2))
+
     await this._connectorMessenger.sendRequest(
       'command/response',
       { cmd: resCmd }

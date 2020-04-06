@@ -283,6 +283,7 @@ export default class NodeREDController {
     if(result === 'cancelFail') {
       responseBody.message = message
     }
+
     this._deviceCommandMan.sendCommandResponse(params.op, params.id, responseBody)
   }
   
@@ -297,18 +298,6 @@ export default class NodeREDController {
       throw new Error('Cancel reauest is already')
     }
 
-    // debug
-    /*
-    let testBody = {}
-    this._deployRequest.forEach(item => {
-      testBody = {
-        assetId: item.assetId,
-        updateId: item.updateId
-      }
-    })
-    cancelIds = testBody
-    */
-
     if(this._isExistDeployRequest(cancelIds) === false) {
       throw new Error('No matching flow found')
     }
@@ -319,11 +308,11 @@ export default class NodeREDController {
     // wait cancel process
     await new Promise(resolve => {
       const timer = setInterval(() => {
-        if(this._isExistDeployRequest(cancelIds) === true) {
+        if(this._isExistDeployRequest(cancelIds) === false) {
           clearInterval(timer)
           resolve()
         }
-      }, 100)
+      }, 1000)
     }) 
     this._cancelRequest = {}
   }
@@ -654,7 +643,7 @@ export default class NodeREDController {
               const flowPackage = await this.fetchAndUpdateFlow(deployParam)
               if(!Object.keys(flowPackage).length) {
                 // deploy cancel
-                this.info('deploy cancel')
+                this.info('deploy canceled')
                 this._flowState.updateAttemptCount = 0
                 this._setFlowState('deployFail', 'deploy cancel')
               } else {
