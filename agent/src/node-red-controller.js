@@ -1070,10 +1070,6 @@ export default class NodeREDController {
     if(await this._isExistFile(filePath)) {
       fs.unlinkSync(filePath);
     }
-    filePath = path.join(this._getDataDir(), 'enebular-agent-dynamic-deps', 'new-package.json');
-    if(await this._isExistFile(filePath)) {
-      fs.unlinkSync(filePath);
-    }
   }
 
   async _isExistFile(path): boolean {
