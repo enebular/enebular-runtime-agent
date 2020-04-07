@@ -1,7 +1,6 @@
 /* @flow */
 
 import EventEmitter from 'events'
-import { delay } from './utils'
 
 import type ConnectorMessenger from './connector-messenger'
 import type { Logger } from 'winston'
