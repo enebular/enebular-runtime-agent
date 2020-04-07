@@ -258,8 +258,6 @@ export default class NodeREDController {
   }
 
   async _handleDeviceCommandSend(params: Object) {
-    console.log('_handleDeviceCommandSend: ' + JSON.stringify(params, null, 2))
-
     let result
     let message
     switch (params.op) {
@@ -298,7 +296,7 @@ export default class NodeREDController {
     }
 
     if(this._deployRequest.length === 0) {
-      throw new Error('Flow deploy request is none')
+      throw new Error('Cancelable flow deploy request is none')
     }
 
     if(Object.keys(this._cancelRequest).length) {
@@ -312,7 +310,7 @@ export default class NodeREDController {
     // register cancel request
     this._cancelRequest = cancelIds
 
-    // wait cancel process
+    // wait deploy cancel process
     await new Promise(resolve => {
       const timer = setInterval(() => {
         if(this._isExistDeployRequest(cancelIds) === false) {
@@ -321,6 +319,15 @@ export default class NodeREDController {
         }
       }, 100)
     }) 
+    if(!Object.keys(this._cancelRequest).length) {
+      // cancel error occured
+      throw new Error('deploy cancel error')
+    }
+
+    this._clearCancelRequest()
+  }
+
+  _clearCancelRequest() {
     this._cancelRequest = {}
   }
 
@@ -648,6 +655,9 @@ export default class NodeREDController {
                 updateId: this._flowState.updateId
               }
               const flowPackage = await this.fetchAndUpdateFlow(deployParam)
+              // Flow update process is finished
+              this._deployRequest.pop()
+
               if(!Object.keys(flowPackage).length) {
                 // deploy cancel
                 this.info('deploy canceled')
@@ -684,8 +694,8 @@ export default class NodeREDController {
               } else {
                 this.info('Deploy failed, but new change already pending.')
               }
-            }
-            this._deployRequest.pop()
+              this._deployRequest.pop()
+            } 
             break
 
           case 'remove':
@@ -1002,7 +1012,9 @@ export default class NodeREDController {
       } catch(err) {
         // Delete downloaded new file
         await this.deleteDownloadNewFile()
-        throw new Error('Resolve dependency failed: ' + err.message)
+        // for reason, cancel process is failed 
+        this._clearCancelRequest()
+        return false
       }
     } else {
       // Delete downloaded new file
@@ -1082,8 +1094,6 @@ export default class NodeREDController {
   }
 
   async _restoreDirectory(baseDir: string, backupDir: string) {
-    console.log('baseDir :' + baseDir)
-    console.log('backupDir :' + backupDir)
     fs.removeSync(baseDir)
     if(await this._isExistFile(backupDir)) {
       fs.copySync(backupDir, baseDir)
@@ -1122,11 +1132,10 @@ export default class NodeREDController {
         }
       })
       const timer = setInterval(() => {
-        let ret = this._isExistCancelRequest(deployParam.assetId, deployParam.updateId)
-        if(ret === true) {
+        if(this._isExistCancelRequest(deployParam.assetId, deployParam.updateId)) {
           cproc.kill('SIGTERM')
           clearInterval(timer)
-       }
+        }
       }, 100)
     })
 
