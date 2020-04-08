@@ -263,7 +263,7 @@ export default class NodeREDController {
     switch (params.op) {
       case 'deployCancel':
         try {
-          await this._commandDeployCancel(params.id, params.body)
+          await this._commandDeployCancel(params.body)
           result = 'canceled'
         } catch(err) {
           message = err.message
@@ -288,7 +288,7 @@ export default class NodeREDController {
     this._deviceCommandMan.sendCommandResponse(params.op, params.id, responseBody)
   }
   
-  async _commandDeployCancel(id: string, body: Object) {
+  async _commandDeployCancel(body: Object) {
     let cancelIds = body
 
     if(!body.hasOwnProperty('assetId') || !body.hasOwnProperty('updateId')) {

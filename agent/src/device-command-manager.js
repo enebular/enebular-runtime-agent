@@ -54,7 +54,7 @@ export default class DeviceCommandManager extends EventEmitter {
   }
 
   _handleDeviceCommandSend(params: Object) {
-    this._debug('devide command: ' + JSON.stringify(params, null, 2))
+    this._debug('device command: ' + JSON.stringify(params, null, 2))
 
     const { type, op, id, body } = params.cmd
 
