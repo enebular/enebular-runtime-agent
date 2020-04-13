@@ -205,6 +205,14 @@ function handleStateMessageChange(messageJSON: string) {
   updateThingShadowReportedRoot({ message: messageJSON })
 }
 
+function handleDeviceCommandMessage(messageJSON: string) {
+  try {
+    connector.sendMessage(`deviceCommandSend`, JSON.parse(messageJSON))
+  } catch (err) {
+    error('Message parse failed. ' + err)
+  }
+}
+
 function setupThingShadow(config: AWSIoTConfig) {
   /**
    * Add a MQTT Last Will and Testament (LWT) so that the connection state in
@@ -217,8 +225,10 @@ function setupThingShadow(config: AWSIoTConfig) {
   }
   const shadow = awsIot.thingShadow(config)
   const toDeviceTopic = `enebular/things/${thingName}/msg/to_device`
+  const deviceCommandSendTopic = `enebular/things/${thingName}/msg/command`
 
   shadow.subscribe(toDeviceTopic)
+  shadow.subscribe(deviceCommandSendTopic)
 
   shadow.on('connect', () => {
     info('Connected to AWS IoT')
@@ -279,6 +289,8 @@ function setupThingShadow(config: AWSIoTConfig) {
   shadow.on('message', (topic, payload) => {
     if (topic === toDeviceTopic) {
       connector.sendCtrlMessage(JSON.parse(payload))
+    } else if(topic === deviceCommandSendTopic) {
+      handleDeviceCommandMessage(payload)
     } else {
       debug('AWS IoT message', topic, payload)
     }

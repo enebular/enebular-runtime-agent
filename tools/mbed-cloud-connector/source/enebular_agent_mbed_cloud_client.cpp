@@ -12,6 +12,7 @@
 #define OBJECT_ID_AGENT_INFO            (26246)
 #define OBJECT_ID_DEVICE_STATE          (26247)
 #define OBJECT_ID_ENEBULAR_MSG          (26248)
+#define OBJECT_ID_DEVICE_COMMAND        (26249)
 
 #define RESOURCE_ID_CONNECTION_ID           (26241)
 #define RESOURCE_ID_DEVICE_ID               (26242)
@@ -25,6 +26,7 @@
 #define RESOURCE_ID_DEVICE_STATE_CHANGE     (26241)
 #define RESOURCE_ID_TO_DEVICE               (26241)
 #define RESOURCE_ID_FROM_DEVICE             (26242)
+#define RESOURCE_ID_DEVICE_COMMAND_SEND     (26241)
 
 #define MAX_RESOURCE_SET_UPDATE_GAP (10)
 
@@ -144,6 +146,11 @@ void EnebularAgentMbedCloudClient::setup_objects()
         OBJECT_ID_ENEBULAR_MSG, 0, RESOURCE_ID_FROM_DEVICE, "from_device",
         M2MResourceInstance::STRING, NULL, true,
         value_updated_callback(this, &EnebularAgentMbedCloudClient::enebular_msg_from_device_cb), 0);
+
+    _device_command_send_res = add_rw_resource(
+        OBJECT_ID_DEVICE_COMMAND, 0, RESOURCE_ID_DEVICE_COMMAND_SEND, "device_command_send",
+        M2MResourceInstance::STRING, NULL, false,
+        value_updated_callback(this, &EnebularAgentMbedCloudClient::device_command_send_cb), 0);
 }
 
 
@@ -219,6 +226,12 @@ void EnebularAgentMbedCloudClient::process_device_state_change()
 {
     queue_agent_man_msg("deviceStateChange",
         _device_state_change_res->get_value_string().c_str());
+}
+
+void EnebularAgentMbedCloudClient::process_device_command_send()
+{
+    queue_agent_man_msg("deviceCommandSend",
+        _device_command_send_res->get_value_string().c_str());
 }
 
 /* Note: called from separate thread */
@@ -332,6 +345,15 @@ void EnebularAgentMbedCloudClient::enebular_msg_from_device_cb(const char *name)
         _enebular_msg_from_device_res->get_value_string().c_str());
 
     //
+}
+
+/* Note: called from separate thread */
+void EnebularAgentMbedCloudClient::device_command_send_cb(const char *name)
+{
+    _logger->log_console(DEBUG, "Client: device_command_send: %s",
+        _device_command_send_res->get_value_string().c_str());
+
+    process_device_command_send();
 }
 
 bool EnebularAgentMbedCloudClient::init_fcc()

@@ -1,6 +1,6 @@
 {
   "name": "enebular-runtime-agent",
-  "version": "2.13.0",
+  "version": "2.14.0",
   "description": "The enebular-agent core for enebular",
   "main": "lib/index",
   "scripts": {
@@ -80,7 +80,8 @@
     "unix-dgram": "^2.0.3",
     "winston": "^3.2.1",
     "winston-compat": "^0.1.4",
-    "winston-syslog": "^2.3.0"
+    "winston-syslog": "^2.3.0",
+    "fs-extra": "^9.0.0"
   },
   "ava": {
     "files": [
