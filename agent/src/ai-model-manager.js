@@ -850,12 +850,10 @@ export default class AiModelManager {
         this.info('Pulling image: ', repoTag)
         this._docker.pull(repoTag, (err, stream) => {
           if (err || !stream) {
-            this.error(err)
             return reject(err)
           }
           const onFinished = (err, output) => {
             if (err) {
-              this.error(err)
               return reject(err)
             }
 
@@ -877,7 +875,6 @@ export default class AiModelManager {
       })
       return output
     } catch (err) {
-      this.error(err)
       throw new Error(`Could not pull docker image: ${err.message}`)
     }
   }
