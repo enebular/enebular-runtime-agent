@@ -53,7 +53,7 @@ export default class DeviceAuthMediator extends EventEmitter {
       this.debug('updateAuth:tokenUpdate command received')
       if (this._requestingAuth) {
         const payload = jwt.decode(idToken)
-        this.debug('ID token:', payload)
+        this.debug('ID token: ' + JSON.stringify(payload, null, 2))
         if (
           state === `req-${this._seq}` &&
           payload &&
@@ -70,12 +70,10 @@ export default class DeviceAuthMediator extends EventEmitter {
             this.emit('accessTokenUpdate', accessToken)
           }
         } else {
-          this.debug(
-            'Tokens are not for this device - ignoring',
-            payload,
-            this._nonce,
-            state,
-            this._seq
+          this.debug('Tokens are not for this device - ignoring' + JSON.stringify(payload, null, 2) +
+            ', ' + this._nonce + 
+            ', ' + state + 
+            ', ' + this._seq
           )
         }
       } else {
