@@ -158,6 +158,7 @@ private:
     M2MResource *_device_state_change_res;
     M2MResource *_enebular_msg_to_device_res;
     M2MResource *_enebular_msg_from_device_res;
+    M2MResource *_device_command_send_res;
 
     unsigned long long _register_connection_id_time;
     unsigned long long _register_device_id_time;
@@ -221,6 +222,7 @@ private:
     void device_state_change_cb(const char *name);
     void enebular_msg_to_device_cb(const char *name);
     void enebular_msg_from_device_cb(const char *name);
+    void device_command_send_cb(const char *name);
 
     //void example_execute_function(void * argument);
 
@@ -228,6 +230,7 @@ private:
     void process_register_update();
     void process_update_auth_update();
     void process_device_state_change();
+    void process_device_command_send();
 
     void queue_agent_man_msg(const char *type, const char *content);
 
