@@ -394,8 +394,6 @@ export default class EnebularAgent extends EventEmitter {
   }
 
   async shutdownMonitor() {
-    this._monitoringShutdown = true
-    this._updateMonitoringActiveState()
     await this._logManager.shutdown()
     if (this._config.get('ENEBULAR_DAEMON_MODE')) {
       this._removePIDFile()
