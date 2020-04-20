@@ -20,16 +20,31 @@ export default class LogManager {
     if (config.get('ENEBULAR_ENABLE_CONSOLE_LOG')) {
       const logFormat = winston.format.printf((info) => {
         const { level, message, ...meta } = info
+
         let output = ''
         if (meta.context) {
           output += meta.context + ': '
           delete meta.context
         }
-        if (meta.module) {
-          output += meta.module + ': '
-          delete meta.module
+
+        let splat = meta[Symbol.for("splat")]
+        let args = ''
+        for(let i in splat) {
+          if(typeof splat[i] === 'object') {
+            if(splat[i].hasOwnProperty('module')) {
+              output += splat[i].module + ': '
+            } else {
+              args += ' ' + JSON.stringify(splat[i], null, 2)
+            }
+          } else {
+            args += ' ' + splat[i]
+          }
         }
         output += message
+        if(args !== '') {
+          output += args
+        }
+
         if (meta && Object.keys(meta).length > 0) {
           // If meta carries unhandled exception data serialize the stack nicely
           if (Object.keys(meta).length >= 5 && meta.date && meta.process && meta.os && meta.trace && meta.stack) {
@@ -40,10 +55,9 @@ export default class LogManager {
             if (stack) {
               output += '\n' + stack + '\n'
             }
-          } else {
-             output += ' ' + JSON.stringify(meta)
           }
         }
+
         return output
       })
 

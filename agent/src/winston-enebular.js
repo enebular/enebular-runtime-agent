@@ -88,7 +88,21 @@ util.inherits(Enebular, Transport)
 Enebular.prototype.name = 'enebular'
 
 Enebular.prototype.log = function(info, callback) {
-  const { level, message, ...meta } = info
+  let { level, message, ...meta } = info
+
+  let splat = meta[Symbol.for("splat")]
+  for(let i in splat) {
+    if(typeof splat[i] === 'object') {
+      if(splat[i].hasOwnProperty('module')) {
+        meta.module = splat[i].module
+      } else {
+        message += ' ' + JSON.stringify(splat[i], null, 2)
+      }
+    } else {
+      message += ' ' + splat[i]
+    }
+  }
+
   let output = compat.log({
     colorize: false,
     json: true,
