@@ -25,6 +25,9 @@ export default class LogManager {
           output += meta.context + ': '
           delete meta.context
         }
+        if (meta.module) {
+          delete meta.module
+        }
 
         let splat = meta[Symbol.for("splat")]
         let args = ''
@@ -39,10 +42,7 @@ export default class LogManager {
             args += ' ' + splat[i]
           }
         }
-        output += message
-        if(args !== '') {
-          output += args
-        }
+        output += message + args
 
         if (meta && Object.keys(meta).length > 0) {
           // If meta carries unhandled exception data serialize the stack nicely
@@ -78,10 +78,25 @@ export default class LogManager {
         let output = ''
         if (info.timestamp) {
           output += info.timestamp + ' - '
-	}
-        output += info.level + ': ' + info.message
-        if (info.module) {
-          output += ' module=' + info.module
+        }
+        let splat = info[Symbol.for("splat")]
+        let args = ''
+        let module
+        for(let i in splat) {
+          if(typeof splat[i] === 'object') {
+            if(splat[i].hasOwnProperty('module')) {
+              module = splat[i].module
+            } else {
+              args += ' ' + JSON.stringify(splat[i], null, 2)
+            }
+          } else {
+            args += ' ' + splat[i]
+          }
+        }
+        output += info.level + ': ' + info.message + args
+
+        if (module) {
+          output += ' module=' + module
         }
         if (info.context) {
           output += ', context=' + info.context
