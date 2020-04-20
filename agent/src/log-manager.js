@@ -20,7 +20,6 @@ export default class LogManager {
     if (config.get('ENEBULAR_ENABLE_CONSOLE_LOG')) {
       const logFormat = winston.format.printf((info) => {
         const { level, message, ...meta } = info
-
         let output = ''
         if (meta.context) {
           output += meta.context + ': '
@@ -57,7 +56,6 @@ export default class LogManager {
             }
           }
         }
-
         return output
       })
 
