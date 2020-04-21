@@ -317,7 +317,7 @@ export default class EnebularAgent extends EventEmitter {
         'utf8'
       )
     } catch (err) {
-      this._log.error(err)
+      this._log.error('Failed to create PID file: ' + err.message)
     }
   }
 
@@ -325,7 +325,7 @@ export default class EnebularAgent extends EventEmitter {
     try {
       fs.unlinkSync(this._config.get('ENEBULAR_AGENT_PID_FILE'))
     } catch (err) {
-      this._log.error(err)
+      this._log.error('Failed to remove PID file: ' + err.message)
     }
   }
 
@@ -432,7 +432,7 @@ export default class EnebularAgent extends EventEmitter {
         registered = this._agentInfoIsComplete()
       }
     } catch (e) {
-      this._log.error(e)
+      this._log.error('Failed to read config file: ' + e.message)
     }
     this._changeAgentState(registered ? 'registered' : 'unregistered')
   }
@@ -444,7 +444,7 @@ export default class EnebularAgent extends EventEmitter {
       try {
         this._onChangeState()
       } catch (err) {
-        this._log.error(err)
+        this._log.error('Failed to change state: ' + err.message)
       }
     } else {
       this._log.error(
@@ -474,7 +474,7 @@ export default class EnebularAgent extends EventEmitter {
     try {
       fs.writeFileSync(this._configFile, data, 'utf8')
     } catch (err) {
-      this._log.error(err)
+      this._log.error('Failed to save agent info: ' + err.message)
     }
   }
 

@@ -26,10 +26,24 @@ export default class LogManager {
           delete meta.context
         }
         if (meta.module) {
-          output += meta.module + ': '
           delete meta.module
         }
-        output += message
+
+        let splat = meta[Symbol.for("splat")]
+        let args = ''
+        for(let i in splat) {
+          if(typeof splat[i] === 'object') {
+            if(splat[i].hasOwnProperty('module')) {
+              output += splat[i].module + ': '
+            } else {
+              args += ' ' + JSON.stringify(splat[i], null, 2)
+            }
+          } else {
+            args += ' ' + splat[i]
+          }
+        }
+        output += message + args
+
         if (meta && Object.keys(meta).length > 0) {
           // If meta carries unhandled exception data serialize the stack nicely
           if (Object.keys(meta).length >= 5 && meta.date && meta.process && meta.os && meta.trace && meta.stack) {
@@ -40,8 +54,6 @@ export default class LogManager {
             if (stack) {
               output += '\n' + stack + '\n'
             }
-          } else {
-             output += ' ' + JSON.stringify(meta)
           }
         }
         return output
@@ -66,10 +78,25 @@ export default class LogManager {
         let output = ''
         if (info.timestamp) {
           output += info.timestamp + ' - '
-	}
-        output += info.level + ': ' + info.message
-        if (info.module) {
-          output += ' module=' + info.module
+        }
+        let splat = info[Symbol.for("splat")]
+        let args = ''
+        let module
+        for(let i in splat) {
+          if(typeof splat[i] === 'object') {
+            if(splat[i].hasOwnProperty('module')) {
+              module = splat[i].module
+            } else {
+              args += ' ' + JSON.stringify(splat[i], null, 2)
+            }
+          } else {
+            args += ' ' + splat[i]
+          }
+        }
+        output += info.level + ': ' + info.message + args
+
+        if (module) {
+          output += ' module=' + module
         }
         if (info.context) {
           output += ', context=' + info.context
