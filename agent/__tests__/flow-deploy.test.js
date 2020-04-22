@@ -1,5 +1,6 @@
 import fs from 'fs'
 import ProcessUtil, { type RetryInfo } from '../src/process-util'
+import { execSync, type ChildProcess } from 'child_process'
 
 import DummyAgent from './helpers/dummy-agent'
 import NodeREDController from '../src/node-red-controller'
@@ -19,6 +20,22 @@ function sleep(waitms) {
   }) 
 }
 
+function clearFlowConfig() {
+  if (fs.existsSync('./__tests__/.enebular-flow.json')) {
+    fs.unlinkSync('./__tests__/.enebular-flow.json')
+  }
+  if (fs.existsSync('./__tests__/.node-red.pid')) {
+    ProcessUtil.killProcessByPIDFile('./__tests__/.node-red.pid')
+    fs.unlinkSync('./__tests__/.node-red.pid')
+  }
+  if (fs.existsSync('../node-red/.node-red-config/flows.json')) {
+    fs.unlinkSync('../node-red/.node-red-config/flows.json')
+  }
+  if (fs.existsSync('../node-red/.node-red-config/flows_cred.json')) {
+    fs.unlinkSync('../node-red/.node-red-config/flows_cred.json')
+  }
+}
+
 describe('Flow Deploy Test', () => {
   let dummyAgent
   let config
@@ -30,7 +47,16 @@ describe('Flow Deploy Test', () => {
   let nodeRedController
   const sleepTimeProcNodeRed = 10000
 
-  beforeAll(() => {
+  beforeAll(async () => {
+    clearFlowConfig()
+    execSync('npm --prefix ../node-red/ ci --production')
+    /*
+    , {
+      stdio: 'inherit',
+      cwd: '../node-red'
+    })
+    await sleep(sleepTimeProcNodeRed)
+    */
   });
 
   beforeEach(async () => {
@@ -102,19 +128,7 @@ describe('Flow Deploy Test', () => {
   });
 
   afterEach(() => {
-    if (fs.existsSync('./__tests__/.enebular-flow.json')) {
-      fs.unlinkSync('./__tests__/.enebular-flow.json')
-    }
-    if (fs.existsSync('./__tests__/.node-red.pid')) {
-      ProcessUtil.killProcessByPIDFile('./__tests__/.node-red.pid')
-      fs.unlinkSync('./__tests__/.node-red.pid')
-    }
-    if (fs.existsSync('../node-red/.node-red-config/flows.json')) {
-      fs.unlinkSync('../node-red/.node-red-config/flows.json')
-    }
-    if (fs.existsSync('../node-red/.node-red-config/flows_cred.json')) {
-      fs.unlinkSync('../node-red/.node-red-config/flows_cred.json')
-    }
+    clearFlowConfig()
     jest.restoreAllMocks()
     dummyAgent = null
   });
