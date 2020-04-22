@@ -6,29 +6,33 @@ import Config from '../../src/config'
 import AgentManagerMediatorMock from './dummy-agent-manager-mediator'
 import EventEmitter from 'events'
 import LogManager from '../../src/log-manager'
-import {
-    isEmpty
-} from './utils'
 
 const path = require('path');
-const log = require('winston')
 
 export default class DummyAgent {
     _config: Config
     _messageEmitter: EventEmitter
     _agentManagerMediator: AgentManagerMediator;
     _logManager: LogManager
+    _log
 
     constructor(testPath) {
         this._config = new Config(path.resolve(testPath, '.'))
-        this._messageEmitter = new EventEmitter()
-        this._agentManagerMediator = new AgentManagerMediatorMock(log)
-        this._deviceStateManager = new DeviceStateManagerMock(null, this._messageEmitter, this._config, log)
-        this._connectorMessenger = new ConnectorMessenger(/*this._connector*/ null, log, this._config.get('ENEBULAR_CONNECTOR_MESSENGER_REQ_RETYR_TIMEOUT'))
-        this._deviceCommandManager = new DeviceCommandManager(this._connectorMessenger, this._messageEmitter, log)
+ //       this._config.set('ENEBULAR_LOG_LEVEL', 'debug')
+ //       this._config.set('ENEBULAR_ENABLE_CONSOLE_LOG', true)
         this._logManager = new LogManager(this._config)
-        this._assetManager = new AssetManager(this._deviceStateManager, this._agentManagerMediator, this._config, log)
-
+        this._log = this._logManager.addLogger('internal', [
+          'console',
+          'enebular',
+          'file',
+          'syslog'
+        ])
+        this._messageEmitter = new EventEmitter()
+        this._agentManagerMediator = new AgentManagerMediatorMock(this._log)
+        this._deviceStateManager = new DeviceStateManagerMock(null, this._messageEmitter, this._config, this._log)
+        this._connectorMessenger = new ConnectorMessenger(/*this._connector*/ null, this._log, this._config.get('ENEBULAR_CONNECTOR_MESSENGER_REQ_RETYR_TIMEOUT'))
+        this._deviceCommandManager = new DeviceCommandManager(this._connectorMessenger, this._messageEmitter, this._log)
+        this._assetManager = new AssetManager(this._deviceStateManager, this._agentManagerMediator, this._config, this._log)
 
         this._deviceStateManager.__setState("desired", null, {type: "desired", meta: {}, state: {}})
         this._deviceStateManager.__setState("reported", null, {type: "reported", meta: {}, state: {assets: {}}})
@@ -64,7 +68,7 @@ export default class DummyAgent {
     }
 
     log() {
-        return log;
+        return this._log;
     }
 
     async waitReported(timeout) {

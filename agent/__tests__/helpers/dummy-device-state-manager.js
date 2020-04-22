@@ -133,18 +133,12 @@ export default class DeviceStateManagerMock extends DeviceStateManager {
   }
 
   updateState(type, op, path, state, extRef) {
+    /*
     if(state !== undefined) {
-      console.log('state: ' + JSON.stringify(state, null, 2))
+      console.log(`dummy updateState(): type = ${type} / op = ${op} / path = ${path} / extRef = ${extRef} / state = ${JSON.stringify(state, null, 2)}`)
     }
-    let tempReported = {
-      state: {
-        assets: {
-          assets: {}
-        } 
-      }
-    }
-    objectPath.set(tempReported.state, path, state)
-    this._reported = tempReported || {}
+    */
+    this.__setState(type, `state.${path}`, state)
     this._reportedOp = op
   }
 

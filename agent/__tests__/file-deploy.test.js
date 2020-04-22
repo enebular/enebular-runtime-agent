@@ -9,6 +9,7 @@ import mkdirp from 'mkdirp'
 
 const fs = require('fs')
 const path = require('path');
+jest.unmock('winston')
 
 const testAssetID = '5b6aef66-909e-4ae8-8174-ab140c372935'
 let reportedTimeout = 10000
@@ -56,6 +57,7 @@ describe('File Deploy Test', () => {
   beforeEach(() => {
     dummyAgent = new DummyAgent(__dirname)
     utilSpy = jest.spyOn(utils, 'progressRequest').mockImplementation(progressRequestMock);
+    dummyAgent.deviceStateManager().__setState ('reported', null, {state: {assets: {assets: {}}}})
   });
 
   afterEach(() => {
