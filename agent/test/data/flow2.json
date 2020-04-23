@@ -1,1 +1,0 @@
-[{"id":"e60b12c1.93bb3","type":"inject","z":"535331d8.55c1f","name":"","topic":"","payload":"Started!","payloadType":"str","repeat":"","crontab":"","once":true,"x":140,"y":540,"wires":[["9b1d7727.56d0f8"]]},{"id":"9b1d7727.56d0f8","type":"debug","z":"535331d8.55c1f","name":"","active":true,"console":"false","complete":"false","x":410,"y":540,"wires":[]}]
