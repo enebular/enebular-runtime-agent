@@ -78,14 +78,12 @@ export default class DummyAgent {
             let reported = this._deviceStateManager.getState('reported', 'assets')
             if (reported) {
                 if(JSON.stringify(reported.assets) === '{}') {
-//                if(JSON.stringify(reported) === '{}') {
                     if(this._deviceStateManager._reportedOp === 'remove') {
                         return this._deviceStateManager._reportedOp
                     }
                     break
                 }
                 for (const reportedAssetId in reported.assets) {
-                //for (const reportedAssetId in reported) {
                     let found = false
                     for (let asset of this._assetManager._assets) {
                       if (asset.id() === reportedAssetId) {
