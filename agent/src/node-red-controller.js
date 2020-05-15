@@ -1233,7 +1233,7 @@ export default class NodeREDController {
       cproc.stdout.on('data', data => {
         let str = data.toString().replace(/(\n|\r)+$/, '')
         this._nodeRedLog.info(str)
-        if (!signaledSuccess && str.includes('Started flows')) {
+        if (!signaledSuccess && (str.includes('Started flows') || (str.includes('フローを開始しました')))) {
           signaledSuccess = true
           clearTimeout(startTimeout)
           if (editSession) {
