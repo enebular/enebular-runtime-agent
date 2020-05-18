@@ -125,7 +125,7 @@ export default class AgentRunnerManager extends EventEmitter {
 
   _onDataReceived(data: Data) {
     if (!data.type) {
-      this._error(`data type is not defined, invalid data: ${data}`)
+      this._error('data type is not defined, invalid data:' + JSON.stringify(data, null, 2))
       return
     }
     switch (data.type) {

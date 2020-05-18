@@ -75,7 +75,7 @@ export default class PelionConnector extends LocalConnector {
     try {
       fs.writeFileSync(this._pidFile, pid, 'utf8')
     } catch (err) {
-      this._error(err)
+      this._error('Failed to create PID file: ' + err.message)
     }
   }
 
@@ -85,7 +85,7 @@ export default class PelionConnector extends LocalConnector {
     try {
       fs.unlinkSync(this._pidFile)
     } catch (err) {
-      this._error(err)
+      this._error('Failed to remove PID file: ' + err.message)
     }
   }
 
