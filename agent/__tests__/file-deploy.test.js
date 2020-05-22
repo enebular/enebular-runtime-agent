@@ -9,6 +9,7 @@ import mkdirp from 'mkdirp'
 
 const fs = require('fs')
 const path = require('path');
+jest.unmock('winston')
 
 const testAssetID = '5b6aef66-909e-4ae8-8174-ab140c372935'
 let reportedTimeout = 10000
@@ -56,6 +57,7 @@ describe('File Deploy Test', () => {
   beforeEach(() => {
     dummyAgent = new DummyAgent(__dirname)
     utilSpy = jest.spyOn(utils, 'progressRequest').mockImplementation(progressRequestMock);
+    dummyAgent.deviceStateManager().__setState ('reported', null, {state: {assets: {assets: {}}}})
   });
 
   afterEach(() => {
@@ -86,10 +88,10 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -111,10 +113,10 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, 'error-integrity')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, 'error-integrity')
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -135,10 +137,10 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, 14101041152000)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, 14101041152000)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -159,12 +161,12 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.exec`, true)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:2})
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.exec`, true)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:2})
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -186,12 +188,12 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.exec`, true)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:2, args:'aaa bbb', envs:['TEST_ENV_VAR1=1','TEST_ENV_VAR2=2']})
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.exec`, true)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:2, args:'aaa bbb', envs:['TEST_ENV_VAR1=1','TEST_ENV_VAR2=2']})
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -213,12 +215,12 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.exec`, true)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:2, args:'1'})
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.exec`, true)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:2, args:'1'})
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -240,12 +242,12 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.exec`, true)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:2, args:'3'})
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.exec`, true)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:2, args:'3'})
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -266,10 +268,10 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
     let hookObj = [
       {
         "stage": "preDeploy",
@@ -280,7 +282,7 @@ describe('File Deploy Test', () => {
         }
       }
     ]
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.hooks`, hookObj)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.hooks`, hookObj)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -302,10 +304,10 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
     let hookObj = [
       {
         "stage": "preDeploy",
@@ -316,7 +318,7 @@ describe('File Deploy Test', () => {
         }
       }
     ]
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.hooks`, hookObj)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.hooks`, hookObj)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -338,10 +340,10 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
     let hookObj = [
       {
         "stage": "preDeploy",
@@ -352,7 +354,7 @@ describe('File Deploy Test', () => {
         }
       }
     ]
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.hooks`, hookObj)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.hooks`, hookObj)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -374,10 +376,10 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
     let hookObj = [
       {
         "stage": "preDeploy",
@@ -388,7 +390,7 @@ describe('File Deploy Test', () => {
         }
       }
     ]
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.hooks`, hookObj)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.hooks`, hookObj)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -410,10 +412,10 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
     let hookObj = [
       {
         "stage": "postDeploy",
@@ -424,7 +426,7 @@ describe('File Deploy Test', () => {
         }
       }
     ]
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.hooks`, hookObj)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.hooks`, hookObj)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -446,10 +448,10 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
     let hookObj = [
       {
         "stage": "postDeploy",
@@ -460,7 +462,7 @@ describe('File Deploy Test', () => {
         }
       }
     ]
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.hooks`, hookObj)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.hooks`, hookObj)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -482,10 +484,10 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
     let hookObj = [
       {
         "stage": "postDeploy",
@@ -496,7 +498,7 @@ describe('File Deploy Test', () => {
         }
       }
     ]
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.hooks`, hookObj)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.hooks`, hookObj)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -518,10 +520,10 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
     let hookObj = [
       {
         "stage": "postDeploy",
@@ -532,7 +534,7 @@ describe('File Deploy Test', () => {
         }
       }
     ]
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.hooks`, hookObj)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.hooks`, hookObj)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -554,12 +556,12 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.exec`, true)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:2, args:'aaa bbb', envs:['TEST_ENV_VAR1=1','TEST_ENV_VAR2=2']})
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.exec`, true)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:2, args:'aaa bbb', envs:['TEST_ENV_VAR1=1','TEST_ENV_VAR2=2']})
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
     let hookObj = [
       {
         "stage": "preDeploy",
@@ -578,7 +580,7 @@ describe('File Deploy Test', () => {
         }
       }
     ]
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.hooks`, hookObj)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.hooks`, hookObj)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -600,10 +602,10 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
 
     progressRequestErrorFlag = true
     deviceStateManager._notifyStateChange('desired', 'assets')
@@ -626,10 +628,10 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
 
     agentManagerMediator.__setErrorInjection(true)
 
@@ -655,12 +657,12 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.exec`, true)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:2})
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.exec`, true)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.execConfig`, {maxTime:2})
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -684,10 +686,10 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
     let hookObj = [
       {
         "stage": "preDeploy",
@@ -698,7 +700,7 @@ describe('File Deploy Test', () => {
         }
       }
     ]
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.hooks`, hookObj)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.hooks`, hookObj)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -719,10 +721,10 @@ describe('File Deploy Test', () => {
     let testDir = 'firstDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
 
     let useTestFile2 = 'no-exec-file.txt'
     let testDir2 = 'soconcdDir'
@@ -747,7 +749,7 @@ describe('File Deploy Test', () => {
             "destPath": testDir2
         }
     }
-    deviceStateManager.__setState('desired', `assets.${testAssetID2}`, secondAsset)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID2}`, secondAsset)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -775,10 +777,10 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -789,7 +791,7 @@ describe('File Deploy Test', () => {
     await dummyAgent.sleep(1000)
     
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets`, {})
+    deviceStateManager.__setState('desired', `state.assets.assets`, {})
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -815,10 +817,10 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -829,7 +831,7 @@ describe('File Deploy Test', () => {
     await dummyAgent.sleep(1000)
     
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets`, {})
+    deviceStateManager.__setState('desired', `state.assets.assets`, {})
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -852,10 +854,10 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -884,10 +886,10 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
 
@@ -921,7 +923,7 @@ describe('File Deploy Test', () => {
             "destPath": testDir
         }
     }
-    deviceStateManager.__setState('desired', `assets.${testAssetID2}`, assetObj)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID2}`, assetObj)
 
     deviceStateManager._notifyStateChange('desired', 'assets')
     await dummyAgent.sleep(3000)
@@ -940,10 +942,10 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
 
     await assetManager.setup()
     assetManager.activate(true)
@@ -963,10 +965,10 @@ describe('File Deploy Test', () => {
     let testDir = 'testDir'
     let fileObj = await getFileObj(useTestFile)
     deviceStateManager.__defaultState('desired')
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
-    deviceStateManager.__setState('desired', `assets.${testAssetID}.config.destPath`, testDir)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.filename`, fileObj.filename)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.integrity`, fileObj.integrity)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.fileTypeConfig.size`, fileObj.size)
+    deviceStateManager.__setState('desired', `state.assets.assets.${testAssetID}.config.destPath`, testDir)
 
     let srcPath = path.resolve(__dirname, './data/.enebular-assets.json')
     let dstPath = path.resolve(__dirname, '.enebular-assets.json')

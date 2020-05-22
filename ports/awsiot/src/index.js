@@ -350,7 +350,7 @@ function onConnectorInit() {
       awsIotConfigFile
     )
   } catch (err) {
-    console.error(err)
+    console.error('Failed to read config file: ' + err.message)
     process.exit(1)
   }
 

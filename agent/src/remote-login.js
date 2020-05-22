@@ -40,7 +40,7 @@ export default class RemoteLogin {
       this._handleDeviceStateChange(params)
     )
     this._agentRunnerMan.on('sshStatusChanged', params => {
-      this._info('ssh status:', params)
+      this._info('ssh status:' + JSON.stringify(params, null, 2))
       this._handleSshStateChange(params)
     })
   }
