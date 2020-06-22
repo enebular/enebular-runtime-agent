@@ -13,8 +13,7 @@
     "lint": "eslint src"
   },
   "engines": {
-    "node": "12.18.1",
-    "npm": "6.14.5"
+    "node": "12.18.1"
   },
   "devDependencies": {
     "@babel/core": "^7.2.2",
