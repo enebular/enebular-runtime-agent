@@ -958,14 +958,6 @@ export default class NodeREDController {
           )
           if (
             Object.keys(flowPackage.packages).includes(
-              'node-red-contrib-enebular'
-            )
-          ) {
-            flowPackage.packages['node-red-contrib-enebular'] =
-              'git://github.com/enebular/node-red-contrib-enebular.git#issue-1334'
-          }
-          if (
-            Object.keys(flowPackage.packages).includes(
               '@uhuru/enebular-ai-contrib'
             )
           ) {
