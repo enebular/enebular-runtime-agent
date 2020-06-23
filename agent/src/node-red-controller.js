@@ -841,9 +841,9 @@ export default class NodeREDController {
   }
 
   async _updatePackage(flowPackage: NodeRedFlowPackage, deployParam: Object): boolean  {
-    let dispflow = JSON.parse(JSON.stringify(flowPackage))
-    delete dispflow.cred
-    this.info('Updating package', dispflow)
+    let logFlowPackage = JSON.parse(JSON.stringify(flowPackage))
+    delete logFlowPackage.cred
+    this.info('Updating package', logFlowPackage)
     const updates = []
     if (flowPackage.flow || flowPackage.flows) {
       const flows = flowPackage.flow || flowPackage.flows
