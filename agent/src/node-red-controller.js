@@ -841,7 +841,9 @@ export default class NodeREDController {
   }
 
   async _updatePackage(flowPackage: NodeRedFlowPackage, deployParam: Object): boolean  {
-    this.info('Updating package', flowPackage)
+    const { cred, ...logFlowPackage } = flowPackage
+    
+    this.info('Updating package', logFlowPackage)
     const updates = []
     if (flowPackage.flow || flowPackage.flows) {
       const flows = flowPackage.flow || flowPackage.flows
