@@ -1,4 +1,4 @@
-FROM node:12.14.0
+FROM node:12.18.1
  
 RUN apt-get update && apt-get install -y python git cmake python-pip build-essential
 RUN pip install 'mbed-cli==1.10.1' 'click==7.0' 'requests>=2.0,<3.0'
