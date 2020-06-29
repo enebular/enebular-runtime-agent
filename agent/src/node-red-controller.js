@@ -960,14 +960,6 @@ export default class NodeREDController {
           )
           if (
             Object.keys(flowPackage.packages).includes(
-              'node-red-contrib-enebular'
-            )
-          ) {
-            flowPackage.packages['node-red-contrib-enebular'] =
-              'file:../../node-red-contrib-enebular'
-          }
-          if (
-            Object.keys(flowPackage.packages).includes(
               '@uhuru/enebular-ai-contrib'
             )
           ) {
@@ -1235,7 +1227,7 @@ export default class NodeREDController {
       cproc.stdout.on('data', data => {
         let str = data.toString().replace(/(\n|\r)+$/, '')
         this._nodeRedLog.info(str)
-        if (!signaledSuccess && str.includes('Started flows')) {
+        if (!signaledSuccess && (str.includes('Started flows') || (str.includes('フローを開始しました')))) {
           signaledSuccess = true
           clearTimeout(startTimeout)
           if (editSession) {
