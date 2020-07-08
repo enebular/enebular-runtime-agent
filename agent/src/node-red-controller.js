@@ -841,7 +841,9 @@ export default class NodeREDController {
   }
 
   async _updatePackage(flowPackage: NodeRedFlowPackage, deployParam: Object): boolean  {
-    this.info('Updating package', flowPackage)
+    const { cred, ...logFlowPackage } = flowPackage
+    
+    this.info('Updating package', logFlowPackage)
     const updates = []
     if (flowPackage.flow || flowPackage.flows) {
       const flows = flowPackage.flow || flowPackage.flows
@@ -956,14 +958,6 @@ export default class NodeREDController {
             'enebular-agent-dynamic-deps',
             'package.json'
           )
-          if (
-            Object.keys(flowPackage.packages).includes(
-              'node-red-contrib-enebular'
-            )
-          ) {
-            flowPackage.packages['node-red-contrib-enebular'] =
-              'git://github.com/enebular/node-red-contrib-enebular.git#issue-1334'
-          }
           if (
             Object.keys(flowPackage.packages).includes(
               '@uhuru/enebular-ai-contrib'
