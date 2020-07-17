@@ -17,7 +17,7 @@ module.exports = {
       css: path.join(__dirname, 'css', 'index.css')
     },
     header: {
-      title: '',
+      title: ' ',
       image: path.join(__dirname, 'img', 'enebular_logo.svg')
     },
     deployButton: {
