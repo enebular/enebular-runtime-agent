@@ -1,5 +1,5 @@
 const axios = require('axios')
-const fs = require('fs')
+const fs = require('fs-extra')
 const path = require('path')
 const crypto = require('crypto')
 const RED = require('@uhuru/enebular-node-red')
@@ -79,24 +79,22 @@ function getPackages(flows) {
 }
 
 function getSettings() {
-  return new Promise(function(resolve, reject) {
     const userdir = path.resolve(__dirname, '.node-red-config')
     const globalSettingsFile = path.join(userdir, '.config.json')
-    fs.readFile(globalSettingsFile, 'utf8', function(err, data) {
-      if (err) {
-        reject(err)
-      } else {
-        if (!data) {
-          resolve({})
-        }
-        return resolve(JSON.parse(data))
+    
+    return fs.readJson(globalSettingsFile, 'utf8').catch((err) => {
+      if (err.code != 'ENOENT') {
+        throw err
       }
+      return {}
     })
-  })
 }
 
 function saveSettings(settings) {
-  return new Promise((resolve, reject) => resolve())
+  const userdir = path.resolve(__dirname, '.node-red-config')
+  const globalSettingsFile = path.join(userdir, '.config.json')
+
+  return  fs.writeJson(globalSettingsFile, settings, { replacer: null, spaces: 2})
 }
 
 function mapNodeTypes(flows, credentials) {
