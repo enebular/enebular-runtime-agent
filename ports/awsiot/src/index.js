@@ -23,6 +23,10 @@ let initRetryInterval = 2 * 1000
 let updateRequestIndex = 0
 let shutdownRequested = false
 
+/** AWSIoTとの再接続が発生したときにThingShadowを取得するが失敗したときのリトライ間隔と最大リトライ回数を設定する */
+const retryIntervalForGettingThingShadow = 3000
+const maxRetlyCountForGettingThingShadow = 10
+
 function log(level: string, msg: string, ...args: Array<mixed>) {
   args.push({ module: MODULE_NAME })
   agent.log.log(level, msg, ...args)
@@ -213,6 +217,28 @@ function handleDeviceCommandMessage(messageJSON: string) {
   }
 }
 
+function getThingShadowAfterAWSIoTConnected(thingName, count = 0) {
+  if (count > maxRetlyCountForGettingThingShadow) {
+    error(`Failed to get latest shadow version (tried ${count} times)`)
+    return
+  }
+  info(`Getting thing shadow (try count: ${count + 1})`)
+  let token = thingShadow.get(thingName)
+  if (token !== null) {
+    operationResultHandlers[token] = (timeout, stat) => {
+      if (!timeout && stat === 'accepted') {
+        updateThingShadowReportedAwsIotConnectedState(true)
+      } else {
+        error('Failed to get latest shadow version')
+      }
+    }
+  } else {
+    setTimeout(() => {
+      getThingShadowAfterAWSIoTConnected(thingName, count + 1)
+    }, retryIntervalForGettingThingShadow)
+  }
+}
+
 function setupThingShadow(config: AWSIoTConfig) {
   /**
    * Add a MQTT Last Will and Testament (LWT) so that the connection state in
@@ -247,14 +273,7 @@ function setupThingShadow(config: AWSIoTConfig) {
      * shadow (to make sure we have the latest version) and then updating it.
      */
     if (thingShadowAlreadyRegistered) {
-      let token = thingShadow.get(thingName)
-      operationResultHandlers[token] = (timeout, stat) => {
-        if (!timeout && stat === 'accepted') {
-          updateThingShadowReportedAwsIotConnectedState(true)
-        } else {
-          error('Failed to get latest shadow version')
-        }
-      }
+      getThingShadowAfterAWSIoTConnected(thingName)
     }
   })
 
@@ -289,7 +308,7 @@ function setupThingShadow(config: AWSIoTConfig) {
   shadow.on('message', (topic, payload) => {
     if (topic === toDeviceTopic) {
       connector.sendCtrlMessage(JSON.parse(payload))
-    } else if(topic === deviceCommandSendTopic) {
+    } else if (topic === deviceCommandSendTopic) {
       handleDeviceCommandMessage(payload)
     } else {
       debug('AWS IoT message', topic, payload)
