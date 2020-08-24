@@ -170,9 +170,7 @@ export default class AiModelAsset extends Asset {
 
   setStatus(status: string, message: string) {
     this.status = status
-    if (message) {
-      this.statusMessage = message
-    }
+    this.statusMessage = message
     this.changeTs = Date.now()
     this._aiModelMan.sync('status', this)
   }
