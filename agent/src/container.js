@@ -142,6 +142,7 @@ export default class Container {
       const logStream = await this._startExec()
       this._attachLogsToExec(logStream)
       this.setState('running')
+      this.message = ''
       return true
     } catch (err) {
       this.setErrorMessage(err.message)
