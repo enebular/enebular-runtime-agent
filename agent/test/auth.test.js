@@ -264,30 +264,3 @@ test.serial(
     })
   }
 )
-
-test.serial(
-  'Auth.8: Agent retries authentication if fail(no updateAuth message)',
-  async t => {
-    let authRequestReceived = 0
-
-    const ret = await createUnauthenticatedAgent(
-      t,
-      server,
-      Utils.addNodeRedPortToConfig({}, NodeRedPort),
-      DummyServerPort
-    )
-    agent = ret.agent
-
-    const authCallback = req => {
-      authRequestReceived++
-    }
-    server.on('authRequest', authCallback)
-
-    return new Promise(async (resolve, reject) => {
-      setTimeout(() => {
-        t.is(authRequestReceived, 2)
-        resolve()
-      }, 26 * 1000)
-    })
-  }
-)
