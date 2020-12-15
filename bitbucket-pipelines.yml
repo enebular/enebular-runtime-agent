@@ -100,6 +100,7 @@ definitions:
           - dist/**
     - step: &pack-armv7l
         name: Pack (armv7l)
+        size: 2x
         script:
           - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i enebularagentdevelopers/enebular-agent-arm32v7:node-12.20.0 /usr/bin/qemu-arm-static -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent.sh"
           - rm -rf .git
@@ -218,4 +219,4 @@ pipelines:
 definitions:
   services:
     docker:
-      memory: 3200
+      memory: 3072
