@@ -1,17 +1,19 @@
 #!/bin/bash
 set -e
 
-git config core.packedGitLimit 128m
-git config core.deltaCacheSize 128m
-git config core.packSizeLimit  128m
-git config core.windowMemory 128m
+
 
 (cd node-red && npm ci --production)
 (cd agent && npm ci --production)
 (cd ports/awsiot && npm ci --production)
 (cd ports/pelion && npm ci --production)
 
-(cd tools/mbed-cloud-connector-fcc && mbed config root . && mbed deploy -v \
+(cd tools/mbed-cloud-connector-fcc && mbed config root . \
+&& git config core.packedGitLimit 128m \
+&& git config core.deltaCacheSize 128m \
+&& git config core.packSizeLimit  128m \
+&& git config core.windowMemory 128m)
+(mbed deploy -v \
 && python pal-platform/pal-platform.py -v deploy --target=x86_x64_NativeLinux_mbedtls generate \
 && ./build-linux-release.sh \
 && cp __x86_x64_NativeLinux_mbedtls/Release/factory-configurator-client-enebular.elf ./factory-configurator-client-enebular.elf \
