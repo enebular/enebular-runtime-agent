@@ -109,6 +109,7 @@ definitions:
           - mv /tmp/${AGENT_NAME}-linux-armv7l.tar.gz dist/
         services:
           - docker
+              memory:2048
         artifacts:
           - dist/**
     - step: &pack-arm64
