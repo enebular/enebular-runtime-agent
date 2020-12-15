@@ -184,9 +184,9 @@ pipelines:
       - step: *set-pub-key-release
       - step: *pack-prebuilt
       - step: *clamav-scan
+      - step: *pack-armv7l
       - parallel:
           - step: *pack-x64
-          - step: *pack-armv7l
           - step: *pack-arm64
       - step: *upload-release
     '[0-9]*.[0-9]*.[0-9]*-rc*':
@@ -218,4 +218,4 @@ pipelines:
 definitions:
   services:
     docker:
-      memory: 3072
+      memory: 3200
