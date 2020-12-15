@@ -194,8 +194,8 @@ pipelines:
       - step: *set-pub-key-staging
       - step: *pack-prebuilt
       - step: *clamav-scan
+      - step: *pack-x64
       - parallel:
-          - step: *pack-x64
           - step: *pack-armv7l
           - step: *pack-arm64
       - step: *upload-installsh-staging
@@ -209,8 +209,8 @@ pipelines:
       - step: *build-test
       - step: *set-pub-key
       - step: *pack-prebuilt
+      - step: *pack-x64
       - parallel:
-          - step: *pack-x64
           - step: *pack-armv7l
           - step: *pack-arm64
       - step: *upload-installsh
@@ -218,4 +218,4 @@ pipelines:
 definitions:
   services:
     docker:
-      memory: 3072
+      memory: 3200
