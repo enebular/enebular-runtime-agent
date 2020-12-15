@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+git config core.packedGitLimit 128m
+git config core.deltaCacheSize 128m
+git config core.packSizeLimit  128m
+git config core.windowMemory 128m
+
 (cd node-red && npm ci --production)
 (cd agent && npm ci --production)
 (cd ports/awsiot && npm ci --production)
