@@ -5,6 +5,10 @@ COPY ./qemu-arm-static /usr/bin/qemu-arm-static
 SHELL ["/usr/bin/qemu-arm-static", "-execve", "/bin/sh",  "-c"]
  
 RUN apt-get update && apt-get install -y python git cmake python-pip build-essential wget
+RUN git config core.packedGitLimit 128m
+RUN git config core.deltaCacheSize 128m
+RUN git config core.packSizeLimit  128m
+RUN git config core.windowMemory 128m
 RUN pip install 'mbed-cli==1.10.1' 'click==7.0' 'requests>=2.0,<3.0'
 RUN groupadd -g 1000 enebular && useradd -u 1000 -g 1000 -m enebular
 RUN wget https://nodejs.org/dist/v12.20.0/node-v12.20.0-linux-armv7l.tar.xz && tar xf node-v12.20.0-linux-armv7l.tar.xz && mv node-v12.20.0-linux-armv7l /home/enebular/
