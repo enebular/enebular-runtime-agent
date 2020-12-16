@@ -1,19 +1,12 @@
 #!/bin/bash
 set -e
 
-
-
 (cd node-red && npm ci --production)
 (cd agent && npm ci --production)
 (cd ports/awsiot && npm ci --production)
 (cd ports/pelion && npm ci --production)
 
-(cd tools/mbed-cloud-connector-fcc && mbed config root . \
-&& git config core.packedGitLimit 512m \
-&& git config core.deltaCacheSize 512m \
-&& git config core.packSizeLimit  512m \
-&& git config core.windowMemory 512m)
-(mbed deploy -v \
+(cd tools/mbed-cloud-connector-fcc && mbed config root . && mbed deploy -v \
 && python pal-platform/pal-platform.py -v deploy --target=x86_x64_NativeLinux_mbedtls generate \
 && ./build-linux-release.sh \
 && cp __x86_x64_NativeLinux_mbedtls/Release/factory-configurator-client-enebular.elf ./factory-configurator-client-enebular.elf \

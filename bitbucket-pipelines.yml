@@ -87,7 +87,6 @@ definitions:
           - dist/**
     - step: &pack-x64
         name: Pack (x64)
-        size: 2x
         image: enebularagentdevelopers/enebular-agent-x64:node-12.20.0
         script:
           - chmod 777 pack_enebular_agent.sh
@@ -103,7 +102,7 @@ definitions:
         name: Pack (armv7l)
         size: 2x
         script:
-          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i enebularagentdevelopers/enebular-agent-arm32v7:node-12.20.0 /usr/bin/qemu-arm-static -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent.sh" --memory 6144M
+          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i enebularagentdevelopers/enebular-agent-arm32v7:node-12.20.0 /usr/bin/qemu-arm-static -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent.sh"
           - rm -rf .git
           - mkdir -p dist
           - AGENT_NAME=enebular-agent-${BITBUCKET_TAG}
@@ -213,12 +212,9 @@ pipelines:
       - step: *set-pub-key
       - step: *pack-prebuilt
       - step: *pack-armv7l
-      - parallel:
-          - step: *pack-x64
-          - step: *pack-arm64
       - step: *upload-installsh
       - step: *upload
 definitions:
   services:
     docker:
-      memory: 6144
+      memory: 7128
