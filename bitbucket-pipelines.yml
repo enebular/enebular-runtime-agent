@@ -184,9 +184,9 @@ pipelines:
       - step: *set-pub-key-release
       - step: *pack-prebuilt
       - step: *clamav-scan
-      - step: *pack-armv7l
       - parallel:
           - step: *pack-x64
+          - step: *pack-armv7l
           - step: *pack-arm64
       - step: *upload-release
     '[0-9]*.[0-9]*.[0-9]*-rc*':
@@ -195,8 +195,8 @@ pipelines:
       - step: *pack-prebuilt
       - step: *clamav-scan
       - parallel:
-          - step: *pack-armv7l
           - step: *pack-x64
+          - step: *pack-armv7l
           - step: *pack-arm64
       - step: *upload-installsh-staging
       - step: *upload
@@ -210,8 +210,8 @@ pipelines:
       - step: *set-pub-key
       - step: *pack-prebuilt
       - parallel:
-          - step: *pack-armv7l
           - step: *pack-x64
+          - step: *pack-armv7l
           - step: *pack-arm64
       - step: *upload-installsh
       - step: *upload
