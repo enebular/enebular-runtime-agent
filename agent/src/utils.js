@@ -1,7 +1,7 @@
 /* @flow */
 import fetch from 'isomorphic-fetch'
 import crypto from 'crypto'
-import { execSync } from 'child_process'
+import { execSync, exec as processExec } from 'child_process'
 import request from 'request'
 import progress from 'request-progress'
 import fs from 'fs'
@@ -9,13 +9,13 @@ import util from 'util'
 import { spawn } from 'child_process'
 
 export interface UserInfo {
-  user: string,
-  gid: number,
-  uid: number
+  user: string;
+  gid: number;
+  uid: number;
 }
 
 export async function delay(msec: number) {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     setTimeout(() => resolve(), msec)
   })
 }
@@ -137,6 +137,8 @@ export function exec(cmd: string): boolean {
   return execReturnStdout(cmd) == undefined ? false : true
 }
 
+export const execAsync = util.promisify(processExec)
+
 export function getUserInfo(user: string): UserInfo {
   let ret = execReturnStdout(`id -u ${user}`)
   if (!ret) {
@@ -166,7 +168,7 @@ export function getUserHome(user: string): string {
 export async function progressRequest(url, path, obj) {
   const that = obj
 
-  const onProgress = state => {
+  const onProgress = (state) => {
     that._info(
       util.format(
         'Download progress: %f%% @ %fKB/s, %fsec',
@@ -179,29 +181,27 @@ export async function progressRequest(url, path, obj) {
 
   await new Promise(function(resolve, reject) {
     const fileStream = fs.createWriteStream(path)
-    fileStream.on('error', err => {
+    fileStream.on('error', (err) => {
       reject(err)
     })
     progress(request(url), {
       delay: 5000,
       throttle: 5000
     })
-      .on('response', response => {
+      .on('response', (response) => {
         that._debug(
           `Response: ${response.statusCode}: ${response.statusMessage}`
         )
         if (response.statusCode >= 400) {
           reject(
             new Error(
-              `Error response: ${response.statusCode}: ${
-                response.statusMessage
-              }`
+              `Error response: ${response.statusCode}: ${response.statusMessage}`
             )
           )
         }
       })
       .on('progress', onProgress)
-      .on('error', err => {
+      .on('error', (err) => {
         reject(err)
       })
       .on('end', () => {
@@ -212,7 +212,6 @@ export async function progressRequest(url, path, obj) {
 }
 
 export async function execSpawn(args, env, cwd, path, maxTime, obj) {
-
   const that = obj
 
   await new Promise((resolve, reject) => {
@@ -225,15 +224,15 @@ export async function execSpawn(args, env, cwd, path, maxTime, obj) {
       that._info('Execution went over time limit')
       cproc.kill()
     }, maxTime * 1000)
-    cproc.stdout.on('data', data => {
+    cproc.stdout.on('data', (data) => {
       let str = data.toString().replace(/(\n|\r)+$/, '')
       that._info('Output: ' + str)
     })
-    cproc.stderr.on('data', data => {
+    cproc.stderr.on('data', (data) => {
       let str = data.toString().replace(/(\n|\r)+$/, '')
       that._info('Output: ' + str)
     })
-    cproc.on('error', err => {
+    cproc.on('error', (err) => {
       clearTimeout(timeoutID)
       reject(err)
     })
@@ -250,5 +249,4 @@ export async function execSpawn(args, env, cwd, path, maxTime, obj) {
       }
     })
   })
-
 }
