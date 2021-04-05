@@ -826,7 +826,7 @@ export default class NodeREDController {
   async _fetchAndUpdateFlow(deployParam: Object): Promise<FlowFetchResult> {
     this.info('Updating flow')
 
-    let flowPackage = this._downloadPackage(deployParam.url)
+    let flowPackage = await this._downloadPackage(deployParam.url)
     let editSessionRequested = this._flowPackageContainsEditSession(flowPackage)
     if (editSessionRequested && !this._allowEditSessions) {
       this.info('Edit session flow deploy requested but not allowed')
@@ -856,7 +856,7 @@ export default class NodeREDController {
     return false
   }
 
-  async _downloadPackage(downloadUrl: string): NodeRedFlowPackage {
+  async _downloadPackage(downloadUrl: string): Promise<NodeRedFlowPackage> {
     this.info('Downloading flow:', downloadUrl)
     const res = await fetch(downloadUrl)
     if (!res.ok) {
