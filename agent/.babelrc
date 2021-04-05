@@ -2,7 +2,7 @@
   "presets": [
     ["@babel/preset-env", {
       "targets": {
-        "node": "12.20.0"
+        "node": "12.21.0"
       }
     }],
     ["@babel/preset-flow"]
