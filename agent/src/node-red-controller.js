@@ -5,7 +5,7 @@ import { spawn, type ChildProcess } from 'child_process'
 import fetch from 'isomorphic-fetch'
 import objectHash from 'object-hash'
 import ProcessUtil, { type RetryInfo } from './process-util'
-import { encryptCredential, delay } from './utils'
+import { encryptCredential, delay, execAsync } from './utils'
 import { createAiNodeDefinition } from './createAiNodeDefinition'
 import type { Logger } from 'winston'
 import type LogManager from './log-manager'
@@ -51,6 +51,17 @@ type NodeRedFlowPackage = {
 type FlowStatus = {
   state: string,
   messenge?: string
+}
+
+type UpdatePackageResult = {
+  success: boolean,
+  message: ?string
+}
+
+type FlowFetchResult = {
+  success: boolean,
+  flowPackage: ?Object,
+  message: ?string
 }
 
 export default class NodeREDController {
@@ -112,7 +123,10 @@ export default class NodeREDController {
     this._pidFile = nodeRedConfig.pidFile
     this._assetsDataPath = nodeRedConfig.assetsDataPath
     this._allowEditSessions = nodeRedConfig.allowEditSessions
-    this._retryInfo = { retryCount: 0, lastRetryTimestamp: Date.now() }
+    this._retryInfo = {
+      retryCount: 0,
+      lastRetryTimestamp: Date.now()
+    }
 
     if (!fs.existsSync(this._dir)) {
       throw new Error(`The Node-RED directory was not found: ${this._dir}`)
@@ -123,10 +137,10 @@ export default class NodeREDController {
       )
     }
 
-    this._deviceStateMan.on('stateChange', params =>
+    this._deviceStateMan.on('stateChange', (params) =>
       this._handleDeviceStateChange(params)
     )
-    this._deviceCommandMan.on('command', params =>
+    this._deviceCommandMan.on('command', (params) =>
       this._handleDeviceCommandSend(params)
     )
 
@@ -265,7 +279,7 @@ export default class NodeREDController {
         try {
           await this._commandDeployCancel(params.body)
           result = 'canceled'
-        } catch(err) {
+        } catch (err) {
           message = err.message
           result = 'cancelFail'
         }
@@ -281,45 +295,49 @@ export default class NodeREDController {
       updateId: params.body.updateId,
       result: result
     }
-    if(result === 'cancelFail') {
+    if (result === 'cancelFail') {
       responseBody.message = message
     }
 
-    this._deviceCommandMan.sendCommandResponse(params.op, params.id, responseBody)
+    this._deviceCommandMan.sendCommandResponse(
+      params.op,
+      params.id,
+      responseBody
+    )
   }
-  
+
   async _commandDeployCancel(body: Object) {
     let cancelIds = body
 
-    if(!body.hasOwnProperty('assetId') || !body.hasOwnProperty('updateId')) {
+    if (!body.hasOwnProperty('assetId') || !body.hasOwnProperty('updateId')) {
       throw new Error('Parameter error')
     }
 
-    if(this._deployRequest.length === 0) {
+    if (this._deployRequest.length === 0) {
       throw new Error('Cancelable flow deploy request is none')
     }
 
-    if(Object.keys(this._cancelRequest).length) {
-      throw new Error('Cancel reauest is already')
+    if (Object.keys(this._cancelRequest).length) {
+      throw new Error('Cancel request is already')
     }
 
-    if(this._isExistDeployRequest(cancelIds) === false) {
+    if (this._isExistDeployRequest(cancelIds) === false) {
       throw new Error('No matching flow found')
     }
-    
+
     // register cancel request
     this._cancelRequest = cancelIds
 
     // wait deploy cancel process
-    await new Promise(resolve => {
+    await new Promise((resolve) => {
       const timer = setInterval(() => {
-        if(this._isExistDeployRequest(cancelIds) === false) {
+        if (this._isExistDeployRequest(cancelIds) === false) {
           clearInterval(timer)
           resolve()
         }
       }, 100)
-    }) 
-    if(!Object.keys(this._cancelRequest).length) {
+    })
+    if (!Object.keys(this._cancelRequest).length) {
       // cancel error occured
       throw new Error('deploy cancel error')
     }
@@ -331,10 +349,10 @@ export default class NodeREDController {
     this._cancelRequest = {}
   }
 
-  _isExistDeployRequest(ids: Object) : boolean {
+  _isExistDeployRequest(ids: Object): boolean {
     let isExist = false
-    this._deployRequest.forEach(item => {
-      if(item.assetId === ids.assetId && item.updateId === ids.updateId) {
+    this._deployRequest.forEach((item) => {
+      if (item.assetId === ids.assetId && item.updateId === ids.updateId) {
         isExist = true
       }
     })
@@ -654,15 +672,19 @@ export default class NodeREDController {
                 assetId: this._flowState.assetId,
                 updateId: this._flowState.updateId
               }
-              const flowPackage = await this.fetchAndUpdateFlow(deployParam)
+              const {
+                success,
+                message,
+                flowPackage
+              } = await this.fetchAndUpdateFlow(deployParam)
               // Flow update process is finished
               this._deployRequest.pop()
 
-              if(!Object.keys(flowPackage).length) {
+              if (!success) {
                 // deploy cancel
-                this.info('deploy canceled')
+                this.info('deploy error', message)
                 this._flowState.updateAttemptCount = 0
-                this._setFlowState('deployFail', 'deploy cancel')
+                this._setFlowState('deployFail', message)
               } else {
                 if (this._flowPackageContainsEditSession(flowPackage)) {
                   await this._restartInEditorMode(flowPackage.editSession)
@@ -673,7 +695,7 @@ export default class NodeREDController {
                     this.info('Skipped Node-RED restart since flow is disabled')
                   }
                 }
-  
+
                 this.info(`Deployed flow '${pendingAssetId}'`)
                 this._flowState.updateAttemptCount = 0
                 this._setFlowState('deployed', null)
@@ -695,7 +717,7 @@ export default class NodeREDController {
                 this.info('Deploy failed, but new change already pending.')
               }
               this._deployRequest.pop()
-            } 
+            }
             break
 
           case 'remove':
@@ -797,11 +819,11 @@ export default class NodeREDController {
     return true
   }
 
-  async fetchAndUpdateFlow(deployParam: Object) {
+  async fetchAndUpdateFlow(deployParam: Object): Promise<FlowFetchResult> {
     return this._queueAction(() => this._fetchAndUpdateFlow(deployParam))
   }
 
-  async _fetchAndUpdateFlow(deployParam: Object): Promise<Object> {
+  async _fetchAndUpdateFlow(deployParam: Object): Promise<FlowFetchResult> {
     this.info('Updating flow')
 
     let flowPackage = await this._downloadPackage(deployParam.url)
@@ -812,11 +834,14 @@ export default class NodeREDController {
     }
 
     let result = await this._updatePackage(flowPackage, deployParam)
-    if(result === false) {
-      // cancel occured
-      flowPackage = {}
+    if (result.success === false) {
+      // cancel occurred
+      return result
     }
-    return flowPackage
+    return {
+      success: true,
+      flowPackage
+    }
   }
 
   _flowPackageContainsEditSession(flowPackage: NodeRedFlowPackage) {
@@ -831,7 +856,7 @@ export default class NodeREDController {
     return false
   }
 
-  async _downloadPackage(downloadUrl: string): NodeRedFlowPackage {
+  async _downloadPackage(downloadUrl: string): Promise<NodeRedFlowPackage> {
     this.info('Downloading flow:', downloadUrl)
     const res = await fetch(downloadUrl)
     if (!res.ok) {
@@ -840,9 +865,12 @@ export default class NodeREDController {
     return res.json()
   }
 
-  async _updatePackage(flowPackage: NodeRedFlowPackage, deployParam: Object): boolean  {
+  async _updatePackage(
+    flowPackage: NodeRedFlowPackage,
+    deployParam: Object
+  ): Promise<UpdatePackageResult> {
     const { cred, ...logFlowPackage } = flowPackage
-    
+
     this.info('Updating package', logFlowPackage)
     const updates = []
     if (flowPackage.flow || flowPackage.flows) {
@@ -850,7 +878,7 @@ export default class NodeREDController {
       updates.push(
         new Promise((resolve, reject) => {
           const flowFilePath = path.join(this._getDataDir(), 'new-flows.json')
-          fs.writeFile(flowFilePath, JSON.stringify(flows), err =>
+          fs.writeFile(flowFilePath, JSON.stringify(flows), (err) =>
             err ? resolve(new Error(err)) : resolve(null)
           )
         })
@@ -860,7 +888,10 @@ export default class NodeREDController {
       let creds = flowPackage.cred || flowPackage.creds
       updates.push(
         new Promise((resolve, reject) => {
-          const credFilePath = path.join(this._getDataDir(), 'new-flows_cred.json')
+          const credFilePath = path.join(
+            this._getDataDir(),
+            'new-flows_cred.json'
+          )
           const editSessionRequested = this._flowPackageContainsEditSession(
             flowPackage
           )
@@ -893,10 +924,14 @@ export default class NodeREDController {
 
               creds = { $: encryptCredential(defaultKey, creds) }
             } catch (err) {
-              resolve(new Error('encrypt credential and create flows_cred.json failed'))
+              resolve(
+                new Error(
+                  'encrypt credential and create flows_cred.json failed'
+                )
+              )
             }
           }
-          fs.writeFile(credFilePath, JSON.stringify(creds), err =>
+          fs.writeFile(credFilePath, JSON.stringify(creds), (err) =>
             err ? resolve(new Error(err)) : resolve(null)
           )
         })
@@ -912,7 +947,7 @@ export default class NodeREDController {
             this._stateAiModelsPath
           )
             .then(() => resolve(null))
-            .catch(err => resolve(new Error(err)))
+            .catch((err) => resolve(new Error(err)))
         })
       )
     }
@@ -945,7 +980,7 @@ export default class NodeREDController {
           null,
           2
         )
-        fs.writeFile(aiPackageJSONFilePath, aiPackageJSON, err =>
+        fs.writeFile(aiPackageJSONFilePath, aiPackageJSON, (err) =>
           err ? resolve(new Error(err)) : resolve(null)
         )
       })
@@ -975,40 +1010,42 @@ export default class NodeREDController {
             null,
             2
           )
-          fs.writeFile(packageJSONFilePath, packageJSON, err =>
+          fs.writeFile(packageJSONFilePath, packageJSON, (err) =>
             err ? resolve(new Error(err)) : resolve(null)
           )
         })
       )
     }
-    let errorFlag = false;
-    await Promise.all(updates)
-    .then( function ( error ) {
+    let errorFlag = false
+    await Promise.all(updates).then(function(error) {
       error.forEach(function(value) {
-        if(value != null) {
-          errorFlag = true;
+        if (value != null) {
+          errorFlag = true
         }
-      });
-    } )
+      })
+    })
 
-    if(errorFlag === false) {
+    if (errorFlag === false) {
       try {
         let result = await this._resolveDependency(deployParam)
-        if(result === true) {
+        if (result.success === true) {
           // rename downloaded new file
           await this.renameDownloadNewFile()
-          return true
+          return result
         } else {
           // Delete downloaded new file
           await this.deleteDownloadNewFile()
-          return false
+          return result
         }
-      } catch(err) {
+      } catch (err) {
         // Delete downloaded new file
         await this.deleteDownloadNewFile()
-        // for reason, cancel process is failed 
+        // for reason, cancel process is failed
         this._clearCancelRequest()
-        return false
+        return {
+          success: false,
+          message: err.message
+        }
       }
     } else {
       // Delete downloaded new file
@@ -1018,123 +1055,185 @@ export default class NodeREDController {
   }
 
   async renameDownloadNewFile() {
-    let filePath;
-    filePath = path.join(this._getDataDir(), 'new-flows.json');
-    if(await this._isExistFile(filePath)) {
-      fs.renameSync(filePath, path.join(this._getDataDir(), 'flows.json'));
+    let filePath
+    filePath = path.join(this._getDataDir(), 'new-flows.json')
+    if (this._isExistFile(filePath)) {
+      fs.renameSync(filePath, path.join(this._getDataDir(), 'flows.json'))
     }
-    filePath = path.join(this._getDataDir(), 'new-flows_cred.json');
-    if(await this._isExistFile(filePath)) {
-      fs.renameSync(filePath, path.join(this._getDataDir(), 'flows_cred.json'));
+    filePath = path.join(this._getDataDir(), 'new-flows_cred.json')
+    if (this._isExistFile(filePath)) {
+      fs.renameSync(filePath, path.join(this._getDataDir(), 'flows_cred.json'))
     }
-    filePath = path.resolve(this._getAiNodesDir(), 'nodes', `new-enebular-ai-node.html`);
-    if(await this._isExistFile(filePath)) {
-      fs.renameSync(filePath, path.resolve(this._getAiNodesDir(), 'nodes', `enebular-ai-node.html`));
+    filePath = path.resolve(
+      this._getAiNodesDir(),
+      'nodes',
+      `new-enebular-ai-node.html`
+    )
+    if (this._isExistFile(filePath)) {
+      fs.renameSync(
+        filePath,
+        path.resolve(this._getAiNodesDir(), 'nodes', `enebular-ai-node.html`)
+      )
     }
-    filePath = path.resolve(this._getAiNodesDir(), 'nodes', `new-enebular-ai-node.js`);
-    if(await this._isExistFile(filePath)) {
-      fs.renameSync(filePath, path.resolve(this._getAiNodesDir(), 'nodes', `enebular-ai-node.js`));
-
+    filePath = path.resolve(
+      this._getAiNodesDir(),
+      'nodes',
+      `new-enebular-ai-node.js`
+    )
+    if (this._isExistFile(filePath)) {
+      fs.renameSync(
+        filePath,
+        path.resolve(this._getAiNodesDir(), 'nodes', `enebular-ai-node.js`)
+      )
     }
-    filePath = path.join(this._getDataDir(), 'node-red-enebular-ai-nodes', 'new-package.json');
-    if(await this._isExistFile(filePath)) {
-      fs.renameSync(filePath, path.join(this._getDataDir(), 'node-red-enebular-ai-nodes', 'package.json'));
+    filePath = path.join(
+      this._getDataDir(),
+      'node-red-enebular-ai-nodes',
+      'new-package.json'
+    )
+    if (this._isExistFile(filePath)) {
+      fs.renameSync(
+        filePath,
+        path.join(
+          this._getDataDir(),
+          'node-red-enebular-ai-nodes',
+          'package.json'
+        )
+      )
     }
   }
 
   async deleteDownloadNewFile() {
-    let filePath;
-    filePath = path.join(this._getDataDir(), 'new-flows.json');
-    if(await this._isExistFile(filePath)) {
-      fs.unlinkSync(filePath);
+    let filePath
+    filePath = path.join(this._getDataDir(), 'new-flows.json')
+    if (this._isExistFile(filePath)) {
+      fs.unlinkSync(filePath)
     }
-    filePath = path.join(this._getDataDir(), 'new-flows_cred.json');
-    if(await this._isExistFile(filePath)) {
-      fs.unlinkSync(filePath);
+    filePath = path.join(this._getDataDir(), 'new-flows_cred.json')
+    if (this._isExistFile(filePath)) {
+      fs.unlinkSync(filePath)
     }
-    filePath = path.resolve(this._getAiNodesDir(), 'nodes', `new-enebular-ai-node.html`);
-    if(await this._isExistFile(filePath)) {
-      fs.unlinkSync(filePath);
+    filePath = path.resolve(
+      this._getAiNodesDir(),
+      'nodes',
+      `new-enebular-ai-node.html`
+    )
+    if (this._isExistFile(filePath)) {
+      fs.unlinkSync(filePath)
     }
-    filePath = path.resolve(this._getAiNodesDir(), 'nodes', `new-enebular-ai-node.js`);
-    if(await this._isExistFile(filePath)) {
-      fs.unlinkSync(filePath);
+    filePath = path.resolve(
+      this._getAiNodesDir(),
+      'nodes',
+      `new-enebular-ai-node.js`
+    )
+    if (this._isExistFile(filePath)) {
+      fs.unlinkSync(filePath)
     }
-    filePath = path.join(this._getDataDir(), 'node-red-enebular-ai-nodes', 'new-package.json');
-    if(await this._isExistFile(filePath)) {
-      fs.unlinkSync(filePath);
+    filePath = path.join(
+      this._getDataDir(),
+      'node-red-enebular-ai-nodes',
+      'new-package.json'
+    )
+    if (this._isExistFile(filePath)) {
+      fs.unlinkSync(filePath)
     }
   }
 
-  async _isExistFile(path): boolean {
+  _isExistFile(path): boolean {
     try {
-      fs.statSync(path);
-      return true;
+      fs.statSync(path)
+      return true
     } catch (error) {
-      return false;
+      return false
     }
   }
 
-  _isExistCancelRequest(assetId: string, updateId: string) :boolean {
-    if( assetId === this._cancelRequest.assetId &&
-      updateId === this._cancelRequest.updateId) {
+  _isExistCancelRequest(assetId: string, updateId: string): boolean {
+    if (
+      assetId === this._cancelRequest.assetId &&
+      updateId === this._cancelRequest.updateId
+    ) {
       return true
     }
     return false
   }
 
   async _restoreDirectory(baseDir: string, backupDir: string) {
-    fs.removeSync(baseDir)
-    if(await this._isExistFile(backupDir)) {
-      fs.copySync(backupDir, baseDir)
+    await fs.remove(baseDir)
+    if (this._isExistFile(backupDir)) {
+      await fs.copy(backupDir, baseDir)
     }
-    fs.removeSync(backupDir)
+    await fs.remove(backupDir)
   }
 
-  async _resolveDependency(deployParam: Object): boolean {
-    let bsDir = path.join(this._getDataDir(), 'node_modules')
-    let bkDir = path.join(this._getDataDir(), 'tmp')
-    if(await this._isExistFile(bsDir)) {
-      fs.copySync(bsDir, bkDir)
-    }
+  async _safeCopy(source: string, destination: string) {
+    await execAsync(`find "${source}" -xtype l -delete 2>/dev/null`)
+    await fs.copy(source, destination)
+  }
 
-    let ret = await new Promise((resolve, reject) => {
-      const cproc = spawn('npm', ['install', 'enebular-agent-dynamic-deps'], {
-        stdio: 'inherit',
-        cwd: this._getDataDir()
-      })
-      cproc.on('error', async err => {
-        clearInterval(timer)
-        await this._restoreDirectory(bsDir, bkDir)
-        reject(err)
-      })
-      cproc.once('exit', async (code, signal) => {
-        clearInterval(timer)
-        if (code !== null) {
-          if (code === 0) {
-            resolve('success')
-          } else {
-            await this._restoreDirectory(bsDir, bkDir)
-            reject(new Error('Execution ended with failure exit code: ' + code))
-          }
-        } else {
-          resolve('cancel')
-        }
-      })
-      const timer = setInterval(() => {
-        if(this._isExistCancelRequest(deployParam.assetId, deployParam.updateId)) {
-          cproc.kill('SIGTERM')
+  async _resolveDependency(deployParam: Object): Promise<UpdatePackageResult> {
+    try {
+      let bsDir = path.join(this._getDataDir(), 'node_modules')
+      let bkDir = path.join(this._getDataDir(), 'tmp')
+      if (this._isExistFile(bsDir)) {
+        await this._safeCopy(bsDir, bkDir)
+      }
+      let ret = await new Promise((resolve, reject) => {
+        const cproc = spawn('npm', ['install', 'enebular-agent-dynamic-deps'], {
+          stdio: 'inherit',
+          cwd: this._getDataDir()
+        })
+        cproc.on('error', async (err) => {
           clearInterval(timer)
-        }
-      }, 100)
-    })
+          await this._restoreDirectory(bsDir, bkDir)
+          return reject(err)
+        })
+        cproc.once('exit', async (code, signal) => {
+          clearInterval(timer)
+          if (code !== null) {
+            if (code === 0) {
+              return resolve('success')
+            } else {
+              await this._restoreDirectory(bsDir, bkDir)
+              return reject(
+                new Error('Execution ended with failure exit code: ' + code)
+              )
+            }
+          } else {
+            resolve('cancel')
+          }
+        })
+        const timer = setInterval(() => {
+          if (
+            this._isExistCancelRequest(
+              deployParam.assetId,
+              deployParam.updateId
+            )
+          ) {
+            cproc.kill('SIGTERM')
+            clearInterval(timer)
+          }
+        }, 100)
+      })
 
-    if(ret === 'cancel') {
-      await this._restoreDirectory(bsDir, bkDir)
-      return false
+      if (ret === 'cancel') {
+        await this._restoreDirectory(bsDir, bkDir)
+        return {
+          success: false,
+          message: 'deploy cancel'
+        }
+      }
+      fs.removeSync(bkDir)
+      return {
+        success: true
+      }
+    } catch (err) {
+      this._log.error(err)
+      return {
+        success: false,
+        message: err.message
+      }
     }
-    fs.removeSync(bkDir)
-    return true
   }
 
   _createPIDFile(pid: string) {
@@ -1224,10 +1323,14 @@ export default class NodeREDController {
         reject(new Error(errorMsg))
         this._setFlowStatus('error', errorMsg)
       }, this._flowStartTimeout)
-      cproc.stdout.on('data', data => {
+      cproc.stdout.on('data', (data) => {
         let str = data.toString().replace(/(\n|\r)+$/, '')
         this._nodeRedLog.info(str)
-        if (!signaledSuccess && (str.includes('Started flows') || (str.includes('フローを開始しました')))) {
+        if (
+          !signaledSuccess &&
+          (str.includes('Started flows') ||
+            str.includes('フローを開始しました'))
+        ) {
           signaledSuccess = true
           clearTimeout(startTimeout)
           if (editSession) {
@@ -1238,7 +1341,7 @@ export default class NodeREDController {
           resolve()
         }
       })
-      cproc.stderr.on('data', data => {
+      cproc.stderr.on('data', (data) => {
         let str = data.toString().replace(/(\n|\r)+$/, '')
         this._nodeRedLog.error(str)
       })
@@ -1279,7 +1382,7 @@ export default class NodeREDController {
         }
         this._removePIDFile()
       })
-      cproc.once('error', err => {
+      cproc.once('error', (err) => {
         this._cproc = null
         this._setFlowStatus('error', err.message)
         reject(err)
@@ -1302,8 +1405,8 @@ export default class NodeREDController {
       if (cproc) {
         this.info('Shutting down service...')
         if (!this._shutdownRequested) {
-           // could be an internal shutdown that haven't set the flag yet
-           this._shutdownRequested = true
+          // could be an internal shutdown that haven't set the flag yet
+          this._shutdownRequested = true
         }
         const shutdownTimer = setTimeout(() => {
           if (this._cproc) {
