@@ -40,7 +40,7 @@ definitions:
           - tools/updater/lib/**
     - step: &set-pub-key
         name: Set the key
-        image: python:3.5.1
+        image: python:3.5.10
         deployment: test_pub_key_download
         script:
           - mkdir -p agent/keys
@@ -51,7 +51,7 @@ definitions:
           - agent/keys/**
     - step: &set-pub-key-staging
         name: Set the key
-        image: python:3.5.1
+        image: python:3.5.10
         deployment: Staging_pub_key_download
         script:
           - mkdir -p agent/keys
@@ -62,7 +62,7 @@ definitions:
           - agent/keys/**
     - step: &set-pub-key-release
         name: Set the key
-        image: python:3.5.1
+        image: python:3.5.10
         deployment: Production_pub_key_download
         script:
           - mkdir -p agent/keys
