@@ -19,7 +19,7 @@
     "test:jest": "jest --runInBand --forceExit"
   },
   "engines": {
-    "node": "12.21.0"
+    "node": "12.22.5"
   },
   "devDependencies": {
     "@babel/cli": "^7.2.3",
