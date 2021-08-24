@@ -1,6 +1,6 @@
 {
   "name": "awsiot-thing-creator",
-  "version": "2.15.4",
+  "version": "2.15.5",
   "description": "The utility to create AWS IoT thing from API",
   "main": "lib/index",
   "scripts": {
