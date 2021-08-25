@@ -40,7 +40,7 @@ definitions:
           - tools/updater/lib/**
     - step: &set-pub-key
         name: Set the key
-        image: python:3.5.100
+        image: python:3.5.10
         deployment: test_pub_key_download
         script:
           - mkdir -p agent/keys
