@@ -23,7 +23,7 @@ definitions:
             && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientId":"thing_name","thingName":"thing_name","caCert":"./certs/root_certificate","clientCert":"./certs/thing_cert","privateKey":"./certs/thing_private_key","topic":"aws/things/thing_name/shadow/update"}' > ./config.json
             && npm run test && rm ./config.json)
           - (cd ports/pelion && npm run test)
-          - (cd tools/updater && npm run test)
+          # - (cd tools/updater && npm run test)
           # clean up
           - (cd node-red && rm -rf node_modules)
           - (cd agent && rm -rf node_modules)
