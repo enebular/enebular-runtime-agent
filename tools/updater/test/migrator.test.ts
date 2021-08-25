@@ -221,3 +221,48 @@ test('Migrator.10: migrator handles root user change in systemd', async t => {
   )
   rimraf.sync(cache)
 })
+
+test('Migrator.11: migrator handles run as root reversion when new agent fails to start', async t => {
+  const cache = '/tmp/enebular-agent-updater-test-' + Utils.randomString()
+  process.env['ENEBULAR_AGENT_UPDATER_CACHE_DIR'] = cache
+  const { system, installer } = Mockhelper.createDefaultMocks()
+  system.agent.version = '2.8.0'
+  system.newAgent.version = '2.9.0'
+  system.failStartNewAgent = true
+  system.path = path.resolve('./test/data/fake_agent_awsiot')
+
+  const updater = new AgentUpdater(system, installer, undefined)
+  await t.throwsAsync(updater.update())
+
+  const log = fs.readFileSync(updater.getLogFilePath(), 'utf8')
+  t.true(log.indexOf('Migrating run enebular-agent as root') > -1)
+  t.true(log.indexOf('[RESTORE] Migration run enebular-agent as root') > -1)
+  rimraf.sync(cache)
+})
+
+test('Migrator.12: migration file execution order is guaranteed ascending', async t => {
+  const { system } = Mockhelper.createDefaultMocks()
+  const migrator = new Migrator(system, new Config(), new Log('debug', true, 'fake'),
+     Utils.getUserInfo(os.userInfo().username))
+
+  function nonNull(version: AgentVersion | undefined): AgentVersion {
+    if (!version) throw new Error('null')
+    return version
+  }
+  const files = migrator["_getMigrationFilesBetweenTwoVersions"](
+      [
+        '10.1.1.js',
+        '9.10.9.js',
+        '9.10.10.js',
+        '9.8.10.js',
+        '9.5.1.js'
+      ],
+      nonNull(AgentVersion.parse('9.5.0')), nonNull(AgentVersion.parse('10.1.1')))
+
+  t.true(files[0] === '9.5.1.js')
+  t.true(files[1] === '9.8.10.js')
+  t.true(files[2] === '9.10.9.js')
+  t.true(files[3] === '9.10.10.js')
+  t.true(files[4] === '10.1.1.js')
+})
+
