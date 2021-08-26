@@ -40,7 +40,7 @@ definitions:
           - tools/updater/lib/**
     - step: &set-pub-key
         name: Set the key
-        image: python:3.5.10
+        image: python:3.9.6
         deployment: test_pub_key_download
         script:
           - mkdir -p agent/keys
@@ -51,7 +51,7 @@ definitions:
           - agent/keys/**
     - step: &set-pub-key-staging
         name: Set the key
-        image: python:3.5.10
+        image: python:3.9.6
         deployment: Staging_pub_key_download
         script:
           - mkdir -p agent/keys
@@ -62,7 +62,7 @@ definitions:
           - agent/keys/**
     - step: &set-pub-key-release
         name: Set the key
-        image: python:3.5.10
+        image: python:3.9.6
         deployment: Production_pub_key_download
         script:
           - mkdir -p agent/keys
@@ -126,7 +126,7 @@ definitions:
           - dist/**
     - step: &upload
         name: Upload (Staging)
-        image: python:3.5.10
+        image: python:3.9.6
         deployment: Staging
         script:
           - pip install boto3==1.3.0
@@ -136,7 +136,7 @@ definitions:
           - dist/**
     - step: &upload-release
         name: Upload (Production)
-        image: python:3.5.10
+        image: python:3.9.6
         deployment: production
         trigger: manual
         script:
@@ -150,7 +150,7 @@ definitions:
           - dist/**
     - step: &upload-installsh
         name: Upload-install.sh (test)
-        image: python:3.5.10
+        image: python:3.9.6
         deployment: test_installsh_upload
         script:
           - pip install boto3==1.3.0
@@ -159,7 +159,7 @@ definitions:
           - '**'
     - step: &upload-installsh-staging
         name: Upload-install.sh (Staging)
-        image: python:3.5.10
+        image: python:3.9.6
         deployment: Staging
         script:
           - pip install boto3==1.3.0
