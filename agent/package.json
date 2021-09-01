@@ -72,7 +72,7 @@
     "jsonwebtoken": "^8.2.1",
     "mkdirp": "^0.5.1",
     "object-hash": "^1.3.0",
-    "object-path": "^0.11.5",
+    "object-path": "^0.11.6",
     "portfinder": "^1.0.20",
     "request": "^2.88.0",
     "request-progress": "^3.0.0",
