@@ -479,7 +479,7 @@ export class System implements SystemIf {
       if (ret && ret.startsWith('installed')) continue
 
       try {
-        await Utils.spawn('apt-get', ['-y', 'install', packages[i]], this._log)
+        await Utils.spawn('apt', ['-y', 'install', packages[i]], this._log)
       } catch (err) {
         throw new Error(`Failed to install ${packages[i]}: ${err.message}`)
       }
@@ -488,9 +488,9 @@ export class System implements SystemIf {
 
   public async updatePackageLists(): Promise<void> {
     try {
-      await Utils.spawn('apt-get', ['update'], this._log)
+      await Utils.spawn('apt', ['update'], this._log)
     } catch (err) {
-      throw new Error(`Failed to apt-get update`)
+      throw new Error(`Failed to apt update`)
     }
   }
 
