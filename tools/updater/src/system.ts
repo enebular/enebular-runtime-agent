@@ -488,9 +488,13 @@ export class System implements SystemIf {
 
   public async updatePackageLists(): Promise<void> {
     try {
-      await Utils.spawn('apt-get', ['--allow-releaseinfo-change', 'update'], this._log)
+      await Utils.spawn('apt-get', ['update'], this._log)
     } catch (err) {
-      throw new Error(`Failed to apt-get update`)
+      try {
+        await Utils.spawn('apt-get', ['--allow-releaseinfo-change', 'update'], this._log)
+      } catch (err) {
+        throw new Error(`Failed to apt-get update`)
+      }
     }
   }
 
