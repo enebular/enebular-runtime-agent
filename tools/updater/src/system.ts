@@ -490,7 +490,7 @@ export class System implements SystemIf {
     try {
       await Utils.spawn('apt-get', ['--allow-releaseinfo-change', 'update'], this._log)
     } catch (err) {
-      throw new Error(`Failed to apt update`)
+      throw new Error(`Failed to apt-get update`)
     }
   }
 
