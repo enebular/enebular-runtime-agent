@@ -491,8 +491,8 @@ export class System implements SystemIf {
       await Utils.spawn('apt-get', ['update'], this._log)
     } catch (err) {
       try {
-        this._log.info(`apt-get err:${err}`)
-        this._log.info(`I'll try again with the --allow-releaseinfo-change options.`)
+        this._log.info(`apt-get update error:${err}`)
+        this._log.info(`I'll try again with the --allow-releaseinfo-change option.`)
         await Utils.spawn('apt-get', ['--allow-releaseinfo-change', 'update'], this._log)
       } catch (err) {
         throw new Error(`Failed to apt-get update`)
