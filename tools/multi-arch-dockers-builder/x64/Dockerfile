@@ -1,4 +1,4 @@
-FROM node:12.21.0
+FROM node:12.22.5
  
 RUN apt-get update && apt-get install -y python git cmake python-pip build-essential
 RUN pip install --upgrade pip setuptools

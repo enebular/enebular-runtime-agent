@@ -34,7 +34,9 @@ npm ci && npm run build
 
 4 . Obtain the AWS IoT thing cert files to be used with this device (from the AWS console etc) and copy them to the AWS IoT port's directory.
 
-5 . Obtain the AWS IoT thing connection details for the device (from the AWS console etc) and create the AWS IoT port's `config.json` file with those details (including the correct paths of the cert files).
+5 . Attach the policy of enebular_policy to the certificate of the AWS IoT Thing used for this device.
+
+6 . Obtain the AWS IoT thing connection details for the device (from the AWS console etc) and create the AWS IoT port's `config.json` file with those details (including the correct paths of the cert files).
     The format of `config.json` is as follows.
 
 ```

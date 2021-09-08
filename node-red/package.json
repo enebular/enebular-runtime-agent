@@ -10,8 +10,8 @@
   "license": "MIT",
   "dependencies": {
     "@uhuru/enebular-ai-contrib": "file:.node-red-config/node-red-enebular-ai-nodes",
-    "@uhuru/enebular-node-red": "1.0.5-alpha.15",
-    "axios": "^0.18.0",
+    "@uhuru/enebular-node-red": "1.0.5-alpha.16",
+    "axios": "^0.21.1",
     "enebular-agent-dynamic-deps": "file:.node-red-config/enebular-agent-dynamic-deps",
     "node-red-contrib-pubnub": "^4.0.2",
     "node-red-contrib-firebase-data": "0.0.11",

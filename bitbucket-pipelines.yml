@@ -1,5 +1,5 @@
 image: 
-  name: node:12.21.0
+  name: node:12.22.5
   run-as-user: 1000
 
 definitions: 
@@ -40,7 +40,7 @@ definitions:
           - tools/updater/lib/**
     - step: &set-pub-key
         name: Set the key
-        image: python:3.5.1
+        image: python:3.9.6
         deployment: test_pub_key_download
         script:
           - mkdir -p agent/keys
@@ -51,7 +51,7 @@ definitions:
           - agent/keys/**
     - step: &set-pub-key-staging
         name: Set the key
-        image: python:3.5.1
+        image: python:3.9.6
         deployment: Staging_pub_key_download
         script:
           - mkdir -p agent/keys
@@ -62,7 +62,7 @@ definitions:
           - agent/keys/**
     - step: &set-pub-key-release
         name: Set the key
-        image: python:3.5.1
+        image: python:3.9.6
         deployment: Production_pub_key_download
         script:
           - mkdir -p agent/keys
@@ -87,7 +87,7 @@ definitions:
           - dist/**
     - step: &pack-x64
         name: Pack (x64)
-        image: enebularagentdevelopers/enebular-agent-x64:node-12.21.0
+        image: enebularagentdevelopers/enebular-agent-x64:node-12.22.5
         script:
           - chmod 777 pack_enebular_agent.sh
           - ./pack_enebular_agent.sh
@@ -101,7 +101,7 @@ definitions:
     - step: &pack-armv7l
         name: Pack (armv7l)
         script:
-          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i enebularagentdevelopers/enebular-agent-arm32v7:node-12.21.0 /usr/bin/qemu-arm-static -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent_arm32.sh"
+          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i enebularagentdevelopers/enebular-agent-arm32v7:node-12.22.5 /usr/bin/qemu-arm-static -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent_arm32.sh"
           - rm -rf .git
           - mkdir -p dist
           - AGENT_NAME=enebular-agent-${BITBUCKET_TAG}
@@ -114,7 +114,7 @@ definitions:
     - step: &pack-arm64
         name: Pack (arm64)
         script:
-          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i enebularagentdevelopers/enebular-agent-arm64v8:node-12.21.0 /usr/bin/qemu-aarch64-static -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent.sh"
+          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i enebularagentdevelopers/enebular-agent-arm64v8:node-12.22.5 /usr/bin/qemu-aarch64-static -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent.sh"
           - rm -rf .git
           - mkdir -p dist
           - AGENT_NAME=enebular-agent-${BITBUCKET_TAG}
@@ -126,7 +126,7 @@ definitions:
           - dist/**
     - step: &upload
         name: Upload (Staging)
-        image: python:3.5.1
+        image: python:3.9.6
         deployment: Staging
         script:
           - pip install boto3==1.3.0
@@ -136,7 +136,7 @@ definitions:
           - dist/**
     - step: &upload-release
         name: Upload (Production)
-        image: python:3.5.1
+        image: python:3.9.6
         deployment: production
         trigger: manual
         script:
@@ -150,7 +150,7 @@ definitions:
           - dist/**
     - step: &upload-installsh
         name: Upload-install.sh (test)
-        image: python:3.5.1
+        image: python:3.9.6
         deployment: test_installsh_upload
         script:
           - pip install boto3==1.3.0
@@ -159,8 +159,8 @@ definitions:
           - '**'
     - step: &upload-installsh-staging
         name: Upload-install.sh (Staging)
-        image: python:3.5.1
-        deployment: Staging_installsh_upload
+        image: python:3.9.6
+        deployment: Staging
         script:
           - pip install boto3==1.3.0
           - python tools/s3_upload.py ${ENEBULAR_AGENT_S3_BUCKET} "tools/install/install.sh" ${ENEBULAR_AGENT_S3_INSTALLSH_DIR}
