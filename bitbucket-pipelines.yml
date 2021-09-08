@@ -160,7 +160,7 @@ definitions:
     - step: &upload-installsh-staging
         name: Upload-install.sh (Staging)
         image: python:3.9.6
-        deployment: Staging
+        deployment: Staging_installsh_upload
         script:
           - pip install boto3==1.3.0
           - python tools/s3_upload.py ${ENEBULAR_AGENT_S3_BUCKET} "tools/install/install.sh" ${ENEBULAR_AGENT_S3_INSTALLSH_DIR}
