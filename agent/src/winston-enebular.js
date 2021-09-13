@@ -356,7 +356,7 @@ Enebular.prototype._finalizeCurrent = function() {
   }
 }
 
-Enebular.prototype._sendFinialized = async function() {
+Enebular.prototype._sendFinalized = async function() {
   let filenames = this._getOrderedFinalized()
   if (!filenames || filenames.length < 1) {
     return
@@ -417,13 +417,17 @@ Enebular.prototype._send = async function() {
 
   this._sending = true
 
-  await this._sendFinialized()
-  await this._finalizeCurrent()
-  await this._sendFinialized()
+  try {
+    await this._sendFinalized()
+    await this._finalizeCurrent()
+    await this._sendFinalized()
 
+    debug('Logs send complete')
+
+  } catch (err) {
+    error('Logs send error: ' + err)
+  }
   this._sending = false
-
-  debug('Logs send complete')
 }
 
 Enebular.prototype._handleSendTimeTrigger = function() {

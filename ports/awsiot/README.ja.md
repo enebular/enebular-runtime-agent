@@ -9,7 +9,7 @@ AWS IoTポートを使用すると、enebular-agentをAWS IoTの接続で使用�
 
 ## セットアップ
 
-※手順5,6の詳細は、[enebular-docs](https://docs.enebular.com/)を参照してください。
+※手順4,6の詳細は、[enebular-docs](https://docs.enebular.com/)を参照してください。
 
 1 . enebular-agentのコアモジュールをインストールします。
 
@@ -34,7 +34,9 @@ npm ci && npm run build
 
 4 . このデバイスで使用するAWS IoT Thing用の証明書ファイルをAWSのコンソールなどから入手し、AWS IoTポートのディレクトリにコピーします。
 
-5 . このデバイスで使用するAWS IoT Thingの接続情報をAWSのコンソールなどから取得します。証明書ファイルの正しいパスを含めて、この接続情報でAWS IoTポートのディレクトリに `config.json`ファイルを用意します。
+5 . このデバイスで使用するAWS IoT Thing用の証明書にenebular_policyのポリシーをアタッチする。
+
+6 . このデバイスで使用するAWS IoT Thingの接続情報をAWSのコンソールなどから取得します。証明書ファイルの正しいパスを含めて、この接続情報でAWS IoTポートのディレクトリに `config.json`ファイルを用意します。
     `config.json`のフォーマットは下記のとおりです。
 
 ```
