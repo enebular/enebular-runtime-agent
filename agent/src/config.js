@@ -134,7 +134,7 @@ export default class Config {
         userExpose: false
       },
       ENEBULAR_NODE_RED_FLOW_START_TIMEOUT: {
-        value: 30 * 1000,
+        value: 60 * 1000,
         description: '',
         userExpose: false
       },
