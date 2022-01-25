@@ -616,7 +616,7 @@ export class AgentInstaller implements AgentInstallerIf {
 
   private async _createRemoteMaintenanceUser(username: string, password: string) {
     let pwd = Utils.execReturnStdout(
-      `python -c "import crypt, random, hashlib, base64; salt=base64.b64encode(hashlib.sha384(str(random.SystemRandom().random())).digest(), './'); print(crypt.crypt('${password}', '\\$6\\$' + salt))"`
+      `python3 -c "import crypt, random, hashlib, base64; salt=base64.b64encode(hashlib.sha384(str(random.SystemRandom().random()).encode('utf-8')).digest(), b'./'); print(crypt.crypt('${password}', '\\$6\\$' + str(salt)))"`
     )
     if (!pwd) {
           throw new Error('failed to generate password using openssl')
