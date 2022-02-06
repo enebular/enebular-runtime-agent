@@ -1,6 +1,6 @@
 {
   "name": "awsiot-thing-creator",
-  "version": "2.15.5",
+  "version": "2.15.6",
   "description": "The utility to create AWS IoT thing from API",
   "main": "lib/index",
   "scripts": {
@@ -13,7 +13,7 @@
     "lint": "eslint src"
   },
   "engines": {
-    "node": "12.22.5"
+    "node": "12.22.10"
   },
   "devDependencies": {
     "@babel/cli": "^7.14.8",
