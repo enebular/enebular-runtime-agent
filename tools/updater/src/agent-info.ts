@@ -23,11 +23,7 @@ export interface SystemdAgentInfo {
 
 export interface ComponentsInstalled {
   awsiot: boolean
-  pelion: boolean
-  pelionMode?: string
   awsiotThingCreator: boolean
-  mbedCloudConnector: boolean
-  mbedCloudConnectorFCC: boolean
 }
 
 export class AgentInfo {
@@ -41,11 +37,7 @@ export class AgentInfo {
     path: string,
     version: AgentVersion,
     awsiot: boolean,
-    pelion: boolean,
-    pelionMode: string | undefined,
     awsiotThingCreator: boolean,
-    mbedCloudConnector: boolean,
-    mbedCloudConnectorFCC: boolean,
     nodejsVersion: string,
     systemd?: SystemdAgentInfo
   ) {
@@ -53,11 +45,7 @@ export class AgentInfo {
     this.version = version
     this.installed = {
       awsiot: awsiot,
-      pelion: pelion,
-      pelionMode: pelionMode,
-      awsiotThingCreator: awsiotThingCreator,
-      mbedCloudConnector: mbedCloudConnector,
-      mbedCloudConnectorFCC: mbedCloudConnectorFCC
+      awsiotThingCreator: awsiotThingCreator
     }
     this.nodejsVersion = nodejsVersion
     this.systemd = systemd
@@ -67,18 +55,11 @@ export class AgentInfo {
     if (this.systemd) {
       return this.systemd.port
     } else {
-      if (
-        (this.installed.awsiot && this.installed.pelion) ||
-        (!this.installed.awsiot && !this.installed.pelion)
-      ) {
+      if (!this.installed.awsiot) {
         throw new Error(`Failed to detect enebular-agent port type`)
       }
-      return this.installed.awsiot ? 'awsiot' : 'pelion'
+      return 'awsiot'
     }
-  }
-
-  public detectPelionMode(): string | undefined {
-    return this.installed.pelionMode
   }
 
   public isServiceRegistered(): boolean {
@@ -97,11 +78,7 @@ export class AgentInfo {
     const {
       version,
       awsiot,
-      pelion,
-      pelionMode,
       awsiotThingCreator,
-      mbedCloudConnector,
-      mbedCloudConnectorFCC,
       nodejsVersion
     } = system.scanAgentSource(path)
 
@@ -113,11 +90,7 @@ export class AgentInfo {
       path,
       agentVersion,
       awsiot,
-      pelion,
-      pelionMode,
       awsiotThingCreator,
-      mbedCloudConnector,
-      mbedCloudConnectorFCC,
       nodejsVersion,
       systemd
     )

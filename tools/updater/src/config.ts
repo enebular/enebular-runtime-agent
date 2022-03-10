@@ -77,11 +77,6 @@ export default class Config {
         description: 'path to find migrations files',
         userExpose: true
       },
-      PELION_MODE: {
-        value: 'factory',
-        description: 'pelion mode (developer or factory)',
-        userExpose: true
-      },
       FORCE_UPDATE: {
         value: false,
         description: 'force update to latest version',

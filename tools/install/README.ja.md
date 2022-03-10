@@ -39,7 +39,6 @@ ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E 
 現在、以下のポートがサポートされています。
 
 - **AWS IoT** - AWS IoT と連携して利用します
-- **Pelion** - Arm Pelion と連携して利用します
 
 デフォルトでは、enebular-agent の AWS IoT ポートがインストールされます。
 
@@ -71,29 +70,6 @@ ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E 
 
 AWS IoT のモノを作成するコマンドの例については、下記「実行例」の項を参照してください。
 
-#### Pelion の接続モード選択と認証情報インストール
-
-Pelionの接続モードには、以下のオプションで`developer`または`factory`を選択できます。デフォルトでは `developer` になります。
-
-```sh
---mbed-cloud-mode
-```
-
-インストールスクリプトは、enebular-agent が使用するための Pelion の開発者用またはファクトリー用の認証情報をインストールする機能を持っています。
-
-認証情報は先にデバイスに転送してから、転送先を以下のオプションのいずれかで設定する必要があります。
-
-```sh
---mbed-cloud-dev-cred
---mbed-cloud-bundle or --mbed-cloud-pal
-```
-
-Pelionの接続モードに開発者用モードを選択した場合に`--mbed-cloud-dev-cred`オプションで開発者用の認証情報のパス、ファクトリーモードを選択した場合に`--mbed-cloud-bundle` または `--mbed-cloud-pal`オプションでファクトリー用の認証情報（bundleファイルまたはpalディレクトリ）のパスを設定します。
-
-認証情報は、`/tmp`などのように再起動後に保存されない一時的なストレージ領域に転送するのが望ましいです。
-
-認証情報をインストールするコマンドの例については、下記「実行例」の項を参照してください。
-
 ### ポートの手動設定
 
 このスクリプトは enebular-agent を全てインストールし、システム起動時に実行されるように設定します。しかし、選択したポート固有の設定も必要なため、自動設定のオプションを指定しなかった場合、そのままだと起動が失敗します。
@@ -110,7 +86,6 @@ enebular-agent の再起動方法と実行状態の確認方法については�
 
 ```sh
 OPTION                      FORMAT                DEFAULT                              DESCRIPTION
--p or --port                -p=[awsiot,pelion]    awsiot                               インストールするポート
 -u or --user                -u=*                  enebular                             インストール後の実行ユーザ
 -d or --install-dir         -d=<path>             /home/<user>/enebular-runtime-agent  インストール先のディレクトリ
 -v or --release-version     -v=*                  The latest release                   enebular-agentのリリース
@@ -119,10 +94,6 @@ OPTION                      FORMAT                DEFAULT                       
 --aws-secret-access-key     =*                    N/A                                  AWS secret access key
 --aws-iot-region            =*                    N/A                                  AWS IoTのリージョン
 --aws-iot-thing-name        =*                    N/A                                  AWS IoTのモノ名
---mbed-cloud-mode           =[developer,factory]  developer                            Pelionの接続モード
---mbed-cloud-dev-cred       =*                    N/A                                  Pelionの開発者用認証情報ファイルのパス
---mbed-cloud-pal            =*                    N/A                                  Pelionのファクトリー用認証情報（palディレクトリ）のパス
---mbed-cloud-bundle         =*                    N/A                                  Pelionのファクトリー用認証情報（bundleファイル）のパス
 --license-key               =*                    N/A                                  アクティベーション用のライセンスキー
 --dev-mode                  N/A                   N/A                                  enebular-agentを開発者用モードで起動する
 ```

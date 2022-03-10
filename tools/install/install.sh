@@ -366,28 +366,22 @@ proc_retry() {
   fi
 }
 
-#args: port, user, install_dir, release_version, node_env_path(return value)
+#args: user, install_dir, release_version, node_env_path(return value)
 do_install() {
-  local PORT
-  PORT="${1-}"
-  if [ -z "${PORT}" ]; then
-    _err "Missing port."
-    _exit 1
-  fi
   local USER
-  USER="${2-}"
+  USER="${1-}"
   if [ -z "${USER}" ]; then
     _err "Missing user."
     _exit 1
   fi
   local INSTALL_DIR
-  INSTALL_DIR="${3-}"
+  INSTALL_DIR="${2-}"
   if [ -z "${INSTALL_DIR}" ]; then
     _err "Missing install directory."
     _exit 1
   fi
   local RELEASE_VERSION
-  RELEASE_VERSION="${4-}"
+  RELEASE_VERSION="${3-}"
   if [ -z "${RELEASE_VERSION}" ]; then
     _err "Missing release version."
     _exit 1
@@ -399,7 +393,6 @@ do_install() {
   _echo "   - System:              $(uname -srmo)"
   _echo "   - Install user:        ${USER}"
   _echo "   - Install destination: ${INSTALL_DIR}"
-  _echo "   - Agent port:          ${PORT}"
   _echo "   - Agent version:       ${RELEASE_VERSION}"
   _horizontal_bar
 
@@ -471,20 +464,7 @@ do_install() {
   fi
 
   declare -a UPDATER_PARAMETER
-  if [ "${PORT}" == "pelion" ]; then
-    UPDATER_PARAMETER+=("--pelion-mode=${MBED_CLOUD_MODE}")
-    if [ "${MBED_CLOUD_MODE}" == "factory" ]; then
-      if [ ! -z ${MBED_CLOUD_BUNDLE} ]; then
-        UPDATER_PARAMETER+=("--pelion-bundle=${MBED_CLOUD_BUNDLE}")
-      fi
-      if [ ! -z ${MBED_CLOUD_PAL} ]; then
-        UPDATER_PARAMETER+=("--pelion-pal=${MBED_CLOUD_PAL}")
-      fi
-    fi
-    if [ "${MBED_CLOUD_MODE}" == "developer" ]; then
-      UPDATER_PARAMETER+=("--pelion-dev-cred=${MBED_CLOUD_DEV_CRED}")
-    fi
-  fi
+
   if [ ! -z ${GITHUB_API_PATH} ]; then
     UPDATER_PARAMETER+=("--github-api-path=${GITHUB_API_PATH}")
   fi
@@ -502,13 +482,13 @@ do_install() {
   NODE_ENV="PATH=${NODE_PATH}:/bin:/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 
   env ENEBULAR_AGENT_UPDATER_LOG_FILE=${LOG_FILE} ${NODE_ENV} ${DEBUG_ENV} \
-    /bin/bash -c "${TEMP_UPDATER_DST}/bin/enebular-agent-update install "${PORT}" "${INSTALL_DIR}" \
+    /bin/bash -c "${TEMP_UPDATER_DST}/bin/enebular-agent-update install "${INSTALL_DIR}" \
     --user=${USER} --release-version=${RELEASE_VERSION} ${UPDATER_PARAMETER[*]}"
   if [ "$?" -ne 0 ]; then
     _err "Updater install failed."
     _exit 1
   fi
-  if [ ! -z ${AWS_IOT_THING_NAME} ] && [ ${PORT} == 'awsiot' ]; then
+  if [ ! -z ${AWS_IOT_THING_NAME} ]; then
     _task Creating AWS IoT thing
     if [ -d ${TEMP_UPDATER_DST}/awsiot-thing-creator ]; then
       if ! (
@@ -561,7 +541,7 @@ post_install() {
   if [ ! -z ${LICENSE_KEY} ]; then
     _task "Creating activation configuration file"
     cmd_wrapper run_as_user ${USER} 'echo "{\"enebularBaseURL\": \"'${ENEBULAR_BASE_URL}'\",\"licenseKey\": \"'${LICENSE_KEY}'\"}" \
-      > "'${INSTALL_DIR}'/ports/'${PORT}'/.enebular-activation-config.json"'
+      > "'${INSTALL_DIR}'/ports/awsiot/.enebular-activation-config.json"'
     _echo_g "OK"
   fi
 
@@ -583,7 +563,7 @@ post_install() {
     if [ ! -z ${ENEBULAR_DEV_MODE} ]; then
       LAUNCH_ENV="${LAUNCH_ENV} ENEBULAR_DEV_MODE=true"
     fi
-    cmd_wrapper bash -c "${LAUNCH_ENV} ${INSTALL_DIR}/ports/${PORT}/bin/enebular-${PORT}-agent \
+    cmd_wrapper bash -c "${LAUNCH_ENV} ${INSTALL_DIR}/ports/awsiot/bin/enebular-awsiot-agent \
       startup-register -u ${USER}"
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -ne 0 ]; then
@@ -595,11 +575,9 @@ post_install() {
 }
 
 USER=enebular
-PORT=awsiot
 RELEASE_VERSION="latest-release"
 SUPPORTED_NODE_VERSION="v12.22.10"
 ENEBULAR_BASE_URL="https://enebular.com/api/v1"
-MBED_CLOUD_MODE=developer
 
 UPDATER_DOWNLOAD_PATH="https://s3-ap-northeast-1.amazonaws.com/download.enebular.com/enebular-agent"
 UPDATER_TEST_DOWNLOAD_PATH="https://s3-ap-northeast-1.amazonaws.com/download.enebular.com/enebular-agent-staging"
@@ -611,10 +589,6 @@ chmod +r ${LOG_FILE}
 for i in "$@"
 do
 case $i in
-  -p=*|--port=*)
-  PORT="${i#*=}"
-  shift
-  ;;
   -u=*|--user=*)
   USER="${i#*=}"
   shift
@@ -649,22 +623,6 @@ case $i in
   ;;
   --aws-iot-thing-name=*)
   AWS_IOT_THING_NAME="${i#*=}"
-  shift
-  ;;
-  --mbed-cloud-dev-cred=*)
-  MBED_CLOUD_DEV_CRED="${i#*=}"
-  shift
-  ;;
-  --mbed-cloud-pal=*)
-  MBED_CLOUD_PAL="${i#*=}"
-  shift
-  ;;
-  --mbed-cloud-bundle=*)
-  MBED_CLOUD_BUNDLE="${i#*=}"
-  shift
-  ;;
-  --mbed-cloud-mode=*)
-  MBED_CLOUD_MODE="${i#*=}"
   shift
   ;;
   --github-api-path=*)
@@ -734,48 +692,6 @@ if [ -z ${INSTALL_DIR} ]; then
   INSTALL_DIR=/home/${USER}/enebular-runtime-agent
 fi
 
-case "${PORT}" in
-  awsiot);;
-  pelion)
-  case "${MBED_CLOUD_MODE}" in
-    developer | factory);;
-    *)
-      _err 'Unknown mbed cloud mode, supported modes: developer, factory'
-      _exit 1
-    ;;
-  esac
-  if [ -z "${MBED_CLOUD_DEV_CRED}" ] && [ ${MBED_CLOUD_MODE} == 'developer' ]; then
-    _err 'Must specify --mbed-cloud-dev-cred in pelion developer mode'
-    _exit 1
-  fi
-  if [ ${MBED_CLOUD_MODE} == 'factory' ]; then
-    if [ -z "${MBED_CLOUD_BUNDLE}" ] && [ -z ${MBED_CLOUD_PAL} ]; then
-    _err 'Must specify --mbed-cloud-bundle or --mbed-cloud-pal in pelion factory mode'
-    _exit 1
-    fi
-  fi
-  ;;
-  *)
-    _err 'Unknown port, supported ports: awsiot, pelion'
-    _exit 1
-  ;;
-esac
-
-if [ ! -z ${MBED_CLOUD_DEV_CRED} ] && [ ! -f ${MBED_CLOUD_DEV_CRED} ]; then
-  _err "${MBED_CLOUD_DEV_CRED} doesn't exist."
-  _exit 1
-fi
-
-if [ ! -z ${MBED_CLOUD_BUNDLE} ] && [ ! -f ${MBED_CLOUD_BUNDLE} ]; then
-  _err "${MBED_CLOUD_BUNDLE} doesn't exist."
-  _exit 1
-fi
-
-if [ ! -z ${MBED_CLOUD_PAL} ] && [ ! -d ${MBED_CLOUD_PAL} ]; then
-  _err "${MBED_CLOUD_PAL} doesn't exist."
-  _exit 1
-fi
-
 # if user specified thing name, we assume thing creation is wanted.
 if [ ! -z ${AWS_IOT_THING_NAME} ]; then
     if [ -z ${AWS_ACCESS_KEY_ID} ]; then
@@ -792,7 +708,7 @@ if [ ! -z ${AWS_IOT_THING_NAME} ]; then
     fi
 fi
 
-do_install "${PORT}" "${USER}" "${INSTALL_DIR}" "${RELEASE_VERSION}" NODE_ENV_PATH
+do_install "${USER}" "${INSTALL_DIR}" "${RELEASE_VERSION}" NODE_ENV_PATH
 
 post_install
 
