@@ -47,28 +47,6 @@ test('Migrator.1: migrate awsiot port', async t => {
   rimraf.sync(cache)
 })
 
-test('Migrator.2: migrate pelion port', async t => {
-  const cache = '/tmp/enebular-agent-updater-test-' + Utils.randomString()
-  process.env['ENEBULAR_AGENT_UPDATER_CACHE_DIR'] = cache
-  const { system, installer } = Mockhelper.createDefaultMocks()
-  system.agent.version = '2.4.0'
-  system.newAgent.version = '2.4.1'
-  process.env['PELION_MODE'] = 'developer'
-  system.port = 'pelion'
-  system.path = path.resolve('./test/data/fake_agent_pelion')
-
-  const updater = new AgentUpdater(system, installer, undefined)
-  await t.notThrowsAsync(updater.update())
-
-  t.true(fs.existsSync(`${system.newPath}/node-red/.node-red-config`))
-  t.true(
-    fs.existsSync(`/home/${system.user}/.enebular-agent/.enebular-config.json`)
-  )
-  t.true(fs.existsSync(`${system.newPath}/.enebular-assets.json`))
-  t.true(fs.existsSync(`${system.newPath}/assets`))
-  t.true(fs.existsSync(`${system.newPath}/ports/pelion/.pelion-connector`))
-  rimraf.sync(cache)
-})
 
 test('Migrator.3: migrator handles nodejs version change in systemd', async t => {
   const cache = '/tmp/enebular-agent-updater-test-' + Utils.randomString()
