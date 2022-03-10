@@ -465,9 +465,6 @@ do_install() {
 
   declare -a UPDATER_PARAMETER
 
-  if [ ! -z ${GITHUB_API_PATH} ]; then
-    UPDATER_PARAMETER+=("--github-api-path=${GITHUB_API_PATH}")
-  fi
   if [ ! -z ${AGENT_DOWNLOAD_PATH} ]; then
     UPDATER_PARAMETER+=("--agent-download-path=${AGENT_DOWNLOAD_PATH}")
   fi
@@ -623,10 +620,6 @@ case $i in
   ;;
   --aws-iot-thing-name=*)
   AWS_IOT_THING_NAME="${i#*=}"
-  shift
-  ;;
-  --github-api-path=*)
-  GITHUB_API_PATH="${i#*=}"
   shift
   ;;
   --agent-download-path=*)
