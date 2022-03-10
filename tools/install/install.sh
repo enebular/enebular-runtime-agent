@@ -514,7 +514,7 @@ do_install() {
     _echo_g "OK"
   fi
   rm -rf "${TEMP_UPDATER_DST}"
-  eval "$5='${NODE_ENV}'"
+  eval "$4='${NODE_ENV}'"
 }
 
 post_install() {
