@@ -118,20 +118,6 @@ wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- -v=2.1.2
 wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- -v=2.1.3 --user=enebular-user-test -d=/home/enebular-user-test/my-agent --no-startup-register
 ```
 
-Raspberry Pi デバイスに `pi` ユーザと `192.168.1.125` の IP アドレスで SSH を介して Pelion の enebular-agent ポートを開発者用の認証情報と一緒にインストールします。
-
-```sh
-scp mbed_cloud_dev_credentials.c pi@192.168.1.125:/tmp/
-ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-dev-cred=/tmp/mbed_cloud_dev_credentials.c"
-```
-
-Raspberry Pi デバイスに `pi` ユーザと `192.168.1.125` の IP アドレスで SSH を介して Pelion の enebular-agent ポートをファクトリー用の認証情報と一緒にインストールします。
-
-```sh
-scp -r pal pi@192.168.1.125:/tmp/
-ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-mode=factory --mbed-cloud-bundle=/tmp/bundle"
-```
-
 ## インストール完了後
 
 インストールが完了してから、次のコマンドパターンを使用して systemd ジャーナルで enebular-agent の実行状態を確認することができます。

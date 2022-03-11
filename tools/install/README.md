@@ -119,20 +119,6 @@ Install the AWS IoT enebular-agent port using the `2.1.3` release with the user 
 wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- -v=2.1.3 --user=enebular-user-test -d=/home/enebular-user-test/my-agent --no-startup-register
 ```
 
-Install the Pelion enebular-agent port with developer credentials on a Raspberry Pi device via SSH (with the `pi` user and IP address of `192.168.1.125`).
-
-```sh
-scp mbed_cloud_dev_credentials.c pi@192.168.1.125:/tmp/
-ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-dev-cred=/tmp/mbed_cloud_dev_credentials.c"
-```
-
-Install the Pelion enebular-agent port with the factory pal directory on a Raspberry Pi device via SSH (with the `pi` user and IP address of `192.168.1.125`).
-
-```sh
-scp -r pal pi@192.168.1.125:/tmp/
-ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-mode=factory --mbed-cloud-bundle=/tmp/bundle"
-```
-
 ## Post Install
 
 Once installed, you should be able to check the status of the enebular-agent with the systemd journal using the following command pattern.
