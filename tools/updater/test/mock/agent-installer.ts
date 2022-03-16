@@ -27,8 +27,7 @@ export default class MockAgentInstaller implements AgentInstallerIf {
   public async build(
     port: string,
     newAgentInfo: AgentInfo,
-    userInfo: UserInfo,
-    mbed_cloud_dev_credentials_path?: string
+    userInfo: UserInfo
   ): Promise<void> {
     this.attemptBuild = true
     if (this.failBuild) {

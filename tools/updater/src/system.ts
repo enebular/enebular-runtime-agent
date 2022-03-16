@@ -314,7 +314,6 @@ export class System implements SystemIf {
       if (execStartPath.length > 0) {
         agentPath = path.resolve(execStartPath, '../../../../')
         agentPort = path.parse(path.resolve(execStartPath, '../../')).name
-        agentPort = agentPort == 'local' ? 'pelion' : agentPort
       }
     }
     if (!agentPath) {
