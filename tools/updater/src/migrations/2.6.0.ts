@@ -52,14 +52,6 @@ module.exports = {
         true // might not be created yet
       )
     }
-    if (context.port == 'pelion') {
-      Helper.addFileCopy(
-        migration,
-        'Pelion data directory',
-        `${context['portBasePath']}/.pelion-connector`,
-        `${context['newPortBasePath']}/.pelion-connector`
-      )
-    }
   },
   down: (): void => {}
 }

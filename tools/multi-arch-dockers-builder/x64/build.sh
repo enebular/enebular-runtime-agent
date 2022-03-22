@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-sudo docker build -t enebularagentdevelopers/enebular-agent-x64:node-12.22.5 .
+sudo docker build -t enebularagentdevelopers/enebular-agent-x64:node-12.22.10 .
 
 
 

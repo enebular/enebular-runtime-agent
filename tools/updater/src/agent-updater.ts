@@ -178,19 +178,6 @@ export default class AgentUpdater {
     if (agentInfo.version.lessThan(new AgentVersion(2, 3, 0))) {
       throw new Error(`Only support updating enebular-agent 2.3.0 and above`)
     }
-    if (agentInfo.detectPortType() == 'pelion') {
-      if (agentInfo.version.lessThan(new AgentVersion(2, 4, 0))) {
-        throw new Error(
-          `Updating enebular-agent pelion port is only supported from version 2.4.0`
-        )
-      } else {
-        if (!this._config.isOverridden('PELION_MODE')) {
-          throw new Error(
-            `Updating enebular-agent pelion port requires --pelion-mode to be set (developer or factory)`
-          )
-        }
-      }
-    }
   }
 
   private async _configAndStartNewAgent(
@@ -353,7 +340,10 @@ export default class AgentUpdater {
 
     agentInfo.prettyStatus(this._log)
 
-    const packageType = await this._installer.download(this._newAgentInstallPath, this._userInfo)
+    const packageType = await this._installer.download(
+      this._newAgentInstallPath,
+      this._userInfo
+    )
     const newAgentInfo = AgentInfo.createFromSource(
       this._system,
       this._newAgentInstallPath
@@ -379,21 +369,14 @@ export default class AgentUpdater {
     }
 
     const port = agentInfo.detectPortType()
-    const mbedCloudDevCredsPath = `${agentInfo.path}/tools/mbed-cloud-connector/mbed_cloud_dev_credentials.c`
     if (packageType !== 'binary') {
-      await this._installer.build(
-        port,
-        newAgentInfo,
-        this._userInfo,
-        mbedCloudDevCredsPath
-      )
+      await this._installer.build(port, newAgentInfo, this._userInfo)
     }
 
     await this._installer.installRuntimeDependencies(
       port,
       newAgentInfo,
-      this._userInfo,
-      mbedCloudDevCredsPath
+      this._userInfo
     )
 
     await this._postInstall(agentInfo, newAgentInfo)
@@ -418,8 +401,7 @@ export default class AgentUpdater {
         this._system,
         this._userInfo
       )
-    }
-    else {
+    } else {
       return this.update()
     }
   }
