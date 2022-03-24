@@ -403,8 +403,8 @@ export class System implements SystemIf {
       throw new Error('Failed to get os version from system')
     }
     ver = ver.trim()
-    let index = ver.indexOf('.')
-    ver = ver.slice( 0, index);
+    const index = ver.indexOf('.')
+    ver = ver.slice(0, index)
     switch (ver) {
       case '8':
         ver = 'jessie'
@@ -414,6 +414,9 @@ export class System implements SystemIf {
         break
       case '10':
         ver = 'buster'
+        break
+      case '11':
+        ver = 'bullseye'
         break
     }
     return ver

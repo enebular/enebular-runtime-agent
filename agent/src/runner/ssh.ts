@@ -184,7 +184,9 @@ export class SSH extends EventEmitter {
       }
     })
     this._sshServerManager.startedIfTraceContains(
-      `Server listening on :: port ${options.port}`,
+      [
+        `Server listening on :: port ${options.port}`
+      ],
       30 * 1000
     )
 
@@ -271,7 +273,10 @@ export class SSH extends EventEmitter {
       }
     })
     this._sshClientManager.startedIfTraceContains(
-      'All remote forwarding requests processed',
+      [
+        'All remote forwarding requests processed',
+        'forwarding_success: all expected forwarding replies received'
+      ],
       // It may take up to 2 mins to timeout in connecting
       3 * 60 * 1000
     )
