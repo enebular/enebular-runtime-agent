@@ -10,7 +10,7 @@ export default class ProcessManager extends EventEmitter {
   private _retryCount = 0
   private _resetRetryCountWhenSuccess = false
   private _log: AgentRunnerLogger
-  private _startedMessage?: string
+  private _startedMessage?: string[]
   private _startedTimeout?: number
   private _name: string
   private _stopRequested = false
@@ -47,7 +47,7 @@ export default class ProcessManager extends EventEmitter {
   }
 
   public startedIfTraceContains(
-    startedMessage: string,
+    startedMessage: string[],
     startedTimeout: number
   ): void {
     this._startedMessage = startedMessage
@@ -94,7 +94,12 @@ export default class ProcessManager extends EventEmitter {
       cproc.stderr.on('data', data => {
         this._debug(`${this._name}: `, data.toString().replace(/(\n|\r)+$/, ''))
         if (this._startedMessage && startTimeout) {
-          const started = data.indexOf(this._startedMessage) !== -1
+          let started = false;
+          this._startedMessage.forEach((elem) => {
+            if(data.indexOf(elem) !== -1){
+              started = true;
+            }
+          });
           if (started) {
             clearTimeout(startTimeout)
             this.emit('started', data)
