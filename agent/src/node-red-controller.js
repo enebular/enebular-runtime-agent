@@ -1319,9 +1319,19 @@ export default class NodeREDController {
         env: env
       })
       const startTimeout = setTimeout(() => {
-        const errorMsg = 'Flow start timed out'
-        reject(new Error(errorMsg))
-        this._setFlowStatus('error', errorMsg)
+        if (editSession) {
+          // リモートモード時はタイムアウトしても正常完了とする
+          signaledSuccess = true
+          clearTimeout(startTimeout)
+          this._nodeRedLog.info('Pinging enebular editor...')
+          this._sendEditorAgentIPAddress(editSession)
+          this._setFlowStatus('running', null)
+          resolve()
+        } else {
+          const errorMsg = 'Flow start timed out'
+          reject(new Error(errorMsg))
+          this._setFlowStatus('error', errorMsg)
+        }
       }, this._flowStartTimeout)
       cproc.stdout.on('data', (data) => {
         let str = data.toString().replace(/(\n|\r)+$/, '')

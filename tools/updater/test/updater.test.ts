@@ -221,40 +221,6 @@ test('Updater.12: Refuse to downgrade', async t => {
   )
 })
 
-test('Updater.13: Update fails if current agent with pelion port and version is older than 2.4.0', async t => {
-  const { system, installer, migrator } = Mockhelper.createDefaultMocks()
-  system.agent.version = '2.3.0'
-  system.newAgent.version = '2.4.0'
-  system.port = 'pelion'
-
-  const updater = new AgentUpdater(system, installer, migrator)
-  const error = await t.throwsAsync(updater.update())
-  t.true(
-    error.message.startsWith(
-      'Updating enebular-agent pelion port is only supported from version 2.4.0'
-    )
-  )
-})
-
-test('Updater.14: Requuires --pelion-mode if current agent with pelion port and version is not greater than 2.4.0', async t => {
-  const { system, installer, migrator } = Mockhelper.createDefaultMocks()
-  system.agent.version = '2.4.0'
-  system.newAgent.version = '2.4.1'
-  system.port = 'pelion'
-
-  let updater = new AgentUpdater(system, installer, migrator)
-  let error = await t.throwsAsync(updater.update())
-  t.true(
-    error.message.startsWith(
-      'Updating enebular-agent pelion port requires --pelion-mode to be set'
-    )
-  )
-
-  process.env['PELION_MODE'] = 'factory'
-  updater = new AgentUpdater(system, installer, migrator)
-  await t.notThrowsAsync(updater.update())
-})
-
 test('Updater.15: Handles agent source scan failure', async t => {
   const { system, installer, migrator } = Mockhelper.createDefaultMocks()
   system.throwsWhenScanOriginalAgent = true

@@ -1,3 +1,0 @@
-include(${CMAKE_SOURCE_DIR}/define_factory.txt)
-
-add_definitions(-DMBED_CONF_APP_DEVELOPER_MODE=1)

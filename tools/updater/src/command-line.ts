@@ -37,11 +37,6 @@ export default class CommandLine {
       '--agent-test-download-path <url>'
     )
     this.addConfigOption('ENEBULAR_AGENT_USER', '--user <user>')
-    this.addConfigOption(
-      'PELION_MODE',
-      '--pelion-mode <mode>',
-      /^(factory|developer)$/i
-    )
     this.addConfigOption('FORCE_UPDATE', '--force')
     this.addConfigOption(
       'REMOTE_MAINTENANCE_USER_PASSWORD',
@@ -63,18 +58,6 @@ export default class CommandLine {
         this._installPath = path
         this._commandOptions = options
       })
-      .option(
-        '--pelion-dev-cred <path>',
-        'Path to pelion dev credentials (must be specified in developer mode)'
-      )
-      .option(
-        '--pelion-bundle <path>',
-        'Path to pelion bundle file'
-      )
-      .option(
-        '--pelion-pal <path>',
-        'Path to pelion pal directory'
-      )
   }
 
   public hasCommand(): boolean {
@@ -88,74 +71,34 @@ export default class CommandLine {
   ): Promise<boolean> {
     switch (this._command) {
       case 'install':
-        if (this._config.getBoolean('ROOT_REQUIRED') && process.getuid() !== 0) {
+        if (
+          this._config.getBoolean('ROOT_REQUIRED') &&
+          process.getuid() !== 0
+        ) {
           throw new Error('You have to run this with root permission.')
         }
 
-        const pelionMode = this._config.getString('PELION_MODE')
         if (!this._installPath || !this._installPort) {
           return false
         }
         try {
-          if (this._installPort === 'pelion') {
-            if (!this._config.isOverridden('PELION_MODE')) {
-              throw new Error(
-                `Installing enebular-agent pelion port requires --pelion-mode to be set (developer or factory)`
-              )
-            }
-            if (pelionMode !== 'developer' && pelionMode !== 'factory') {
-              throw new Error(
-                `--pelion-mode must be either developer or factory`
-              )
-            }
-            if (pelionMode === 'developer' && !this._commandOptions.pelionDevCred) {
-              throw new Error(
-                `--pelion-dev-cred must be specified in pelion developer mode`
-              )
-            }
-            if (pelionMode === 'factory' && !this._commandOptions.pelionPal && !this._commandOptions.pelionBundle) {
-              throw new Error(
-                `either --pelion-bundle or --pelion-pal must be specified in pelion factory mode`
-              )
-            }
-          }
- 
-          const packageType = await installer.download(this._installPath, userInfo)
+          const packageType = await installer.download(
+            this._installPath,
+            userInfo
+          )
           const agentInfo = AgentInfo.createFromSource(
-              system,
-              this._installPath
-            )
+            system,
+            this._installPath
+          )
           if (packageType !== 'binary') {
-            await installer.build(
-              this._installPort,
-              agentInfo,
-              userInfo,
-              this._commandOptions.pelionDevCred
-            )
+            await installer.build(this._installPort, agentInfo, userInfo)
           }
           await installer.installRuntimeDependencies(
             this._installPort,
             agentInfo,
-            userInfo,
-            this._commandOptions.pelionDevCred
+            userInfo
           )
 
-          if (this._installPort === 'pelion' && pelionMode === 'factory') {
-            if (this._commandOptions.pelionBundle) {
-              await installer.bundle2PAL(
-                this._installPath,
-                this._commandOptions.pelionBundle,
-                userInfo
-              )
-            }
-            if (this._commandOptions.pelionPal) {
-              await installer.installPAL(
-                this._installPath,
-                this._commandOptions.pelionPal,
-                userInfo
-              )
-            }
-          }
           return true
         } catch (err) {
           console.error(`Install enebular-agent failed, reason: ${err.message}`)

@@ -1,6 +1,0 @@
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ x86_x64_NativeLinux_mbedtls ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-##################
-# mbedtls 2.16.0
-##################
-- Clone https://github.com/ARMmbed/mbedtls.git at mbedtls-2.16.0 to /home/suyouxin/work/enebular/enebular-runtime-agent/tools/mbed-cloud-connector/pal-platform/Middleware/mbedtls/mbedtls

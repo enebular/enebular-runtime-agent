@@ -51,14 +51,13 @@ Node-RED も Node.js のモジュールとしてインストールされます�
 
 ## ポート
 
-ポートとは、enebular-agent を AWS IoT や Pelion Device Management などの外部サービスと連携するために個別に準備された enebular-agent のエディションのことを指します。
+ポートとは、enebular-agent を AWS IoTなどの外部サービスと連携するために個別に準備された enebular-agent のエディションのことを指します。
 
 enebular-agent を利用するには、利用する外部サービスに合わせて適切なポートを選択し、そのポートのインストールと設定を行ってから、ポートの`bin`ディレクトリの下にある実行ファイルを実行します。
 
 現在、以下のポートがあります。
 
 - **AWS IoT** - AWS IoT と連携して利用します
-- **Pelion** - Arm Pelion と連携して利用します
 
 ## enebular editor との連携利用
 
@@ -89,11 +88,6 @@ enebular-agent を AWS IoT と一緒に使用して、新しいモノを自動�
 - AWS IoT のリージョン
 - 追加するモノの名前
 
-enebular-agent を Arm Pelion と一緒に使用する場合、以下のいずれかが必要になります。
-
-- Pelionの開発者用認証情報ファイル
-- Pelionのファクトリー用認証情報palディレクトリ
-
 ### 基本的な利用方法
 
 インストールスクリプトは、次のコマンドで開発用の PC 上の SSH を使用してリモートのデバイスで実行します。
@@ -110,13 +104,7 @@ ssh -t <user>@<device-ip-address> "wget -qO- https://enebular.com/agent-install 
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s"
 ```
 
-AWS IoT以外のポートをインストールするには、`--port`オプションを指定します。Pelionのポートをインストールする場合のコマンドは次のようになります。
-
-```sh
-ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion"
-```
-
-上記のコマンドで enebular-agent がインストールされますが、必要な接続情報がまだ設定されていないため、起動することが出来ません。 新しい AWS IoT の*モノ*を自動的に追加して利用したい場合は、上記のコマンドの代わりに下記の「AWS IoT の Thing 自動作成とセットアップ」の説明に従ってください。また、 enebular-agent の Pelion ポートを利用して必要となる認証情報をインストールしたい場合は、下記の「Pelion の認証情報インストール」の説明に従ってください。
+上記のコマンドで enebular-agent がインストールされますが、必要な接続情報がまだ設定されていないため、起動することが出来ません。 新しい AWS IoT の*モノ*を自動的に追加して利用したい場合は、上記のコマンドの代わりに下記の「AWS IoT の Thing 自動作成とセットアップ」の説明に従ってください。
 
 手動で接続情報を設定したい場合、ポートに必要なファイルを適切な場所と正しいユーザー権限で追加してから、enebular-agent を再起動しないといけません。詳細については、下記の「手動セットアップ」の項を参照してください。
 
@@ -140,28 +128,6 @@ ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E 
 インストールスクリプトに以下の AWS サービスのアクセス権限が必要になります。
 
 - **IoT Core** - モノとその関連の証明書や、ポリシー、ルールの追加のために利用します
-
-### Pelion の接続モード選択と認証情報インストール
-
-enebular-agent の Pelion ポートをインストールするには、`--port`オプションで`pelion`を設定する必要があります。
-
-Pelion の接続モードがデフォルトで開発者用モードになります。ファクトリーモードは`--mbed-cloud-mode`オプションで`factory`を設定して選択することができます。
-
-Pelion ポートで必要となる認証情報を先にデバイスに転送してから、転送先を以下のオプションのいずれかで設定する必要があります。
-
-```sh
---mbed-cloud-dev-cred=<Pelionの開発者用認証情報ファイルのパス>
---mbed-cloud-pal=<Pelionのファクトリー用認証情報palディレクトリのパス>
-```
-
-Pelionの接続モードに開発者用モードを選択した場合に`--mbed-cloud-dev-cred`オプションで開発者用の認証情報のパス、ファクトリーモードを選択した場合に`--mbed-cloud-pal`オプションでファクトリー用の認証情報（palディレクトリ）のパスを設定します。
-
-例えば、`pi` ユーザと `192.168.1.125` の IP アドレスを持つ Raspberry Pi デバイスに Pelion の enebular-agent ポートを開発者用の認証情報と一緒にインストールする場合のコマンドは次のようになります。
-
-```sh
-scp mbed_cloud_dev_credentials.c pi@192.168.1.125:/tmp/
-ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-dev-cred=/tmp/mbed_cloud_dev_credentials.c"
-```
 
 ### 確認方法
 
@@ -196,7 +162,6 @@ enebular-agent を実行するには、利用する IoT プラットフォーム
 必要なモジュールと接続情報は、各 IoT プラットフォームのポートによって異なります。enebular-agent の設定と実行の詳細については、各ポートの readme ファイルを参照してください。
 
 - [AWS IoT ポートの README](ports/awsiot/README.ja.md)
-- [Pelion ポートの README](ports/pelion/README.ja.md)
 
 ### 設定方法
 

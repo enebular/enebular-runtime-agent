@@ -19,10 +19,6 @@
 
 enebular-agentが標準ではないユーザの下でインストールされている場合、アップデート時にもそのユーザを`--user`オプションで指定する必要があります。
 
-### Pelionポートのモード
-
-enebular-agentのPelionポートをアップデートする場合、`--pelion-mode`オプションで利用中のPelionモードを`developer` または`factory`に設定する必要があります。
-
 ### 自動起動が無効の場合
 
 enebular-agentが`--no-startup-register`オプションでインストールされている場合、アップデート時にenebular-agentのインストールディレクトリを`--install-dir`オプションで指定する必要があります。
@@ -45,12 +41,6 @@ wget -qO- https://enebular.com/agent-update | sudo -E bash -s -- <option>
 
 ```sh
 ssh -t <user>@<device-ip-address> "wget -qO- https://enebular.com/agent-update | sudo -E bash -s"
-```
-
-例えば、デフォルトの `pi` ユーザと `192.168.1.125` の IP アドレスを持つリモートの Raspberry Pi で Pelion ポートのモードに`factory`を指定してスクリプトを実行するコマンドは次のようになります。
-
-```sh
-ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-update | sudo -E bash -s -- --pelion-mode=factory"
 ```
 
 ## アップデータの直接利用による手動アップデート実行
@@ -103,7 +93,6 @@ Update succeeded ✔
 ```sh
 OPTION                       DESCRIPTION	
 --user                       enebular-agentがインストールされているユーザ
---pelion-mode                enebular-agentがインストールされた時のPelionモード (developerまたはfactory)
 -h, --help                   利用情報を出力する
 ```
 
