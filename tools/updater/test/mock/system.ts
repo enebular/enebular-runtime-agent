@@ -166,11 +166,7 @@ export default class MockSystem implements SystemIf {
   ): {
     version: string
     awsiot: boolean
-    pelion: boolean
-    pelionMode: string | undefined
     awsiotThingCreator: boolean
-    mbedCloudConnector: boolean
-    mbedCloudConnectorFCC: boolean
     nodejsVersion: string
   } {
     let agentVersion, nodejsVersion
@@ -188,11 +184,7 @@ export default class MockSystem implements SystemIf {
     return {
       version: agentVersion,
       awsiot: this.port == 'awsiot',
-      pelion: this.port == 'pelion',
-      pelionMode: 'developer',
       awsiotThingCreator: this.port == 'awsiot',
-      mbedCloudConnector: this.port == 'pelion',
-      mbedCloudConnectorFCC: this.port == 'pelion',
       nodejsVersion: nodejsVersion
     }
   }

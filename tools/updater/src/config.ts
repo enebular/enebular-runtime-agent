@@ -26,7 +26,7 @@ export default class Config {
   public constructor() {
     this._items = {
       SUPPORTED_NODEJS_VERSION: {
-        value: 'v12.22.5',
+        value: 'v12.22.10',
         description: 'Supported NodeJS version',
         userExpose: true
       },
@@ -75,11 +75,6 @@ export default class Config {
       MIGRATION_FILE_PATH: {
         value: path.resolve(__dirname, './migrations'),
         description: 'path to find migrations files',
-        userExpose: true
-      },
-      PELION_MODE: {
-        value: 'factory',
-        description: 'pelion mode (developer or factory)',
         userExpose: true
       },
       FORCE_UPDATE: {

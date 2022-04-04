@@ -8,10 +8,10 @@ Wants=network-online.target
 User=root
 Environment=PATH=/home/enebular/nodejs-v9.2.1/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
 Environment='ENEBULAR_DEV_MODE=true'
-PIDFile=/home/enebular/enebular-runtime-agent/ports/pelion/.enebular-agent.pid
+PIDFile=/home/enebular/enebular-runtime-agent/ports/awsiot/.enebular-agent.pid
 
-ExecStart=/home/enebular/enebular-runtime-agent/ports/pelion/bin/enebular-pelion-agent --user enebular --enable-syslog --daemon-mode --user enebular --user enebular
-ExecStop=/home/enebular/enebular-runtime-agent/ports/pelion/bin/enebular-pelion-agent kill
+ExecStart=/home/enebular/enebular-runtime-agent/ports/awsiot/bin/enebular-awsiot-agent --user enebular --enable-syslog --daemon-mode --user enebular --user enebular
+ExecStop=/home/enebular/enebular-runtime-agent/ports/awsiot/bin/enebular-awsiot-agent kill
 Restart=on-failure
 RestartSec=60s
 

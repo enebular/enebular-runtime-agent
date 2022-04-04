@@ -50,14 +50,13 @@ Node-RED is also installed as a Node.js module.
 
 ## Ports
 
-A 'port' refers to the individual enebular-agent editions created to allow it to work with external connection services such as AWS IoT and Pelion Device Management.
+A 'port' refers to the individual enebular-agent editions created to allow it to work with external connection services such as AWS IoT.
 
 To use enebular-agent you select the appropriate port for the IoT platform connection type you want to use, install and configure the port, and then run it using the executable under its `bin` directory.
 
 The current ports are:
 
 - **AWS IoT** - For use with AWS IoT
-- **Pelion** - For use with Arm Pelion
 
 ## Using with enebular editor
 
@@ -88,11 +87,6 @@ If you are using enebular-agent with AWS IoT and you'd like to automatically add
 - Your AWS IoT region
 - A name for the new _thing_
 
-If you are using enebular-agent with Arm Pelion, you'll also need to have one of the following.
-
-- Pelion developer credentials c file
-- Pelion factory pal directory
-
 ### Basic Usage
 
 The install script can be run on a remote device by using SSH on your development PC with the following command pattern.
@@ -109,13 +103,8 @@ For example, to run the script on a remote Raspberry Pi with the default `pi` us
 ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s"
 ```
 
-To install a port other than AWS IoT specify the `--port` option. If installing the Pelion port, the command would be as follows.
 
-```sh
-ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion"
-```
-
-This will install enebular-agent, but as it will be missing the required connection info it will not actually run. If you'd like to automatically add a new AWS IoT _thing_ to use, then follow the instructions in the "Automatic AWS IoT Thing Creation and Setup" section below instead. If you're using the Pelion enebular-agent port and you'd like to install the required credentials, then follow the instructions in the "Pelion Credentials Install" section.
+This will install enebular-agent, but as it will be missing the required connection info it will not actually run. If you'd like to automatically add a new AWS IoT _thing_ to use, then follow the instructions in the "Automatic AWS IoT Thing Creation and Setup" section below instead. 
 
 If you'd like to set up the connection info manually, you'll need to add the required files for the port (in the correct location and with the correct user permissions) as specified in the port's readme file and then restart enebular-agent. See the "Manual Setup" section further below for more details on this.
 
@@ -139,28 +128,6 @@ ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E 
 The install script requires access to the following AWS services.
 
 - **IoT Core** - for adding the Thing and associated certificates, policies and rules
-
-### Pelion Connection Mode Selection and Credentials Install
-
-To install the Pelion enebular-agent port, the `--port` option must be set to `pelion`.
-
-By default developer mode is selected for the connection mode. Factory mode can be selected by setting the `--mbed-cloud-mode` option to `factory`.
-
-The required Pelion credentials must be copied to the device first and then their location specified with one of the two following options.
-
-```sh
---mbed-cloud-dev-cred=<Path of the Pelion developer credentials c file>
---mbed-cloud-pal=<Path of the Pelion factory pal directory>
-```
-
-Use `--mbed-cloud-dev-cred` to specify the developer credentials in developer mode and `--mbed-cloud-pal` to specify the pal directory in factory mode.
-
-For example, to install the Pelion port with developer credentials on a Raspberry Pi device (with the `pi` user and IP address of `192.168.1.125`), the commands would be similar to the following.
-
-```sh
-scp mbed_cloud_dev_credentials.c pi@192.168.1.125:/tmp/
-ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- --port=pelion --mbed-cloud-dev-cred=/tmp/mbed_cloud_dev_credentials.c"
-```
 
 ### Confirmation
 
@@ -195,7 +162,6 @@ To run enebular-agent you need to install the Node.js modules required by the Io
 The required modules and connection configuration differs for each IoT platform port. Please see the readme files of each port for details on how to set up and run the enebular-agent.
 
 - [AWS IoT Port README](ports/awsiot/README.md)
-- [Pelion Port README](ports/pelion/README.md)
 
 ### Configuration
 

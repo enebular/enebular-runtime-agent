@@ -1,5 +1,5 @@
 image: 
-  name: node:12.22.5
+  name: node:12.22.10
   run-as-user: 1000
 
 definitions: 
@@ -14,7 +14,6 @@ definitions:
           - (cd node-red && npm ci)
           - (cd agent && npm ci && npm run build && . /tmp/check_lock_file.sh)
           - (cd ports/awsiot && npm ci && npm run build && . /tmp/check_lock_file.sh)
-          - (cd ports/pelion && npm ci && npm run build && . /tmp/check_lock_file.sh)
           - (cd tools/updater/awsiot-thing-creator && npm ci && npm run build && . /tmp/check_lock_file.sh)
           - (cd tools/updater && npm ci && npm run build && . /tmp/check_lock_file.sh)
           # test
@@ -22,20 +21,17 @@ definitions:
           - (cd ports/awsiot
             && echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientId":"thing_name","thingName":"thing_name","caCert":"./certs/root_certificate","clientCert":"./certs/thing_cert","privateKey":"./certs/thing_private_key","topic":"aws/things/thing_name/shadow/update"}' > ./config.json
             && npm run test && rm ./config.json)
-          - (cd ports/pelion && npm run test)
           - (cd tools/updater && npm run test)
           # clean up
           - (cd node-red && rm -rf node_modules)
           - (cd agent && rm -rf node_modules)
           - (cd ports/awsiot && rm -rf node_modules)
-          - (cd ports/pelion && rm -rf node_modules)
           - (cd tools/updater/awsiot-thing-creator && rm -rf node_modules)
           - (cd tools/updater && rm -rf node_modules)
           - rm -rf .git
         artifacts:
           - agent/lib/**
           - ports/awsiot/lib/**
-          - ports/pelion/lib/**
           - tools/updater/awsiot-thing-creator/lib/**
           - tools/updater/lib/**
     - step: &set-pub-key
@@ -87,7 +83,7 @@ definitions:
           - dist/**
     - step: &pack-x64
         name: Pack (x64)
-        image: enebularagentdevelopers/enebular-agent-x64:node-12.22.5
+        image: enebularagentdevelopers/enebular-agent-x64:node-12.22.10
         script:
           - chmod 777 pack_enebular_agent.sh
           - ./pack_enebular_agent.sh
@@ -101,7 +97,7 @@ definitions:
     - step: &pack-armv7l
         name: Pack (armv7l)
         script:
-          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i enebularagentdevelopers/enebular-agent-arm32v7:node-12.22.5 /usr/bin/qemu-arm-static -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent_arm32.sh"
+          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i enebularagentdevelopers/enebular-agent-arm32v7:node-12.22.10 /usr/bin/qemu-arm-static -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent_arm32.sh"
           - rm -rf .git
           - mkdir -p dist
           - AGENT_NAME=enebular-agent-${BITBUCKET_TAG}
@@ -115,7 +111,7 @@ definitions:
         name: Pack (arm64)
         size: 2x
         script:
-          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i enebularagentdevelopers/enebular-agent-arm64v8:node-12.22.5 /usr/bin/qemu-aarch64-static -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent_arm32.sh"
+          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i enebularagentdevelopers/enebular-agent-arm64v8:node-12.22.10 /usr/bin/qemu-aarch64-static -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent_arm32.sh"
           - rm -rf .git
           - mkdir -p dist
           - AGENT_NAME=enebular-agent-${BITBUCKET_TAG}

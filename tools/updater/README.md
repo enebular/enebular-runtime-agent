@@ -19,10 +19,6 @@ The following options should be specified as required when updating.
 
 If enebular-agent was installed under a non-default user, then that user must be specified with the `--user` option when updating too.
 
-### Pelion Port Mode
-
-When updating the Pelion port of enebular-agent, the Pelion mode in use must be specified with the `--pelion-mode` option (either `developer` or `factory`).
-
 ### When Auto Startup is Disabled
 
 If enebular-agent was installed with the `--no-startup-register` option, then the install directory of enebular-agent must be specified with the `--install-dir` option.
@@ -45,12 +41,6 @@ The update script can also be run on a remote target device via SSH with the fol
 
 ```sh
 ssh -t <user>@<device-ip-address> "wget -qO- https://enebular.com/agent-update | sudo -E bash -s"
-```
-
-For example, to run the script on a remote Raspberry Pi with the default `pi` user, an IP address of `192.168.1.125` and specifying `factory` for the Pelion port mode, the command would be as follows.
-
-```sh
-ssh -t pi@192.168.1.125 "wget -qO- https://enebular.com/agent-update | sudo -E bash -s -- --pelion-mode=factory"
 ```
 
 ## Manual Updates Using Updater Directly
@@ -103,7 +93,6 @@ The most commonly used options are shown below. These options can be specified b
 ```sh
 OPTION                       DESCRIPTION	
 --user                       User under which enebular-agent has been installed
---pelion-mode                Pelion mode (developer or factory) selected when enebular-agent was installed
 -h, --help                   Output usage information
 ```
 

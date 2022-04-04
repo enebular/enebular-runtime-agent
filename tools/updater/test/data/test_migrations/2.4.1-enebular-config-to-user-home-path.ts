@@ -37,14 +37,6 @@ module.exports = {
         `${context['newPortBasePath']}/config.json`
       )
     }
-    if (context.port == 'pelion') {
-      Helper.addFileCopy(
-        migration,
-        'Pelion data directory',
-        `${context['portBasePath']}/.pelion-connector`,
-        `${context['newPortBasePath']}/.pelion-connector`
-      )
-    }
   },
   down: () => {}
 }
