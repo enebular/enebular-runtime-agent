@@ -573,7 +573,7 @@ post_install() {
 
 USER=enebular
 RELEASE_VERSION="latest-release"
-SUPPORTED_NODE_VERSION="v12.22.10"
+SUPPORTED_NODE_VERSION="v14.19.1"
 ENEBULAR_BASE_URL="https://enebular.com/api/v1"
 
 UPDATER_DOWNLOAD_PATH="https://s3-ap-northeast-1.amazonaws.com/download.enebular.com/enebular-agent"

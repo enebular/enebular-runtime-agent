@@ -19,7 +19,7 @@
   "author": "",
   "license": "ISC",
   "engines": {
-    "node": "12.22.10"
+    "node": "14.19.1"
   },
   "devDependencies": {
     "@types/node": "^11.9.4",

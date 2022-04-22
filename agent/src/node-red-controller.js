@@ -911,8 +911,9 @@ export default class NodeREDController {
           } else {
             this.info('credential encryption')
             try {
+              // when loading flow credential secret is stored in runtime config
               const dotconfig = fs.readFileSync(
-                path.join(this._getDataDir(), '.config.json'),
+                path.join(this._getDataDir(), '.config.runtime.json'),
                 'utf8'
               )
 
