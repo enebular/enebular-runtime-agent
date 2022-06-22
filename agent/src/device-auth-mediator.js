@@ -31,7 +31,9 @@ export default class DeviceAuthMediator extends EventEmitter {
   constructor(messageEmitter: EventEmitter, log: Logger) {
     super()
     this._log = log
-    messageEmitter.on('updateAuth', message => this._handleUpdateAuth(message))
+    messageEmitter.on('updateAuth', (message) =>
+      this._handleUpdateAuth(message)
+    )
     this._tokenEmitter = new EventEmitter()
   }
 
@@ -45,7 +47,7 @@ export default class DeviceAuthMediator extends EventEmitter {
     this._log.info(msg, ...args)
   }
 
-  _handleUpdateAuth({ idToken, accessToken, state }) {
+  _handleUpdateAuth({ idToken, accessToken, state, isDeviceMaster }) {
     if (idToken === '-' && accessToken === '-' && state === '-') {
       this.debug('updateAuth:authRequestTrigger command received')
       this.startAuthAttempt()
@@ -67,13 +69,18 @@ export default class DeviceAuthMediator extends EventEmitter {
             this.emit('accessTokenClear')
           } else {
             this.debug('accessToken provided')
-            this.emit('accessTokenUpdate', accessToken)
+            this.emit('accessTokenUpdate', { accessToken, isDeviceMaster })
           }
         } else {
-          this.debug('Tokens are not for this device - ignoring' + JSON.stringify(payload, null, 2) +
-            ', ' + this._nonce + 
-            ', ' + state + 
-            ', ' + this._seq
+          this.debug(
+            'Tokens are not for this device - ignoring' +
+              JSON.stringify(payload, null, 2) +
+              ', ' +
+              this._nonce +
+              ', ' +
+              state +
+              ', ' +
+              this._seq
           )
         }
       } else {
@@ -122,7 +129,7 @@ export default class DeviceAuthMediator extends EventEmitter {
     this._seq++
     const state = `req-${this._seq}`
     const waitTokens = this._waitForTokenUpdate()
-    waitTokens.catch(err => {
+    waitTokens.catch((err) => {
       this.debug('Auth request: ' + err.message)
     })
 
@@ -145,7 +152,7 @@ export default class DeviceAuthMediator extends EventEmitter {
   async _waitForTokenUpdate() {
     this.debug('Setting up wait for token update...')
     return new Promise((resolve, reject) => {
-      this._tokenEmitter.on('tokenUpdate', accessToken => {
+      this._tokenEmitter.on('tokenUpdate', (accessToken) => {
         resolve()
       })
       setTimeout(() => {

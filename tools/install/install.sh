@@ -513,14 +513,14 @@ do_install() {
     fi
     _echo_g "OK"
   fi
-  if [ ! -z ${ENEBULAR_INSTALL_ID} ]; then
+  if [ ! -z ${INSTALL_KEY} ]; then
     _task Getting AWS IoT thing from installId
     if [ -d ${TEMP_UPDATER_DST}/awsiot-thing-creator ]; then
       if ! (
         proc_retry \
           'cmd_wrapper run_as_user "${USER}" "(cd ${TEMP_UPDATER_DST}/awsiot-thing-creator && npm run start)"
           "${NODE_ENV}
-          ENEBULAR_INSTALL_ID=${ENEBULAR_INSTALL_ID} ENEBULAR_BASE_URL=${ENEBULAR_BASE_URL}
+          INSTALL_KEY=${INSTALL_KEY} ENEBULAR_BASE_URL=${ENEBULAR_BASE_URL}
           AWS_IOT_CONFIG_SAVE_PATH=${INSTALL_DIR}/ports/awsiot"' \
           '_err Getting AWS IoT thing from install id failed.'
       ); then
@@ -531,7 +531,7 @@ do_install() {
         proc_retry \
           'cmd_wrapper run_as_user "${USER}" "(cd ${INSTALL_DIR}/tools/awsiot-thing-creator && npm run start)"
           "${NODE_ENV}
-          ENEBULAR_INSTALL_ID=${ENEBULAR_INSTALL_ID} ENEBULAR_BASE_URL=${ENEBULAR_BASE_URL}"' \
+          INSTALL_KEY=${INSTALL_KEY} ENEBULAR_BASE_URL=${ENEBULAR_BASE_URL}"' \
          '_err Getting AWS IoT thing from install id failed.'
       ); then
         _exit 1
@@ -648,8 +648,8 @@ case $i in
   AWS_IOT_THING_NAME="${i#*=}"
   shift
   ;;
-  --enebular-install-id=*)
-  ENEBULAR_INSTALL_ID="${i#*=}"
+  --install-key=*)
+  INSTALL_KEY="${i#*=}"
   shift
   ;;
   --enebular-base-url=*)
