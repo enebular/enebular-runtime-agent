@@ -21,6 +21,7 @@ export type DeviceStateStateUpdates = {
 export default class AgentManagerMediator {
   _baseUrl: string
   _accessToken: string
+  _isDeviceMaster: boolean
   _log: Logger
 
   constructor(log: Logger) {
@@ -40,6 +41,15 @@ export default class AgentManagerMediator {
     this._accessToken = accessToken
   }
 
+  setIsDeviceMaster(isDeviceMaster: boolean) {
+    if (isDeviceMaster) {
+      this.debug(`Saving logs to Cloudwatch...`)
+    } else {
+      this.debug(`Saving logs to S3...`)
+    }
+    this._isDeviceMaster = isDeviceMaster
+  }
+
   _accessRequirementsConfigured(): boolean {
     return !!this._baseUrl && !!this._accessToken
   }
@@ -55,13 +65,16 @@ export default class AgentManagerMediator {
     form.append('events', fs.createReadStream(filename))
 
     try {
-      await fetchJSON(`${this._baseUrl}/record-logs`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this._accessToken}`
-        },
-        body: form
-      })
+      await fetchJSON(
+        `${this._baseUrl}/record-logs?is_device_master=${this._isDeviceMaster}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this._accessToken}`
+          },
+          body: form
+        }
+      )
       this.debug('Log sent')
     } catch (err) {
       throw new Error('Failed to send log: ' + err.message)

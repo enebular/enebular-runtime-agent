@@ -1,45 +1,38 @@
 {
   "name": "awsiot-thing-creator",
-  "version": "2.16.0",
+  "version": "2.17.0",
   "description": "The utility to create AWS IoT thing from API",
-  "main": "lib/index",
+  "main": "lib/index.js",
   "scripts": {
-    "build": "npm run build:clean && npm run build:lib && npm run build:flow",
+    "build": "npm run build:clean && npm run build:lib",
     "build:clean": "rimraf lib",
-    "build:lib": "babel -d lib src",
-    "build:flow": "flow-copy-source -v src lib",
+    "build:lib": "tsc --project tsconfig.json",
     "start": "node lib/index.js",
-    "flow": "flow",
     "lint": "eslint src"
   },
   "engines": {
     "node": "14.19.1"
   },
   "devDependencies": {
-    "@babel/cli": "^7.14.8",
-    "@babel/core": "^7.2.2",
-    "@babel/plugin-transform-runtime": "^7.2.0",
-    "@babel/preset-env": "^7.3.1",
-    "@babel/preset-flow": "^7.0.0",
-    "babel-eslint": "^8.2.6",
-    "eslint": "^4.19.1",
-    "eslint-config-prettier": "^2.9.0",
-    "eslint-config-standard": "^11.0.0",
-    "eslint-plugin-flow": "^2.29.1",
-    "eslint-plugin-flowtype": "^2.46.3",
-    "eslint-plugin-import": "^2.12.0",
-    "eslint-plugin-node": "^6.0.1",
-    "eslint-plugin-prettier": "^2.6.0",
-    "eslint-plugin-promise": "^3.7.0",
-    "eslint-plugin-react": "^7.8.2",
-    "eslint-plugin-standard": "^3.1.0",
-    "flow-bin": "^0.72.0",
-    "flow-copy-source": "^2.0.9",
+    "@types/command-line-args": "^5.2.0",
+    "@types/command-line-usage": "^5.0.2",
+    "@types/fs-extra": "^9.0.1",
+    "@types/jest": "^27.0.2",
+    "@types/node": "^16.11.6",
+    "@typescript-eslint/eslint-plugin": "^5.2.0",
+    "@typescript-eslint/parser": "^5.2.0",
+    "eslint": "^8.1.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-import": "^2.25.2",
+    "eslint-plugin-prettier": "^4.0.0",
+    "ts-jest": "^27.0.7",
+    "typescript": "^4.4.4",
     "prettier": "^1.12.1",
     "rimraf": "^2.6.2"
   },
   "dependencies": {
-    "@babel/runtime": "^7.3.1",
-    "aws-sdk": "2.286.2"
+    "@uhuru/awsiot-thing-creator": "^1.0.1-beta.33",
+    "aws-sdk": "2.286.2",
+    "ts-command-line-args": "^2.1.4"
   }
 }
