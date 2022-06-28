@@ -11,6 +11,7 @@ module.exports = {
   //credentialSecret: false,
   editorTheme: {
     userMenu: false,
+    tours: false,
     page: {
       title: '',
       favicon: path.join(__dirname, 'img', 'favicon.ico'),
@@ -23,9 +24,9 @@ module.exports = {
     deployButton: {
       type: 'simple',
       label: 'Save'
-    },
-    palette: {
-      editable: true
     }
-  }
+  },
+  externalModules: {
+    autoInstall: true
+  },
 }

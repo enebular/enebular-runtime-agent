@@ -58,6 +58,11 @@ type AgentSetting = {
   agentManagerBaseUrl?: string
 }
 
+type AccessTokenUpdate = {
+  accessToken: string,
+  isDeviceMaster: boolean
+}
+
 export type AgentState =
   | 'init'
   | 'registered'
@@ -95,7 +100,7 @@ export default class EnebularAgent extends EventEmitter {
   _deviceAuth: DeviceAuthMediator
   _agentMan: AgentManagerMediator
   _deviceStateManager: DeviceStateManager
-  _deviceCommandManager: DeviceCommandManager 
+  _deviceCommandManager: DeviceCommandManager
   _agentInfoManager: AgentInfoManager
   _assetManager: AssetManager
   _aiModelManager: AiModelManager
@@ -128,8 +133,8 @@ export default class EnebularAgent extends EventEmitter {
     this._connector.on('connectionChange', () =>
       this._onConnectorConnectionChange()
     )
-    this._connector.on('message', params => this._onConnectorMessage(params))
-    this._connector.on('ctrlMessage', params =>
+    this._connector.on('message', (params) => this._onConnectorMessage(params))
+    this._connector.on('ctrlMessage', (params) =>
       this._onConnectorCtrlMessage(params)
     )
   }
@@ -137,7 +142,7 @@ export default class EnebularAgent extends EventEmitter {
   _init() {
     if (this._enebularAgentConfig) {
       const configKeys = Object.keys(this._enebularAgentConfig)
-      configKeys.forEach(key => {
+      configKeys.forEach((key) => {
         this._config.set(key, this._enebularAgentConfig[key])
       })
     }
@@ -168,7 +173,7 @@ export default class EnebularAgent extends EventEmitter {
       this._log,
       this._config.get('ENEBULAR_CONNECTOR_MESSENGER_REQ_RETYR_TIMEOUT')
     )
-    this._connectorMessenger.on('requestConnectorCtrlMessageSend', msg =>
+    this._connectorMessenger.on('requestConnectorCtrlMessageSend', (msg) =>
       this._onRequestConnectorCtrlMessageSend(msg)
     )
 
@@ -239,7 +244,10 @@ export default class EnebularAgent extends EventEmitter {
       }
     )
 
-    this._agentRunnerManager = new AgentRunnerManager(this._log, this._logManager)
+    this._agentRunnerManager = new AgentRunnerManager(
+      this._log,
+      this._logManager
+    )
 
     this._remoteLogin = new RemoteLogin(
       this._deviceStateManager,
@@ -249,8 +257,8 @@ export default class EnebularAgent extends EventEmitter {
     )
 
     this._deviceAuth = new DeviceAuthMediator(this._messageEmitter, this._log)
-    this._deviceAuth.on('accessTokenUpdate', accessToken =>
-      this._onAccessTokenUpdate(accessToken)
+    this._deviceAuth.on('accessTokenUpdate', (body) =>
+      this._onAccessTokenUpdate(body)
     )
     this._deviceAuth.on('accessTokenClear', () => this._onAccessTokenClear())
 
@@ -448,9 +456,7 @@ export default class EnebularAgent extends EventEmitter {
       }
     } else {
       this._log.error(
-        `Impossible state transition requested: ${
-          this._agentState
-        } => ${nextState}`
+        `Impossible state transition requested: ${this._agentState} => ${nextState}`
       )
     }
   }
@@ -496,7 +502,7 @@ export default class EnebularAgent extends EventEmitter {
     if (agentManagerBaseUrl) {
       this._agentManagerBaseUrl = agentManagerBaseUrl
     }
-    const formatVal = val => {
+    const formatVal = (val) => {
       return val || 'not set'
     }
     this._log.debug('Config:')
@@ -545,8 +551,10 @@ export default class EnebularAgent extends EventEmitter {
     }
   }
 
-  _onAccessTokenUpdate(accessToken: string) {
+  _onAccessTokenUpdate(options: AccessTokenUpdate) {
+    const { accessToken, isDeviceMaster } = options
     this._agentMan.setAccessToken(accessToken)
+    this._agentMan.setIsDeviceMaster(isDeviceMaster)
     if (this._agentState !== 'authenticated') {
       this._changeAgentState('authenticated')
     }

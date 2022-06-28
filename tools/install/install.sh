@@ -513,6 +513,32 @@ do_install() {
     fi
     _echo_g "OK"
   fi
+  if [ ! -z ${INSTALL_KEY} ]; then
+    _task Getting AWS IoT thing from installId
+    if [ -d ${TEMP_UPDATER_DST}/awsiot-thing-creator ]; then
+      if ! (
+        proc_retry \
+          'cmd_wrapper run_as_user "${USER}" "(cd ${TEMP_UPDATER_DST}/awsiot-thing-creator && npm run start)"
+          "${NODE_ENV}
+          INSTALL_KEY=${INSTALL_KEY} ENEBULAR_BASE_URL=${ENEBULAR_BASE_URL}
+          AWS_IOT_CONFIG_SAVE_PATH=${INSTALL_DIR}/ports/awsiot"' \
+          '_err Getting AWS IoT thing from install id failed.'
+      ); then
+        _exit 1
+      fi
+    else
+      if ! (
+        proc_retry \
+          'cmd_wrapper run_as_user "${USER}" "(cd ${INSTALL_DIR}/tools/awsiot-thing-creator && npm run start)"
+          "${NODE_ENV}
+          INSTALL_KEY=${INSTALL_KEY} ENEBULAR_BASE_URL=${ENEBULAR_BASE_URL}"' \
+         '_err Getting AWS IoT thing from install id failed.'
+      ); then
+        _exit 1
+      fi
+    fi
+    _echo_g "OK"
+  fi
   rm -rf "${TEMP_UPDATER_DST}"
   eval "$4='${NODE_ENV}'"
 }
@@ -573,7 +599,7 @@ post_install() {
 
 USER=enebular
 RELEASE_VERSION="latest-release"
-SUPPORTED_NODE_VERSION="v12.22.10"
+SUPPORTED_NODE_VERSION="v14.19.1"
 ENEBULAR_BASE_URL="https://enebular.com/api/v1"
 
 UPDATER_DOWNLOAD_PATH="https://s3-ap-northeast-1.amazonaws.com/download.enebular.com/enebular-agent"
@@ -620,6 +646,14 @@ case $i in
   ;;
   --aws-iot-thing-name=*)
   AWS_IOT_THING_NAME="${i#*=}"
+  shift
+  ;;
+  --install-key=*)
+  INSTALL_KEY="${i#*=}"
+  shift
+  ;;
+  --enebular-base-url=*)
+  ENEBULAR_BASE_URL="${i#*=}"
   shift
   ;;
   --agent-download-path=*)

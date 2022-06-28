@@ -1,6 +1,6 @@
 {
   "name": "enebular-runtime-agent",
-  "version": "2.16.0",
+  "version": "2.17.0",
   "description": "The enebular-agent core for enebular",
   "main": "lib/index",
   "scripts": {
@@ -19,7 +19,7 @@
     "test:jest": "jest --runInBand --forceExit"
   },
   "engines": {
-    "node": "12.22.10"
+    "node": "14.19.1"
   },
   "devDependencies": {
     "@babel/cli": "^7.2.3",
