@@ -1,1 +1,0 @@
-wget -qO- https://enebular-assets.s3.ap-northeast-1.amazonaws.com/test/fixture/install.sh | sudo -E bash -s -- --updater-version=dev-test-1859-21 --release-version=dev-test-1859-21 --no-startup-register -u=vagrant --install-key=97e55ce2904b661572f65f5021ac9580a8cf58a014e81afa --enebular-base-url=https://aunrebel-dev-app.aunrebel.com
