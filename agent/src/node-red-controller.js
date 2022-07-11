@@ -1169,7 +1169,7 @@ export default class NodeREDController {
 
   async _safeCopy(source: string, destination: string) {
     await execAsync(`find "${source}" -xtype l -delete 2>/dev/null`)
-    await fs.copy(source, destination)
+    await fs.move(source, destination)
   }
 
   async _resolveDependency(deployParam: Object): Promise<UpdatePackageResult> {
