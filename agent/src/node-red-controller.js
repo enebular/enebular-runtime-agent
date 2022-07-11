@@ -1176,8 +1176,12 @@ export default class NodeREDController {
     try {
       let bsDir = path.join(this._getDataDir(), 'node_modules')
       let bkDir = path.join(this._getDataDir(), 'tmp')
+      let nodeRedFile = path.join(this._getDataDir(), '.config.users.json')
       if (this._isExistFile(bsDir)) {
         await this._safeCopy(bsDir, bkDir)
+      }
+      if (this._isExistFile(nodeRedFile)) {
+        await fs.remove(nodeRedFile);
       }
       let ret = await new Promise((resolve, reject) => {
         const cproc = spawn('npm', ['install', 'enebular-agent-dynamic-deps'], {
