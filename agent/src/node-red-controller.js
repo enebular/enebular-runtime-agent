@@ -1177,12 +1177,15 @@ export default class NodeREDController {
       let bsDir = path.join(this._getDataDir(), 'node_modules')
       let bkDir = path.join(this._getDataDir(), 'tmp')
       let nodeRedFile = path.join(this._getDataDir(), '.config.users.json')
+
       if (this._isExistFile(bsDir)) {
         await this._safeCopy(bsDir, bkDir)
       }
+
       if (this._isExistFile(nodeRedFile)) {
         await fs.remove(nodeRedFile);
       }
+
       let ret = await new Promise((resolve, reject) => {
         const cproc = spawn('npm', ['install', 'enebular-agent-dynamic-deps'], {
           stdio: 'inherit',
@@ -1228,7 +1231,27 @@ export default class NodeREDController {
           message: 'deploy cancel'
         }
       }
+
+      const srcPath = path.join(this._getDataDir(),'enebular-agent-dynamic-deps','package.json')
+      const dstPath = path.join(this._getDataDir(),'package.json')
+      const src = JSON.parse(fs.readFileSync(srcPath, 'utf8'))
+      const dst = JSON.parse(fs.readFileSync(dstPath, 'utf8'))
+
+      Object.keys(src.dependencies).forEach(function (key) {
+        dst.dependencies[key] = src.dependencies[key] 
+      });
+
+      fs.writeFileSync(dstPath, JSON.stringify(dst))
+
+      const srcNodeModulesDir = path.join(this._getDataDir(), 'enebular-agent-dynamic-deps','node_modules')
+      const dstNodeModulesDir = path.join(this._getDataDir(), 'node_modules')
+      if (this._isExistFile(srcNodeModulesDir)) {
+        fs.copySync(srcNodeModulesDir, dstNodeModulesDir)
+      }
+
       fs.removeSync(bkDir)
+      fs.removeSync(srcNodeModulesDir)
+
       return {
         success: true
       }
