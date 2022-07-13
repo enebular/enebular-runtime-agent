@@ -989,6 +989,15 @@ export default class NodeREDController {
     if (flowPackage.packages) {
       updates.push(
         new Promise((resolve, reject) => {
+          const nodeRedFilePath = path.join(this._getDataDir(), '.config.users.json');
+          const dynamicpackagePath = path.join(this._getDataDir(), 'enebular-agent-dynamic-deps', 'package.json');
+          const nodeRedFile = JSON.parse(fs.readFileSync(nodeRedFilePath, 'utf8'));
+          const dynamicpackage = JSON.parse(fs.readFileSync(dynamicpackagePath, 'utf8'));
+          Object.keys(dynamicpackage.dependencies).forEach(function (key) {
+            delete nodeRedFile.nodes[key]
+          });
+          fs.writeFileSync(nodeRedFilePath, JSON.stringify(nodeRedFile));
+
           const packageJSONFilePath = path.join(
             this._getDataDir(),
             'enebular-agent-dynamic-deps',
@@ -1176,16 +1185,10 @@ export default class NodeREDController {
     try {
       let bsDir = path.join(this._getDataDir(), 'node_modules')
       let bkDir = path.join(this._getDataDir(), 'tmp')
-      let nodeRedFile = path.join(this._getDataDir(), '.config.users.json')
 
       if (this._isExistFile(bsDir)) {
         await this._safeCopy(bsDir, bkDir)
       }
-
-      if (this._isExistFile(nodeRedFile)) {
-        await fs.remove(nodeRedFile);
-      }
-
       let ret = await new Promise((resolve, reject) => {
         const cproc = spawn('npm', ['install', 'enebular-agent-dynamic-deps'], {
           stdio: 'inherit',
