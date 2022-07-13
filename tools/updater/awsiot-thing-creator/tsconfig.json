@@ -23,6 +23,7 @@
         "ES2020",
         "ES2021",
         "ESNEXT",
+        "DOM"
       ],
       "sourceMap": true,
       "strict": true,
