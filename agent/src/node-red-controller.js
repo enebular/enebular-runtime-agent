@@ -989,7 +989,6 @@ export default class NodeREDController {
     if (flowPackage.packages) {
       updates.push(
         new Promise((resolve, reject) => {
-
           const packageJSONFilePath = path.join(
             this._getDataDir(),
             'enebular-agent-dynamic-deps',
@@ -1196,7 +1195,6 @@ export default class NodeREDController {
     try {
       let bsDir = path.join(this._getDataDir(), 'node_modules')
       let bkDir = path.join(this._getDataDir(), 'tmp')
-
       if (this._isExistFile(bsDir)) {
         await this._safeCopy(bsDir, bkDir)
       }
@@ -1254,17 +1252,9 @@ export default class NodeREDController {
       Object.keys(src.dependencies).forEach(function (key) {
         dst.dependencies[key] = src.dependencies[key] 
       });
-
       fs.writeFileSync(dstPath, JSON.stringify(dst))
 
-      const srcNodeModulesDir = path.join(this._getDataDir(), 'enebular-agent-dynamic-deps','node_modules')
-      const dstNodeModulesDir = path.join(this._getDataDir(), 'node_modules')
-      if (this._isExistFile(srcNodeModulesDir)) {
-        fs.copySync(srcNodeModulesDir, dstNodeModulesDir)
-      }
-
       fs.removeSync(bkDir)
-      fs.removeSync(srcNodeModulesDir)
 
       return {
         success: true
