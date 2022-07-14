@@ -24,9 +24,12 @@ module.exports = {
     deployButton: {
       type: 'simple',
       label: 'Save'
+    },
+    codeEditor: {
+      lib: 'monaco'
     }
   },
   externalModules: {
     autoInstall: true
-  },
+  }
 }
