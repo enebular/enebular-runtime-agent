@@ -1002,17 +1002,20 @@ export default class NodeREDController {
             this._getDataDir(),
             'package.json'
           )
-          const packageJSONFile = JSON.parse(fs.readFileSync(packageJSONFilePath, 'utf8'));
-          const nodeRedFile = JSON.parse(fs.readFileSync(nodeRedFilePath, 'utf8'));
-          const defaultPackageJSONFile = JSON.parse(fs.readFileSync(defaultPackageJSONFilePath, 'utf8'));
 
-          Object.keys(packageJSONFile.dependencies).forEach(function (key) {
-            delete nodeRedFile.nodes[key]
-            delete defaultPackageJSONFile.dependencies[key];
-          });
-          fs.writeFileSync(nodeRedFilePath, JSON.stringify(nodeRedFile));
-          fs.writeFileSync(defaultPackageJSONFilePath, JSON.stringify(defaultPackageJSONFile));
+          if(fs.existsSync(nodeRedFilePath)) {
+            const packageJSONFile = JSON.parse(fs.readFileSync(packageJSONFilePath, 'utf8'));
+            const nodeRedFile = JSON.parse(fs.readFileSync(nodeRedFilePath, 'utf8'));
+            const defaultPackageJSONFile = JSON.parse(fs.readFileSync(defaultPackageJSONFilePath, 'utf8'));
 
+            Object.keys(packageJSONFile.dependencies).forEach(function (key) {
+              delete nodeRedFile.nodes[key]
+              delete defaultPackageJSONFile.dependencies[key];
+            });
+            fs.writeFileSync(nodeRedFilePath, JSON.stringify(nodeRedFile));
+            fs.writeFileSync(defaultPackageJSONFilePath, JSON.stringify(defaultPackageJSONFile));
+          }
+          
           if (
             Object.keys(flowPackage.packages).includes(
               '@uhuru/enebular-ai-contrib'
