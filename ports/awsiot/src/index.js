@@ -2,6 +2,8 @@
 import fs from 'fs'
 import path from 'path'
 import awsIot from 'aws-iot-device-sdk'
+import { v4 as uuidv4 } from 'uuid'
+import net from 'net'
 import { version as agentVer } from 'enebular-runtime-agent/package.json'
 import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
 import {
@@ -26,6 +28,10 @@ let shutdownRequested = false
 /** AWSIoTとの再接続が発生したときにThingShadowを取得するが失敗したときのリトライ間隔と最大リトライ回数を設定する */
 const retryIntervalForGettingThingShadow = 3000
 const maxRetlyCountForGettingThingShadow = 10
+
+const fromDevicePort = 60000
+const toDevicePort = 60001
+const toDeviceHost = '127.0.0.1'
 
 function log(level: string, msg: string, ...args: Array<mixed>) {
   args.push({ module: MODULE_NAME })
@@ -252,9 +258,15 @@ function setupThingShadow(config: AWSIoTConfig) {
   const shadow = awsIot.thingShadow(config)
   const toDeviceTopic = `enebular/things/${thingName}/msg/to_device`
   const deviceCommandSendTopic = `enebular/things/${thingName}/msg/command`
+  const cloudSendTopic = `enebular/to-agent/${thingName}`
+  const deviceSendTopic = `enebular/agent-to-cloud/${thingName}/`
 
   shadow.subscribe(toDeviceTopic)
   shadow.subscribe(deviceCommandSendTopic)
+  shadow.subscribe(cloudSendTopic)
+
+  const nodeRedRecvServer = new net.Server()
+  const nodeRedSendClient = new net.Socket()
 
   shadow.on('connect', () => {
     info('Connected to AWS IoT')
@@ -262,6 +274,10 @@ function setupThingShadow(config: AWSIoTConfig) {
 
     awsIotConnected = true
     updateThingShadowRegisterState()
+
+    nodeRedRecvServer.listen(fromDevicePort, function() {
+      console.log('Started waiting for message server for AWS IoT')
+    })
 
     /**
      * If this 'connect' has occured while the agent is already up and running,
@@ -310,6 +326,15 @@ function setupThingShadow(config: AWSIoTConfig) {
       connector.sendCtrlMessage(JSON.parse(payload))
     } else if (topic === deviceCommandSendTopic) {
       handleDeviceCommandMessage(payload)
+    } else if (topic === deviceSendTopic) {
+      nodeRedSendClient.connect(toDevicePort, toDeviceHost, () => {
+        let payloadData = {
+          key: agent.config.get('COMMUNICATION_KEY'),
+          payload
+        }
+        nodeRedSendClient.write(payloadData.toString())
+        nodeRedSendClient.destroy()
+      })
     } else {
       debug('AWS IoT message', topic, payload)
     }
@@ -320,11 +345,41 @@ function setupThingShadow(config: AWSIoTConfig) {
     handleStateMessageChange(stateObject.state.message)
   })
 
+  nodeRedSendClient.on('connection', function(socket) {
+    socket.on('data', function(message) {
+      let payload = JSON.parse(message.toString())
+      if (
+        'host' in payload &&
+        'message' in payload &&
+        'key' in payload &&
+        payload.key === agent.config.get('COMMUNICATION_KEY')
+      ) {
+        thingShadow.publish(
+          `${deviceSendTopic}${payload.host}`,
+          JSON.stringify(payload.message),
+          {
+            qos: 1
+          }
+        )
+      } else {
+        console.log('communication data error')
+      }
+    })
+    socket.on('end', function() {
+      console.log('Closing connection with the client')
+    })
+    // Don't forget to catch error, for your own sake.
+    socket.on('error', function(err) {
+      console.log(`Error: ${err}`)
+    })
+  })
+
   return shadow
 }
 
 function onConnectorRegisterConfig() {
   const AWSIoTConfigName = 'AWSIOT_CONFIG_FILE'
+  const CommunicationKey = 'COMMUNICATION_KEY'
   const defaultAWSIoTConfigPath = path.resolve(
     process.argv[1],
     '../../config.json'
@@ -335,6 +390,13 @@ function onConnectorRegisterConfig() {
     defaultAWSIoTConfigPath,
     'AWSIoT config file path',
     true
+  )
+
+  agent.config.addItem(
+    CommunicationKey,
+    uuidv4(),
+    'Key to Communication',
+    false
   )
 
   agent.commandLine.addConfigOption(
