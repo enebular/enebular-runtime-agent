@@ -1,0 +1,33 @@
+{
+    "compilerOptions": {
+      "allowSyntheticDefaultImports": true,
+      "declaration": true,
+      "declarationMap": true,
+      "esModuleInterop": true,
+      "target": "ES6",
+      "module": "commonjs",      
+      "moduleResolution": "node",
+      "isolatedModules": true,
+      "strictNullChecks": false,
+      "outDir": "lib",
+      "preserveConstEnums": true,
+      "types": [
+        "node"
+      ],
+      "lib": [
+        "ES2015",
+        "ES2016",
+        "ES2017",
+        "ES2018",
+        "ES2019",
+        "ES2020",
+        "ES2021",
+        "ESNEXT",
+        "DOM"
+      ],
+      "sourceMap": true,
+      "strict": true,
+      "useUnknownInCatchVariables": false
+    },
+    "include": ["src/*"],
+}

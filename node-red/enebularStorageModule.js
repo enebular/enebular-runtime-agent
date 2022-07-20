@@ -2,7 +2,7 @@ const axios = require('axios')
 const fs = require('fs-extra')
 const path = require('path')
 const crypto = require('crypto')
-const RED = require('@uhuru/enebular-node-red')
+const RED = require('@uhuru/node-red')
 
 const ENEBULAR_EDITOR_URL =
   process.env.ENEBULAR_EDITOR_URL || 'http://localhost:9017'
@@ -14,11 +14,11 @@ function getLibraryEntry(type, path) {
 }
 
 function decryptCredential(key, credential) {
-  const encryptionKey = crypto
+    const encryptionKey = crypto
     .createHash('sha256')
     .update(key)
     .digest()
-  const initVector = new Buffer(credential.substring(0, 32), 'hex')
+  const initVector = Buffer.from(credential.substring(0, 32), 'hex')
   const encryptedCredentials = credential.substring(32)
   const decipher = crypto.createDecipheriv(
     'aes-256-ctr',
@@ -43,8 +43,9 @@ function loadConfig(fileName) {
         } else {
           let result = JSON.parse(data)
           if (fileName === 'flows_cred.json' && result.$) {
+            // when loading flow credential secret is stored in runtime config
             const dotconfig = fs.readFileSync(
-              path.join(userdir, '.config.json'),
+              path.join(userdir, '.config.runtime.json'),
               'utf8'
             )
             const key = JSON.parse(dotconfig)._credentialSecret
@@ -80,7 +81,7 @@ function getPackages(flows) {
 
 function getSettings() {
     const userdir = path.resolve(__dirname, '.node-red-config')
-    const globalSettingsFile = path.join(userdir, '.config.json')
+    const globalSettingsFile = path.join(userdir, ".config.users.json");
     
     return fs.readJson(globalSettingsFile, 'utf8').catch((err) => {
       if (err.code != 'ENOENT') {
@@ -92,7 +93,7 @@ function getSettings() {
 
 function saveSettings(settings) {
   const userdir = path.resolve(__dirname, '.node-red-config')
-  const globalSettingsFile = path.join(userdir, '.config.json')
+  const globalSettingsFile = path.join(userdir, '.config.users.json')
 
   return  fs.writeJson(globalSettingsFile, settings, { replacer: null, spaces: 2})
 }
@@ -133,8 +134,9 @@ function saveFlows(flows, credentials, screenshot) {
   let credentialIds = []
   if (credentials.$) {
     const userdir = path.resolve(__dirname, '.node-red-config')
+    // when saving flow credentials secret is stored in users config
     const dotconfig = fs.readFileSync(
-      path.join(userdir, '.config.json'),
+      path.join(userdir, '.config.users.json'),
       'utf8'
     )
     const key = JSON.parse(dotconfig)._credentialSecret
@@ -156,8 +158,9 @@ function saveCredentials(credentials, flows) {
   const saveCredUrl = `${ENEBULAR_EDITOR_URL}/api/v1/agent-editor/credential`
   if (credentials.$) {
     const userdir = path.resolve(__dirname, '.node-red-config')
+    // when saving flow credentials secret is stored in users config
     const dotconfig = fs.readFileSync(
-      path.join(userdir, '.config.json'),
+      path.join(userdir, '.config.users.json'),
       'utf8'
     )
     const key = JSON.parse(dotconfig)._credentialSecret

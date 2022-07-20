@@ -11,6 +11,7 @@ module.exports = {
   //credentialSecret: false,
   editorTheme: {
     userMenu: false,
+    tours: false,
     page: {
       title: '',
       favicon: path.join(__dirname, 'img', 'favicon.ico'),
@@ -24,8 +25,11 @@ module.exports = {
       type: 'simple',
       label: 'Save'
     },
-    palette: {
-      editable: true
+    codeEditor: {
+      lib: 'monaco'
     }
+  },
+  externalModules: {
+    autoInstall: true
   }
 }
