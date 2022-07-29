@@ -563,7 +563,7 @@ post_install() {
   fi
   if [ ! -z ${LICENSE_KEY} ]; then
     _task "Creating activation configuration file"
-    cmd_wrapper run_as_user ${USER} 'echo "{\"enebularBaseURL\": \"'${ENEBULAR_BASE_URL}'\",\"licenseKey\": \"'${LICENSE_KEY}'\"}" \
+    cmd_wrapper run_as_user ${USER} 'echo "{\"enebularBaseURL\": \"'${ENEBULAR_API_URL}'\",\"licenseKey\": \"'${LICENSE_KEY}'\"}" \
       > "'${INSTALL_DIR}'/ports/awsiot/.enebular-activation-config.json"'
     _echo_g "OK"
   fi
@@ -600,7 +600,7 @@ post_install() {
 USER=enebular
 RELEASE_VERSION="latest-release"
 SUPPORTED_NODE_VERSION="v14.19.1"
-ENEBULAR_BASE_URL="https://enebular.com/api/v1"
+ENEBULAR_API_URL="https://enebular.com/api/v1"
 
 UPDATER_DOWNLOAD_PATH="https://s3-ap-northeast-1.amazonaws.com/download.enebular.com/enebular-agent"
 UPDATER_TEST_DOWNLOAD_PATH="https://s3-ap-northeast-1.amazonaws.com/download.enebular.com/enebular-agent-staging"
@@ -668,8 +668,8 @@ case $i in
   LICENSE_KEY="${i#*=}"
   shift
   ;;
-  --enebular-base-url=*)
-  ENEBULAR_BASE_URL="${i#*=}"
+  --enebular-api-url=*)
+  ENEBULAR_API_URL="${i#*=}"
   shift
   ;;
   --dev-mode)
