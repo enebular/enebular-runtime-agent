@@ -327,11 +327,13 @@ function setupThingShadow(config: AWSIoTConfig) {
       connector.sendCtrlMessage(JSON.parse(payload))
     } else if (topic === deviceCommandSendTopic) {
       handleDeviceCommandMessage(payload)
-    } else if (topic === deviceSendTopic) {
+    } else if (topic === cloudSendTopic) {
       nodeRedSendClient.connect(toDevicePort, toDeviceHost, () => {
         const key = agent.config.get('COMMUNICATION_KEY')
-        const cipher = crypto.createCipheriv('aes-256-cbc', key)
-        const payloadData = cipher.update(payload.toString(), 'utf8', 'hex')
+        const pass = Buffer.from(key.slice(0, 64), "hex")
+        const iv = Buffer.from(key.slice(64, 64 + 32), "hex")
+        const cipher = crypto.createCipheriv('aes-256-cbc', pass, iv)
+        const payloadData = cipher.update(payload.toString(), 'utf8', 'hex') + cipher.final('hex')
 
         nodeRedSendClient.write(payloadData)
         nodeRedSendClient.destroy()
@@ -349,20 +351,27 @@ function setupThingShadow(config: AWSIoTConfig) {
   nodeRedSendClient.on('connection', function(socket) {
     socket.on('data', function(message) {
       if (typeof message === 'string') {
-        const key = agent.config.get('COMMUNICATION_KEY')
-        const decipher = crypto.createDecipheriv('aes-256-cbc', key)
-        const decrypted = decipher.update(message, 'hex', 'utf-8')
-        let payload = JSON.parse(decrypted)
-        if ('host' in payload && 'message' in payload) {
-          thingShadow.publish(
-            `${deviceSendTopic}${payload.host}`,
-            JSON.stringify(payload.message),
-            {
-              qos: 1
-            }
-          )
-        } else {
-          console.log('communication data error')
+        try{ 
+          const key = agent.config.get('COMMUNICATION_KEY')
+          const pass = Buffer.from(key.slice(0, 64), "hex")
+          const iv = Buffer.from(key.slice(64, 64 + 32), "hex")
+          const decipher = crypto.createDecipheriv('aes-256-cbc', pass, iv)
+          const payloadData = decipher.update(message, 'hex', 'utf-8') + decipher.final('utf-8')
+
+          let payload = JSON.parse(payloadData)
+          if ('host' in payload && 'message' in payload) {
+            thingShadow.publish(
+              `${deviceSendTopic}${payload.host}`,
+              JSON.stringify(payload.message),
+              {
+                qos: 1
+              }
+            )
+          } else {
+            console.error('communication data error')
+          }
+        } catch(err) {
+          console.error('communication data :' + err.message)
         }
       } else {
         console.error(`communication data type error`)
@@ -383,6 +392,8 @@ function setupThingShadow(config: AWSIoTConfig) {
 function onConnectorRegisterConfig() {
   const AWSIoTConfigName = 'AWSIOT_CONFIG_FILE'
   const CommunicationKey = 'COMMUNICATION_KEY'
+  const key = crypto.randomBytes(32)
+  const iv = crypto.randomBytes(16)
   const defaultAWSIoTConfigPath = path.resolve(
     process.argv[1],
     '../../config.json'
@@ -397,7 +408,7 @@ function onConnectorRegisterConfig() {
 
   agent.config.addItem(
     CommunicationKey,
-    uuidv4(),
+    key.toString('hex') + iv.toString('hex'),
     'Key to Communication',
     false
   )
