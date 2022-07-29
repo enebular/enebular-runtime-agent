@@ -3,6 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import awsIot from 'aws-iot-device-sdk'
 import { v4 as uuidv4 } from 'uuid'
+import crypto from 'crypto'
 import net from 'net'
 import { version as agentVer } from 'enebular-runtime-agent/package.json'
 import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
@@ -328,11 +329,11 @@ function setupThingShadow(config: AWSIoTConfig) {
       handleDeviceCommandMessage(payload)
     } else if (topic === deviceSendTopic) {
       nodeRedSendClient.connect(toDevicePort, toDeviceHost, () => {
-        let payloadData = {
-          key: agent.config.get('COMMUNICATION_KEY'),
-          payload
-        }
-        nodeRedSendClient.write(payloadData.toString())
+        const key = agent.config.get('COMMUNICATION_KEY')
+        const cipher = crypto.createCipheriv('aes-256-cbc', key)
+        const payloadData = cipher.update(payload.toString(), 'utf8', 'hex')
+
+        nodeRedSendClient.write(payloadData)
         nodeRedSendClient.destroy()
       })
     } else {
@@ -347,22 +348,24 @@ function setupThingShadow(config: AWSIoTConfig) {
 
   nodeRedSendClient.on('connection', function(socket) {
     socket.on('data', function(message) {
-      let payload = JSON.parse(message.toString())
-      if (
-        'host' in payload &&
-        'message' in payload &&
-        'key' in payload &&
-        payload.key === agent.config.get('COMMUNICATION_KEY')
-      ) {
-        thingShadow.publish(
-          `${deviceSendTopic}${payload.host}`,
-          JSON.stringify(payload.message),
-          {
-            qos: 1
-          }
-        )
+      if (typeof message === 'string') {
+        const key = agent.config.get('COMMUNICATION_KEY')
+        const decipher = crypto.createDecipheriv('aes-256-cbc', key)
+        const decrypted = decipher.update(message, 'hex', 'utf-8')
+        let payload = JSON.parse(decrypted)
+        if ('host' in payload && 'message' in payload) {
+          thingShadow.publish(
+            `${deviceSendTopic}${payload.host}`,
+            JSON.stringify(payload.message),
+            {
+              qos: 1
+            }
+          )
+        } else {
+          console.log('communication data error')
+        }
       } else {
-        console.log('communication data error')
+        console.error(`communication data type error`)
       }
     })
     socket.on('end', function() {
