@@ -348,7 +348,7 @@ function setupThingShadow(config: AWSIoTConfig) {
     handleStateMessageChange(stateObject.state.message)
   })
 
-  nodeRedSendClient.on('connection', function(socket) {
+  nodeRedRecvServer.on('connection', function(socket) {
     socket.on('data', function(message) {
       if (typeof message === 'string') {
         try{ 
