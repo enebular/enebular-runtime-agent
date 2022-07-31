@@ -2,7 +2,6 @@
 import fs from 'fs'
 import path from 'path'
 import awsIot from 'aws-iot-device-sdk'
-import { v4 as uuidv4 } from 'uuid'
 import crypto from 'crypto'
 import net from 'net'
 import { version as agentVer } from 'enebular-runtime-agent/package.json'
@@ -330,10 +329,11 @@ function setupThingShadow(config: AWSIoTConfig) {
     } else if (topic === cloudSendTopic) {
       nodeRedSendClient.connect(toDevicePort, toDeviceHost, () => {
         const key = agent.config.get('COMMUNICATION_KEY')
-        const pass = Buffer.from(key.slice(0, 64), "hex")
-        const iv = Buffer.from(key.slice(64, 64 + 32), "hex")
+        const pass = Buffer.from(key.slice(0, 64), 'hex')
+        const iv = Buffer.from(key.slice(64, 64 + 32), 'hex')
         const cipher = crypto.createCipheriv('aes-256-cbc', pass, iv)
-        const payloadData = cipher.update(payload.toString(), 'utf8', 'hex') + cipher.final('hex')
+        const payloadData = 
+          cipher.update(payload.toString(), 'utf8', 'hex') + cipher.final('hex')
 
         nodeRedSendClient.write(payloadData)
         nodeRedSendClient.destroy()
@@ -350,31 +350,30 @@ function setupThingShadow(config: AWSIoTConfig) {
 
   nodeRedRecvServer.on('connection', function(socket) {
     socket.on('data', function(message) {
-      if (typeof message === 'string') {
-        try{ 
-          const key = agent.config.get('COMMUNICATION_KEY')
-          const pass = Buffer.from(key.slice(0, 64), "hex")
-          const iv = Buffer.from(key.slice(64, 64 + 32), "hex")
-          const decipher = crypto.createDecipheriv('aes-256-cbc', pass, iv)
-          const payloadData = decipher.update(message, 'hex', 'utf-8') + decipher.final('utf-8')
+      console.log(message)
+      const str = message.toString()
+      try{ 
+        const key = agent.config.get('COMMUNICATION_KEY')
+        const pass = Buffer.from(key.slice(0, 64), 'hex')
+        const iv = Buffer.from(key.slice(64, 64 + 32), 'hex')
+        const decipher = crypto.createDecipheriv('aes-256-cbc', pass, iv)
+        const payloadData = 
+          decipher.update(str, 'hex', 'utf-8') + decipher.final('utf-8')
 
-          let payload = JSON.parse(payloadData)
-          if ('host' in payload && 'message' in payload) {
-            thingShadow.publish(
-              `${deviceSendTopic}${payload.host}`,
-              JSON.stringify(payload.message),
-              {
-                qos: 1
-              }
-            )
-          } else {
-            console.error('communication data error')
-          }
-        } catch(err) {
-          console.error('communication data :' + err.message)
+        let payload = JSON.parse(payloadData)
+        if ('host' in payload && 'message' in payload) {
+          thingShadow.publish(
+            `${deviceSendTopic}${payload.host}`,
+            JSON.stringify(payload.message),
+            {
+              qos: 1
+            }
+          )
+        } else {
+          console.error('communication data error')
         }
-      } else {
-        console.error(`communication data type error`)
+      } catch (err) {
+        console.error('communication data :' + err.message)
       }
     })
     socket.on('end', function() {
