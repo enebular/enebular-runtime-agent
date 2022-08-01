@@ -1094,6 +1094,28 @@ export default class NodeREDController {
             'enebular-agent-dynamic-deps',
             'package.json'
           )
+          const nodeRedFilePath = path.join(
+            this._getDataDir(),
+            '.config.users.json'
+          )
+          const defaultPackageJSONFilePath = path.join(
+            this._getDataDir(),
+            'package.json'
+          )
+
+          if(fs.existsSync(nodeRedFilePath)) {
+            const packageJSONFile = JSON.parse(fs.readFileSync(packageJSONFilePath, 'utf8'));
+            const nodeRedFile = JSON.parse(fs.readFileSync(nodeRedFilePath, 'utf8'));
+            const defaultPackageJSONFile = JSON.parse(fs.readFileSync(defaultPackageJSONFilePath, 'utf8'));
+
+            Object.keys(packageJSONFile.dependencies).forEach(function (key) {
+              delete nodeRedFile.nodes[key]
+              delete defaultPackageJSONFile.dependencies[key];
+            });
+            fs.writeFileSync(nodeRedFilePath, JSON.stringify(nodeRedFile));
+            fs.writeFileSync(defaultPackageJSONFilePath, JSON.stringify(defaultPackageJSONFile));
+          }
+          
           if (
             Object.keys(flowPackage.packages).includes(
               '@uhuru/enebular-ai-contrib'
@@ -1269,7 +1291,7 @@ export default class NodeREDController {
 
   async _safeCopy(source: string, destination: string) {
     await execAsync(`find "${source}" -xtype l -delete 2>/dev/null`)
-    await fs.copy(source, destination)
+    await fs.move(source, destination)
   }
 
   async _resolveDependency(deployParam: Object): Promise<UpdatePackageResult> {
@@ -1324,7 +1346,19 @@ export default class NodeREDController {
           message: 'deploy cancel'
         }
       }
+
+      const srcPath = path.join(this._getDataDir(),'enebular-agent-dynamic-deps','package.json')
+      const dstPath = path.join(this._getDataDir(),'package.json')
+      const src = JSON.parse(fs.readFileSync(srcPath, 'utf8'))
+      const dst = JSON.parse(fs.readFileSync(dstPath, 'utf8'))
+
+      Object.keys(src.dependencies).forEach(function (key) {
+        dst.dependencies[key] = src.dependencies[key] 
+      });
+      fs.writeFileSync(dstPath, JSON.stringify(dst))
+
       fs.removeSync(bkDir)
+
       return {
         success: true
       }
