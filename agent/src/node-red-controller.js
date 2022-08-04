@@ -459,6 +459,9 @@ export default class NodeREDController {
   }
 
   _compareEnvVariables(envVariablesA: Object, envVariablesB: Object): boolean {
+    if (!envVariablesA && !envVariablesB) {
+      return true
+    }
     if (!envVariablesA || !envVariablesB) {
       return false
     }
@@ -1103,19 +1106,28 @@ export default class NodeREDController {
             'package.json'
           )
 
-          if(fs.existsSync(nodeRedFilePath)) {
-            const packageJSONFile = JSON.parse(fs.readFileSync(packageJSONFilePath, 'utf8'));
-            const nodeRedFile = JSON.parse(fs.readFileSync(nodeRedFilePath, 'utf8'));
-            const defaultPackageJSONFile = JSON.parse(fs.readFileSync(defaultPackageJSONFilePath, 'utf8'));
+          if (fs.existsSync(nodeRedFilePath)) {
+            const packageJSONFile = JSON.parse(
+              fs.readFileSync(packageJSONFilePath, 'utf8')
+            )
+            const nodeRedFile = JSON.parse(
+              fs.readFileSync(nodeRedFilePath, 'utf8')
+            )
+            const defaultPackageJSONFile = JSON.parse(
+              fs.readFileSync(defaultPackageJSONFilePath, 'utf8')
+            )
 
-            Object.keys(packageJSONFile.dependencies).forEach(function (key) {
+            Object.keys(packageJSONFile.dependencies).forEach(function(key) {
               delete nodeRedFile.nodes[key]
-              delete defaultPackageJSONFile.dependencies[key];
-            });
-            fs.writeFileSync(nodeRedFilePath, JSON.stringify(nodeRedFile));
-            fs.writeFileSync(defaultPackageJSONFilePath, JSON.stringify(defaultPackageJSONFile));
+              delete defaultPackageJSONFile.dependencies[key]
+            })
+            fs.writeFileSync(nodeRedFilePath, JSON.stringify(nodeRedFile))
+            fs.writeFileSync(
+              defaultPackageJSONFilePath,
+              JSON.stringify(defaultPackageJSONFile)
+            )
           }
-          
+
           if (
             Object.keys(flowPackage.packages).includes(
               '@uhuru/enebular-ai-contrib'
@@ -1347,14 +1359,18 @@ export default class NodeREDController {
         }
       }
 
-      const srcPath = path.join(this._getDataDir(),'enebular-agent-dynamic-deps','package.json')
-      const dstPath = path.join(this._getDataDir(),'package.json')
+      const srcPath = path.join(
+        this._getDataDir(),
+        'enebular-agent-dynamic-deps',
+        'package.json'
+      )
+      const dstPath = path.join(this._getDataDir(), 'package.json')
       const src = JSON.parse(fs.readFileSync(srcPath, 'utf8'))
       const dst = JSON.parse(fs.readFileSync(dstPath, 'utf8'))
 
-      Object.keys(src.dependencies).forEach(function (key) {
-        dst.dependencies[key] = src.dependencies[key] 
-      });
+      Object.keys(src.dependencies).forEach(function(key) {
+        dst.dependencies[key] = src.dependencies[key]
+      })
       fs.writeFileSync(dstPath, JSON.stringify(dst))
 
       fs.removeSync(bkDir)
