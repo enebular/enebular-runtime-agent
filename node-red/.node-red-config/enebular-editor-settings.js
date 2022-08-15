@@ -22,8 +22,7 @@ module.exports = {
       image: path.join(__dirname, 'img', 'enebular_logo.svg')
     },
     deployButton: {
-      type: 'simple',
-      label: 'Save'
+      type: 'simple'
     },
     codeEditor: {
       lib: 'monaco'
