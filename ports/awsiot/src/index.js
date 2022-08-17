@@ -259,7 +259,7 @@ function setupThingShadow(config: AWSIoTConfig) {
   const toDeviceTopic = `enebular/things/${thingName}/msg/to_device`
   const deviceCommandSendTopic = `enebular/things/${thingName}/msg/command`
   const cloudSendTopic = `enebular/to-agent/${thingName}`
-  const deviceSendTopic = `enebular/agent-to-cloud/${thingName}/`
+  const deviceSendTopic = `$aws/rules/enebular_agent_to_cloud`
 
   shadow.subscribe(toDeviceTopic)
   shadow.subscribe(deviceCommandSendTopic)
@@ -276,7 +276,7 @@ function setupThingShadow(config: AWSIoTConfig) {
     updateThingShadowRegisterState()
 
     nodeRedRecvServer.listen(fromDevicePort, function() {
-      console.log('Started waiting for message server for AWS IoT')
+      debug('Started waiting for message server for AWS IoT')
     })
 
     /**
@@ -350,7 +350,7 @@ function setupThingShadow(config: AWSIoTConfig) {
 
   nodeRedRecvServer.on('connection', function(socket) {
     socket.on('data', function(message) {
-      console.log(message)
+      debug('Node RED Recv Server socket open')
       const str = message.toString()
       try{ 
         const key = agent.config.get('COMMUNICATION_KEY')
@@ -362,26 +362,31 @@ function setupThingShadow(config: AWSIoTConfig) {
 
         let payload = JSON.parse(payloadData)
         if ('host' in payload && 'message' in payload) {
+          const sendData = {
+            "agentEEId":thingName,
+            "cloudEEId":payload.host,
+            "message":payload.message
+          }
           thingShadow.publish(
-            `${deviceSendTopic}${payload.host}`,
-            JSON.stringify(payload.message),
+            deviceSendTopic,
+            JSON.stringify(sendData),
             {
-              qos: 1
+              qos: 0
             }
           )
         } else {
-          console.error('communication data error')
+          error('Node RED communication data error')
         }
       } catch (err) {
-        console.error('communication data :' + err.message)
+        error(`Node RED communication data error:${err.message}`)
       }
     })
     socket.on('end', function() {
-      console.log('Closing connection with the client')
+      debug('Node RED Recv Server socket close')
     })
     // Don't forget to catch error, for your own sake.
     socket.on('error', function(err) {
-      console.log(`Error: ${err}`)
+      error(`Node RED Recv Server socket error: ${err}`)
     })
   })
 
