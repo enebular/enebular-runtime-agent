@@ -363,7 +363,6 @@ function setupThingShadow(config: AWSIoTConfig) {
         let payload = JSON.parse(payloadData)
         if ('host' in payload && 'message' in payload) {
           const sendData = {
-            "agentEEId":thingName,
             "cloudEEId":payload.host,
             "message":payload.message
           }
