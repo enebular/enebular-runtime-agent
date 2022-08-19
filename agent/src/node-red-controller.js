@@ -443,9 +443,16 @@ export default class NodeREDController {
     }
 
     if (desiredState.hasOwnProperty('envVariables')) {
-      this._flowState.pendingEnvVariables = desiredState.envVariables
-      this._envVariableRequest()
-      change = true
+      if (
+        !this._compareEnvVariables(
+          this._flowState.envVariables,
+          desiredState.envVariables
+        )
+      ) {
+        this._flowState.pendingEnvVariables = desiredState.envVariables
+        this._envVariableRequest()
+        change = true
+      }
     }
 
     this.debug('Flow state: ' + JSON.stringify(this._flowState, null, 2))
@@ -655,7 +662,7 @@ export default class NodeREDController {
       this.info('Restarting service with new env variables')
       try {
         if (this._isFlowEnabled()) {
-          await this._restartService()
+          await this.restartService()
         } else {
           this.info('Skipped Node-RED restart since flow is disabled')
         }
@@ -1106,7 +1113,7 @@ export default class NodeREDController {
             'package.json'
           )
 
-          if(fs.existsSync(packageJSONFilePath)) {
+          if (fs.existsSync(packageJSONFilePath)) {
             const packageJSONFile = JSON.parse(
               fs.readFileSync(packageJSONFilePath, 'utf8')
             )
@@ -1117,8 +1124,10 @@ export default class NodeREDController {
               Object.keys(packageJSONFile.dependencies).forEach(function(key) {
                 delete nodeRedFile.nodes[key]
               })
-              fs.writeFileSync(nodeRedFilePath, JSON.stringify(nodeRedFile), (err) =>
-                err ? resolve(new Error(err)) : resolve(null)
+              fs.writeFileSync(
+                nodeRedFilePath,
+                JSON.stringify(nodeRedFile),
+                (err) => (err ? resolve(new Error(err)) : resolve(null))
               )
             }
             if (fs.existsSync(defaultPackageJSONFilePath)) {
@@ -1130,8 +1139,8 @@ export default class NodeREDController {
               })
               fs.writeFileSync(
                 defaultPackageJSONFilePath,
-                JSON.stringify(defaultPackageJSONFile), (err) =>
-                  err ? resolve(new Error(err)) : resolve(null)
+                JSON.stringify(defaultPackageJSONFile),
+                (err) => (err ? resolve(new Error(err)) : resolve(null))
               )
             }
           }
