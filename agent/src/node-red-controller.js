@@ -92,6 +92,7 @@ export default class NodeREDController {
   _shutdownRequested: boolean = false
   _flowStatus: FlowStatus = { state: 'stopped' }
   _pendingEnableRequest: boolean = false
+  _pendingEnvVariablesRequest: boolean = false
   _stateAiModelsPath: string
   _cancelRequest: Object = {}
   _deployRequest: Array<Object> = []
@@ -441,6 +442,19 @@ export default class NodeREDController {
       change = true
     }
 
+    if (desiredState.hasOwnProperty('envVariables')) {
+      if (
+        !this._compareEnvVariables(
+          this._flowState.envVariables,
+          desiredState.envVariables
+        )
+      ) {
+        this._flowState.pendingEnvVariables = desiredState.envVariables
+        this._envVariableRequest()
+        change = true
+      }
+    }
+
     this.debug('Flow state: ' + JSON.stringify(this._flowState, null, 2))
 
     if (change) {
@@ -449,6 +463,29 @@ export default class NodeREDController {
       this._updateFlowReportedState()
       this._processPendingFlowChanges()
     }
+  }
+
+  _compareEnvVariables(envVariablesA: Object, envVariablesB: Object): boolean {
+    if (!envVariablesA && !envVariablesB) {
+      return true
+    }
+    if (!envVariablesA || !envVariablesB) {
+      return false
+    }
+
+    if (
+      Object.keys(envVariablesA).length !== Object.keys(envVariablesB).length
+    ) {
+      return false
+    }
+
+    for (const key in envVariablesA) {
+      if (envVariablesA[key] !== envVariablesB[key]) {
+        return false
+      }
+    }
+
+    return true
   }
 
   // Only updates the reported state if required (if there is a difference)
@@ -477,6 +514,23 @@ export default class NodeREDController {
               desired: this._flowState.enableDesiredStateRef
             }
           : null
+      )
+    }
+    // Handle flow.envVariables
+    if (
+      !this._compareEnvVariables(
+        this._flowState.envVariables,
+        reportedState.envVariables
+      )
+    ) {
+      this.debug(
+        `Updating reported flow envVariables ${reportedState.envVariables} => ${this._flowState.envVariables}`
+      )
+      this._deviceStateMan.updateState(
+        'reported',
+        'set',
+        'flow.envVariablesA',
+        this._flowState.envVariables
       )
     }
 
@@ -566,9 +620,57 @@ export default class NodeREDController {
     this._updateFlowStatusState()
   }
 
+  _envVariableRequest() {
+    if (!this._pendingEnvVariablesRequest) {
+      this._pendingEnvVariablesRequest = true
+    }
+  }
+
   _enableRequest() {
     if (!this._pendingEnableRequest) {
       this._pendingEnableRequest = true
+    }
+  }
+
+  async _attemptEnvVariablesChange() {
+    if (this._flowState.pendingEnvVariables) {
+      let variablesToRemoveExists = false
+      const newVariables = Object.keys(this._flowState.pendingEnvVariables)
+      const variablesToRemove = []
+      for (const variable in this._flowState.envVariables) {
+        if (!newVariables.includes(variable)) {
+          variablesToRemoveExists = true
+          variablesToRemove.push(variable)
+        }
+      }
+      if (variablesToRemoveExists) {
+        this._flowState.envVariablesToRemote = variablesToRemove
+      }
+      this._flowState.envVariables = {
+        ...this._flowState.pendingEnvVariables
+      }
+    } else {
+      if (this._flowState.envVariables) {
+        this._flowState.envVariablesToRemote = Object.keys(
+          ...this._flowState.envVariables
+        )
+      }
+      this._flowState.envVariables = null
+    }
+    this._flowState.pendingEnvVariables = null
+    if (this._serviceIsRunning()) {
+      this.info('Restarting service with new env variables')
+      try {
+        if (this._isFlowEnabled()) {
+          await this.restartService()
+        } else {
+          this.info('Skipped Node-RED restart since flow is disabled')
+        }
+      } catch (err) {
+        this.error(
+          'Node-RED restart with new env variables failed: ' + err.message
+        )
+      }
     }
   }
 
@@ -607,7 +709,8 @@ export default class NodeREDController {
     while (this._active) {
       if (
         this._flowState.pendingChange == null &&
-        !this._pendingEnableRequest
+        !this._pendingEnableRequest &&
+        !this._pendingEnvVariablesRequest
       ) {
         break
       }
@@ -617,10 +720,12 @@ export default class NodeREDController {
       let pendingAssetId = this._flowState.pendingAssetId
       let pendingUpdateId = this._flowState.pendingUpdateId
       let pendingEnableRequest = this._pendingEnableRequest
+      let pendingEnvVariablesRequest = this._pendingEnvVariablesRequest
       this._flowState.pendingChange = null
       this._flowState.pendingAssetId = null
       this._flowState.pendingUpdateId = null
       this._pendingEnableRequest = false
+      this._pendingEnvVariablesRequest = false
 
       // Process the change
       if (pendingChange != null) {
@@ -749,6 +854,11 @@ export default class NodeREDController {
         } else {
           await this._attemptDisableFlow()
         }
+      }
+
+      if (pendingEnvVariablesRequest) {
+        this.info('Processing flow env variables change')
+        await this._attemptEnvVariablesChange()
       }
 
       // Save the changed state
@@ -994,6 +1104,47 @@ export default class NodeREDController {
             'enebular-agent-dynamic-deps',
             'package.json'
           )
+          const nodeRedFilePath = path.join(
+            this._getDataDir(),
+            '.config.users.json'
+          )
+          const defaultPackageJSONFilePath = path.join(
+            this._getDataDir(),
+            'package.json'
+          )
+
+          if (fs.existsSync(packageJSONFilePath)) {
+            const packageJSONFile = JSON.parse(
+              fs.readFileSync(packageJSONFilePath, 'utf8')
+            )
+            if (fs.existsSync(nodeRedFilePath)) {
+              const nodeRedFile = JSON.parse(
+                fs.readFileSync(nodeRedFilePath, 'utf8')
+              )
+              Object.keys(packageJSONFile.dependencies).forEach(function(key) {
+                delete nodeRedFile.nodes[key]
+              })
+              fs.writeFileSync(
+                nodeRedFilePath,
+                JSON.stringify(nodeRedFile),
+                (err) => (err ? resolve(new Error(err)) : resolve(null))
+              )
+            }
+            if (fs.existsSync(defaultPackageJSONFilePath)) {
+              const defaultPackageJSONFile = JSON.parse(
+                fs.readFileSync(defaultPackageJSONFilePath, 'utf8')
+              )
+              Object.keys(packageJSONFile.dependencies).forEach(function(key) {
+                delete defaultPackageJSONFile.dependencies[key]
+              })
+              fs.writeFileSync(
+                defaultPackageJSONFilePath,
+                JSON.stringify(defaultPackageJSONFile),
+                (err) => (err ? resolve(new Error(err)) : resolve(null))
+              )
+            }
+          }
+
           if (
             Object.keys(flowPackage.packages).includes(
               '@uhuru/enebular-ai-contrib'
@@ -1169,7 +1320,7 @@ export default class NodeREDController {
 
   async _safeCopy(source: string, destination: string) {
     await execAsync(`find "${source}" -xtype l -delete 2>/dev/null`)
-    await fs.copy(source, destination)
+    await fs.move(source, destination)
   }
 
   async _resolveDependency(deployParam: Object): Promise<UpdatePackageResult> {
@@ -1224,7 +1375,23 @@ export default class NodeREDController {
           message: 'deploy cancel'
         }
       }
+
+      const srcPath = path.join(
+        this._getDataDir(),
+        'enebular-agent-dynamic-deps',
+        'package.json'
+      )
+      const dstPath = path.join(this._getDataDir(), 'package.json')
+      const src = JSON.parse(fs.readFileSync(srcPath, 'utf8'))
+      const dst = JSON.parse(fs.readFileSync(dstPath, 'utf8'))
+
+      Object.keys(src.dependencies).forEach(function(key) {
+        dst.dependencies[key] = src.dependencies[key]
+      })
+      fs.writeFileSync(dstPath, JSON.stringify(dst))
+
       fs.removeSync(bkDir)
+
       return {
         success: true
       }
@@ -1277,7 +1444,7 @@ export default class NodeREDController {
     return this._cproc !== null
   }
 
-  async startService(editSession: EditSession) {
+  async startService(editSession: ?EditSession) {
     if (!this._isFlowEnabled()) {
       this.info('Skipped Node-RED start since flow is disabled')
       return
@@ -1287,7 +1454,7 @@ export default class NodeREDController {
     await this._processPendingFlowChanges()
   }
 
-  async _startService(editSession: EditSession) {
+  async _startService(editSession: ?EditSession) {
     if (editSession) {
       this.info('Starting service (editor mode)...')
     } else {
@@ -1309,6 +1476,17 @@ export default class NodeREDController {
       let env = Object.assign(process.env, {
         ENEBULAR_ASSETS_DATA_PATH: this._assetsDataPath
       })
+      if (this._flowState.envVariables) {
+        for (const envVariable in this._flowState.envVariables) {
+          env[envVariable] = this._flowState.envVariables[envVariable]
+        }
+      }
+      if (this._flowState.envVariablesToRemote) {
+        for (const envVariable of this._flowState.envVariablesToRemote) {
+          delete env[envVariable]
+        }
+        this._flowState.envVariablesToRemote = null
+      }
       if (editSession) {
         args = ['-s', '.node-red-config/enebular-editor-settings.js']
         env['ENEBULAR_EDITOR_URL'] = `http://${editSession.ipAddress}:9017`
