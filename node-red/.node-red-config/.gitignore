@@ -8,3 +8,4 @@ flows_cred.json
 
 node-red-enebular-ai-nodes/nodes/*
 !node-red-enebular-ai-nodes/nodes/*/
+package-lock.json
