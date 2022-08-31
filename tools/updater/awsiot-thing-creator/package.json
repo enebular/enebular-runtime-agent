@@ -32,7 +32,7 @@
   },
   "dependencies": {
     "@uhuru/awsiot-thing-creator": "^1.1.1",
-    "aws-sdk": "2.286.2",
+    "aws-sdk": "2.814.0",
     "ts-command-line-args": "^2.1.4"
   }
 }
