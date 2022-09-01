@@ -446,9 +446,16 @@ export default class NodeREDController {
     }
 
     if (desiredState.hasOwnProperty('envVariables')) {
-      this._flowState.pendingEnvVariables = desiredState.envVariables
-      this._envVariableRequest()
-      change = true
+      if (
+        !this._compareEnvVariables(
+          this._flowState.envVariables,
+          desiredState.envVariables
+        )
+      ) {
+        this._flowState.pendingEnvVariables = desiredState.envVariables
+        this._envVariableRequest()
+        change = true
+      }
     }
 
     this.debug('Flow state: ' + JSON.stringify(this._flowState, null, 2))
@@ -658,7 +665,7 @@ export default class NodeREDController {
       this.info('Restarting service with new env variables')
       try {
         if (this._isFlowEnabled()) {
-          await this._restartService()
+          await this.restartService()
         } else {
           this.info('Skipped Node-RED restart since flow is disabled')
         }
@@ -1109,26 +1116,36 @@ export default class NodeREDController {
             'package.json'
           )
 
-          if (fs.existsSync(nodeRedFilePath)) {
+          if (fs.existsSync(packageJSONFilePath)) {
             const packageJSONFile = JSON.parse(
               fs.readFileSync(packageJSONFilePath, 'utf8')
             )
-            const nodeRedFile = JSON.parse(
-              fs.readFileSync(nodeRedFilePath, 'utf8')
-            )
-            const defaultPackageJSONFile = JSON.parse(
-              fs.readFileSync(defaultPackageJSONFilePath, 'utf8')
-            )
-
-            Object.keys(packageJSONFile.dependencies).forEach(function(key) {
-              delete nodeRedFile.nodes[key]
-              delete defaultPackageJSONFile.dependencies[key]
-            })
-            fs.writeFileSync(nodeRedFilePath, JSON.stringify(nodeRedFile))
-            fs.writeFileSync(
-              defaultPackageJSONFilePath,
-              JSON.stringify(defaultPackageJSONFile)
-            )
+            if (fs.existsSync(nodeRedFilePath)) {
+              const nodeRedFile = JSON.parse(
+                fs.readFileSync(nodeRedFilePath, 'utf8')
+              )
+              Object.keys(packageJSONFile.dependencies).forEach(function(key) {
+                delete nodeRedFile.nodes[key]
+              })
+              fs.writeFileSync(
+                nodeRedFilePath,
+                JSON.stringify(nodeRedFile),
+                (err) => (err ? resolve(new Error(err)) : resolve(null))
+              )
+            }
+            if (fs.existsSync(defaultPackageJSONFilePath)) {
+              const defaultPackageJSONFile = JSON.parse(
+                fs.readFileSync(defaultPackageJSONFilePath, 'utf8')
+              )
+              Object.keys(packageJSONFile.dependencies).forEach(function(key) {
+                delete defaultPackageJSONFile.dependencies[key]
+              })
+              fs.writeFileSync(
+                defaultPackageJSONFilePath,
+                JSON.stringify(defaultPackageJSONFile),
+                (err) => (err ? resolve(new Error(err)) : resolve(null))
+              )
+            }
           }
 
           if (
