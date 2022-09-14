@@ -352,27 +352,23 @@ function setupThingShadow(config: AWSIoTConfig) {
     socket.on('data', function(message) {
       debug('Node RED Recv Server socket open')
       const str = message.toString()
-      try{ 
+      try {
         const key = agent.config.get('COMMUNICATION_KEY')
         const pass = Buffer.from(key.slice(0, 64), 'hex')
         const iv = Buffer.from(key.slice(64, 64 + 32), 'hex')
         const decipher = crypto.createDecipheriv('aes-256-cbc', pass, iv)
-        const payloadData = 
+        const payloadData =
           decipher.update(str, 'hex', 'utf-8') + decipher.final('utf-8')
 
         let payload = JSON.parse(payloadData)
         if ('host' in payload && 'message' in payload) {
           const sendData = {
-            "cloudEEId":payload.host,
-            "message":payload.message
+            cloudEEId: payload.host,
+            message: payload.message
           }
-          thingShadow.publish(
-            deviceSendTopic,
-            JSON.stringify(sendData),
-            {
-              qos: 0
-            }
-          )
+          thingShadow.publish(deviceSendTopic, JSON.stringify(sendData), {
+            qos: 0
+          })
         } else {
           error('Node RED communication data error')
         }
