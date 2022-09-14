@@ -269,9 +269,7 @@ function setupThingShadow(config: AWSIoTConfig) {
   const nodeRedRecvServer = new net.Server()
   const nodeRedSendClient = new net.Socket()
 
-  nodeRedRecvServer.listen(fromDevicePort, function() {
-    debug('Started waiting for message server for AWS IoT')
-  })
+
 
   shadow.on('connect', () => {
     awsIotIsOffline = false
@@ -281,7 +279,11 @@ function setupThingShadow(config: AWSIoTConfig) {
     awsIotConnected = true
     updateThingShadowRegisterState()
 
-
+    if (!nodeRedRecvServer.listening) {
+      nodeRedRecvServer.listen(fromDevicePort, function() {
+        debug('Started waiting for message server for AWS IoT')
+      })
+    }
 
     /**
      * If this 'connect' has occured while the agent is already up and running,
