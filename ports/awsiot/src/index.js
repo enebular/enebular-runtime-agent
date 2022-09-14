@@ -19,6 +19,7 @@ let thingName: string
 let thingShadow: awsIot.thingShadow
 let canRegisterThingShadow: boolean = false
 let thingShadowRegistered: boolean = false
+let awsIotIsOffline: boolean = true
 let awsIotConnected: boolean = false
 let operationResultHandlers = {}
 let initRetryInterval = 2 * 1000
@@ -268,16 +269,19 @@ function setupThingShadow(config: AWSIoTConfig) {
   const nodeRedRecvServer = new net.Server()
   const nodeRedSendClient = new net.Socket()
 
+  nodeRedRecvServer.listen(fromDevicePort, function() {
+    debug('Started waiting for message server for AWS IoT')
+  })
+
   shadow.on('connect', () => {
+    awsIotIsOffline = false
     info('Connected to AWS IoT')
     let thingShadowAlreadyRegistered = thingShadowRegistered
 
     awsIotConnected = true
     updateThingShadowRegisterState()
 
-    nodeRedRecvServer.listen(fromDevicePort, function() {
-      debug('Started waiting for message server for AWS IoT')
-    })
+
 
     /**
      * If this 'connect' has occured while the agent is already up and running,
@@ -294,6 +298,7 @@ function setupThingShadow(config: AWSIoTConfig) {
   })
 
   shadow.on('offline', () => {
+    awsIotIsOffline = true
     debug('AWS IoT connection offline')
     // ignoring disconnect
   })
@@ -366,9 +371,11 @@ function setupThingShadow(config: AWSIoTConfig) {
             cloudEEId: payload.host,
             message: payload.message
           }
-          thingShadow.publish(deviceSendTopic, JSON.stringify(sendData), {
-            qos: 0
-          })
+          if (!awsIotIsOffline) {
+            thingShadow.publish(deviceSendTopic, JSON.stringify(sendData), {
+              qos: 0
+            })
+          }
         } else {
           error('Node RED communication data error')
         }
