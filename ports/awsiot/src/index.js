@@ -334,17 +334,21 @@ function setupThingShadow(config: AWSIoTConfig) {
     } else if (topic === deviceCommandSendTopic) {
       handleDeviceCommandMessage(payload)
     } else if (topic === cloudSendTopic) {
-      nodeRedSendClient.connect(toDevicePort, toDeviceHost, () => {
-        const key = agent.config.get('COMMUNICATION_KEY')
-        const pass = Buffer.from(key.slice(0, 64), 'hex')
-        const iv = Buffer.from(key.slice(64, 64 + 32), 'hex')
-        const cipher = crypto.createCipheriv('aes-256-cbc', pass, iv)
-        const payloadData = 
-          cipher.update(payload.toString(), 'utf8', 'hex') + cipher.final('hex')
+      try {
+        nodeRedSendClient.connect(toDevicePort, toDeviceHost, () => {
+          const key = agent.config.get('COMMUNICATION_KEY')
+          const pass = Buffer.from(key.slice(0, 64), 'hex')
+          const iv = Buffer.from(key.slice(64, 64 + 32), 'hex')
+          const cipher = crypto.createCipheriv('aes-256-cbc', pass, iv)
+          const payloadData = 
+            cipher.update(payload.toString(), 'utf8', 'hex') + cipher.final('hex')
 
-        nodeRedSendClient.write(payloadData)
-        nodeRedSendClient.destroy()
-      })
+          nodeRedSendClient.write(payloadData)
+          nodeRedSendClient.destroy()
+        })
+      } catch (err) {
+        error(`Node RED communication data error:${err.message}`)
+      }
     } else {
       debug('AWS IoT message', topic, payload)
     }
@@ -353,6 +357,9 @@ function setupThingShadow(config: AWSIoTConfig) {
   shadow.on('delta', async (thingName, stateObject) => {
     debug('AWS IoT delta', stateObject)
     handleStateMessageChange(stateObject.state.message)
+  })
+  nodeRedSendClient.on('error', function(err) {
+    error(`Node RED communication client error:${err}`);
   })
 
   nodeRedRecvServer.on('connection', function(socket) {
