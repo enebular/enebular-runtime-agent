@@ -18,6 +18,7 @@ import AiModelManager from './ai-model-manager'
 import LogManager from './log-manager'
 import NodeREDController from './node-red-controller'
 import MonitorManager from './monitor-manager'
+import EeConnectorManager from './ee-connector-manager'
 import RemoteLogin from './remote-login'
 import AgentRunnerManager from './agent-runner-manager'
 import { getUserHome } from './utils'
@@ -96,6 +97,7 @@ export default class EnebularAgent extends EventEmitter {
 
   _messageEmitter: EventEmitter
   _monitorManager: MonitorManager
+  _eeConnectorManagr: EeConnectorManager
   _nodeRed: NodeREDController
   _deviceAuth: DeviceAuthMediator
   _agentMan: AgentManagerMediator
@@ -203,6 +205,11 @@ export default class EnebularAgent extends EventEmitter {
       this._deviceStateManager,
       this._logManager,
       this._config,
+      this._log
+    )
+    this._eeConnectorManagr = new EeConnectorManager(
+      this._deviceStateManager,
+      this._logManager,
       this._log
     )
 
@@ -372,6 +379,7 @@ export default class EnebularAgent extends EventEmitter {
     this._loadAgentConfig()
 
     this._monitorManager.setup()
+    this._eeConnectorManagr.setup()
     await this._agentInfoManager.setup()
     await this._assetManager.setup()
     await this._aiModelManager.setup()
