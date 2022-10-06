@@ -272,6 +272,9 @@ export default class EnebularAgent extends EventEmitter {
 
     this._configFile = configFile
     this._agentState = 'init'
+    this._eeConnectorManagr.on('cloudCommunicationChanged', enable => {
+      this.emit('cloudCommunicationChanged', enable)
+    })
   }
 
   _logMetrics() {

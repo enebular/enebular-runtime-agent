@@ -1,10 +1,11 @@
 /* @flow */
 import fs from 'fs'
+import EventEmitter from 'events'
 import type DeviceStateManager from './device-state-manager'
 import type LogManager from './log-manager'
 import type { Logger } from 'winston'
 
-export default class EeConnectorManager {
+export default class EeConnectorManager extends EventEmitter{
   _deviceStateManager: DeviceStateManager
   _logManager: LogManager
   _log: Logger
@@ -16,6 +17,7 @@ export default class EeConnectorManager {
     logManager: LogManager,
     log: Logger
   ) {
+    super()
     this._deviceStateManager = deviceStateManager
     this._logManager = logManager
     this._log = log
@@ -89,6 +91,7 @@ export default class EeConnectorManager {
           'cloudCommunication.enable'
         )
         this._enabled = desiredState.enable
+        this.emit('cloudCommunicationChanged', desiredState.enable)
         this._saveState()
         this._updateCloudCommunicationActiveState()
         this._updateCloudCommunicationReportedState()

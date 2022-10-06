@@ -21,6 +21,7 @@ let canRegisterThingShadow: boolean = false
 let thingShadowRegistered: boolean = false
 let awsIotIsOffline: boolean = true
 let awsIotConnected: boolean = false
+let eeConnectorEnabled: boolean = false
 let operationResultHandlers = {}
 let initRetryInterval = 2 * 1000
 let updateRequestIndex = 0
@@ -380,7 +381,7 @@ function setupThingShadow(config: AWSIoTConfig) {
             cloudEEId: payload.host,
             message: payload.message
           }
-          if (!awsIotIsOffline) {
+          if (!awsIotIsOffline && eeConnectorEnabled) {
             thingShadow.publish(deviceSendTopic, JSON.stringify(sendData), {
               qos: 0
             })
@@ -489,6 +490,10 @@ function onConnectorInit() {
         qos: 1
       }
     )
+  })
+
+  agent.on('cloudCommunicationChanged', enable => {
+    eeConnectorEnabled = enable
   })
 
   connector.updateActiveState(true)
