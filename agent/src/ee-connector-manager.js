@@ -9,7 +9,7 @@ export default class EeConnectorManager extends EventEmitter{
   _deviceStateManager: DeviceStateManager
   _logManager: LogManager
   _log: Logger
-  _enabled: boolean = true
+  _enabled: boolean = false
   _desiredStateRef: Object
 
   constructor(
@@ -28,37 +28,8 @@ export default class EeConnectorManager extends EventEmitter{
   }
 
   setup() {
-    this._loadState()
     this._updateCloudCommunicationFromDesiredState()
     this._updateCloudCommunicationReportedState()
-  }
-
-  _loadState() {
-    if (!fs.existsSync(this._stateFilePath)) {
-      return
-    }
-
-    this._log.info('Loading cloud communication state: ' + this._stateFilePath)
-
-    const data = fs.readFileSync(this._stateFilePath, 'utf8')
-    const state = JSON.parse(data)
-    this._enabled = state.enable
-    this._desiredStateRef = state.desiredStateRef
-  }
-
-  _saveState() {
-    const state = {
-      enable: this._enabled,
-      desiredStateRef: this._desiredStateRef
-    }
-
-    this._log.debug('Saving cloud communication state: ' + JSON.stringify(state, null, 2))
-
-    try {
-      fs.writeFileSync(this._stateFilePath, JSON.stringify(state), 'utf8')
-    } catch (err) {
-      this._log.error('Failed to save cloud communication state: ' + err.message)
-    }
   }
 
   async _handleDeviceStateChange(params: { type: string, path: ?string }) {
@@ -91,8 +62,8 @@ export default class EeConnectorManager extends EventEmitter{
           'cloudCommunication.enable'
         )
         this._enabled = desiredState.enable
+        this._log.debug('cloud communication state: ' + desiredState.enable);
         this.emit('cloudCommunicationChanged', desiredState.enable)
-        this._saveState()
         this._updateCloudCommunicationActiveState()
         this._updateCloudCommunicationReportedState()
       }

@@ -385,6 +385,8 @@ function setupThingShadow(config: AWSIoTConfig) {
             thingShadow.publish(deviceSendTopic, JSON.stringify(sendData), {
               qos: 0
             })
+          } else {
+            debug('Could not send because AWS IoT is offline or cloud communication is OFF.')
           }
         } else {
           error('Node RED communication data error')
