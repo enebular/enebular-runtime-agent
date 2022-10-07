@@ -64,7 +64,6 @@ export default class EeConnectorManager extends EventEmitter{
         this._enabled = desiredState.enable
         this._log.debug('cloud communication state: ' + desiredState.enable);
         this.emit('cloudCommunicationChanged', desiredState.enable)
-        this._updateCloudCommunicationActiveState()
         this._updateCloudCommunicationReportedState()
       }
     }
