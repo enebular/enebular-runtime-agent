@@ -270,8 +270,6 @@ function setupThingShadow(config: AWSIoTConfig) {
   const nodeRedRecvServer = new net.Server()
   const nodeRedSendClient = new net.Socket()
 
-
-
   shadow.on('connect', () => {
     awsIotIsOffline = false
     info('Connected to AWS IoT')
@@ -341,8 +339,9 @@ function setupThingShadow(config: AWSIoTConfig) {
           const pass = Buffer.from(key.slice(0, 64), 'hex')
           const iv = Buffer.from(key.slice(64, 64 + 32), 'hex')
           const cipher = crypto.createCipheriv('aes-256-cbc', pass, iv)
-          const payloadData = 
-            cipher.update(payload.toString(), 'utf8', 'hex') + cipher.final('hex')
+          const payloadData =
+            cipher.update(payload.toString(), 'utf8', 'hex') +
+            cipher.final('hex')
 
           nodeRedSendClient.write(payloadData)
           nodeRedSendClient.destroy()
@@ -360,13 +359,28 @@ function setupThingShadow(config: AWSIoTConfig) {
     handleStateMessageChange(stateObject.state.message)
   })
   nodeRedSendClient.on('error', function(err) {
-    error(`Node RED communication client error:${err}`);
+    error(`Node RED communication client error:${err}`)
   })
 
   nodeRedRecvServer.on('connection', function(socket) {
-    socket.on('data', function(message) {
-      debug('Node RED Recv Server socket open')
-      const str = message.toString()
+    debug('Node RED Recv Server socket open')
+
+    // if message size is bigger than 65536, it will be splitted into multiple packets
+    let fullMessage = ''
+    socket.on('data', function(partialMessage) {
+      debug(
+        'Node RED Recv Server received chunk of length: ',
+        partialMessage.length
+      )
+      fullMessage += partialMessage.toString()
+    })
+    socket.on('end', function() {
+      debug(
+        'Node RED Recv Server socket close; full message length: ',
+        fullMessage.length
+      )
+
+      const str = fullMessage
       try {
         const key = agent.config.get('COMMUNICATION_KEY')
         const pass = Buffer.from(key.slice(0, 64), 'hex')
@@ -386,7 +400,9 @@ function setupThingShadow(config: AWSIoTConfig) {
               qos: 0
             })
           } else {
-            debug('Could not send because AWS IoT is offline or cloud communication is OFF.')
+            debug(
+              'Could not send because AWS IoT is offline or cloud communication is OFF.'
+            )
           }
         } else {
           error('Node RED communication data error')
@@ -394,9 +410,6 @@ function setupThingShadow(config: AWSIoTConfig) {
       } catch (err) {
         error(`Node RED communication data error:${err.message}`)
       }
-    })
-    socket.on('end', function() {
-      debug('Node RED Recv Server socket close')
     })
     // Don't forget to catch error, for your own sake.
     socket.on('error', function(err) {
