@@ -27,6 +27,13 @@ let initRetryInterval = 2 * 1000
 let updateRequestIndex = 0
 let shutdownRequested = false
 
+// Queue to handle if too many messages are sent at once
+
+const messageQueue = []
+const messageSendInterval = 100
+let isMessageQueueRunning = false
+let notifyQueueError = () => {}
+
 /** AWSIoTとの再接続が発生したときにThingShadowを取得するが失敗したときのリトライ間隔と最大リトライ回数を設定する */
 const retryIntervalForGettingThingShadow = 3000
 const maxRetlyCountForGettingThingShadow = 10
@@ -270,6 +277,69 @@ function setupThingShadow(config: AWSIoTConfig) {
   const nodeRedRecvServer = new net.Server()
   const nodeRedSendClient = new net.Socket()
 
+  /**
+   * Queue initialization
+   *  */
+  const processCloudMessageQueue = async () => {
+    if (messageQueue.length === 0) {
+      return
+    }
+    isMessageQueueRunning = true
+    const payload = messageQueue.shift()
+
+    let timeout
+    const starTime = Date.now()
+    await new Promise(resolve => {
+      timeout = setTimeout(() => {
+        error(`Node RED communication data error: queue timeout`)
+        resolve()
+      }, 10e3)
+      try {
+        notifyQueueError = () => {
+          resolve()
+        }
+        nodeRedSendClient.connect(toDevicePort, toDeviceHost, () => {
+          debug(
+            `====================  Send message to Node RED, payload.count: ${payload.message &&
+              payload.message.count} ====================`
+          )
+          const key = agent.config.get('COMMUNICATION_KEY')
+          const pass = Buffer.from(key.slice(0, 64), 'hex')
+          const iv = Buffer.from(key.slice(64, 64 + 32), 'hex')
+          const cipher = crypto.createCipheriv('aes-256-cbc', pass, iv)
+          const payloadData =
+            cipher.update(payload.toString(), 'utf8', 'hex') +
+            cipher.final('hex')
+
+          nodeRedSendClient.write(payloadData)
+          nodeRedSendClient.destroy()
+
+          resolve()
+        })
+      } catch (err) {
+        error(`Node RED communication data error:${err.message}`)
+        resolve()
+      }
+    })
+    clearTimeout(timeout)
+    setTimeout(() => {
+      isMessageQueueRunning = false
+
+      processCloudMessageQueue()
+    }, Math.max(0, messageSendInterval - (Date.now() - starTime)))
+  }
+
+  const sendMessageToCloud = message => {
+    messageQueue.push(message)
+
+    if (!isMessageQueueRunning) {
+      processCloudMessageQueue()
+    }
+  }
+  /**
+   *
+   */
+
   shadow.on('connect', () => {
     awsIotIsOffline = false
     info('Connected to AWS IoT')
@@ -333,25 +403,7 @@ function setupThingShadow(config: AWSIoTConfig) {
     } else if (topic === deviceCommandSendTopic) {
       handleDeviceCommandMessage(payload)
     } else if (topic === cloudSendTopic) {
-      try {
-        nodeRedSendClient.connect(toDevicePort, toDeviceHost, () => {
-          debug(
-            `====================  Send message to Node RED, payload.count: ${payload.message.count} ====================`
-          )
-          const key = agent.config.get('COMMUNICATION_KEY')
-          const pass = Buffer.from(key.slice(0, 64), 'hex')
-          const iv = Buffer.from(key.slice(64, 64 + 32), 'hex')
-          const cipher = crypto.createCipheriv('aes-256-cbc', pass, iv)
-          const payloadData =
-            cipher.update(payload.toString(), 'utf8', 'hex') +
-            cipher.final('hex')
-
-          nodeRedSendClient.write(payloadData)
-          nodeRedSendClient.destroy()
-        })
-      } catch (err) {
-        error(`Node RED communication data error:${err.message}`)
-      }
+      sendMessageToCloud(payload)
     } else {
       debug('AWS IoT message', topic, payload)
     }
@@ -361,8 +413,10 @@ function setupThingShadow(config: AWSIoTConfig) {
     debug('AWS IoT delta', stateObject)
     handleStateMessageChange(stateObject.state.message)
   })
+
   nodeRedSendClient.on('error', function(err) {
-    error(`Node RED communication client error:${err}`)
+    error(`Node RED communication client error: ${err}`)
+    notifyQueueError()
   })
 
   nodeRedRecvServer.on('connection', function(socket) {
