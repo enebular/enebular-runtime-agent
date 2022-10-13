@@ -299,10 +299,6 @@ function setupThingShadow(config: AWSIoTConfig) {
           resolve()
         }
         nodeRedSendClient.connect(toDevicePort, toDeviceHost, () => {
-          debug(
-            `====================  Send message to Node RED, payload.count: ${payload.message &&
-              payload.message.count} ====================`
-          )
           const key = agent.config.get('COMMUNICATION_KEY')
           const pass = Buffer.from(key.slice(0, 64), 'hex')
           const iv = Buffer.from(key.slice(64, 64 + 32), 'hex')
