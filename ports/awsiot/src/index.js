@@ -27,6 +27,13 @@ let initRetryInterval = 2 * 1000
 let updateRequestIndex = 0
 let shutdownRequested = false
 
+// Queue to handle if too many messages are sent at once
+
+const messageQueue = []
+const messageSendInterval = 100
+let isMessageQueueRunning = false
+let notifyQueueError = () => {}
+
 /** AWSIoTとの再接続が発生したときにThingShadowを取得するが失敗したときのリトライ間隔と最大リトライ回数を設定する */
 const retryIntervalForGettingThingShadow = 3000
 const maxRetlyCountForGettingThingShadow = 10
@@ -270,7 +277,64 @@ function setupThingShadow(config: AWSIoTConfig) {
   const nodeRedRecvServer = new net.Server()
   const nodeRedSendClient = new net.Socket()
 
+  /**
+   * Queue initialization
+   *  */
+  const processCloudMessageQueue = async () => {
+    if (messageQueue.length === 0) {
+      return
+    }
+    isMessageQueueRunning = true
+    const payload = messageQueue.shift()
 
+    let timeout
+    const starTime = Date.now()
+    await new Promise(resolve => {
+      timeout = setTimeout(() => {
+        error(`Node RED communication data error: queue timeout`)
+        resolve()
+      }, 10e3)
+      try {
+        notifyQueueError = () => {
+          resolve()
+        }
+        nodeRedSendClient.connect(toDevicePort, toDeviceHost, () => {
+          const key = agent.config.get('COMMUNICATION_KEY')
+          const pass = Buffer.from(key.slice(0, 64), 'hex')
+          const iv = Buffer.from(key.slice(64, 64 + 32), 'hex')
+          const cipher = crypto.createCipheriv('aes-256-cbc', pass, iv)
+          const payloadData =
+            cipher.update(payload.toString(), 'utf8', 'hex') +
+            cipher.final('hex')
+
+          nodeRedSendClient.write(payloadData)
+          nodeRedSendClient.destroy()
+
+          resolve()
+        })
+      } catch (err) {
+        error(`Node RED communication data error:${err.message}`)
+        resolve()
+      }
+    })
+    clearTimeout(timeout)
+    setTimeout(() => {
+      isMessageQueueRunning = false
+
+      processCloudMessageQueue()
+    }, Math.max(0, messageSendInterval - (Date.now() - starTime)))
+  }
+
+  const sendMessageToCloud = message => {
+    messageQueue.push(message)
+
+    if (!isMessageQueueRunning) {
+      processCloudMessageQueue()
+    }
+  }
+  /**
+   *
+   */
 
   shadow.on('connect', () => {
     awsIotIsOffline = false
@@ -335,21 +399,7 @@ function setupThingShadow(config: AWSIoTConfig) {
     } else if (topic === deviceCommandSendTopic) {
       handleDeviceCommandMessage(payload)
     } else if (topic === cloudSendTopic) {
-      try {
-        nodeRedSendClient.connect(toDevicePort, toDeviceHost, () => {
-          const key = agent.config.get('COMMUNICATION_KEY')
-          const pass = Buffer.from(key.slice(0, 64), 'hex')
-          const iv = Buffer.from(key.slice(64, 64 + 32), 'hex')
-          const cipher = crypto.createCipheriv('aes-256-cbc', pass, iv)
-          const payloadData = 
-            cipher.update(payload.toString(), 'utf8', 'hex') + cipher.final('hex')
-
-          nodeRedSendClient.write(payloadData)
-          nodeRedSendClient.destroy()
-        })
-      } catch (err) {
-        error(`Node RED communication data error:${err.message}`)
-      }
+      sendMessageToCloud(payload)
     } else {
       debug('AWS IoT message', topic, payload)
     }
@@ -359,14 +409,31 @@ function setupThingShadow(config: AWSIoTConfig) {
     debug('AWS IoT delta', stateObject)
     handleStateMessageChange(stateObject.state.message)
   })
+
   nodeRedSendClient.on('error', function(err) {
-    error(`Node RED communication client error:${err}`);
+    error(`Node RED communication client error: ${err}`)
+    notifyQueueError()
   })
 
   nodeRedRecvServer.on('connection', function(socket) {
-    socket.on('data', function(message) {
-      debug('Node RED Recv Server socket open')
-      const str = message.toString()
+    debug('Node RED Recv Server socket open')
+
+    // if message size is bigger than 65536, it will be splitted into multiple packets
+    let fullMessage = ''
+    socket.on('data', function(partialMessage) {
+      debug(
+        'Node RED Recv Server received chunk of length: ',
+        partialMessage.length
+      )
+      fullMessage += partialMessage.toString()
+    })
+    socket.on('end', function() {
+      debug(
+        'Node RED Recv Server socket close; full message length: ',
+        fullMessage.length
+      )
+
+      const str = fullMessage
       try {
         const key = agent.config.get('COMMUNICATION_KEY')
         const pass = Buffer.from(key.slice(0, 64), 'hex')
@@ -386,7 +453,9 @@ function setupThingShadow(config: AWSIoTConfig) {
               qos: 0
             })
           } else {
-            debug('Could not send because AWS IoT is offline or cloud communication is OFF.')
+            debug(
+              'Could not send because AWS IoT is offline or cloud communication is OFF.'
+            )
           }
         } else {
           error('Node RED communication data error')
@@ -394,9 +463,6 @@ function setupThingShadow(config: AWSIoTConfig) {
       } catch (err) {
         error(`Node RED communication data error:${err.message}`)
       }
-    })
-    socket.on('end', function() {
-      debug('Node RED Recv Server socket close')
     })
     // Don't forget to catch error, for your own sake.
     socket.on('error', function(err) {
@@ -506,7 +572,7 @@ function onConnectorInit() {
 
 function startCore(): boolean {
   const startCore = process.argv.filter(arg => arg === '--start-core')
-  return startCore.length > 0 ? true : false
+  return startCore.length > 0
 }
 
 async function startup() {
