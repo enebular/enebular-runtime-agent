@@ -25,7 +25,8 @@ export type NodeREDConfig = {
   killSignal: string,
   pidFile: string,
   assetsDataPath: string,
-  allowEditSessions: boolean
+  allowEditSessions: boolean,
+  communicationKey: string
 }
 
 export type NodeREDAction = {
@@ -87,6 +88,7 @@ export default class NodeREDController {
   _nodeRedLog: Logger
   _retryInfo: RetryInfo
   _allowEditSessions: boolean = false
+  _communicationKey: string
   _inited: boolean = false
   _active: boolean = false
   _shutdownRequested: boolean = false
@@ -124,6 +126,7 @@ export default class NodeREDController {
     this._pidFile = nodeRedConfig.pidFile
     this._assetsDataPath = nodeRedConfig.assetsDataPath
     this._allowEditSessions = nodeRedConfig.allowEditSessions
+    this._communicationKey = nodeRedConfig.communicationKey
     this._retryInfo = {
       retryCount: 0,
       lastRetryTimestamp: Date.now()
@@ -1494,6 +1497,7 @@ export default class NodeREDController {
         env['ENEBULAR_EDITOR_URL'] = `http://${editSession.ipAddress}:9017`
         env['ENEBULAR_EDITOR_SESSION_TOKEN'] = editSession.sessionToken
       }
+      env['COMMUNICATION_KEY'] = this._communicationKey
       const cproc = spawn(command, args, {
         stdio: 'pipe',
         cwd: this._dir,

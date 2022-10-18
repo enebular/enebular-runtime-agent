@@ -18,6 +18,7 @@ import AiModelManager from './ai-model-manager'
 import LogManager from './log-manager'
 import NodeREDController from './node-red-controller'
 import MonitorManager from './monitor-manager'
+import EeConnectorManager from './ee-connector-manager'
 import RemoteLogin from './remote-login'
 import AgentRunnerManager from './agent-runner-manager'
 import { getUserHome } from './utils'
@@ -96,6 +97,7 @@ export default class EnebularAgent extends EventEmitter {
 
   _messageEmitter: EventEmitter
   _monitorManager: MonitorManager
+  _eeConnectorManagr: EeConnectorManager
   _nodeRed: NodeREDController
   _deviceAuth: DeviceAuthMediator
   _agentMan: AgentManagerMediator
@@ -205,6 +207,11 @@ export default class EnebularAgent extends EventEmitter {
       this._config,
       this._log
     )
+    this._eeConnectorManagr = new EeConnectorManager(
+      this._deviceStateManager,
+      this._logManager,
+      this._log
+    )
 
     this._agentInfoManager = new AgentInfoManager(
       this._deviceStateManager,
@@ -240,7 +247,8 @@ export default class EnebularAgent extends EventEmitter {
         killSignal: this._config.get('NODE_RED_KILL_SIGNAL'),
         pidFile: this._config.get('ENEBULAR_NODE_RED_PID_FILE'),
         assetsDataPath: this._config.get('ENEBULAR_ASSETS_DATA_PATH'),
-        allowEditSessions: devMode
+        allowEditSessions: devMode,
+        communicationKey: this._config.get('COMMUNICATION_KEY')
       }
     )
 
@@ -264,6 +272,9 @@ export default class EnebularAgent extends EventEmitter {
 
     this._configFile = configFile
     this._agentState = 'init'
+    this._eeConnectorManagr.on('cloudCommunicationChanged', enable => {
+      this.emit('cloudCommunicationChanged', enable)
+    })
   }
 
   _logMetrics() {
@@ -371,6 +382,7 @@ export default class EnebularAgent extends EventEmitter {
     this._loadAgentConfig()
 
     this._monitorManager.setup()
+    this._eeConnectorManagr.setup()
     await this._agentInfoManager.setup()
     await this._assetManager.setup()
     await this._aiModelManager.setup()
