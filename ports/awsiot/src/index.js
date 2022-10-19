@@ -2,6 +2,8 @@
 import fs from 'fs'
 import path from 'path'
 import awsIot from 'aws-iot-device-sdk'
+import crypto from 'crypto'
+import net from 'net'
 import { version as agentVer } from 'enebular-runtime-agent/package.json'
 import { EnebularAgent, ConnectorService } from 'enebular-runtime-agent'
 import {
@@ -17,15 +19,28 @@ let thingName: string
 let thingShadow: awsIot.thingShadow
 let canRegisterThingShadow: boolean = false
 let thingShadowRegistered: boolean = false
+let awsIotIsOffline: boolean = true
 let awsIotConnected: boolean = false
+let eeConnectorEnabled: boolean = false
 let operationResultHandlers = {}
 let initRetryInterval = 2 * 1000
 let updateRequestIndex = 0
 let shutdownRequested = false
 
+// Queue to handle if too many messages are sent at once
+
+const messageQueue = []
+const messageSendInterval = 100
+let isMessageQueueRunning = false
+let notifyQueueError = () => {}
+
 /** AWSIoTとの再接続が発生したときにThingShadowを取得するが失敗したときのリトライ間隔と最大リトライ回数を設定する */
 const retryIntervalForGettingThingShadow = 3000
 const maxRetlyCountForGettingThingShadow = 10
+
+const fromDevicePort = 60000
+const toDevicePort = 60001
+const toDeviceHost = '127.0.0.1'
 
 function log(level: string, msg: string, ...args: Array<mixed>) {
   args.push({ module: MODULE_NAME })
@@ -252,16 +267,88 @@ function setupThingShadow(config: AWSIoTConfig) {
   const shadow = awsIot.thingShadow(config)
   const toDeviceTopic = `enebular/things/${thingName}/msg/to_device`
   const deviceCommandSendTopic = `enebular/things/${thingName}/msg/command`
+  const cloudSendTopic = `enebular/to-agent/${thingName}`
+  const deviceSendTopic = `$aws/rules/enebular_agent_to_cloud`
 
   shadow.subscribe(toDeviceTopic)
   shadow.subscribe(deviceCommandSendTopic)
+  shadow.subscribe(cloudSendTopic)
+
+  const nodeRedRecvServer = new net.Server()
+  const nodeRedSendClient = new net.Socket()
+
+  /**
+   * Queue initialization
+   *  */
+  const processCloudMessageQueue = async () => {
+    if (messageQueue.length === 0) {
+      return
+    }
+    isMessageQueueRunning = true
+    const payload = messageQueue.shift()
+
+    let timeout
+    const starTime = Date.now()
+    await new Promise(resolve => {
+      timeout = setTimeout(() => {
+        error(`Node RED communication data error: queue timeout`)
+        resolve()
+      }, 10e3)
+      try {
+        notifyQueueError = () => {
+          resolve()
+        }
+        nodeRedSendClient.connect(toDevicePort, toDeviceHost, () => {
+          const key = agent.config.get('COMMUNICATION_KEY')
+          const pass = Buffer.from(key.slice(0, 64), 'hex')
+          const iv = Buffer.from(key.slice(64, 64 + 32), 'hex')
+          const cipher = crypto.createCipheriv('aes-256-cbc', pass, iv)
+          const payloadData =
+            cipher.update(payload.toString(), 'utf8', 'hex') +
+            cipher.final('hex')
+
+          nodeRedSendClient.write(payloadData)
+          nodeRedSendClient.destroy()
+
+          resolve()
+        })
+      } catch (err) {
+        error(`Node RED communication data error:${err.message}`)
+        resolve()
+      }
+    })
+    clearTimeout(timeout)
+    setTimeout(() => {
+      isMessageQueueRunning = false
+
+      processCloudMessageQueue()
+    }, Math.max(0, messageSendInterval - (Date.now() - starTime)))
+  }
+
+  const sendMessageToCloud = message => {
+    messageQueue.push(message)
+
+    if (!isMessageQueueRunning) {
+      processCloudMessageQueue()
+    }
+  }
+  /**
+   *
+   */
 
   shadow.on('connect', () => {
+    awsIotIsOffline = false
     info('Connected to AWS IoT')
     let thingShadowAlreadyRegistered = thingShadowRegistered
 
     awsIotConnected = true
     updateThingShadowRegisterState()
+
+    if (!nodeRedRecvServer.listening) {
+      nodeRedRecvServer.listen(fromDevicePort, function() {
+        debug('Started waiting for message server for AWS IoT')
+      })
+    }
 
     /**
      * If this 'connect' has occured while the agent is already up and running,
@@ -278,6 +365,7 @@ function setupThingShadow(config: AWSIoTConfig) {
   })
 
   shadow.on('offline', () => {
+    awsIotIsOffline = true
     debug('AWS IoT connection offline')
     // ignoring disconnect
   })
@@ -310,6 +398,8 @@ function setupThingShadow(config: AWSIoTConfig) {
       connector.sendCtrlMessage(JSON.parse(payload))
     } else if (topic === deviceCommandSendTopic) {
       handleDeviceCommandMessage(payload)
+    } else if (topic === cloudSendTopic) {
+      sendMessageToCloud(payload)
     } else {
       debug('AWS IoT message', topic, payload)
     }
@@ -320,11 +410,74 @@ function setupThingShadow(config: AWSIoTConfig) {
     handleStateMessageChange(stateObject.state.message)
   })
 
+  nodeRedSendClient.on('error', function(err) {
+    error(`Node RED communication client error: ${err}`)
+    notifyQueueError()
+  })
+
+  nodeRedRecvServer.on('connection', function(socket) {
+    debug('Node RED Recv Server socket open')
+
+    // if message size is bigger than 65536, it will be splitted into multiple packets
+    let fullMessage = ''
+    socket.on('data', function(partialMessage) {
+      debug(
+        'Node RED Recv Server received chunk of length: ',
+        partialMessage.length
+      )
+      fullMessage += partialMessage.toString()
+    })
+    socket.on('end', function() {
+      debug(
+        'Node RED Recv Server socket close; full message length: ',
+        fullMessage.length
+      )
+
+      const str = fullMessage
+      try {
+        const key = agent.config.get('COMMUNICATION_KEY')
+        const pass = Buffer.from(key.slice(0, 64), 'hex')
+        const iv = Buffer.from(key.slice(64, 64 + 32), 'hex')
+        const decipher = crypto.createDecipheriv('aes-256-cbc', pass, iv)
+        const payloadData =
+          decipher.update(str, 'hex', 'utf-8') + decipher.final('utf-8')
+
+        let payload = JSON.parse(payloadData)
+        if ('host' in payload && 'message' in payload) {
+          const sendData = {
+            cloudEEId: payload.host,
+            message: payload.message
+          }
+          if (!awsIotIsOffline && eeConnectorEnabled) {
+            thingShadow.publish(deviceSendTopic, JSON.stringify(sendData), {
+              qos: 0
+            })
+          } else {
+            debug(
+              'Could not send because AWS IoT is offline or cloud communication is OFF.'
+            )
+          }
+        } else {
+          error('Node RED communication data error')
+        }
+      } catch (err) {
+        error(`Node RED communication data error:${err.message}`)
+      }
+    })
+    // Don't forget to catch error, for your own sake.
+    socket.on('error', function(err) {
+      error(`Node RED Recv Server socket error: ${err}`)
+    })
+  })
+
   return shadow
 }
 
 function onConnectorRegisterConfig() {
   const AWSIoTConfigName = 'AWSIOT_CONFIG_FILE'
+  const CommunicationKey = 'COMMUNICATION_KEY'
+  const key = crypto.randomBytes(32)
+  const iv = crypto.randomBytes(16)
   const defaultAWSIoTConfigPath = path.resolve(
     process.argv[1],
     '../../config.json'
@@ -335,6 +488,13 @@ function onConnectorRegisterConfig() {
     defaultAWSIoTConfigPath,
     'AWSIoT config file path',
     true
+  )
+
+  agent.config.addItem(
+    CommunicationKey,
+    key.toString('hex') + iv.toString('hex'),
+    'Key to Communication',
+    false
   )
 
   agent.commandLine.addConfigOption(
@@ -400,6 +560,10 @@ function onConnectorInit() {
     )
   })
 
+  agent.on('cloudCommunicationChanged', enable => {
+    eeConnectorEnabled = enable
+  })
+
   connector.updateActiveState(true)
   connector.updateRegistrationState(true, thingName)
 
@@ -408,7 +572,7 @@ function onConnectorInit() {
 
 function startCore(): boolean {
   const startCore = process.argv.filter(arg => arg === '--start-core')
-  return startCore.length > 0 ? true : false
+  return startCore.length > 0
 }
 
 async function startup() {
