@@ -1,6 +1,6 @@
 {
   "name": "enebular-awsiot-agent",
-  "version": "2.17.1",
+  "version": "2.17.2",
   "description": "The AWS IoT port of enebular-agent for enebular",
   "main": "lib/index.js",
   "bin": {
@@ -42,6 +42,7 @@
   "dependencies": {
     "@babel/runtime": "^7.3.1",
     "aws-iot-device-sdk": "^2.2.11",
-    "enebular-runtime-agent": "file:../../agent"
+    "enebular-runtime-agent": "file:../../agent",
+    "net": "^1.0.2"
   }
 }
