@@ -1,6 +1,6 @@
 {
   "name": "awsiot-thing-creator",
-  "version": "2.17.3",
+  "version": "2.18.0",
   "description": "The utility to create AWS IoT thing from API",
   "main": "lib/index.js",
   "scripts": {
@@ -11,7 +11,7 @@
     "lint": "eslint src"
   },
   "engines": {
-    "node": "14.19.1"
+    "node": "18.15.0"
   },
   "devDependencies": {
     "@types/command-line-args": "^5.2.0",
@@ -27,11 +27,11 @@
     "eslint-plugin-prettier": "^4.0.0",
     "ts-jest": "^27.0.7",
     "typescript": "^4.4.4",
-    "prettier": "^1.12.1",
+    "prettier": "^2.8.7",
     "rimraf": "^2.6.2"
   },
   "dependencies": {
-    "@uhuru/awsiot-thing-creator": "^1.1.1",
+    "@uhuru/awsiot-thing-creator": "~1.2.1",
     "aws-sdk": "2.286.2",
     "ts-command-line-args": "^2.1.4"
   }
