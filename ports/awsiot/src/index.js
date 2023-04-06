@@ -509,7 +509,6 @@ function ensureAbsolutePath(pathToCheck: string, configFilePath: string) {
 
 function onConnectorInit() {
   const awsIotConfigFile = agent.config.get('AWSIOT_CONFIG_FILE')
-  const cloudSendTopic = `enebular/to-agent/${thingName}`
   info('AWS IoT config file: ' + awsIotConfigFile)
 
   let awsIotConfig
@@ -560,6 +559,7 @@ function onConnectorInit() {
   })
 
   agent.on('cloudCommunicationChanged', enable => {
+    const cloudSendTopic = `enebular/to-agent/${thingName}`
     eeConnectorEnabled = enable
     debug('---------- cloudCommunicationChanged ----------')
     if(eeConnectorEnabled){
