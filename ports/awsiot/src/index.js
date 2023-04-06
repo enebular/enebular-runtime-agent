@@ -268,6 +268,7 @@ function setupThingShadow(config: AWSIoTConfig) {
   const toDeviceTopic = `enebular/things/${thingName}/msg/to_device`
   const deviceCommandSendTopic = `enebular/things/${thingName}/msg/command`
   const deviceSendTopic = `$aws/rules/enebular_agent_to_cloud`
+  const cloudSendTopic = `enebular/to-agent/${thingName}`
 
   shadow.subscribe(toDeviceTopic)
   shadow.subscribe(deviceCommandSendTopic)
