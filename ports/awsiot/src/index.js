@@ -267,12 +267,10 @@ function setupThingShadow(config: AWSIoTConfig) {
   const shadow = awsIot.thingShadow(config)
   const toDeviceTopic = `enebular/things/${thingName}/msg/to_device`
   const deviceCommandSendTopic = `enebular/things/${thingName}/msg/command`
-  const cloudSendTopic = `enebular/to-agent/${thingName}`
   const deviceSendTopic = `$aws/rules/enebular_agent_to_cloud`
 
   shadow.subscribe(toDeviceTopic)
   shadow.subscribe(deviceCommandSendTopic)
-  shadow.subscribe(cloudSendTopic)
 
   const nodeRedRecvServer = new net.Server()
   const nodeRedSendClient = new net.Socket()
@@ -511,6 +509,7 @@ function ensureAbsolutePath(pathToCheck: string, configFilePath: string) {
 
 function onConnectorInit() {
   const awsIotConfigFile = agent.config.get('AWSIOT_CONFIG_FILE')
+  const cloudSendTopic = `enebular/to-agent/${thingName}`
   info('AWS IoT config file: ' + awsIotConfigFile)
 
   let awsIotConfig
@@ -562,6 +561,14 @@ function onConnectorInit() {
 
   agent.on('cloudCommunicationChanged', enable => {
     eeConnectorEnabled = enable
+    debug('---------- cloudCommunicationChanged ----------')
+    if(eeConnectorEnabled){
+      thingShadow.subscribe(cloudSendTopic)
+      debug('---------- subscribe: ----------',cloudSendTopic)
+    } else {
+      thingShadow.unsubscribe(cloudSendTopic)
+      debug('---------- unsubscribe: ----------',cloudSendTopic)
+    }
   })
 
   connector.updateActiveState(true)
