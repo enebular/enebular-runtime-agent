@@ -272,7 +272,6 @@ function setupThingShadow(config: AWSIoTConfig) {
 
   shadow.subscribe(toDeviceTopic)
   shadow.subscribe(deviceCommandSendTopic)
-  shadow.subscribe(cloudSendTopic)
 
   const nodeRedRecvServer = new net.Server()
   const nodeRedSendClient = new net.Socket()
@@ -561,7 +560,13 @@ function onConnectorInit() {
   })
 
   agent.on('cloudCommunicationChanged', enable => {
+    const cloudSendTopic = `enebular/to-agent/${thingName}`
     eeConnectorEnabled = enable
+    if(eeConnectorEnabled){
+      thingShadow.subscribe(cloudSendTopic)
+    } else {
+      thingShadow.unsubscribe(cloudSendTopic)
+    }
   })
 
   connector.updateActiveState(true)
