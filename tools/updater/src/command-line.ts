@@ -73,7 +73,7 @@ export default class CommandLine {
       case 'install':
         if (
           this._config.getBoolean('ROOT_REQUIRED') &&
-          process.getuid() !== 0
+          process.getuid?.() !== 0
         ) {
           throw new Error('You have to run this with root permission.')
         }
@@ -114,16 +114,8 @@ export default class CommandLine {
     }
   }
 
-  public addConfigOption(
-    configName: string,
-    option: string,
-    coercion?: (() => void) | RegExp
-  ): void {
-    this._commander.option(
-      option,
-      this._config.getDescription(configName),
-      coercion
-    )
+  public addConfigOption(configName: string, option: string): void {
+    this._commander.option(option, this._config.getDescription(configName))
     this._configOptionMap[configName] = this._commander.options
       .slice(-1)[0]
       .attributeName()
