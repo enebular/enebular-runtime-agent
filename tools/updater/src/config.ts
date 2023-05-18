@@ -26,7 +26,7 @@ export default class Config {
   public constructor() {
     this._items = {
       SUPPORTED_NODEJS_VERSION: {
-        value: 'v14.19.1',
+        value: 'v18.15.0',
         description: 'Supported NodeJS version',
         userExpose: true
       },
