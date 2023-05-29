@@ -54,7 +54,7 @@ cmd_wrapper() {
       _err  "  Command return error($ret): "$@""
       _err  "  Stdout: $(echo $out | base64 -w0 -d)"
       _err  "  Stderr: $(echo $err| base64 -w0 -d)"
-    fi 
+    fi
     return $ret
   else
     "$@"
@@ -263,7 +263,7 @@ install_nodejs() {
   ); then
     _echo_g "OK"
     return 0
-  fi 
+  fi
 }
 
 # args: node_path_to_return
@@ -427,7 +427,7 @@ do_install() {
   ); then
     _exit 1
   fi
-  tar -tzf ${TEMP_UPDATER_TARBALL} >/dev/null 
+  tar -tzf ${TEMP_UPDATER_TARBALL} >/dev/null
   if [ "$?" -ne 0 ]; then
     _err "Tarball integrity check failed."
     _exit 1
@@ -442,7 +442,7 @@ do_install() {
     rm -f "${TEMP_UPDATER_TARBALL}"
   ); then
     _echo_g "OK"
-  fi 
+  fi
 
   NODE_STR=`grep \"node\": ${TEMP_UPDATER_DST}/package.json`
   NODE_STR=${NODE_STR#*:}
