@@ -51,7 +51,7 @@ export class AgentInstaller implements AgentInstallerIf {
     this._arch = this._system.getArch()
   }
 
-  private _download(url: string, path: string): Promise<{}> {
+  private _download(url: string, path: string): Promise<void> {
     const onProgress = (state): void => {
       this._log.debug(
         util.format(
@@ -63,7 +63,7 @@ export class AgentInstaller implements AgentInstallerIf {
       )
     }
     this._log.debug(`Downloading ${url} to ${path} `)
-    return new Promise((resolve, reject): void => {
+    return new Promise<void>((resolve, reject): void => {
       const fileStream = fs.createWriteStream(path)
       fileStream.on('error', (err): void => {
         reject(err)
@@ -369,12 +369,24 @@ export class AgentInstaller implements AgentInstallerIf {
         const rootInfo = Utils.getUserInfo('root')
         await Utils.chown(this._log, nodejsPath, rootInfo)
         await Utils.chown(this._log, agentPath, rootInfo)
-        await Utils.chown(this._log, `${agentPath}/node-red/.node-red-config`, userInfo)
+        await Utils.chown(
+          this._log,
+          `${agentPath}/node-red/.node-red-config`,
+          userInfo
+        )
         await Utils.chown(this._log, `${agentPath}/ports/${port}`, userInfo)
         await Utils.chown(this._log, `${agentPath}/ports/${port}/lib`, rootInfo)
         await Utils.chown(this._log, `${agentPath}/ports/${port}/bin`, rootInfo)
-        await Utils.chown(this._log, `${agentPath}/ports/${port}/node_modules`, rootInfo)
-        await Utils.chown(this._log, `${agentPath}/agent/keys/enebular`, rootInfo)
+        await Utils.chown(
+          this._log,
+          `${agentPath}/ports/${port}/node_modules`,
+          rootInfo
+        )
+        await Utils.chown(
+          this._log,
+          `${agentPath}/agent/keys/enebular`,
+          rootInfo
+        )
         await Utils.chmod(this._log, `${agentPath}/agent/keys/enebular`, '0600')
       }
     )

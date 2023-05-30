@@ -284,7 +284,7 @@ export default class AgentUpdater {
     this._log.info('enebular-agent-updater version: ' + updaterVer)
 
     const user = this._userInfo.user
-    if (this._config.getBoolean('ROOT_REQUIRED') && process.getuid() !== 0) {
+    if (this._config.getBoolean('ROOT_REQUIRED') && process.getuid?.() !== 0) {
       this._logRootUserExecInfo(
         this._config.isOverridden('ENEBULAR_AGENT_USER')
           ? user
@@ -365,7 +365,8 @@ export default class AgentUpdater {
         // a rare chance was a updated version without being started.
         // TODO: should we follow another restore here.
         await this._startAgent(agentInfo.version, agentInfo.path)
-      } return true
+      }
+      return true
     }
 
     const port = agentInfo.detectPortType()

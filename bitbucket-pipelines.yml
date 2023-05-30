@@ -1,8 +1,8 @@
-image: 
-  name: node:14.19.1
+image:
+  name: node:18.15.0
   run-as-user: 1000
 
-definitions: 
+definitions:
   steps:
     - step: &build-test
         name: Build and test
@@ -83,7 +83,7 @@ definitions:
           - dist/**
     - step: &pack-x64
         name: Pack (x64)
-        image: enebularagentdevelopers/enebular-agent-x64:node-14.19.1
+        image: enebularagentdevelopers/enebular-agent-x64:node-18.15.0
         script:
           - chmod 777 pack_enebular_agent.sh
           - ./pack_enebular_agent.sh
@@ -97,7 +97,7 @@ definitions:
     - step: &pack-armv7l
         name: Pack (armv7l)
         script:
-          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i enebularagentdevelopers/enebular-agent-arm32v7:node-14.19.1 /usr/bin/qemu-arm-static -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent_arm32.sh"
+          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i enebularagentdevelopers/enebular-agent-arm32v7:node-18.15.0 /usr/bin/qemu-arm-static -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent_arm32.sh"
           - rm -rf .git
           - mkdir -p dist
           - AGENT_NAME=enebular-agent-${BITBUCKET_TAG}
@@ -110,7 +110,7 @@ definitions:
     - step: &pack-arm64
         name: Pack (arm64)
         script:
-          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i enebularagentdevelopers/enebular-agent-arm64v8:node-14.19.1 /usr/bin/qemu-aarch64-static -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent_arm32.sh"
+          - docker run -v $(pwd):/tmp/mount -w /tmp/mount -u`id -u`:`id -g` -i enebularagentdevelopers/enebular-agent-arm64v8:node-18.15.0 /usr/bin/qemu-aarch64-static -execve /bin/bash -c "source ~/.profile && ./pack_enebular_agent_arm32.sh"
           - rm -rf .git
           - mkdir -p dist
           - AGENT_NAME=enebular-agent-${BITBUCKET_TAG}

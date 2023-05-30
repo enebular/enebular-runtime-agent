@@ -2,7 +2,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import fetch from 'isomorphic-fetch'
 
-import { execSync, spawn } from 'child_process'
+import { SpawnOptions, execSync, spawn } from 'child_process'
 import Log from './log'
 
 export interface UserInfo {
@@ -66,25 +66,20 @@ export class Utils {
     cmd: string,
     args: string[],
     log?: Log,
-    options?: {
-      cwd?: string
-      env?: NodeJS.ProcessEnv
-      uid?: number
-      gid?: number
-    }
+    options?: SpawnOptions
   ): Promise<void> {
     return new Promise((resolve, reject): void => {
       const ops = options
         ? Object.assign({ stdio: 'pipe' }, options)
-        : { stdio: 'pipe' }
+        : ({ stdio: 'pipe' } as SpawnOptions)
       const cproc = spawn(cmd, args, ops)
       let stdout = '',
         stderr = ''
-      cproc.stdout.on('data', (data): void => {
+      cproc.stdout?.on('data', (data): void => {
         stdout = data.toString().replace(/(\n|\r)+$/, '')
         if (log) log.debug(stdout)
       })
-      cproc.stderr.on('data', (data): void => {
+      cproc.stderr?.on('data', (data): void => {
         stderr = data.toString().replace(/(\n|\r)+$/, '')
         if (log) log.debug(stderr)
       })
@@ -198,13 +193,17 @@ export class Utils {
     log: Log,
     cb: () => Promise<boolean> | Promise<{}> | Promise<void>,
     ignore = false,
-    retryCountMax: number = 3,
-    delaySec: number = 3
+    retryCountMax = 3,
+    delaySec = 3
   ): Promise<void> {
     let result = false
 
-    const sleep = async(_delay) => {
-      return new Promise(resolve => {setTimeout(() => {resolve(true)}, _delay)})
+    const sleep = async _delay => {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve(true)
+        }, _delay)
+      })
     }
 
     log.info(`==== ${name} ====`)
@@ -231,7 +230,10 @@ export class Utils {
         break
       } else {
         if (retryCount < retryCountMax) {
-          log.info(`Retry count ${retryCount + 1} . Retry processing after ${delaySec} seconds`)
+          log.info(
+            `Retry count ${retryCount +
+              1} . Retry processing after ${delaySec} seconds`
+          )
           await sleep(delaySec * 1000)
         }
       }
@@ -308,28 +310,15 @@ export class Utils {
     )
   }
 
-  public static chmod(
-    log: Log,
-    path: string,
-    mode: string
-  ): Promise<void> {
-    return Utils.spawn(
-      'chmod',
-      ['-R', mode, path],
-      log
-    )
+  public static chmod(log: Log, path: string, mode: string): Promise<void> {
+    return Utils.spawn('chmod', ['-R', mode, path], log)
   }
 
   public static async userExists(log: Log, user: string): Promise<boolean> {
     try {
-      await Utils.spawn(
-        'id',
-        ['-u', user],
-        log
-      )
+      await Utils.spawn('id', ['-u', user], log)
       return true
-    }
-    catch (err) {
+    } catch (err) {
       return false
     }
   }
@@ -396,17 +385,21 @@ export class Utils {
     log?: Log
   ): Promise<void> {
     return new Promise((resolve, reject): void => {
-      const cproc = spawn('env', ['LC_ALL=C', 'passwd', username], { stdio: 'pipe' })
+      const cproc = spawn('env', ['LC_ALL=C', 'passwd', username], {
+        stdio: 'pipe'
+      })
       cproc.stderr.on('data', (data): void => {
         const stderr = data.toString().replace(/(\n|\r)+$/, '')
         if (log) log.debug(stderr)
-        if (stderr.startsWith('Enter new UNIX password:')
-            || stderr.startsWith('Retype new UNIX password:')) {
+        if (
+          stderr.startsWith('Enter new UNIX password:') ||
+          stderr.startsWith('Retype new UNIX password:')
+        ) {
           cproc.stdin.write(`${password}\n`)
         }
       })
       cproc.once('exit', (code, signal): void => {
-        (code !== 0) ? reject() : resolve()
+        code !== 0 ? reject() : resolve()
       })
     })
   }
