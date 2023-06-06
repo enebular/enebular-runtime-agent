@@ -366,7 +366,7 @@ if [ "$EXIT_CODE" -ne 0 ]; then
 fi
 
 export PATH=${NODE_PATH}:/bin:/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
-${TEMP_UPDATER_DST}/bin/enebular-agent-update ${UPDATER_PARAMETER[*]}
+${TEMP_UPDATER_DST}/bin/enebular-agent-update update ${UPDATER_PARAMETER[*]}
 EXIT_CODE=$?
 rm -rf "${TEMP_UPDATER_DST}"
 
