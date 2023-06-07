@@ -58,6 +58,12 @@ export default class CommandLine {
         this._installPath = path
         this._commandOptions = options
       })
+    this._commander
+      .command('update')
+      .description('update enebular-agent')
+      .action(() => {
+        // 何もしない(_commanderにupdateコマンドを登録することが目的)
+      })
   }
 
   public hasCommand(): boolean {
