@@ -89,6 +89,14 @@ export default class TaskRemoteLogin extends Task {
       )
     }
 
+    console.log(
+      `~~~~~~~~~~~~~~ config ~~~~~~~~~~~~~~`,
+      JSON.stringify(config, null, 2)
+    )
+    this._info(
+      `~~~~~~~~~~~~~~ config ~~~~~~~~~~~~~~` + JSON.stringify(config, null, 2)
+    )
+
     if (config.enable) {
       if (
         !config.localUser ||

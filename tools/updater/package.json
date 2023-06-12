@@ -1,6 +1,6 @@
 {
   "name": "enebular-agent-updater",
-  "version": "2.17.3",
+  "version": "2.18.0",
   "description": "The client to update enebular-agent",
   "repository": "enebular/enebular-agent-updater",
   "main": "lib/src/index.js",
@@ -19,10 +19,10 @@
   "author": "",
   "license": "ISC",
   "engines": {
-    "node": "14.19.1"
+    "node": "18.15.0"
   },
   "devDependencies": {
-    "@types/node": "^11.9.4",
+    "@types/node": "^18.15.11",
     "@typescript-eslint/eslint-plugin": "^2.0.0",
     "@typescript-eslint/parser": "^2.0.0",
     "ava": "^1.2.1",
@@ -36,11 +36,11 @@
     "eslint-plugin-standard": "^4.0.0",
     "prettier": "^1.16.4",
     "tap-spec": "^5.0.0",
-    "typescript": "^3.3.3"
+    "typescript": "^5.0.3"
   },
   "dependencies": {
     "check-disk-space": "^1.5.0",
-    "commander": "^2.19.0",
+    "commander": "^10.0.0",
     "isomorphic-fetch": "^3.0.0",
     "request": "^2.88.0",
     "request-progress": "^3.0.0",

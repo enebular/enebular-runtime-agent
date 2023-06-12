@@ -1,4 +1,4 @@
-import * as program from 'commander'
+import { Command } from 'commander'
 import pkg from '../package.json'
 import AgentInfo from './agent-info'
 import Config, { ConfigAnyTypes } from './config'
@@ -17,7 +17,7 @@ export default class CommandLine {
   private _commandOptions: ConfigOptionMap = {}
   private _config: Config
   private _configOptionMap: ConfigOptionMap = {}
-  private _commander: program.Command = new program.Command(pkg.name)
+  private _commander: Command = new Command(pkg.name)
 
   public constructor(config: Config) {
     this._config = config
@@ -58,6 +58,12 @@ export default class CommandLine {
         this._installPath = path
         this._commandOptions = options
       })
+    this._commander
+      .command('update')
+      .description('update enebular-agent')
+      .action(() => {
+        // 何もしない(_commanderにupdateコマンドを登録することが目的)
+      })
   }
 
   public hasCommand(): boolean {
@@ -73,7 +79,7 @@ export default class CommandLine {
       case 'install':
         if (
           this._config.getBoolean('ROOT_REQUIRED') &&
-          process.getuid() !== 0
+          process.getuid?.() !== 0
         ) {
           throw new Error('You have to run this with root permission.')
         }
@@ -114,16 +120,8 @@ export default class CommandLine {
     }
   }
 
-  public addConfigOption(
-    configName: string,
-    option: string,
-    coercion?: (() => void) | RegExp
-  ): void {
-    this._commander.option(
-      option,
-      this._config.getDescription(configName),
-      coercion
-    )
+  public addConfigOption(configName: string, option: string): void {
+    this._commander.option(option, this._config.getDescription(configName))
     this._configOptionMap[configName] = this._commander.options
       .slice(-1)[0]
       .attributeName()
@@ -131,10 +129,11 @@ export default class CommandLine {
 
   public getConfigOptions(): ConfigAnyTypes {
     const options: ConfigAnyTypes = {}
+    const commanderOptions = this._commander.opts()
     Object.keys(this._configOptionMap).forEach((configName): void => {
       const optionName = this._configOptionMap[configName]
-      if (this._commander[optionName]) {
-        options[configName] = this._commander[optionName]
+      if (commanderOptions[optionName]) {
+        options[configName] = commanderOptions[optionName]
       }
     })
     return options

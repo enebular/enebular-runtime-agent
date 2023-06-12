@@ -1,4 +1,3 @@
-import Utils from './utils'
 import * as fs from 'fs'
 
 export enum LogLevel {
@@ -38,7 +37,7 @@ export default class Logger {
 
   private _logFile(msg: string | object): void {
     try {
-      fs.appendFileSync(this._logFilePath, msg)
+      fs.appendFileSync(this._logFilePath, `${msg}`)
       fs.appendFileSync(this._logFilePath, '\n')
     } catch (err) {
       /* Handle the error */
