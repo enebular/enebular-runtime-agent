@@ -156,10 +156,10 @@ export class System implements SystemIf {
         content = content.replace(userToReplace, newUser)
       }
       const lines = content.split(/\r?\n/)
-      const index = lines.findIndex((line) => {
-          return line.startsWith('ExecStart=')
+      const index = lines.findIndex(line => {
+        return line.startsWith('ExecStart=')
       })
-      if (index === -1 ) {
+      if (index === -1) {
         throw new Error(
           `Failed to update running user in systemd: cannot find ExecStart`
         )
@@ -191,10 +191,10 @@ export class System implements SystemIf {
         content = content.replace(userToReplace, newUser)
       }
       const lines = content.split(/\r?\n/)
-      const index = lines.findIndex((line) => {
-          return line.startsWith('ExecStart=')
+      const index = lines.findIndex(line => {
+        return line.startsWith('ExecStart=')
       })
-      if (index === -1 ) {
+      if (index === -1) {
         throw new Error(
           `Failed to reverse running user in systemd: cannot find ExecStart`
         )
@@ -220,15 +220,15 @@ export class System implements SystemIf {
     try {
       let content = fs.readFileSync(serviceFile, 'utf8')
       const lines = content.split(/\r?\n/)
-      const index = lines.findIndex((line) => {
-          return line.startsWith('ExecStart=')
+      const index = lines.findIndex(line => {
+        return line.startsWith('ExecStart=')
       })
-      if (index === -1 ) {
+      if (index === -1) {
         throw new Error(
           `Failed to remove extra --user in systemd: cannot find ExecStart`
         )
       }
-      const regex = new RegExp(` --user ${user}`, "g")
+      const regex = new RegExp(` --user ${user}`, 'g')
       const count = (lines[index].match(regex) || []).length
       if (count > 1) {
         const newExecStart = lines[index].replace(regex, '') + ` --user ${user}`
@@ -284,17 +284,18 @@ export class System implements SystemIf {
         if (!execStartArgvStr.startsWith('argv[]')) {
           throw new Error('Failed to find user in systemd, syntax error')
         }
-        execStartArgvStr = execStartArgvStr.slice(execStartArgvStr.indexOf('=') + 1)
+        execStartArgvStr = execStartArgvStr.slice(
+          execStartArgvStr.indexOf('=') + 1
+        )
         const execStartArgv = execStartArgvStr.split(' ')
-        const index = execStartArgv.findIndex((arg) => {
-            return arg === '--user'
+        const index = execStartArgv.findIndex(arg => {
+          return arg === '--user'
         })
-        if (index === -1 || execStartArgv.length < (index + 1)) {
+        if (index === -1 || execStartArgv.length < index + 1) {
           throw new Error('Failed to find --user <user> in systemd')
         }
         user = execStartArgv[index + 1]
-      }
-      else {
+      } else {
         throw new Error('Failed to find user in systemd')
       }
     }
@@ -346,7 +347,7 @@ export class System implements SystemIf {
     return {
       version: pkg.version,
       awsiot: fs.existsSync(`${path}/ports/awsiot/node_modules`),
-      awsiotThingCreator: 
+      awsiotThingCreator:
         fs.existsSync(`${path}/tools/awsiot-thing-creator/node_modules`) ||
         fs.existsSync(`${__dirname}/../../awsiot-thing-creator/node_modules`),
       nodejsVersion: nodejsVersion
@@ -397,7 +398,7 @@ export class System implements SystemIf {
     }
   }
 
-  public async getOSVersion(): Promise<string>  {
+  public async getOSVersion(): Promise<string> {
     let ver = Utils.execReturnStdout('cat /etc/debian_version')
     if (!ver) {
       throw new Error('Failed to get os version from system')
@@ -428,6 +429,23 @@ export class System implements SystemIf {
       throw new Error('Failed to get arch from system')
     }
     arch = arch.trim()
+
+    const dpkgArch = Utils.execReturnStdout('dpkg --print-architecture')?.trim()
+    switch (dpkgArch) {
+      case 'amd64':
+        arch = 'x86_64'
+        break
+      case 'arm64':
+        arch = 'aarch64'
+        break
+      case 'armhf':
+        arch = 'armv7l'
+        break
+      case 'armel':
+        arch = 'armv6l'
+        break
+    }
+
     switch (arch) {
       case 'x86_64':
       case 'amd64':
@@ -465,8 +483,14 @@ export class System implements SystemIf {
     } catch (err) {
       try {
         this._log.info(`apt-get update error:${err}`)
-        this._log.info(`Retrying again with --allow-releaseinfo-change option enabled.`)
-        await Utils.spawn('apt-get', ['--allow-releaseinfo-change', 'update'], this._log)
+        this._log.info(
+          `Retrying again with --allow-releaseinfo-change option enabled.`
+        )
+        await Utils.spawn(
+          'apt-get',
+          ['--allow-releaseinfo-change', 'update'],
+          this._log
+        )
       } catch (err) {
         throw new Error(`Failed to apt-get update`)
       }

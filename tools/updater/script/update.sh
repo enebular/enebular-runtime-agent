@@ -51,6 +51,18 @@ get_arch() {
   local HOST_ARCH
   HOST_ARCH="$(uname -m)"
 
+  local DPKG_ARCH
+  DPKG_ARCH="$(dpkg --print-architecture)"
+
+  if [ -n "$DPKG_ARCH" ]; then
+    case "$DPKG_ARCH" in
+      amd64) HOST_ARCH="x86_64" ;;
+      arm64) HOST_ARCH="aarch64" ;;
+      armhf) HOST_ARCH="armv7l" ;;
+      armel) HOST_ARCH="armv6l" ;;
+    esac
+  fi
+
   local ARCH
   case "$HOST_ARCH" in
     x86_64 | amd64) ARCH="x64" ;;
