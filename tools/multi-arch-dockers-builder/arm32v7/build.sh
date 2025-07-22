@@ -1,8 +1,12 @@
 #!/bin/bash
 set -e
 
-sudo docker build -t enebularagentdevelopers/enebular-agent-arm32v7:node-22.17.1 .
+# Setup buildx for multi-platform builds
+docker buildx create --name multiarch --use --bootstrap || docker buildx use multiarch
 
-docker push enebularagentdevelopers/enebular-agent-arm32v7:node-22.17.1
+# Build and push with platform specification
+docker buildx build --platform linux/arm/v7 \
+  -t enebularagentdevelopers/enebular-agent-arm32v7:node-22.17.1 \
+  --push .
 
 

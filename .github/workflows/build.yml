@@ -46,12 +46,10 @@ jobs:
       - name: Fix file permissions
         run: |
           # Fix permissions for executable files that may lose exec permissions in CI
-          chmod +x $GITHUB_WORKSPACE/tools/updater/bin/enebular-agent-update || true
-          chmod +x $GITHUB_WORKSPACE/tools/updater/script/update.sh || true
-          chmod +x $GITHUB_WORKSPACE/agent/__tests__/data/*.sh || true
-          chmod +x $GITHUB_WORKSPACE/agent/test/data/asset-script-* || true
-          chmod +x $GITHUB_WORKSPACE/pack_enebular_agent*.sh || true
-          chmod +x $GITHUB_WORKSPACE/ports/awsiot/bin/enebular-awsiot-agent || true
+          find $GITHUB_WORKSPACE -name "*.sh" -type f -exec chmod +x {} \; || true
+          find $GITHUB_WORKSPACE -path "*/bin/*" -type f -exec chmod +x {} \; || true
+          find $GITHUB_WORKSPACE -name "asset-script-*" -type f -exec chmod +x {} \; || true
+          find $GITHUB_WORKSPACE -name "*.bash" -type f -exec chmod +x {} \; || true
 
       - name: Run tests
         run: |
@@ -60,6 +58,8 @@ jobs:
           npm run test
           rm ./config.json
           cd ../../tools/updater && npm run test
+        env:
+          ENEBULAR_TEST: 'true'
 
       - name: Clean up node_modules
         run: |
@@ -71,7 +71,6 @@ jobs:
           rm -rf .git
 
       - name: Upload build artifacts
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master')
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts-${{ github.sha }}

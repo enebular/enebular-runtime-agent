@@ -34,7 +34,9 @@ export default class AgentUpdater {
     this._config.importConfigStrings(process.env)
 
     this._commandLine = new CommandLine(this._config)
-    this._commandLine.parse()
+    if (!process.env.ENEBULAR_TEST) {
+      this._commandLine.parse()
+    }
     this._config.importConfigAnyTypes(this._commandLine.getConfigOptions())
 
     this._log = new Log(
