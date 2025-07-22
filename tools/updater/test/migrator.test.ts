@@ -163,7 +163,7 @@ test('Migrator.8: update fails if the migration file for the version to update i
 
   const updater = new AgentUpdater(system, installer, undefined)
   const error = await t.throwsAsync(updater.update())
-  t.true(error.message.startsWith('No migration file found for'))
+  t.true(error?.message.startsWith('No migration file found for') ?? false)
   rimraf.sync(cache)
 })
 
@@ -177,7 +177,7 @@ test('Migrator.9: Migration fails if migration file parsing fail', async t => {
 
   const updater = new AgentUpdater(system, installer, undefined)
   const error = await t.throwsAsync(updater.update())
-  t.true(error.message.startsWith('Apply migration files failed'))
+  t.true(error?.message.startsWith('Apply migration files failed') ?? false)
   rimraf.sync(cache)
 })
 

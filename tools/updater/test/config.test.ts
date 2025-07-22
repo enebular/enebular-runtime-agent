@@ -5,13 +5,13 @@ test('Config.1: Get', t => {
   const config = new Config()
   t.throws(() => {
     config.getItem('N/A')
-  }, Error)
+  })
   t.notThrows(() => {
     config.getItem('DEBUG')
   })
   t.throws(() => {
     config.getDescription('N/A')
-  }, Error)
+  })
   t.notThrows(() => {
     config.getDescription('DEBUG')
   })
@@ -34,10 +34,10 @@ test('Config.3: Set', t => {
   t.is(config.getString('string'), 'new path')
   t.throws(() => {
     config.getNumber('string')
-  }, Error)
+  })
   t.throws(() => {
     config.getBoolean('string')
-  }, Error)
+  })
   t.false(config.setAutoDetectType('string', 'true'))
   t.false(config.setAutoDetectType('string', '1212313'))
   t.false(config.setAutoDetectType('string', ''), 'Skip empty value')
@@ -49,10 +49,10 @@ test('Config.3: Set', t => {
   t.true(config.getBoolean('boolean'))
   t.throws(() => {
     config.getNumber('boolean')
-  }, Error)
+  })
   t.throws(() => {
     config.getString('boolean')
-  }, Error)
+  })
   t.false(config.setAutoDetectType('boolean', 'abc'))
   t.false(config.setAutoDetectType('boolean', '1212313'))
 
@@ -62,10 +62,10 @@ test('Config.3: Set', t => {
   t.is(config.getNumber('integer'), 1234)
   t.throws(() => {
     config.getBoolean('integer')
-  }, Error)
+  })
   t.throws(() => {
     config.getString('integer')
-  }, Error)
+  })
   t.false(config.setAutoDetectType('integer', 'da'))
   t.false(config.setAutoDetectType('integer', 'true'))
   t.true(

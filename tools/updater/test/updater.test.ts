@@ -19,8 +19,8 @@ test('Updater.1: Throws if install fail', async t => {
   installer.failInstall = true
 
   const updater = new AgentUpdater(system, installer, migrator)
-  const error = await t.throwsAsync(updater.update())
-  t.true(error.message.startsWith('Agent Install failed'))
+  const error = await t.throwsAsync(updater.update() ?? false)
+  t.true(error?.message.startsWith('Agent Install failed') ?? false)
 })
 
 test('Updater.2: Throws if build fail', async t => {
@@ -28,8 +28,8 @@ test('Updater.2: Throws if build fail', async t => {
   installer.failBuild = true
 
   const updater = new AgentUpdater(system, installer, migrator)
-  const error = await t.throwsAsync(updater.update())
-  t.true(error.message.startsWith('Agent Build failed'))
+  const error = await t.throwsAsync(updater.update() ?? false)
+  t.true(error?.message.startsWith('Agent Build failed') ?? false)
 })
 
 test('Updater.3: Throws if old agent stop fail then tries to restart the agent', async t => {
@@ -37,9 +37,9 @@ test('Updater.3: Throws if old agent stop fail then tries to restart the agent',
   system.failStopAgent = true
 
   const updater = new AgentUpdater(system, installer, migrator)
-  const error = await t.throwsAsync(updater.update())
+  const error = await t.throwsAsync(updater.update() ?? false)
   t.true(
-    error.message.startsWith('stop agent failed'),
+    error?.message.startsWith('stop agent failed') ?? false,
     'Failed because of stopping agent'
   )
   t.is(system.attemptStopAgent, 1, 'Tried to stop agent before updating')
@@ -51,9 +51,9 @@ test('Updater.4: Throws if migrate fail then tries to restart the agent', async 
   migrator.failMigrate = true
 
   const updater = new AgentUpdater(system, installer, migrator)
-  const error = await t.throwsAsync(updater.update())
+  const error = await t.throwsAsync(updater.update() ?? false)
   t.true(
-    error.message.startsWith('migrate failed'),
+    error?.message.startsWith('migrate failed') ?? false,
     'Failed because of migrating'
   )
   t.is(system.attemptStopAgent, 1, 'Tried to stop agent before updating')
@@ -65,9 +65,9 @@ test('Updater.5: Throws if new agent flip fail', async t => {
   system.failFlipNewAgent = true
 
   const updater = new AgentUpdater(system, installer, migrator)
-  const error = await t.throwsAsync(updater.update())
+  const error = await t.throwsAsync(updater.update() ?? false)
   t.true(
-    error.message.startsWith('flip new agent failed'),
+    error?.message.startsWith('flip new agent failed') ?? false,
     'failed because of flipping failed'
   )
   t.is(system.attemptStopAgent, 1, 'Tried to stop agent before updating')
@@ -80,8 +80,8 @@ test('Updater.6: Throws if new agent start fail', async t => {
   system.failStartNewAgent = true
 
   const updater = new AgentUpdater(system, installer, migrator)
-  const error = await t.throwsAsync(updater.update())
-  t.true(error.message.startsWith('start new agent failed'))
+  const error = await t.throwsAsync(updater.update() ?? false)
+  t.true(error?.message.startsWith('start new agent failed') ?? false)
   t.is(system.attemptStopAgent, 1, 'Tried to stop agent before updating')
   t.is(system.attemptFlipNewAgent, 1, 'Tried to flip to new agent')
   t.is(system.attemptStopNewAgent, 1, 'Tried to stop new agent before restore')
@@ -102,8 +102,8 @@ test('Updater.7: Throws if new agent verify fail', async t => {
   system.newAgentIsDead = true
 
   const updater = new AgentUpdater(system, installer, migrator)
-  const error = await t.throwsAsync(updater.update())
-  t.true(error.message.startsWith('Verification failed'))
+  const error = await t.throwsAsync(updater.update() ?? false)
+  t.true(error?.message.startsWith('Verification failed') ?? false)
   t.is(system.attemptStopAgent, 1, 'Tried to stop agent before updating')
   t.is(system.attemptFlipNewAgent, 1, 'Tried to flip to new agent')
   t.is(system.attemptStopNewAgent, 1, 'Tried to stop new agent before restore')
@@ -124,8 +124,8 @@ test('Updater.8: Throws if new agent verification throws error', async t => {
   system.newAgentIsDeadThrows = true
 
   const updater = new AgentUpdater(system, installer, migrator)
-  const error = await t.throwsAsync(updater.update())
-  t.true(error.message.startsWith('expection: new agent is dead'))
+  const error = await t.throwsAsync(updater.update() ?? false)
+  t.true(error?.message.startsWith('expection: new agent is dead') ?? false)
   t.is(system.attemptStopAgent, 1, 'Tried to stop agent before updating')
   t.is(system.attemptFlipNewAgent, 1, 'Tried to flip to new agent')
   t.is(system.attemptStopNewAgent, 1, 'Tried to stop new agent before restore')
@@ -147,8 +147,8 @@ test('Updater.9: Ignore new agent stop failure in restore', async t => {
   system.failStopNewAgent = true
 
   const updater = new AgentUpdater(system, installer, migrator)
-  const error = await t.throwsAsync(updater.update())
-  t.true(error.message.startsWith('Verification failed'))
+  const error = await t.throwsAsync(updater.update() ?? false)
+  t.true(error?.message.startsWith('Verification failed') ?? false)
   t.is(system.attemptStopAgent, 1, 'Tried to stop agent before updating')
   t.is(system.attemptFlipNewAgent, 1, 'Tried to flip to new agent')
   t.is(system.attemptStopNewAgent, 1, 'Tried to stop new agent before restore')
@@ -170,9 +170,9 @@ test('Updater.10: If flipping back to original agent fail in restore', async t =
   system.failFlipOriginalAgent = true
 
   const updater = new AgentUpdater(system, installer, migrator)
-  const error = await t.throwsAsync(updater.update())
-  t.true(error.message.startsWith('Verification failed'))
-  t.true(error.message.indexOf('[Faulty] restore') > -1)
+  const error = await t.throwsAsync(updater.update() ?? false)
+  t.true(error?.message.startsWith('Verification failed') ?? false)
+  t.true((error?.message.indexOf('[Faulty] restore') ?? -1) > -1)
   t.is(system.attemptStopAgent, 1, 'Tried to stop agent before updating')
   t.is(system.attemptFlipNewAgent, 1, 'Tried to flip to new agent')
   t.is(system.attemptStopNewAgent, 1, 'Tried to stop new agent before restore')
@@ -191,9 +191,9 @@ test('Updater.11: If both new and original agent fail to start', async t => {
   system.agentIsDead = true
 
   const updater = new AgentUpdater(system, installer, migrator)
-  const error = await t.throwsAsync(updater.update())
-  t.true(error.message.startsWith('Verification failed'))
-  t.true(error.message.indexOf('[Faulty] restore') > -1)
+  const error = await t.throwsAsync(updater.update() ?? false)
+  t.true(error?.message.startsWith('Verification failed') ?? false)
+  t.true((error?.message.indexOf('[Faulty] restore') ?? -1) > -1)
   t.is(system.attemptStopAgent, 1, 'Tried to stop agent before updating')
   t.is(system.attemptFlipNewAgent, 1, 'Tried to flip to new agent')
   t.is(system.attemptStopNewAgent, 1, 'Tried to stop new agent before restore')
@@ -215,9 +215,9 @@ test('Updater.12: Refuse to downgrade', async t => {
   system.newAgent.version = '2.3.0'
 
   let updater = new AgentUpdater(system, installer, migrator)
-  let error = await t.throwsAsync(updater.update())
+  let error = await t.throwsAsync(updater.update() ?? false)
   t.true(
-    error.message.startsWith('Downgrading enebular-agent is not supported yet')
+    error?.message.startsWith('Downgrading enebular-agent is not supported yet')
   )
 })
 
@@ -226,15 +226,15 @@ test('Updater.15: Handles agent source scan failure', async t => {
   system.throwsWhenScanOriginalAgent = true
 
   let updater = new AgentUpdater(system, installer, migrator)
-  let error = await t.throwsAsync(updater.update())
-  t.true(error.message.startsWith('Scan agent source return error'))
+  let error = await t.throwsAsync(updater.update() ?? false)
+  t.true(error?.message.startsWith('Scan agent source return error') ?? false)
 
   system.throwsWhenScanOriginalAgent = false
   system.throwsWhenScanNewAgent = true
 
   updater = new AgentUpdater(system, installer, migrator)
-  error = await t.throwsAsync(updater.update())
-  t.true(error.message.startsWith('Scan new agent source return error'))
+  error = await t.throwsAsync(updater.update() ?? false)
+  t.true(error?.message.startsWith('Scan new agent source return error') ?? false)
 })
 
 test('Updater.16: If the version is same as the version to be updated, skip build and switch only try to start it if not active', async t => {
@@ -244,7 +244,7 @@ test('Updater.16: If the version is same as the version to be updated, skip buil
   system.serviceIsActive = false
 
   let updater = new AgentUpdater(system, installer, migrator)
-  await t.notThrowsAsync(updater.update())
+  await t.notThrowsAsync(updater.update() ?? false)
 
   t.is(installer.attemptBuild, false, 'Skip build')
   t.is(system.attemptFlipNewAgent, 0, 'Skip flip to new agent')
@@ -262,11 +262,11 @@ test('Updater.17: Tries to restore legacy agent if path found in systemd does no
   rimraf.sync(system.path)
 
   let updater = new AgentUpdater(system, installer, migrator)
-  let error = await t.throwsAsync(updater.update())
-  t.true(error.message.startsWith('enebular-agent path absents'))
+  let error = await t.throwsAsync(updater.update() ?? false)
+  t.true(error?.message.startsWith('enebular-agent path absents') ?? false)
 
   fs.mkdirSync(cache + '/enebular-runtime-agent.old')
   updater = new AgentUpdater(system, installer, migrator)
-  await t.notThrowsAsync(updater.update())
+  await t.notThrowsAsync(updater.update() ?? false)
   rimraf.sync(cache)
 })
