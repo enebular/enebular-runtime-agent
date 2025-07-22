@@ -2,8 +2,7 @@
 import fetch from 'isomorphic-fetch'
 import crypto from 'crypto'
 import { execSync, exec as processExec } from 'child_process'
-import request from 'request'
-import progress from 'request-progress'
+import axios from 'axios'
 import fs from 'fs'
 import util from 'util'
 import { spawn } from 'child_process'
@@ -168,47 +167,61 @@ export function getUserHome(user: string): string {
 export async function progressRequest(url, path, obj) {
   const that = obj
 
-  const onProgress = (state) => {
+  const onProgress = (progressEvent) => {
+    const percent = progressEvent.total ? (progressEvent.loaded / progressEvent.total) : 0
+    const speed = progressEvent.rate ? progressEvent.rate / 1024 : 0
+    const elapsed = progressEvent.time ? Math.round(progressEvent.time / 1000) : 0
+    
     that._info(
       util.format(
         'Download progress: %f%% @ %fKB/s, %fsec',
-        state.percent ? Math.round(state.percent * 100) : 0,
-        state.speed ? Math.round(state.speed / 1024) : 0,
-        state.time.elapsed ? Math.round(state.time.elapsed) : 0
+        Math.round(percent * 100),
+        Math.round(speed),
+        elapsed
       )
     )
   }
 
-  await new Promise(function(resolve, reject) {
+  try {
+    const response = await axios({
+      method: 'GET',
+      url: url,
+      responseType: 'stream',
+      onDownloadProgress: onProgress,
+      timeout: 30000, // 30秒のタイムアウト
+      validateStatus: (status) => {
+        return status >= 200 && status < 400
+      }
+    })
+
+    that._debug(
+      `Response: ${response.status}: ${response.statusText}`
+    )
+
     const fileStream = fs.createWriteStream(path)
-    fileStream.on('error', (err) => {
-      reject(err)
-    })
-    progress(request(url), {
-      delay: 5000,
-      throttle: 5000
-    })
-      .on('response', (response) => {
-        that._debug(
-          `Response: ${response.statusCode}: ${response.statusMessage}`
-        )
-        if (response.statusCode >= 400) {
-          reject(
-            new Error(
-              `Error response: ${response.statusCode}: ${response.statusMessage}`
-            )
-          )
-        }
-      })
-      .on('progress', onProgress)
-      .on('error', (err) => {
+    
+    return new Promise((resolve, reject) => {
+      fileStream.on('error', (err) => {
         reject(err)
       })
-      .on('end', () => {
+      
+      fileStream.on('finish', () => {
         resolve()
       })
-      .pipe(fileStream)
-  })
+      
+      response.data.pipe(fileStream)
+    })
+  } catch (error) {
+    if (error.response) {
+      throw new Error(
+        `Error response: ${error.response.status}: ${error.response.statusText}`
+      )
+    } else if (error.request) {
+      throw new Error('Network error: No response received')
+    } else {
+      throw error
+    }
+  }
 }
 
 export async function execSpawn(args, env, cwd, path, maxTime, obj) {
