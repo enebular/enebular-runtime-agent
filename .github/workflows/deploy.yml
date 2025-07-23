@@ -196,49 +196,15 @@ jobs:
     needs: validate-inputs
     if: needs.validate-inputs.outputs.is_valid == 'true'
     steps:
-      - name: Check for existing build artifacts
-        id: check-artifacts
-        run: |
-          # Try to find build artifacts from recent commit
-          ARTIFACT_NAME="build-artifacts-${{ github.sha }}"
-          echo "artifact_name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
-          echo "Checking for artifact: $ARTIFACT_NAME"
-
-      - name: Download existing build artifacts
-        id: download-existing
-        continue-on-error: true
-        uses: actions/download-artifact@v4
-        with:
-          name: build-artifacts-${{ github.sha }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build status summary
-        run: |
-          echo "## 🏗️ Build and Prepare" >> $GITHUB_STEP_SUMMARY
-          if [[ "${{ steps.download-existing.outcome }}" == "success" ]]; then
-            echo "✅ **Reused existing build artifacts** from commit ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "🔨 **Building from scratch** (no existing artifacts found)" >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-      - name: Build if artifacts not found
-        if: steps.download-existing.outcome == 'failure'
-        run: |
-          echo "No existing artifacts found, building from scratch..."
-
       - name: Checkout code
-        if: steps.download-existing.outcome == 'failure'
         uses: actions/checkout@v4
 
       - name: Setup Node.js
-        if: steps.download-existing.outcome == 'failure'
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Install and build
-        if: steps.download-existing.outcome == 'failure'
         run: |
           cd node-red && npm ci
           cd $GITHUB_WORKSPACE/agent && npm ci && npm run build
@@ -247,7 +213,6 @@ jobs:
           cd $GITHUB_WORKSPACE/tools/updater && npm ci && npm run build
 
       - name: Fix file permissions
-        if: steps.download-existing.outcome == 'failure'
         run: |
           # Fix permissions for executable files that may lose exec permissions in CI
           chmod +x $GITHUB_WORKSPACE/tools/updater/bin/enebular-agent-update || true
@@ -258,7 +223,6 @@ jobs:
           chmod +x $GITHUB_WORKSPACE/ports/awsiot/bin/enebular-awsiot-agent || true
 
       - name: Run tests
-        if: steps.download-existing.outcome == 'failure'
         run: |
           cd ports/awsiot
           echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientId":"thing_name","thingName":"thing_name","caCert":"./certs/root_certificate","clientCert":"./certs/thing_cert","privateKey":"./certs/thing_private_key","topic":"aws/things/thing_name/shadow/update"}' > ./config.json
@@ -269,7 +233,6 @@ jobs:
           ENEBULAR_TEST: 'true'
 
       - name: Clean up node_modules
-        if: steps.download-existing.outcome == 'failure'
         run: |
           rm -rf node-red/node_modules
           rm -rf agent/node_modules
@@ -287,15 +250,7 @@ jobs:
             ports/awsiot/lib/**
             tools/updater/awsiot-thing-creator/lib/**
             tools/updater/lib/**
-
-      - name: Build completion summary
-        run: |
-          if [[ "${{ steps.download-existing.outcome }}" == "success" ]]; then
-            echo "⚡ **Fast build completed** (artifacts reused)" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "✅ **Full build completed** (built from scratch)" >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "" >> $GITHUB_STEP_SUMMARY
+          retention-days: 1
 
   set-pub-key:
     name: Set Public Key
@@ -331,7 +286,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: key-artifacts
-          path: agent/keys/**
+          path: agent/keys
+          retention-days: 1
 
   pack-prebuilt:
     name: Pack Prebuilt & Updater
@@ -345,11 +301,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-artifacts
+          path: .
 
       - name: Download key artifacts
         uses: actions/download-artifact@v4
         with:
           name: key-artifacts
+          path: agent/keys
 
       - name: Pack prebuilt and updater
         run: |
@@ -368,6 +326,7 @@ jobs:
         with:
           name: prebuilt-artifacts
           path: dist/**
+          retention-days: 1
 
   clamav-scan:
     name: ClamAV Security Scan
@@ -390,8 +349,15 @@ jobs:
   pack-x64:
     name: Pack x64
     runs-on: ubuntu-latest
-    needs: [validate-inputs, build-and-prepare, set-pub-key, clamav-scan]
-    if: always() && needs.build-and-prepare.result == 'success' && needs.set-pub-key.result == 'success' && (needs.clamav-scan.result == 'success' || needs.clamav-scan.result == 'skipped')
+    needs:
+      [
+        validate-inputs,
+        build-and-prepare,
+        set-pub-key,
+        clamav-scan,
+        pack-prebuilt
+      ]
+    if: always() && needs.build-and-prepare.result == 'success' && needs.set-pub-key.result == 'success' && needs.pack-prebuilt.result == 'success' && (needs.clamav-scan.result == 'success' || needs.clamav-scan.result == 'skipped')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -400,14 +366,17 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-artifacts
+          path: .
 
       - name: Download key artifacts
         uses: actions/download-artifact@v4
         with:
           name: key-artifacts
+          path: agent/keys
 
       - name: Pack x64
         run: |
+
           docker run --platform linux/amd64 -v $(pwd):/tmp/mount -w /tmp/mount -i ${{ env.DOCKER_IMAGE_PREFIX }}-${{ env.DOCKER_X64_VERSION }}:node-${{ env.NODE_VERSION }} /bin/bash -c "chmod 777 pack_enebular_agent.sh && ./pack_enebular_agent.sh"
           rm -rf .git
           mkdir -p dist
@@ -420,12 +389,20 @@ jobs:
         with:
           name: x64-artifacts
           path: dist/**
+          retention-days: 1
 
   pack-armv7l:
     name: Pack armv7l
     runs-on: ubuntu-latest
-    needs: [validate-inputs, build-and-prepare, set-pub-key, clamav-scan]
-    if: always() && needs.build-and-prepare.result == 'success' && needs.set-pub-key.result == 'success' && (needs.clamav-scan.result == 'success' || needs.clamav-scan.result == 'skipped')
+    needs:
+      [
+        validate-inputs,
+        build-and-prepare,
+        set-pub-key,
+        clamav-scan,
+        pack-prebuilt
+      ]
+    if: always() && needs.build-and-prepare.result == 'success' && needs.set-pub-key.result == 'success' && needs.pack-prebuilt.result == 'success' && (needs.clamav-scan.result == 'success' || needs.clamav-scan.result == 'skipped')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -434,11 +411,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-artifacts
+          path: .
 
       - name: Download key artifacts
         uses: actions/download-artifact@v4
         with:
           name: key-artifacts
+          path: agent/keys
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -450,6 +429,7 @@ jobs:
 
       - name: Pack armv7l
         run: |
+
           docker run --platform linux/arm/v7 -v $(pwd):/tmp/mount -w /tmp/mount -i ${{ env.DOCKER_IMAGE_PREFIX }}-${{ env.DOCKER_ARM32V7_VERSION }}:node-${{ env.NODE_VERSION }} /bin/bash -c "source /home/enebular/.profile && chmod +x pack_enebular_agent_arm32.sh && ./pack_enebular_agent_arm32.sh"
           rm -rf .git
           mkdir -p dist
@@ -462,12 +442,20 @@ jobs:
         with:
           name: armv7l-artifacts
           path: dist/**
+          retention-days: 1
 
   pack-arm64:
     name: Pack arm64
     runs-on: ubuntu-latest
-    needs: [validate-inputs, build-and-prepare, set-pub-key, clamav-scan]
-    if: always() && needs.build-and-prepare.result == 'success' && needs.set-pub-key.result == 'success' && (needs.clamav-scan.result == 'success' || needs.clamav-scan.result == 'skipped')
+    needs:
+      [
+        validate-inputs,
+        build-and-prepare,
+        set-pub-key,
+        clamav-scan,
+        pack-prebuilt
+      ]
+    if: always() && needs.build-and-prepare.result == 'success' && needs.set-pub-key.result == 'success' && needs.pack-prebuilt.result == 'success' && (needs.clamav-scan.result == 'success' || needs.clamav-scan.result == 'skipped')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -476,11 +464,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-artifacts
+          path: .
 
       - name: Download key artifacts
         uses: actions/download-artifact@v4
         with:
           name: key-artifacts
+          path: agent/keys
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -504,6 +494,7 @@ jobs:
         with:
           name: arm64-artifacts
           path: dist/**
+          retention-days: 1
 
   upload-dev:
     name: Upload to S3 (Dev)
@@ -563,13 +554,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### Install Script URL:" >> $GITHUB_STEP_SUMMARY
           # Construct HTTPS URL from S3 bucket name
-          if [[ "${ENEBULAR_AGENT_S3_BUCKET}" == *"amazonaws.com"* ]]; then
-            # If bucket name already contains amazonaws.com, use it as is
-            INSTALL_URL="https://${ENEBULAR_AGENT_S3_BUCKET}/${ENEBULAR_AGENT_S3_INSTALLSH_DIR}/install.sh"
-          else
-            # Standard S3 URL format
-            INSTALL_URL="https://s3.${AWS_DEFAULT_REGION:-ap-northeast-1}.amazonaws.com/${ENEBULAR_AGENT_S3_BUCKET}/${ENEBULAR_AGENT_S3_INSTALLSH_DIR}/install.sh"
-          fi
+          INSTALL_URL="https://s3.${AWS_DEFAULT_REGION:-ap-northeast-1}.amazonaws.com/${ENEBULAR_AGENT_S3_BUCKET}/${ENEBULAR_AGENT_S3_INSTALLSH_DIR}"
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "$INSTALL_URL" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
@@ -643,13 +628,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### Install Script URL:" >> $GITHUB_STEP_SUMMARY
           # Construct HTTPS URL from S3 bucket name
-          if [[ "${ENEBULAR_AGENT_S3_BUCKET}" == *"amazonaws.com"* ]]; then
-            # If bucket name already contains amazonaws.com, use it as is
-            INSTALL_URL="https://${ENEBULAR_AGENT_S3_BUCKET}/${ENEBULAR_AGENT_S3_INSTALLSH_DIR}/install.sh"
-          else
-            # Standard S3 URL format
-            INSTALL_URL="https://s3.${AWS_DEFAULT_REGION:-ap-northeast-1}.amazonaws.com/${ENEBULAR_AGENT_S3_BUCKET}/${ENEBULAR_AGENT_S3_INSTALLSH_DIR}/install.sh"
-          fi
+          INSTALL_URL="https://s3.${AWS_DEFAULT_REGION:-ap-northeast-1}.amazonaws.com/${ENEBULAR_AGENT_S3_BUCKET}/${ENEBULAR_AGENT_S3_INSTALLSH_DIR}"
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "$INSTALL_URL" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

@@ -70,13 +70,3 @@ jobs:
           rm -rf tools/updater/node_modules
           rm -rf .git
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-artifacts-${{ github.sha }}
-          path: |
-            agent/lib/**
-            ports/awsiot/lib/**
-            tools/updater/awsiot-thing-creator/lib/**
-            tools/updater/lib/**
-          retention-days: 7
