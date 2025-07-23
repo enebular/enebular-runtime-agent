@@ -11,7 +11,7 @@
     "lint": "eslint src"
   },
   "engines": {
-    "node": "22.x"
+    "node": "22.17.1"
   },
   "devDependencies": {
     "@types/command-line-args": "^5.2.0",

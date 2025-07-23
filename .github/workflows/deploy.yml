@@ -552,6 +552,38 @@ jobs:
           echo "## 📦 Upload Completed (Dev)" >> $GITHUB_STEP_SUMMARY
           echo "✅ **Artifacts uploaded to Dev S3**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Uploaded Files:" >> $GITHUB_STEP_SUMMARY
+          echo "- **S3 Bucket**: ${ENEBULAR_AGENT_S3_BUCKET}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Base Path**: ${ENEBULAR_AGENT_S3_DIR}/${{ needs.validate-inputs.outputs.tag_name }}/" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Agent Files:" >> $GITHUB_STEP_SUMMARY
+          find ${{ needs.validate-inputs.outputs.tag_name }}/*tar.gz -exec basename {} \; | while read file; do
+            echo "- \`s3://${ENEBULAR_AGENT_S3_BUCKET}/${ENEBULAR_AGENT_S3_DIR}/${{ needs.validate-inputs.outputs.tag_name }}/$file\`" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Install Script URL:" >> $GITHUB_STEP_SUMMARY
+          # Construct HTTPS URL from S3 bucket name
+          if [[ "${ENEBULAR_AGENT_S3_BUCKET}" == *"amazonaws.com"* ]]; then
+            # If bucket name already contains amazonaws.com, use it as is
+            INSTALL_URL="https://${ENEBULAR_AGENT_S3_BUCKET}/${ENEBULAR_AGENT_S3_INSTALLSH_DIR}/install.sh"
+          else
+            # Standard S3 URL format
+            INSTALL_URL="https://s3.${AWS_DEFAULT_REGION:-ap-northeast-1}.amazonaws.com/${ENEBULAR_AGENT_S3_BUCKET}/${ENEBULAR_AGENT_S3_INSTALLSH_DIR}/install.sh"
+          fi
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "$INSTALL_URL" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Install Command:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "wget -qO- $INSTALL_URL | sudo -E bash -s -- --updater-version=${{ needs.validate-inputs.outputs.tag_name }} --release-version=${{ needs.validate-inputs.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+        env:
+          ENEBULAR_AGENT_S3_BUCKET: ${{ vars.ENEBULAR_AGENT_S3_BUCKET }}
+          ENEBULAR_AGENT_S3_DIR: ${{ vars.ENEBULAR_AGENT_S3_DIR }}
+          ENEBULAR_AGENT_S3_INSTALLSH_DIR: ${{ vars.ENEBULAR_AGENT_S3_INSTALLSH_DIR }}
+          AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION }}
 
   upload-staging:
     name: Upload to S3 (Staging)
@@ -600,6 +632,38 @@ jobs:
           echo "## 📦 Upload Completed (Staging)" >> $GITHUB_STEP_SUMMARY
           echo "✅ **Artifacts uploaded to Staging S3**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Uploaded Files:" >> $GITHUB_STEP_SUMMARY
+          echo "- **S3 Bucket**: ${ENEBULAR_AGENT_S3_BUCKET}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Base Path**: ${ENEBULAR_AGENT_S3_DIR}/${{ needs.validate-inputs.outputs.tag_name }}/" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Agent Files:" >> $GITHUB_STEP_SUMMARY
+          find ${{ needs.validate-inputs.outputs.tag_name }}/*tar.gz -exec basename {} \; | while read file; do
+            echo "- \`s3://${ENEBULAR_AGENT_S3_BUCKET}/${ENEBULAR_AGENT_S3_DIR}/${{ needs.validate-inputs.outputs.tag_name }}/$file\`" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Install Script URL:" >> $GITHUB_STEP_SUMMARY
+          # Construct HTTPS URL from S3 bucket name
+          if [[ "${ENEBULAR_AGENT_S3_BUCKET}" == *"amazonaws.com"* ]]; then
+            # If bucket name already contains amazonaws.com, use it as is
+            INSTALL_URL="https://${ENEBULAR_AGENT_S3_BUCKET}/${ENEBULAR_AGENT_S3_INSTALLSH_DIR}/install.sh"
+          else
+            # Standard S3 URL format
+            INSTALL_URL="https://s3.${AWS_DEFAULT_REGION:-ap-northeast-1}.amazonaws.com/${ENEBULAR_AGENT_S3_BUCKET}/${ENEBULAR_AGENT_S3_INSTALLSH_DIR}/install.sh"
+          fi
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "$INSTALL_URL" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Install Command:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "wget -qO- $INSTALL_URL | sudo -E bash -s -- --updater-version=${{ needs.validate-inputs.outputs.tag_name }} --release-version=${{ needs.validate-inputs.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+        env:
+          ENEBULAR_AGENT_S3_BUCKET: ${{ vars.ENEBULAR_AGENT_S3_BUCKET }}
+          ENEBULAR_AGENT_S3_DIR: ${{ vars.ENEBULAR_AGENT_S3_DIR }}
+          ENEBULAR_AGENT_S3_INSTALLSH_DIR: ${{ vars.ENEBULAR_AGENT_S3_INSTALLSH_DIR }}
+          AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION }}
 
   upload-production:
     name: Upload to S3 (Production)
@@ -652,3 +716,23 @@ jobs:
           echo "✅ **Artifacts uploaded to Production S3**" >> $GITHUB_STEP_SUMMARY
           echo "✅ **latest.info updated**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Uploaded Files:" >> $GITHUB_STEP_SUMMARY
+          echo "- **S3 Bucket**: ${ENEBULAR_AGENT_S3_BUCKET}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Base Path**: ${ENEBULAR_AGENT_S3_DIR}/${{ needs.validate-inputs.outputs.tag_name }}/" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Agent Files:" >> $GITHUB_STEP_SUMMARY
+          find ${{ needs.validate-inputs.outputs.tag_name }}/*tar.gz -exec basename {} \; | while read file; do
+            echo "- \`s3://${ENEBULAR_AGENT_S3_BUCKET}/${ENEBULAR_AGENT_S3_DIR}/${{ needs.validate-inputs.outputs.tag_name }}/$file\`" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Latest Info:" >> $GITHUB_STEP_SUMMARY
+          echo "- \`s3://${ENEBULAR_AGENT_S3_BUCKET}/${ENEBULAR_AGENT_S3_DIR}/latest.info\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Install Command (Production):" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "wget -qO- https://enebular.com/agent-install | sudo -E bash -s -- -v=${{ needs.validate-inputs.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+        env:
+          ENEBULAR_AGENT_S3_BUCKET: ${{ vars.ENEBULAR_AGENT_S3_BUCKET }}
+          ENEBULAR_AGENT_S3_DIR: ${{ vars.ENEBULAR_AGENT_S3_DIR }}
