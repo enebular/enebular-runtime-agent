@@ -496,12 +496,12 @@ jobs:
           path: dist/**
           retention-days: 1
 
-  upload-dev:
-    name: Upload to S3 (Dev)
+  upload-dev-staging:
+    name: Upload to S3 (Dev/Staging)
     runs-on: ubuntu-latest
     needs: [validate-inputs, pack-prebuilt, pack-x64, pack-armv7l, pack-arm64]
-    if: always() && needs.validate-inputs.outputs.environment == 'dev' && needs.validate-inputs.result == 'success' && needs.pack-prebuilt.result == 'success' && needs.pack-x64.result == 'success' && needs.pack-armv7l.result == 'success' && needs.pack-arm64.result == 'success'
-    environment: dev-upload
+    if: always() && (needs.validate-inputs.outputs.environment == 'dev' || needs.validate-inputs.outputs.environment == 'stg') && needs.validate-inputs.result == 'success' && needs.pack-prebuilt.result == 'success' && needs.pack-x64.result == 'success' && needs.pack-armv7l.result == 'success' && needs.pack-arm64.result == 'success'
+    environment: ${{ needs.validate-inputs.outputs.environment == 'dev' && 'dev-upload' || 'staging-upload' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -540,82 +540,9 @@ jobs:
 
       - name: Upload Summary
         run: |
-          echo "## 📦 Upload Completed (Dev)" >> $GITHUB_STEP_SUMMARY
-          echo "✅ **Artifacts uploaded to Dev S3**" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Uploaded Files:" >> $GITHUB_STEP_SUMMARY
-          echo "- **S3 Bucket**: ${ENEBULAR_AGENT_S3_BUCKET}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Base Path**: ${ENEBULAR_AGENT_S3_DIR}/${{ needs.validate-inputs.outputs.tag_name }}/" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### Agent Files:" >> $GITHUB_STEP_SUMMARY
-          find ${{ needs.validate-inputs.outputs.tag_name }}/*tar.gz -exec basename {} \; | while read file; do
-            echo "- \`s3://${ENEBULAR_AGENT_S3_BUCKET}/${ENEBULAR_AGENT_S3_DIR}/${{ needs.validate-inputs.outputs.tag_name }}/$file\`" >> $GITHUB_STEP_SUMMARY
-          done
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### Install Script URL:" >> $GITHUB_STEP_SUMMARY
-          # Construct HTTPS URL from S3 bucket name
-          INSTALL_URL="https://s3.${AWS_DEFAULT_REGION:-ap-northeast-1}.amazonaws.com/${ENEBULAR_AGENT_S3_BUCKET}/${ENEBULAR_AGENT_S3_INSTALLSH_DIR}"
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "$INSTALL_URL" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### Install Command:" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "wget -qO- $INSTALL_URL | sudo -E bash -s -- --updater-version=${{ needs.validate-inputs.outputs.tag_name }} --release-version=${{ needs.validate-inputs.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-        env:
-          ENEBULAR_AGENT_S3_BUCKET: ${{ vars.ENEBULAR_AGENT_S3_BUCKET }}
-          ENEBULAR_AGENT_S3_DIR: ${{ vars.ENEBULAR_AGENT_S3_DIR }}
-          ENEBULAR_AGENT_S3_INSTALLSH_DIR: ${{ vars.ENEBULAR_AGENT_S3_INSTALLSH_DIR }}
-          AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION }}
-
-  upload-staging:
-    name: Upload to S3 (Staging)
-    runs-on: ubuntu-latest
-    needs: [validate-inputs, pack-prebuilt, pack-x64, pack-armv7l, pack-arm64]
-    if: always() && needs.validate-inputs.outputs.environment == 'stg' && needs.validate-inputs.result == 'success' && needs.pack-prebuilt.result == 'success' && needs.pack-x64.result == 'success' && needs.pack-armv7l.result == 'success' && needs.pack-arm64.result == 'success'
-    environment: staging-upload
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.9'
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: dist
-          merge-multiple: true
-
-      - name: Install dependencies
-        run: pip install boto3==1.26.137
-
-      - name: Upload to S3
-        env:
-          ENEBULAR_AGENT_S3_BUCKET: ${{ vars.ENEBULAR_AGENT_S3_BUCKET }}
-          ENEBULAR_AGENT_S3_DIR: ${{ vars.ENEBULAR_AGENT_S3_DIR }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        run: |
-          cp -r dist ${{ needs.validate-inputs.outputs.tag_name }}
-          find ${{ needs.validate-inputs.outputs.tag_name }}/*tar.gz -print0 | xargs -t -0 -I {} python tools/s3_upload.py ${ENEBULAR_AGENT_S3_BUCKET} {} ${ENEBULAR_AGENT_S3_DIR}/{}
-
-      - name: Upload install.sh
-        env:
-          ENEBULAR_AGENT_S3_BUCKET: ${{ vars.ENEBULAR_AGENT_S3_BUCKET }}
-          ENEBULAR_AGENT_S3_INSTALLSH_DIR: ${{ vars.ENEBULAR_AGENT_S3_INSTALLSH_DIR }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        run: python tools/s3_upload.py ${ENEBULAR_AGENT_S3_BUCKET} "tools/install/install.sh" ${ENEBULAR_AGENT_S3_INSTALLSH_DIR}
-
-      - name: Upload Summary
-        run: |
-          echo "## 📦 Upload Completed (Staging)" >> $GITHUB_STEP_SUMMARY
-          echo "✅ **Artifacts uploaded to Staging S3**" >> $GITHUB_STEP_SUMMARY
+          ENV_NAME="${{ needs.validate-inputs.outputs.environment == 'dev' && 'Dev' || 'Staging' }}"
+          echo "## 📦 Upload Completed ($ENV_NAME)" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Artifacts uploaded to $ENV_NAME S3**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Uploaded Files:" >> $GITHUB_STEP_SUMMARY
           echo "- **S3 Bucket**: ${ENEBULAR_AGENT_S3_BUCKET}" >> $GITHUB_STEP_SUMMARY
