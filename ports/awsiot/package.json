@@ -17,7 +17,7 @@
   "author": "",
   "license": "MIT",
   "engines": {
-    "node": "18.15.0"
+    "node": "22.17.1"
   },
   "devDependencies": {
     "@babel/cli": "^7.14.8",
@@ -44,5 +44,9 @@
     "aws-iot-device-sdk": "^2.2.11",
     "enebular-runtime-agent": "file:../../agent",
     "net": "^1.0.2"
+  },
+  "overrides": {
+    "ajv": "^6.12.3",
+    "cross-spawn": "^6.0.6"
   }
 }

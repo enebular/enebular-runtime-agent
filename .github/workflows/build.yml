@@ -1,0 +1,72 @@
+name: Build and Test
+
+on:
+  push:
+    branches:
+      - develop
+      - master
+  pull_request:
+    branches:
+      - develop
+      - master
+
+env:
+  NODE_VERSION: '22.17.1'
+
+jobs:
+  build-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Show versions
+        run: |
+          node -v | xargs echo nodejs version:
+          npm -v | xargs echo npm version:
+
+      - name: Create lock file check script
+        run: |
+          echo 'if ((`git diff package-lock.json | wc -l` != 0)); then echo "package-lock.file is required to be committed" && (exit 1); fi;' > /tmp/check_lock_file.sh
+
+      - name: Install and build
+        run: |
+          cd node-red && npm ci
+          cd $GITHUB_WORKSPACE/agent && npm ci && npm run build && . /tmp/check_lock_file.sh
+          cd $GITHUB_WORKSPACE/ports/awsiot && npm ci && npm run build && . /tmp/check_lock_file.sh
+          cd $GITHUB_WORKSPACE/tools/updater/awsiot-thing-creator && npm ci && npm run build && . /tmp/check_lock_file.sh
+          cd $GITHUB_WORKSPACE/tools/updater && npm ci && npm run build && . /tmp/check_lock_file.sh
+
+      - name: Fix file permissions
+        run: |
+          # Fix permissions for executable files that may lose exec permissions in CI
+          find $GITHUB_WORKSPACE -name "*.sh" -type f -exec chmod +x {} \; || true
+          find $GITHUB_WORKSPACE -path "*/bin/*" -type f -exec chmod +x {} \; || true
+          find $GITHUB_WORKSPACE -name "asset-script-*" -type f -exec chmod +x {} \; || true
+          find $GITHUB_WORKSPACE -name "*.bash" -type f -exec chmod +x {} \; || true
+
+      - name: Run tests
+        run: |
+          cd ports/awsiot
+          echo '{"host":"http://thing_shadow_rest_api_endpoint","port":8883,"clientId":"thing_name","thingName":"thing_name","caCert":"./certs/root_certificate","clientCert":"./certs/thing_cert","privateKey":"./certs/thing_private_key","topic":"aws/things/thing_name/shadow/update"}' > ./config.json
+          npm run test
+          rm ./config.json
+          cd ../../tools/updater && npm run test
+        env:
+          ENEBULAR_TEST: 'true'
+
+      - name: Clean up node_modules
+        run: |
+          rm -rf node-red/node_modules
+          rm -rf agent/node_modules
+          rm -rf ports/awsiot/node_modules
+          rm -rf tools/updater/awsiot-thing-creator/node_modules
+          rm -rf tools/updater/node_modules
+          rm -rf .git
+

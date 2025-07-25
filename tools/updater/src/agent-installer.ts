@@ -4,8 +4,7 @@ import * as util from 'util'
 import * as rimraf from 'rimraf'
 import * as os from 'os'
 import checkDiskSpace from 'check-disk-space'
-import request from 'request'
-import progress from 'request-progress'
+import axios from 'axios'
 
 import Config from './config'
 import AgentInfo from './agent-info'
@@ -68,30 +67,60 @@ export class AgentInstaller implements AgentInstallerIf {
       fileStream.on('error', (err): void => {
         reject(err)
       })
-      progress(request(url), {
-        delay: 5000,
-        throttle: 5000
+
+      axios({
+        method: 'GET',
+        url: url,
+        responseType: 'stream',
+        timeout: 30000
       })
-        .on('response', (response): void => {
+        .then((response): void => {
           this._log.debug(
-            `Response: ${response.statusCode}: ${response.statusMessage}`
+            `Response: ${response.status}: ${response.statusText}`
           )
-          if (response.statusCode >= 400) {
+          if (response.status >= 400) {
             reject(
               new Error(
-                `Error response: ${response.statusCode}: ${response.statusMessage}`
+                `Error response: ${response.status}: ${response.statusText}`
               )
             )
           }
+
+          const totalSize = parseInt(
+            response.headers['content-length'] || '0',
+            10
+          )
+          let downloadedSize = 0
+          const startTime = Date.now()
+
+          response.data.on('data', (chunk): void => {
+            downloadedSize += chunk.length
+            if (totalSize > 0) {
+              const percent = downloadedSize / totalSize
+              const elapsed = (Date.now() - startTime) / 1000
+              const speed = downloadedSize / elapsed
+
+              onProgress({
+                percent: percent,
+                speed: speed,
+                time: { elapsed: elapsed }
+              })
+            }
+          })
+
+          response.data.on('error', (err): void => {
+            reject(err)
+          })
+
+          response.data.on('end', (): void => {
+            resolve()
+          })
+
+          response.data.pipe(fileStream)
         })
-        .on('progress', onProgress)
-        .on('error', (err): void => {
+        .catch((err): void => {
           reject(err)
         })
-        .on('end', (): void => {
-          resolve()
-        })
-        .pipe(fileStream)
     })
   }
 
