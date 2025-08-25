@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Tag/version name (e.g., 2.18.1 for production, 2.18.1-rc1 for stg, dev-test-123 for dev)'
+        description: 'Tag/version name (e.g., 2.18.2 for production, 2.18.2-rc1 for stg, dev-test-123 for dev)'
         required: true
         type: string
       run_clamav_scan:
@@ -14,8 +14,8 @@ on:
         default: true
   push:
     tags:
-      - '[0-9]*.[0-9]*.[0-9]*' # Production: 2.18.1
-      - '[0-9]*.[0-9]*.[0-9]*-rc*' # Staging: 2.18.1-rc1
+      - '[0-9]*.[0-9]*.[0-9]*' # Production: 2.18.2
+      - '[0-9]*.[0-9]*.[0-9]*-rc*' # Staging: 2.18.2-rc1
       - 'dev-test-*' # Dev test: dev-test-123
       - 'dev-debug-*' # Dev debug: dev-debug-456
 
@@ -111,12 +111,12 @@ jobs:
           # Validation rules
           if [[ "$ENV" == "production" ]]; then
             if [[ ! "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "Error: Production tags must be in format X.Y.Z (e.g., 2.18.1)"
+              echo "Error: Production tags must be in format X.Y.Z (e.g., 2.18.2)"
               exit 1
             fi
           elif [[ "$ENV" == "stg" ]]; then
             if [[ ! "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+$ ]]; then
-              echo "Error: Staging tags must be in format X.Y.Z-rcN (e.g., 2.18.1-rc1)"
+              echo "Error: Staging tags must be in format X.Y.Z-rcN (e.g., 2.18.2-rc1)"
               exit 1
             fi
           elif [[ "$ENV" == "dev" ]]; then
