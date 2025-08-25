@@ -4,27 +4,27 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Tag/version name (e.g., 2.18.2 for production, 2.18.2-rc1 for stg, dev-test-123 for dev)'
+        description: "Tag/version name (e.g., 2.18.2 for production, 2.18.2-rc1 for stg, dev-test-123 for dev)"
         required: true
         type: string
       run_clamav_scan:
-        description: 'Run ClamAV security scan'
+        description: "Run ClamAV security scan"
         required: true
         type: boolean
         default: true
   push:
     tags:
-      - '[0-9]*.[0-9]*.[0-9]*' # Production: 2.18.2
-      - '[0-9]*.[0-9]*.[0-9]*-rc*' # Staging: 2.18.2-rc1
-      - 'dev-test-*' # Dev test: dev-test-123
-      - 'dev-debug-*' # Dev debug: dev-debug-456
+      - "[0-9]*.[0-9]*.[0-9]*" # Production: 2.18.2
+      - "[0-9]*.[0-9]*.[0-9]*-rc*" # Staging: 2.18.2-rc1
+      - "dev-test-*" # Dev test: dev-test-123
+      - "dev-debug-*" # Dev debug: dev-debug-456
 
 env:
-  NODE_VERSION: '22.17.1'
-  DOCKER_IMAGE_PREFIX: 'enebularagentdevelopers/enebular-agent'
-  DOCKER_X64_VERSION: 'x64'
-  DOCKER_ARM32V7_VERSION: 'arm32v7'
-  DOCKER_ARM64V8_VERSION: 'arm64v8'
+  NODE_VERSION: "22.17.1"
+  DOCKER_IMAGE_PREFIX: "enebularagentdevelopers/enebular-agent"
+  DOCKER_X64_VERSION: "x64"
+  DOCKER_ARM32V7_VERSION: "arm32v7"
+  DOCKER_ARM64V8_VERSION: "arm64v8"
 
 jobs:
   validate-inputs:
@@ -230,7 +230,7 @@ jobs:
           rm ./config.json
           cd ../../tools/updater && npm run test
         env:
-          ENEBULAR_TEST: 'true'
+          ENEBULAR_TEST: "true"
 
       - name: Clean up node_modules
         run: |
@@ -264,7 +264,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: "3.9"
 
       - name: Create directories
         run: |
@@ -340,8 +340,15 @@ jobs:
       - name: Install ClamAV
         run: |
           sudo apt-get update
-          sudo apt-get install -y clamav
-          sudo freshclam
+          sudo apt-get install -y --no-install-recommends clamav
+          # 自動起動した freshclam デーモンを停止してロックを解放
+          if command -v systemctl >/dev/null 2>&1; then
+            sudo systemctl stop clamav-freshclam || true
+          else
+            sudo pkill -x freshclam || true
+          fi
+          # DB 更新（ログ競合を避け stdout へ）
+          sudo freshclam --stdout -v
 
       - name: Run ClamAV scan
         run: clamscan --infected --remove --recursive ./
@@ -355,7 +362,7 @@ jobs:
         build-and-prepare,
         set-pub-key,
         clamav-scan,
-        pack-prebuilt
+        pack-prebuilt,
       ]
     if: always() && needs.build-and-prepare.result == 'success' && needs.set-pub-key.result == 'success' && needs.pack-prebuilt.result == 'success' && (needs.clamav-scan.result == 'success' || needs.clamav-scan.result == 'skipped')
     steps:
@@ -400,7 +407,7 @@ jobs:
         build-and-prepare,
         set-pub-key,
         clamav-scan,
-        pack-prebuilt
+        pack-prebuilt,
       ]
     if: always() && needs.build-and-prepare.result == 'success' && needs.set-pub-key.result == 'success' && needs.pack-prebuilt.result == 'success' && (needs.clamav-scan.result == 'success' || needs.clamav-scan.result == 'skipped')
     steps:
@@ -453,7 +460,7 @@ jobs:
         build-and-prepare,
         set-pub-key,
         clamav-scan,
-        pack-prebuilt
+        pack-prebuilt,
       ]
     if: always() && needs.build-and-prepare.result == 'success' && needs.set-pub-key.result == 'success' && needs.pack-prebuilt.result == 'success' && (needs.clamav-scan.result == 'success' || needs.clamav-scan.result == 'skipped')
     steps:
@@ -509,7 +516,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: "3.9"
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -584,7 +591,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: "3.9"
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
