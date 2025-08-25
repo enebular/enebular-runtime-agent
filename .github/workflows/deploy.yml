@@ -508,7 +508,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [validate-inputs, pack-prebuilt, pack-x64, pack-armv7l, pack-arm64]
     if: always() && (needs.validate-inputs.outputs.environment == 'dev' || needs.validate-inputs.outputs.environment == 'stg') && needs.validate-inputs.result == 'success' && needs.pack-prebuilt.result == 'success' && needs.pack-x64.result == 'success' && needs.pack-armv7l.result == 'success' && needs.pack-arm64.result == 'success'
-    environment: ${{ needs.validate-inputs.outputs.environment == 'dev' && 'dev-upload' || 'staging-upload' }}
+    environment: ${{ needs.validate-inputs.outputs.environment == 'dev' && 'dev-upload' || 'stg-upload' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
