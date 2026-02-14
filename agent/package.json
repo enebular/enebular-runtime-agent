@@ -46,7 +46,7 @@
     "eslint-plugin-prettier": "^3.1.0",
     "eslint-plugin-promise": "^4.2.1",
     "eslint-plugin-standard": "^4.0.1",
-    "express": "^4.15.3",
+    "express": "^4.22.1",
     "flow-bin": "^0.102.0",
     "flow-copy-source": "^2.0.9",
     "get-folder-size": "^2.0.0",
